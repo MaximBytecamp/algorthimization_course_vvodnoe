@@ -1,0 +1,30 @@
+name: tests
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Установить зависимости
+        run: pip install -r requirements.txt
+
+      - name: Запустить тесты
+        run: pytest -q
+
+      - name: Проверить, что заметка о сложности заполнена
+        run: |
+          for dir in lesson_*/; do
+            if [ -f "$dir/complexity.md" ] && ! grep -q "O(" "$dir/complexity.md"; then
+              echo "::warning file=$dir/complexity.md::в заметке нет оценки сложности"
+            fi
+          done
