@@ -12,7 +12,8 @@
 
 ```
 op04-algoritmizaciya/
-  index.html, styles.css, script.js   вводная презентация
+  index.html                          меню дисциплины: список занятий и материалов
+  lessons/01-vvodnaya/                вводная презентация
   lessons/NN-tema/                    колода занятия: index.html, styles.css,
                                       app.js и LESSON_PLAN.md — методичка
   assets/                             логотипы компаний и фотографии
