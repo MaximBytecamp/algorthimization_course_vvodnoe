@@ -7,7 +7,7 @@ test:
 	.venv/bin/pytest
 
 bench:
-	.venv/bin/python benchmarks/bench.py
+	.venv/bin/python benchmarks/lab.py
 
 # make lesson N=07  — создаёт папку занятия из шаблонов
 lesson:

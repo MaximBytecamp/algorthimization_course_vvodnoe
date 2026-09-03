@@ -1,3 +1,11 @@
+/* Движок колоды занятия 4.
+
+   Показ экранов, постепенное появление блоков, счётчик, полноэкранный
+   режим, свайпы, таймер на экранах практики и окно «Показать файл» —
+   всё как в колоде занятия 3, чтобы преподавателю не переучиваться.
+   Отличие одно: демонстрации этой колоды интерактивные, поэтому
+   каскад появления не трогает блок с границей замера — он должен
+   быть кликабелен с первой секунды.                                    */
 (() => {
   const slides = [...document.querySelectorAll('.slide')];
   const deck = document.getElementById('deck');
@@ -21,19 +29,20 @@
   let timerHandle = null;
 
   const pad = value => String(value).padStart(2, '0');
-  const fragments = [
-    '.metric', '.term', '.finding', '.method-step', '.noise-item',
-    '.scenario', '.review-item', '.result-row', '.memory-band',
-    '.comparison tbody tr', '.checklist li', '.defect', '.defense-question'
+  const staggerSelector = [
+    '.cards4 article', '.duo__side', '.myths > div', '.checklist > div',
+    '.big-list li', '.hw-cards li', '.hw-order > div', '.task-list li',
+    '.journal__cell', '.mem-steps__row', '.verdict__form > div',
+    '.samples__legend > div', '.lab__col'
   ].join(',');
 
-  document.querySelectorAll(fragments).forEach(node => node.classList.add('fragment'));
+  document.querySelectorAll(staggerSelector).forEach(element => element.classList.add('fragment'));
 
   function dismissBoot() {
     if (!bootOpen) return false;
     bootOpen = false;
     boot.classList.add('is-gone');
-    window.setTimeout(() => boot.remove(), 600);
+    window.setTimeout(() => boot.remove(), 700);
     return true;
   }
 
@@ -46,7 +55,6 @@
       dismissBoot();
     }, true);
     window.setTimeout(dismissBoot, 9000);
-    if (new URLSearchParams(location.search).has('skip')) window.setTimeout(dismissBoot, 0);
   }
 
   function revealFragments(slide) {
@@ -55,7 +63,10 @@
     const items = [...slide.querySelectorAll('.fragment')];
     items.forEach(item => item.classList.remove('revealed'));
     items.forEach((item, itemIndex) => {
-      revealTimers.push(window.setTimeout(() => item.classList.add('revealed'), 260 + itemIndex * 85));
+      revealTimers.push(window.setTimeout(() => {
+        item.classList.add('revealed');
+        if (itemIndex === items.length - 1) nextButton.disabled = index === slides.length - 1;
+      }, 320 + itemIndex * 85));
     });
   }
 
@@ -74,7 +85,7 @@
     };
     paint();
     timerHandle = window.setInterval(() => {
-      if (left <= 0) return clearInterval(timerHandle);
+      if (left <= 0) { clearInterval(timerHandle); return; }
       left -= 1;
       paint();
     }, 1000);
@@ -85,14 +96,14 @@
     currentNumber.textContent = pad(index + 1);
     totalNumber.textContent = pad(slides.length);
     progress.style.setProperty('--progress', `${((index + 1) / slides.length) * 100}%`);
-    deck.style.setProperty('--accent', `var(--${active.dataset.accent || 'blue'})`);
+    deck.style.setProperty('--accent', `var(--${active.dataset.accent})`);
+    deck.classList.toggle('is-inverse', active.matches('.slide--question, .slide--title, .slide--practice'));
     prevButton.disabled = index === 0;
     nextButton.disabled = index === slides.length - 1 && !hiddenFragments().length;
-    document.title = `${pad(index + 1)} · Измерение производительности`;
+    document.title = `${pad(index + 1)} · Замеры времени и памяти`;
     history.replaceState(null, '', `#${pad(index + 1)}`);
     revealFragments(active);
     startTimer(active);
-    document.dispatchEvent(new CustomEvent('deck:slide', { detail: { slide: active, index } }));
   }
 
   function render(nextIndex, direction = 1) {
@@ -101,7 +112,7 @@
     const previous = slides[index];
     previous.classList.remove('is-active', 'is-leaving-left');
     if (direction > 0) previous.classList.add('is-leaving-left');
-    window.setTimeout(() => previous.classList.remove('is-leaving-left'), 420);
+    window.setTimeout(() => previous.classList.remove('is-leaving-left'), 480);
     index = clamped;
     slides[index].classList.add('is-active');
     updateUi();
@@ -111,7 +122,9 @@
     const pending = hiddenFragments();
     if (pending.length) {
       revealTimers.forEach(clearTimeout);
+      revealTimers = [];
       pending.forEach(item => item.classList.add('revealed'));
+      nextButton.disabled = index === slides.length - 1;
       return;
     }
     render(index + 1, 1);
@@ -119,63 +132,74 @@
 
   function previous() { render(index - 1, -1); }
 
-  function openPanel(panel) {
-    panel.classList.add('is-open');
-    panel.setAttribute('aria-hidden', 'false');
+  function openSources() {
+    sourcesPanel.classList.add('is-open');
+    sourcesPanel.setAttribute('aria-hidden', 'false');
+    sourcesPanel.querySelector('.sources-close').focus();
   }
 
-  function closePanel(panel) {
-    panel.classList.remove('is-open');
-    panel.setAttribute('aria-hidden', 'true');
+  function closeSources() {
+    sourcesPanel.classList.remove('is-open');
+    sourcesPanel.setAttribute('aria-hidden', 'true');
+    sourcesButton.focus();
   }
 
   function openFile(name) {
-    const template = document.querySelector(`template[data-file-name="${name}"]`);
+    const template = document.querySelector(`.file-vault template[data-file-name="${name}"]`);
     if (!template) return;
     fileModalName.textContent = name;
-    fileModalBody.textContent = template.content.textContent.trim();
+    fileModalBody.textContent = template.content.textContent;
     fileCopy.textContent = 'Копировать';
-    openPanel(fileModal);
+    fileModal.classList.add('is-open');
+    fileModal.setAttribute('aria-hidden', 'false');
+    fileModalBody.scrollTop = 0;
+  }
+
+  function closeFile() {
+    fileModal.classList.remove('is-open');
+    fileModal.setAttribute('aria-hidden', 'true');
   }
 
   prevButton.addEventListener('click', previous);
   nextButton.addEventListener('click', next);
-  sourcesButton.addEventListener('click', () => openPanel(sourcesPanel));
   document.querySelectorAll('[data-go]').forEach(button => button.addEventListener('click', () => render(Number(button.dataset.go), -1)));
-  document.querySelectorAll('[data-close-sources]').forEach(node => node.addEventListener('click', () => closePanel(sourcesPanel)));
+  sourcesButton.addEventListener('click', openSources);
+  document.querySelectorAll('[data-close-sources]').forEach(element => element.addEventListener('click', closeSources));
   document.querySelectorAll('[data-file]').forEach(button => button.addEventListener('click', () => openFile(button.dataset.file)));
-  document.querySelectorAll('[data-close-file]').forEach(node => node.addEventListener('click', () => closePanel(fileModal)));
+  document.querySelectorAll('[data-close-file]').forEach(element => element.addEventListener('click', closeFile));
 
   fileCopy.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(fileModalBody.textContent);
       fileCopy.textContent = 'Скопировано';
     } catch (_) {
-      fileCopy.textContent = 'Выделите код';
+      fileCopy.textContent = 'Выделите и скопируйте';
     }
   });
+
+  const hwDownload = document.getElementById('hwDownload');
+  if (hwDownload) hwDownload.addEventListener('click', () => window.print());
 
   fullscreenButton.addEventListener('click', async () => {
     try {
       if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
       else await document.exitFullscreen();
-    } catch (_) { /* Полноэкранный режим может быть запрещён внутри превью. */ }
+    } catch (_) { /* Полноэкранный режим может быть заблокирован внутри превью. */ }
   });
 
   document.addEventListener('keydown', event => {
-    if (bootOpen) return;
     if (fileModal.classList.contains('is-open')) {
-      if (event.key === 'Escape') closePanel(fileModal);
+      if (event.key === 'Escape') closeFile();
       return;
     }
     if (sourcesPanel.classList.contains('is-open')) {
-      if (event.key === 'Escape') closePanel(sourcesPanel);
+      if (event.key === 'Escape') closeSources();
       return;
     }
-    if (event.target.closest('button, a') && ['Enter', ' '].includes(event.key)) return;
+    if (event.target.closest('a, button') && ['Enter', ' '].includes(event.key)) return;
     if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(event.key)) { event.preventDefault(); next(); }
     if (['ArrowLeft', 'PageUp', 'Backspace'].includes(event.key)) { event.preventDefault(); previous(); }
-    if (event.key.toLowerCase() === 's') openPanel(sourcesPanel);
+    if (event.key.toLowerCase() === 's') openSources();
     if (event.key.toLowerCase() === 'f') fullscreenButton.click();
     if (event.key === 'Home') render(0, -1);
     if (event.key === 'End') render(slides.length - 1, 1);
