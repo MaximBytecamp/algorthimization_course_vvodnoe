@@ -1,0 +1,2162 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>Занятие 3 · Временная сложность и O-нотация</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&family=Unbounded:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../styles.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="boot" id="boot">
+    <div class="boot__scanlines" aria-hidden="true"></div>
+    <div class="boot-card">
+      <div class="boot-card__top"><span>ОП.04 · ЗАНЯТИЕ 3</span><span>2026 / 2027</span></div>
+      <p class="boot-card__title">Временная сложность<br><em>и O-нотация</em></p>
+      <dl class="boot-card__fields">
+        <div><dt>Формат</dt><dd>лекция с прогонами + лаборатория</dd></div>
+        <div><dt>Объём</dt><dd>две пары, точка разрыва после экрана 28</dd></div>
+        <div><dt>Результат</dt><dd>размеченные 12 фрагментов и две заметки о сложности</dd></div>
+        <div><dt>Файлы</dt><dd>lesson_03/ · opcount.py · answers.py</dd></div>
+      </dl>
+    </div>
+    <p class="boot__hint">нажмите любую клавишу, чтобы начать <i>▸</i></p>
+  </div>
+
+  <div class="deck" id="deck" aria-live="polite">
+    <header class="chrome">
+      <button class="brand" type="button" data-go="0" aria-label="На первый слайд">
+        <span class="brand-mark">A<span>/</span>П</span>
+        <span class="brand-copy">Занятие 03<br>Сложность и O-нотация</span>
+      </button>
+      <div class="chrome-right">
+        <button class="icon-button" id="sourcesButton" type="button" aria-label="Открыть план занятия">S</button>
+        <button class="icon-button" id="fullscreenButton" type="button" aria-label="Полноэкранный режим">⛶</button>
+        <span class="counter"><span id="currentNumber">01</span><i>/</i><span id="totalNumber">57</span></span>
+      </div>
+    </header>
+
+    <main class="slides">
+
+      <!-- 01 · титул -->
+      <section class="slide slide--title is-active" data-kind="title" data-accent="lime" data-time="1">
+        <div class="slide-inner title-layout">
+          <div>
+            <p class="eyebrow">Занятие 3 · раздел 1 · формат интервью и оценка эффективности</p>
+            <h1>Временная<br>сложность<br>и <code>O</code>-нотация</h1>
+            <p class="lead">Мера трудоёмкости алгоритма: модель вычислений, формальное определение асимптотической оценки, каталог классов роста, анализ программ и границы применимости метода.</p>
+            <div class="title-meta"><span>9 разделов</span><span>24 примера</span><span>9 прогонов</span></div>
+          </div>
+          <div class="title-count">
+            <p class="title-count__label">план занятия</p>
+            <ol class="title-plan">
+              <li><b>I–II</b> мера и формальный аппарат</li>
+              <li><b>III</b> каталог классов роста</li>
+              <li><b>IV–V</b> анализ программ и память</li>
+              <li><b>VI</b> границы метода</li>
+              <li><b>VII–IX</b> применение и лаборатория</li>
+            </ol>
+            <p class="title-count__note">Точка разрыва между парами — после экрана 28.</p>
+          </div>
+        </div>
+        <span class="pair-number">03</span>
+      </section>
+
+      <!-- 02 · задача -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="3">
+        <div class="slide-inner">
+          <p class="eyebrow">Раздел I · постановка вопроса</p>
+          <h2>Два решения одной задачи</h2>
+          <p class="lead">Дан упорядоченный список из 64 номеров; требуется определить, содержится ли в нём заданный номер. Оба решения возвращают одинаковый результат. Ниже — число обращений к списку в случае, когда искомого номера нет.</p>
+          <div class="race">
+            <div class="run" data-run="linear" data-n="64" data-speed="70">
+              <div class="run__head"><span>последовательный просмотр</span><button class="replay" type="button" aria-label="Повторить прогон">↻</button></div>
+              <div class="run__stage"></div>
+              <p class="run__ops">обращений к списку <b>0</b></p>
+            </div>
+            <div class="run" data-run="binary" data-n="64" data-speed="70">
+              <div class="run__head"><span>половинное деление</span><button class="replay" type="button" aria-label="Повторить прогон">↻</button></div>
+              <div class="run__stage"></div>
+              <p class="run__ops">обращений к списку <b>0</b></p>
+            </div>
+          </div>
+          <p class="note">64 против 6; при n = 1024 — 1024 против 10. Различие устойчиво и растёт с размером входа. Задача раздела — построить меру, которая описывает это различие независимо от вычислительной машины.</p>
+        </div>
+        <span class="pair-number">I · МЕРА</span>
+      </section>
+
+      <!-- 03 · почему не секунды -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="3">
+        <div class="slide-inner split split--cost">
+          <div>
+            <p class="eyebrow">Раздел I · выбор меры</p>
+            <h2>Время выполнения не является характеристикой алгоритма</h2>
+            <p class="lead">Одна и та же программа на разных запусках даёт разное время. Величина зависит от факторов, к алгоритму не относящихся, поэтому сравнивать решения по секундам можно только при полностью совпадающих условиях эксперимента.</p>
+            <p class="note">Число выполненных операций от перечисленных факторов не зависит: оно определяется алгоритмом и входными данными. Эту величину и принимают за меру трудоёмкости.</p>
+            <p class="note">Экспериментальные замеры при этом не отменяются: они показывают влияние констант и особенностей реализации. Методика замеров — занятие 4.</p>
+          </div>
+          <table class="simplify-table">
+            <thead><tr><th>Фактор</th><th>Влияет на время</th><th>Влияет на число операций</th></tr></thead>
+            <tbody>
+              <tr><td>Тактовая частота процессора</td><td>да</td><td>нет</td></tr>
+              <tr><td>Фоновая нагрузка системы</td><td>да</td><td>нет</td></tr>
+              <tr><td>Версия интерпретатора</td><td>да</td><td>нет</td></tr>
+              <tr><td>Объём кэша процессора</td><td>да</td><td>нет</td></tr>
+              <tr><td>Размер входных данных</td><td>да</td><td>да</td></tr>
+              <tr><td>Выбранный алгоритм</td><td>да</td><td>да</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <span class="pair-number">I · МЕРА</span>
+      </section>
+
+      <!-- 04 · модель вычислений -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="4">
+        <div class="slide-inner">
+          <p class="eyebrow">Раздел I · на чём основан подсчёт</p>
+          <h2>Модель вычислений RAM и её допущения</h2>
+          <p class="lead">Подсчёт операций ведётся не «вообще», а в рамках модели. Стандартная модель анализа алгоритмов — <strong>RAM</strong> (Random Access Machine): память с произвольным доступом, последовательное выполнение команд, каждая элементарная команда стоит одну единицу времени.</p>
+          <div class="assume">
+            <article><b>Допущение 1</b><p>Обращение к любой ячейке памяти по адресу стоит одинаково.</p><small>Нарушается на практике: обращение к данным в кэше в десятки раз быстрее обращения к оперативной памяти</small></article>
+            <article><b>Допущение 2</b><p>Арифметическая операция над числом выполняется за постоянное время.</p><small>Нарушается для длинных чисел: сложение чисел из k разрядов стоит O(k)</small></article>
+            <article><b>Допущение 3</b><p>Команды выполняются последовательно, по одной.</p><small>Нарушается при параллельных вычислениях и векторных инструкциях процессора</small></article>
+            <article><b>Допущение 4</b><p>Объём доступной памяти не ограничен.</p><small>Нарушается при работе с данными, не помещающимися в оперативную память</small></article>
+          </div>
+          <p class="note">Модель сознательно упрощает устройство машины. Это упрощение делает оценку сравнимой между разными компьютерами; цена упрощения — расхождение с экспериментом, которое разбирается в разделе VI.</p>
+        </div>
+        <span class="pair-number">I · МЕРА</span>
+      </section>
+
+      <!-- 05 · происхождение нотации -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="2">
+        <div class="slide-inner split">
+          <div>
+            <p class="eyebrow">Раздел I · происхождение записи</p>
+            <h2>Откуда взялась запись O</h2>
+            <p class="lead">Обозначение пришло из математического анализа, где применялось для описания поведения функций, а не программ.</p>
+            <ul class="big-list big-list--dense">
+              <li><span>1894</span> Пауль Бахман вводит символ O в работе по теории чисел</li>
+              <li><span>1909</span> Эдмунд Ландау распространяет обозначение; отсюда название «символы Ландау»</li>
+              <li><span>1976</span> Дональд Кнут переносит нотацию в анализ алгоритмов и вводит систематическое употребление O, Ω и Θ</li>
+            </ul>
+            <p class="note">Из этого происхождения следует существенное свойство: запись описывает <strong>поведение функции при стремлении аргумента к бесконечности</strong>. Утверждения о конкретных значениях при малых n из неё не выводятся.</p>
+          </div>
+          <div class="side-card side-card--wide">
+            <p class="side-card__label">Что означает «асимптотическая» оценка</p>
+            <p>Асимптотика — описание поведения функции вблизи предельной точки; здесь предельная точка — бесконечность. Оценка утверждает, как ведёт себя T(n) <strong>при неограниченном росте n</strong>, и ничего не утверждает о значениях при n = 5 или n = 100.</p>
+            <p class="side-card__foot">Практическое следствие: для входов известного и небольшого размера асимптотическая оценка — не главный аргумент при выборе решения. Этот случай разбирается на экране 44.</p>
+          </div>
+        </div>
+        <span class="pair-number">I · МЕРА</span>
+      </section>
+
+      <!-- 06 · размер входа и операция -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="3">
+        <div class="slide-inner split">
+          <div>
+            <p class="eyebrow">Раздел II · базовые понятия</p>
+            <h2>Размер входа и элементарная операция</h2>
+            <p class="lead"><strong>Размер входа n</strong> — числовая характеристика входных данных, определяющая объём работы: количество элементов списка, длина строки, число вершин и рёбер графа, разрядность числа.</p>
+            <p class="lead"><strong>Элементарная операция</strong> — действие, выполняемое за постоянное время в принятой модели: сравнение, присваивание, обращение по индексу, арифметическое действие.</p>
+            <p class="note">При анализе выделяют <strong>базовую операцию</strong> — ту, которая выполняется чаще прочих и определяет порядок роста. Для поиска и сортировки это сравнение, для суммирования — сложение, для обхода графа — просмотр ребра.</p>
+          </div>
+          <div class="micro micro--wide">
+            <p class="micro__label">Выбор размера входа зависит от задачи</p>
+            <p class="micro__out">список из n чисел → <b>n</b> элементов</p>
+            <p class="micro__out">строка длины m → <b>m</b> символов</p>
+            <p class="micro__out">граф → <b>V</b> вершин и <b>E</b> рёбер, оценка вида O(V + E)</p>
+            <p class="micro__out">два списка → <b>n</b> и <b>m</b>, оценка вида O(n + m)</p>
+            <p class="micro__out">одно число k → размером входа служит <b>число разрядов</b>, то есть log k</p>
+          </div>
+        </div>
+        <span class="pair-number">II · АППАРАТ</span>
+      </section>
+
+      <!-- 07 · T(n) -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="3">
+        <div class="slide-inner split split--cost">
+          <div>
+            <p class="eyebrow">Раздел II · функция трудоёмкости</p>
+            <h2>T(n) — число операций как функция размера входа</h2>
+            <p class="lead"><strong>Временная сложность T(n)</strong> — функция, задающая количество элементарных операций, выполняемых алгоритмом на входе размера n.</p>
+            <p class="note">Функция строится по тексту программы: каждой строке приписывается число выполнений, результаты суммируются. Справа — подсчёт для фрагмента 07 из <code>fragments.py</code>: два последовательных цикла по списку температур.</p>
+            <p class="note">Строго говоря, T(n) определена не однозначно: на входах одного размера алгоритм может выполнять разное число операций. Поэтому рассматривают три функции — для лучшего, среднего и худшего случая. Разбор — на экране 31.</p>
+          </div>
+          <div class="op-listing">
+            <div class="op-listing__head"><span>fragments.py · 07</span><span>построчный подсчёт</span></div>
+<pre><code>def average_and_spikes(temperatures):
+    total = 0                       <i>1</i>
+    for value in temperatures:      <i>n</i>
+        total += value              <i>n</i>
+    average = total / len(...)      <i>2</i>
+    spikes = 0                      <i>1</i>
+    for value in temperatures:      <i>n</i>
+        if value &gt; average:         <i>n</i>
+            spikes += 1
+    return average, spikes          <i>1</i></code></pre>
+            <p class="op-listing__sum">T(n) = <b>4n + 5</b> · при n = 1000 это 4005 операций</p>
+          </div>
+        </div>
+        <span class="pair-number">II · АППАРАТ</span>
+      </section>
+
+      <!-- 08 · определение O -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="4">
+        <div class="slide-inner">
+          <p class="eyebrow">Раздел II · определение</p>
+          <h2>Асимптотическая верхняя оценка O(f(n))</h2>
+          <div class="formal">
+            <p class="formal__line">T(n) = O(f(n)) ⟺ ∃ c &gt; 0, n₀ ≥ 0 : T(n) ≤ c · f(n) для всех n ≥ n₀</p>
+            <p class="formal__note">Существуют постоянный множитель c и размер входа n₀, начиная с которого функция T(n) не превосходит c · f(n). Запись читается «T(n) есть O от f(n)» и означает: T(n) растёт не быстрее f(n).</p>
+          </div>
+          <div class="proof-row">
+            <div><span>дано</span><b>T(n) = 4n + 5</b><p>подсчёт с предыдущего экрана</p></div>
+            <div><span>подбираем c</span><b>c = 5</b><p>требуется 4n + 5 ≤ 5n, то есть 5 ≤ n</p></div>
+            <div><span>подбираем n₀</span><b>n₀ = 5</b><p>при n = 5 равенство 25 = 25; при n &gt; 5 неравенство строгое</p></div>
+            <div class="proof-row--final"><span>вывод</span><b>T(n) = O(n)</b><p>условие определения выполнено, пара (c, n₀) предъявлена</p></div>
+          </div>
+          <p class="note">Пара (c, n₀) не единственна: подойдут и c = 9, n₀ = 1. Для доказательства достаточно предъявить одну такую пару. Обратное утверждение — что оценка неверна — требует показать, что подходящей пары не существует ни при каком c.</p>
+        </div>
+        <span class="pair-number">II · АППАРАТ</span>
+      </section>
+
+      <!-- 09 · семейство обозначений -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="3">
+        <div class="slide-inner split split--cost">
+          <div>
+            <p class="eyebrow">Раздел II · родственные обозначения</p>
+            <h2>Пять символов и различия между ними</h2>
+            <p class="lead">O ограничивает функцию сверху, Ω — снизу, Θ — с двух сторон одновременно. Малые o и ω выражают строгое неравенство: рост существенно медленнее или существенно быстрее.</p>
+            <p class="note">Пример различия. Для линейного поиска: T(n) = O(n) — гарантия сверху; T(n) = Ω(1) — в лучшем случае одно сравнение; Θ(n) для него неверно, поскольку нижняя и верхняя оценки не совпадают. А для суммирования списка, где ранний выход невозможен, верно T(n) = Θ(n).</p>
+            <p class="note">В курсе используется O: на собеседовании и в проверяющих системах требуется гарантия для худшего случая. Остальные обозначения нужны, чтобы читать чужой анализ.</p>
+          </div>
+          <table class="form-table form-table--defs">
+            <thead><tr><th>Запись</th><th>Условие</th><th>Смысл</th></tr></thead>
+            <tbody>
+              <tr><td>O(f)</td><td>T(n) ≤ c·f(n)</td><td>растёт не быстрее f</td></tr>
+              <tr><td>Ω(f)</td><td>T(n) ≥ c·f(n)</td><td>растёт не медленнее f</td></tr>
+              <tr><td>Θ(f)</td><td>c₁·f ≤ T(n) ≤ c₂·f</td><td>растёт с той же скоростью</td></tr>
+              <tr><td>o(f)</td><td>T(n)/f(n) → 0</td><td>растёт строго медленнее</td></tr>
+              <tr><td>ω(f)</td><td>T(n)/f(n) → ∞</td><td>растёт строго быстрее</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <span class="pair-number">II · АППАРАТ</span>
+      </section>
+
+      <!-- 10 · свойства -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="3">
+        <div class="slide-inner">
+          <p class="eyebrow">Раздел II · правила действий с оценками</p>
+          <h2>Свойства асимптотических оценок</h2>
+          <div class="algebra">
+            <article><b>Постоянный множитель</b><p><code>O(c · f) = O(f)</code></p><small>O(4n) = O(n). Множитель поглощается константой c из определения.</small></article>
+            <article><b>Сумма</b><p><code>O(f) + O(g) = O(max(f, g))</code></p><small>O(n) + O(n²) = O(n²). Последовательные участки программы: остаётся дороже́е.</small></article>
+            <article><b>Произведение</b><p><code>O(f) · O(g) = O(f · g)</code></p><small>Вложенные циклы: O(n) · O(n) = O(n²); при разных величинах — O(n·m).</small></article>
+            <article><b>Транзитивность</b><p><code>f = O(g), g = O(h) ⟹ f = O(h)</code></p><small>Позволяет оценивать сверху через промежуточную функцию.</small></article>
+            <article><b>Рефлексивность</b><p><code>f = O(f)</code></p><small>Следует из определения при c = 1.</small></article>
+            <article><b>Несимметричность</b><p><code>f = O(g) ⇏ g = O(f)</code></p><small>n = O(n²), но n² ≠ O(n). Запись O не является равенством, хотя использует его знак.</small></article>
+          </div>
+          <p class="note">Последнее свойство — источник частой путаницы: <code>=</code> в записи <code>T(n) = O(f(n))</code> означает принадлежность классу функций, а не равенство. В строгой записи пишут <code>T(n) ∈ O(f(n))</code>.</p>
+        </div>
+        <span class="pair-number">II · АППАРАТ</span>
+      </section>
+
+      <!-- 11 · иерархия -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="3">
+        <div class="slide-inner split split--cost">
+          <div>
+            <p class="eyebrow">Раздел II · упорядочение классов</p>
+            <h2>Иерархия функций роста</h2>
+            <p class="lead">Классы упорядочены по скорости роста. Формально порядок устанавливается через предел отношения: если <code>f(n)/g(n) → 0</code> при n → ∞, то f растёт строго медленнее g.</p>
+            <p class="formal__line formal__line--inline">1 ≺ log n ≺ √n ≺ n ≺ n log n ≺ n² ≺ n³ ≺ 2ⁿ ≺ n!</p>
+            <p class="note">Отношение log n / n стремится к нулю: при n = 10 оно равно 0,33, при n = 1000 — 0,0100, при n = 10⁶ — 0,00002. Значит, log n = o(n), и никакой постоянный множитель этого не изменит.</p>
+            <p class="note">Основание логарифма на класс не влияет: log₂n и log₁₀n отличаются постоянным множителем 3,32, который отбрасывается. Поэтому в записи основание не указывают.</p>
+          </div>
+          <table class="simplify-table">
+            <thead><tr><th>Отношение</th><th>n = 10</th><th>n = 1 000</th><th>n = 10⁶</th><th>Предел</th></tr></thead>
+            <tbody>
+              <tr><td>log n / n</td><td>0,332</td><td>0,010</td><td>0,00002</td><td>0</td></tr>
+              <tr><td>n / n log n</td><td>0,301</td><td>0,100</td><td>0,050</td><td>0</td></tr>
+              <tr><td>n log n / n²</td><td>0,332</td><td>0,010</td><td>0,00002</td><td>0</td></tr>
+              <tr><td>n² / 2ⁿ</td><td>0,098</td><td>≈10⁻²⁹⁵</td><td>≈0</td><td>0</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <span class="pair-number">II · АППАРАТ</span>
+      </section>
+
+      <!-- 12 · форма записи -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="2">
+        <div class="slide-inner split">
+          <div>
+            <p class="eyebrow">Раздел II · требования к форме ответа</p>
+            <h2>Как записывается оценка</h2>
+            <p class="lead">В записи остаётся одно слагаемое — старшее — без постоянного множителя. Правило следует из свойств суммы и множителя с предыдущего экрана.</p>
+            <table class="form-table">
+              <thead><tr><th>Неверно</th><th>Верно</th><th>Основание</th></tr></thead>
+              <tbody>
+                <tr><td>O(2n)</td><td>O(n)</td><td>свойство постоянного множителя</td></tr>
+                <tr><td>O(n/2)</td><td>O(n)</td><td>свойство постоянного множителя</td></tr>
+                <tr><td>O(n² + n)</td><td>O(n²)</td><td>свойство суммы</td></tr>
+                <tr><td>O(3n + 7)</td><td>O(n)</td><td>оба свойства</td></tr>
+                <tr><td>O(log₂ n)</td><td>O(log n)</td><td>основание даёт постоянный множитель</td></tr>
+                <tr><td>O(n + m)</td><td>O(n + m)</td><td>верно: величины растут независимо</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="side-card side-card--wide">
+            <p class="side-card__label">Почему O(n + m) не упрощается</p>
+            <p>Правило суммы применимо, когда обе функции зависят от одной величины. Если списков два и их размеры не связаны, ни одно слагаемое не является старшим: при n = 10, m = 10⁶ преобладает m, при обратном соотношении — n.</p>
+            <p class="side-card__foot">Запись <code>O(n)</code> в таком случае означала бы дополнительное предположение о том, что второй вход мал. Условие задачи такого предположения не даёт — значит, в ответе остаются обе величины.</p>
+          </div>
+        </div>
+        <span class="pair-number">II · АППАРАТ</span>
+      </section>
+
+      <!-- 13 · перечень классов -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="3">
+        <div class="slide-inner">
+          <p class="eyebrow">Раздел III · каталог</p>
+          <h2>Классы сложности в порядке возрастания</h2>
+          <div class="kinds">
+            <article><b>O(1)</b><small>константная</small><p>число операций ограничено постоянной</p><i>1</i></article>
+            <article><b>O(log n)</b><small>логарифмическая</small><p>данные сокращаются в постоянное число раз</p><i>10 шагов</i></article>
+            <article><b>O(n)</b><small>линейная</small><p>каждый элемент обрабатывается фиксированное число раз</p><i>1 024</i></article>
+            <article><b>O(n log n)</b><small>линейно-логарифмическая</small><p>проход по данным повторяется log n раз</p><i>10 240</i></article>
+            <article class="kinds--bad"><b>O(n²)</b><small>квадратичная</small><p>обрабатывается каждая пара элементов</p><i>523 776</i></article>
+            <article class="kinds--worst"><b>O(2ⁿ)</b><small>экспоненциальная</small><p>каждый элемент удваивает число вариантов</p><i>10³⁰⁸</i></article>
+          </div>
+          <p class="note">В нижней строке карточки — значение при <strong>n = 1024</strong>. Первые четыре класса считаются практически применимыми, квадратичный — приемлемым при малых и средних входах, экспоненциальный — только при n порядка двадцати. Далее каждый класс разбирается на двух экранах: определение с прогоном и три примера.</p>
+        </div>
+        <span class="pair-number">III · КЛАССЫ</span>
+      </section>
+
+      <!-- 14 · O(1) -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="3">
+        <div class="slide-inner split split--demo">
+          <div>
+            <p class="eyebrow">Класс 1 из 6 · определение и прогон</p>
+            <h2>Константная сложность O(1)</h2>
+            <p class="lead">Алгоритм имеет константную сложность, если число выполняемых операций <strong>ограничено сверху постоянной величиной</strong>, не зависящей от размера входа.</p>
+            <pre class="demo-code"><code>def first_and_last(orders):
+    return orders[0], orders[-1]</code></pre>
+            <div class="micro">
+              <p class="micro__label">Пункт выдачи · журнал заявок за смену</p>
+              <p class="micro__out">1 200 заявок → <b>2</b> обращения к списку</p>
+              <p class="micro__out">12 000 заявок → <b>2</b> обращения</p>
+            </div>
+          </div>
+          <div class="run" data-run="const" data-n="64">
+            <div class="run__head"><span>обращение по индексу · n = 64</span><button class="replay" type="button" aria-label="Повторить прогон">↻</button></div>
+            <div class="run__stage"></div>
+            <p class="run__ops">операций <b>0</b></p>
+            <p class="run__note">Адрес ячейки вычисляется по индексу арифметически, поэтому просмотр остальных элементов не требуется.</p>
+          </div>
+        </div>
+        <span class="pair-number">III · КЛАССЫ</span>
+      </section>
+
+      <!-- 15 · O(1) примеры -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="3">
+        <div class="slide-inner">
+          <p class="eyebrow">Класс 1 из 6 · примеры</p>
+          <h2>Где встречается константная сложность</h2>
+          <div class="examples">
+            <article>
+              <b>Обращение по индексу</b>
+<pre><code>orders[0]
+orders[-1]
+prices[i]</code></pre>
+              <p>Адрес элемента вычисляется по индексу за одно арифметическое действие независимо от длины списка.</p>
+              <small>T(n) = O(1) · S(n) = O(1)</small>
+            </article>
+            <article>
+              <b>Проверка по множеству и словарю</b>
+<pre><code>if badge in seen:
+    ...
+counts[word] = 0</code></pre>
+              <p>Позиция определяется хеш-функцией от самого значения. При совпадении хешей возможен короткий перебор, поэтому оценка справедлива в среднем; в худшем случае — O(n).</p>
+              <small>T(n) = O(1) в среднем · память структуры O(n)</small>
+            </article>
+            <article>
+              <b>Длина и добавление в конец</b>
+<pre><code>len(orders)
+orders.append(x)</code></pre>
+              <p>Длина хранится вместе со списком. Добавление в конец записывает элемент в готовую ячейку; изредка требуется расширение — разбор на экране 36.</p>
+              <small>T(n) = O(1) · для append — амортизированно</small>
+            </article>
+          </div>
+          <p class="note">Признак класса: отсутствие цикла по входным данным <strong>и</strong> отсутствие вызовов, содержащих такой цикл. Второе условие существеннее первого — экран 30.</p>
+        </div>
+        <span class="pair-number">III · КЛАССЫ</span>
+      </section>
+
+      <!-- 16 · O(log n) -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="3">
+        <div class="slide-inner split split--demo">
+          <div>
+            <p class="eyebrow">Класс 2 из 6 · определение и прогон</p>
+            <h2>Логарифмическая сложность O(log n)</h2>
+            <p class="lead">Алгоритм имеет логарифмическую сложность, если на каждом шаге <strong>объём необработанных данных уменьшается в постоянное число раз</strong>. При делении пополам число шагов равно log₂n.</p>
+            <div class="micro">
+              <p class="micro__label">Архив чеков · номера 1…1024 · ищем 480</p>
+              <p class="micro__trace"><b>512</b> → влево<i>·</i><b>256</b> → вправо<i>·</i><b>384</b> → вправо<i>·</i><b>448</b> → вправо<i>·</i><b>480</b> найден</p>
+              <p class="micro__out">пять шагов вместо <b>480</b> сравнений при переборе</p>
+            </div>
+            <p class="note">Класс требует упорядоченности данных: без порядка отбросить половину нельзя, поскольку неизвестно, в какой части искать.</p>
+          </div>
+          <div class="run" data-run="binary" data-n="64" data-speed="480">
+            <div class="run__head"><span>бинарный поиск · n = 64</span><button class="replay" type="button" aria-label="Повторить прогон">↻</button></div>
+            <div class="run__stage"></div>
+            <p class="run__ops">шагов деления <b>0</b></p>
+            <p class="run__note">Осевшие ячейки исключены из рассмотрения целиком: 6 шагов на 64 элемента, 10 на 1024.<br><b>Шаги и сравнения:</b> в <code>opcount.py</code> на шаг приходится два сравнения, поэтому при n = 1024 там 20 сравнений, а шагов 10.</p>
+          </div>
+        </div>
+        <span class="pair-number">III · КЛАССЫ</span>
+      </section>
+
+      <!-- 17 · O(log n) примеры -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="3">
+        <div class="slide-inner">
+          <p class="eyebrow">Класс 2 из 6 · примеры</p>
+          <h2>Где встречается логарифмическая сложность</h2>
+          <div class="examples">
+            <article>
+              <b>Бинарный поиск</b>
+<pre><code>while low &lt;= high:
+    middle = (low + high) // 2
+    if ids[middle] &lt; target:
+        low = middle + 1
+    else:
+        high = middle - 1</code></pre>
+              <p>Отрезок поиска сокращается вдвое на каждой итерации. Применим только к упорядоченным данным.</p>
+              <small>T(n) = O(log n) · S(n) = O(1)</small>
+            </article>
+            <article>
+              <b>Быстрое возведение в степень</b>
+<pre><code>result = 1
+while power &gt; 0:
+    if power % 2:
+        result *= base
+    base *= base
+    power //= 2</code></pre>
+              <p>Показатель делится пополам на каждом шаге: для power = 10⁹ достаточно 30 итераций вместо миллиарда умножений.</p>
+              <small>T(n) = O(log power) · S(n) = O(1)</small>
+            </article>
+            <article>
+              <b>Поиск в дереве поиска</b>
+<pre><code>node = root
+while node:
+    if key &lt; node.key:
+        node = node.left
+    else:
+        node = node.right</code></pre>
+              <p>Спуск от корня к листу: на каждом уровне одно поддерево отбрасывается. Оценка справедлива для сбалансированного дерева — раздел 5 курса.</p>
+              <small>T(n) = O(log n) при балансировке, иначе O(n)</small>
+            </article>
+          </div>
+          <p class="note">Признак класса: управляющая величина <strong>делится</strong>, а не уменьшается на единицу. Сравните: <code>i //= 2</code> даёт log n итераций, <code>i -= 1</code> — n итераций.</p>
+        </div>
+        <span class="pair-number">III · КЛАССЫ</span>
+      </section>
+
+      <!-- 18 · O(n) -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="3">
+        <div class="slide-inner split split--demo">
+          <div>
+            <p class="eyebrow">Класс 3 из 6 · определение и прогон</p>
+            <h2>Линейная сложность O(n)</h2>
+            <p class="lead">Алгоритм имеет линейную сложность, если каждый элемент входа обрабатывается <strong>фиксированное число раз</strong>. Увеличение входа в k раз увеличивает число операций в k раз.</p>
+            <pre class="demo-code"><code>for i in range(len(passes)):
+    if passes[i] == code:
+        return i
+return -1</code></pre>
+            <div class="micro">
+              <p class="micro__label">Стадион · искомого пропуска в списке нет</p>
+              <p class="micro__out">8 пропусков → <b>8</b> сравнений · 1000 → <b>1000</b></p>
+              <p class="micro__out">два последовательных цикла дают 2n — тот же класс</p>
+            </div>
+          </div>
+          <div class="run" data-run="linear" data-n="64" data-speed="70">
+            <div class="run__head"><span>последовательный просмотр · n = 64</span><button class="replay" type="button" aria-label="Повторить прогон">↻</button></div>
+            <div class="run__stage"></div>
+            <p class="run__ops">сравнений <b>0</b></p>
+            <p class="run__note">Показан худший случай: искомый элемент отсутствует, поэтому просмотр выполняется до конца списка.</p>
+          </div>
+        </div>
+        <span class="pair-number">III · КЛАССЫ</span>
+      </section>
+
+      <!-- 19 · O(n) примеры -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="3">
+        <div class="slide-inner">
+          <p class="eyebrow">Класс 3 из 6 · примеры</p>
+          <h2>Где встречается линейная сложность</h2>
+          <div class="examples">
+            <article>
+              <b>Агрегаты по списку</b>
+<pre><code>total = 0
+for value in temperatures:
+    total += value</code></pre>
+              <p>Сумма, максимум, минимум, среднее. Библиотечные <code>sum()</code> и <code>max()</code> выполняют тот же проход, записанный внутри библиотеки.</p>
+              <small>T(n) = O(n) · S(n) = O(1)</small>
+            </article>
+            <article>
+              <b>Подсчёт частот</b>
+<pre><code>counts = {}
+for word in words:
+    counts[word] = counts.get(word, 0) + 1</code></pre>
+              <p>Один проход, на каждом шаге операция со словарём за O(1). Дополнительная память растёт с числом различных значений.</p>
+              <small>T(n) = O(n) · S(n) = O(n)</small>
+            </article>
+            <article>
+              <b>Два указателя по упорядоченным данным</b>
+<pre><code>i = j = 0
+while i &lt; len(left) and j &lt; len(right):
+    if left[i] &lt;= right[j]: i += 1
+    else: j += 1</code></pre>
+              <p>Каждый указатель проходит свой список один раз и не возвращается назад. Слияние, поиск пары с заданной суммой — тема занятия 8.</p>
+              <small>T(n) = O(n + m) · S(n) = O(1) без учёта результата</small>
+            </article>
+          </div>
+          <p class="note">Признак класса: <strong>один проход по входу</strong>, тело которого выполняется за постоянное время. Несколько последовательных проходов класс не меняют: n + n + n = 3n = O(n).</p>
+        </div>
+        <span class="pair-number">III · КЛАССЫ</span>
+      </section>
+
+      <!-- 20 · O(n log n) -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="3">
+        <div class="slide-inner split split--demo">
+          <div>
+            <p class="eyebrow">Класс 4 из 6 · определение и прогон</p>
+            <h2>Линейно-логарифмическая сложность O(n log n)</h2>
+            <p class="lead">Класс возникает, когда <strong>проход по всем n элементам повторяется log n раз</strong>. Типичный источник — схема «разделяй и властвуй»: данные делятся пополам, результаты объединяются за линейное время.</p>
+            <div class="micro">
+              <p class="micro__label">Склад · сортировка слиянием восьми цен</p>
+              <p class="micro__trace"><b>[90][15][240][60][75][15][300][45]</b><i>·</i>[15,90][60,240][15,75][45,300]<i>·</i>[15,60,90,240][15,45,75,300]<i>·</i>[15,15,45,60,75,90,240,300]</p>
+              <p class="micro__out">три уровня слияния по 8 элементов → <b>24</b> просмотра</p>
+            </div>
+          </div>
+          <div class="run" data-run="nlogn" data-n="32" data-speed="42">
+            <div class="run__head"><span>сортировка слиянием · n = 32</span><button class="replay" type="button" aria-label="Повторить прогон">↻</button></div>
+            <div class="run__stage"></div>
+            <p class="run__ops">просмотров <b>0</b></p>
+            <p class="run__note">Полоса пробегается заново на каждом уровне слияния: пять уровней по 32 элемента — 160 просмотров.</p>
+          </div>
+        </div>
+        <span class="pair-number">III · КЛАССЫ</span>
+      </section>
+
+      <!-- 21 · O(n log n) примеры -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="3">
+        <div class="slide-inner">
+          <p class="eyebrow">Класс 4 из 6 · примеры</p>
+          <h2>Где встречается линейно-логарифмическая сложность</h2>
+          <div class="examples">
+            <article>
+              <b>Библиотечная сортировка</b>
+<pre><code>prices.sort()
+sorted(prices)[:3]</code></pre>
+              <p>В CPython применяется Timsort — сортировка слиянием с оптимизацией упорядоченных участков. На почти отсортированных данных приближается к O(n).</p>
+              <small>T(n) = O(n log n) · S(n) = O(n)</small>
+            </article>
+            <article>
+              <b>Сортировка с последующим проходом</b>
+<pre><code>orders.sort()
+for i in range(1, len(orders)):
+    if orders[i] == orders[i - 1]:
+        return True</code></pre>
+              <p>Поиск дубликата без дополнительной памяти: O(n log n) на сортировку плюс O(n) на проход. По свойству суммы остаётся старшее слагаемое.</p>
+              <small>T(n) = O(n log n) · S(n) = O(1) при сортировке на месте</small>
+            </article>
+            <article>
+              <b>Куча: n операций вставки</b>
+<pre><code>for value in data:
+    heapq.heappush(heap, value)</code></pre>
+              <p>Одна вставка в двоичную кучу стоит O(log n); n вставок дают O(n log n). Структура разбирается в разделе 4 курса.</p>
+              <small>T(n) = O(n log n) · S(n) = O(n)</small>
+            </article>
+          </div>
+          <p class="note">Признак класса: сортировка в решении либо рекурсивное деление задачи пополам с линейным объединением. Наличие <code>sorted()</code> само по себе задаёт нижнюю границу класса — быстрее решение уже не будет.</p>
+        </div>
+        <span class="pair-number">III · КЛАССЫ</span>
+      </section>
+
+      <!-- 22 · O(n²) -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="3">
+        <div class="slide-inner split split--demo">
+          <div>
+            <p class="eyebrow">Класс 5 из 6 · определение и прогон</p>
+            <h2>Квадратичная сложность O(n²)</h2>
+            <p class="lead">Алгоритм имеет квадратичную сложность, если обрабатывается <strong>каждая пара элементов</strong> либо цикл по входу вложен в другой цикл по тому же входу. Увеличение входа вдвое увеличивает работу вчетверо.</p>
+            <div class="micro">
+              <p class="micro__label">Проходная · число пар при переборе</p>
+              <p class="micro__out">5 пропусков → <b>10</b> пар · 10 пропусков → <b>45</b> пар</p>
+              <p class="micro__out">вход вырос вдвое, работа — в 4,5 раза</p>
+              <p class="micro__out">1000 пропусков → <b>499 500</b> пар</p>
+            </div>
+          </div>
+          <div class="run" data-run="quad" data-n="24" data-speed="9">
+            <div class="run__head"><span>все пары · n = 24</span><button class="replay" type="button" aria-label="Повторить прогон">↻</button></div>
+            <div class="run__stage"></div>
+            <p class="run__ops">сравнений <b>0</b></p>
+            <p class="run__note">Клетка — пара «элемент i против элемента j». Заполняется треугольник: пар ровно n(n−1)/2 = 276.</p>
+          </div>
+        </div>
+        <span class="pair-number">III · КЛАССЫ</span>
+      </section>
+
+      <!-- 23 · O(n²) примеры -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="3">
+        <div class="slide-inner">
+          <p class="eyebrow">Класс 5 из 6 · примеры</p>
+          <h2>Где встречается квадратичная сложность</h2>
+          <div class="examples">
+            <article>
+              <b>Перебор всех пар</b>
+<pre><code>for i in range(len(points)):
+    for j in range(i + 1, len(points)):
+        distance(points[i], points[j])</code></pre>
+              <p>Ближайшая пара точек, поиск дубликатов, сравнение каждого с каждым. Множитель 1/2 от условия <code>j &gt; i</code> на класс не влияет.</p>
+              <small>T(n) = O(n²) · S(n) = O(1)</small>
+            </article>
+            <article>
+              <b>Сортировка вставками</b>
+<pre><code>for i in range(1, len(data)):
+    j = i
+    while j &gt; 0 and data[j-1] &gt; data[j]:
+        data[j-1], data[j] = data[j], data[j-1]
+        j -= 1</code></pre>
+              <p>В худшем случае — обратный порядок — каждый элемент проходит весь пройденный участок. На почти упорядоченных данных вырождается в O(n): случай, где худшая оценка вводит в заблуждение.</p>
+              <small>T(n) = O(n²) в худшем, O(n) в лучшем</small>
+            </article>
+            <article>
+              <b>Линейный поиск внутри цикла</b>
+<pre><code>for row in rows:
+    if row not in result:
+        result.append(row)</code></pre>
+              <p>Цикл записан один, но <code>not in</code> для списка выполняет собственный проход. Скрытый случай квадратичной сложности — экран 30.</p>
+              <small>T(n) = O(n²) · S(n) = O(n)</small>
+            </article>
+          </div>
+          <p class="note">Признак класса: <strong>вложенные циклы по одному входу</strong> либо операция стоимостью O(n) внутри цикла по входу. Если внутренний цикл идёт по другой величине m, оценка равна O(n·m).</p>
+        </div>
+        <span class="pair-number">III · КЛАССЫ</span>
+      </section>
+
+      <!-- 24 · полиномиальные -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="3">
+        <div class="slide-inner split split--cost">
+          <div>
+            <p class="eyebrow">Класс 5 из 6 · продолжение</p>
+            <h2>Полиномиальные классы выше второго</h2>
+            <p class="lead">Квадратичный класс — частный случай полиномиального <code>O(n^k)</code>. Третья степень возникает при трёх вложенных циклах и встречается в задачах на матрицы и тройки элементов.</p>
+            <div class="examples examples--pair">
+              <article>
+                <b>Умножение матриц</b>
+<pre><code>for i in range(n):
+    for j in range(n):
+        for k in range(n):
+            c[i][j] += a[i][k] * b[k][j]</code></pre>
+                <p>Три вложенных цикла по n. Известны алгоритмы с меньшей степенью — например, Штрассена с O(n^2,81), — но они сложнее и на практике применяются редко.</p>
+                <small>T(n) = O(n³) · S(n) = O(n²)</small>
+              </article>
+              <article>
+                <b>Тройки с нулевой суммой</b>
+<pre><code>for i in range(n):
+    for j in range(i+1, n):
+        for k in range(j+1, n):
+            if a[i] + a[j] + a[k] == 0:
+                ...</code></pre>
+                <p>Полный перебор троек. Существует решение за O(n²) — сортировка плюс два указателя; типичная задача собеседования на переход от перебора к оптимизации.</p>
+                <small>T(n) = O(n³) перебором, O(n²) после сортировки</small>
+              </article>
+            </div>
+          </div>
+          <div class="side-card side-card--wide">
+            <p class="side-card__label">Допустимый размер входа</p>
+            <div class="estimate">
+              <div><span>O(n²)</span><b>n ≤ 5·10³</b><i>2,5·10⁷ операций</i><em>укладывается</em></div>
+              <div><span>O(n³)</span><b>n ≤ 500</b><i>1,25·10⁸ операций</i><em>на границе</em></div>
+              <div><span>O(n⁴)</span><b>n ≤ 100</b><i>10⁸ операций</i><em>на границе</em></div>
+            </div>
+            <p class="side-card__foot">Полиномиальные алгоритмы считаются практически применимыми, но лишь при малых степенях. Разница между <code>O(n²)</code> и <code>O(n³)</code> при n = 1000 составляет три порядка: 10⁶ против 10⁹ операций.</p>
+          </div>
+        </div>
+        <span class="pair-number">III · КЛАССЫ</span>
+      </section>
+
+      <!-- 25 · экспоненциальные -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="3">
+        <div class="slide-inner split split--cost">
+          <div>
+            <p class="eyebrow">Класс 6 из 6 · определение и границы применимости</p>
+            <h2>Экспоненциальная и факториальная сложность</h2>
+            <p class="lead">Алгоритм имеет экспоненциальную сложность, если добавление одного элемента <strong>умножает объём работы на постоянную величину</strong>. Прогон не показан: при n = 24 потребовалось бы 16,7 миллиона клеток.</p>
+            <div class="examples examples--pair">
+              <article>
+                <b>Перебор подмножеств · O(2ⁿ)</b>
+<pre><code>for mask in range(2 ** len(items)):
+    ...</code></pre>
+                <p>Каждый предмет либо входит в набор, либо нет: 2ⁿ вариантов. Задача о рюкзаке в лоб, поиск подмножества с заданной суммой.</p>
+                <small>T(n) = O(2ⁿ) · применимо при n ≤ 25</small>
+              </article>
+              <article>
+                <b>Перебор перестановок · O(n!)</b>
+<pre><code>for route in permutations(cities):
+    length = total_distance(route)</code></pre>
+                <p>Задача коммивояжёра полным перебором. При n = 20 это 2,4·10¹⁸ маршрутов — перебор невозможен ни при каком быстродействии.</p>
+                <small>T(n) = O(n!) · применимо при n ≤ 11</small>
+              </article>
+            </div>
+          </div>
+          <div class="side-card side-card--wide">
+            <p class="side-card__label">Рост числа вариантов</p>
+            <div class="estimate">
+              <div><span>n = 10</span><b>2ⁿ</b><i>1 024</i><em>мгновенно</em></div>
+              <div><span>n = 20</span><b>2ⁿ</b><i>1 048 576</i><em>доли секунды</em></div>
+              <div><span>n = 40</span><b>2ⁿ</b><i>1,1·10¹²</i><em>около суток</em></div>
+              <div><span>n = 64</span><b>2ⁿ</b><i>1,8·10¹⁹</i><em>неприменимо</em></div>
+            </div>
+            <p class="side-card__foot">Экспоненциальные решения не всегда означают ошибку: при малом n они допустимы и просты. Ограничение <code>n ≤ 20</code> в условии задачи, как правило, указывает именно на полный перебор. Способы сократить перебор — раздел 7 курса.</p>
+          </div>
+        </div>
+        <span class="pair-number">III · КЛАССЫ</span>
+      </section>
+
+      <!-- 26 · сравнение классов -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="3">
+        <div class="slide-inner">
+          <p class="eyebrow">Раздел III · сравнение на одной задаче</p>
+          <h2>Поиск дубликата: линейное решение против квадратичного</h2>
+          <p class="lead">Задача: определить, содержит ли список два одинаковых номера. Слева — проход с множеством просмотренных значений, справа — перебор всех пар. Результаты совпадают, число операций различается на порядок.</p>
+          <div class="race race--uneven">
+            <div class="run" data-run="linear" data-n="24" data-speed="70">
+              <div class="run__head"><span>через множество · O(n)</span><button class="replay" type="button" aria-label="Повторить прогон">↻</button></div>
+              <div class="run__stage"></div>
+              <p class="run__ops">проверок <b>0</b></p>
+            </div>
+            <div class="run" data-run="quad" data-n="24" data-speed="9">
+              <div class="run__head"><span>все пары · O(n²)</span><button class="replay" type="button" aria-label="Повторить прогон">↻</button></div>
+              <div class="run__stage"></div>
+              <p class="run__ops">сравнений <b>0</b></p>
+            </div>
+          </div>
+          <p class="note">24 против 276 при n = 24; 1024 против 523 776 при n = 1024. Различие обеспечено выбором структуры данных: множество даёт проверку принадлежности за O(1) ценой O(n) дополнительной памяти.</p>
+        </div>
+        <span class="pair-number">III · КЛАССЫ</span>
+      </section>
+
+      <!-- 27 · график -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="3">
+        <div class="slide-inner split split--chart">
+          <div>
+            <p class="eyebrow">Раздел III · кривые роста</p>
+            <h2>Пять классов на одной координатной сетке</h2>
+            <p class="lead">По горизонтальной оси — размер входа, по вертикальной — число операций. Кривые построены по функциям из соответствующих оценок.</p>
+            <ul class="big-list big-list--dense">
+              <li><span>O(1)</span> горизонтальная прямая: значение не зависит от n</li>
+              <li><span>O(log n)</span> возрастает всё медленнее: удвоение n добавляет одну операцию</li>
+              <li><span>O(n)</span> прямая: во сколько раз вырос вход, во столько же выросла работа</li>
+              <li><span>O(n log n)</span> растёт быстрее линейной, оставаясь сопоставимой с ней</li>
+              <li><span>O(n²)</span> покидает область графика на втором десятке</li>
+            </ul>
+            <p class="note">Верхняя граница шкалы выбрана по кривой n log n: при шкале по n² три нижних кривых были бы неразличимы. Точки пересечения в левой части — область малых n, где асимптотическая оценка не определяет выбор.</p>
+          </div>
+          <figure class="chart" data-chart="growth">
+            <div class="chart__plot"></div>
+            <figcaption>Рост числа операций при n от 0 до 32</figcaption>
+          </figure>
+        </div>
+        <span class="pair-number">III · КЛАССЫ</span>
+      </section>
+
+      <!-- 28 · таблица масштаба -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="3">
+        <div class="slide-inner">
+          <p class="eyebrow">Раздел III · числовые значения · конец первой пары</p>
+          <h2>Порядок роста в числах операций</h2>
+          <table class="scale-table">
+            <thead><tr><th>Класс</th><th>n = 10</th><th>n = 1 000</th><th>n = 1 000 000</th><th>Оценка времени при 10⁷ операций в секунду</th></tr></thead>
+            <tbody>
+              <tr><td>O(1)</td><td>1</td><td>1</td><td>1</td><td>не зависит от n</td></tr>
+              <tr><td>O(log n)</td><td>3</td><td>10</td><td>20</td><td>практически не зависит от n</td></tr>
+              <tr><td>O(n)</td><td>10</td><td>1 000</td><td>10⁶</td><td>0,1 секунды</td></tr>
+              <tr><td>O(n log n)</td><td>33</td><td>10⁴</td><td>2·10⁷</td><td>около 2 секунд</td></tr>
+              <tr class="scale-table__bad"><td>O(n²)</td><td>100</td><td>10⁶</td><td>10¹²</td><td>более суток</td></tr>
+              <tr class="scale-table__worst"><td>O(2ⁿ)</td><td>1 024</td><td>10³⁰¹</td><td>—</td><td>неприменимо</td></tr>
+            </tbody>
+          </table>
+          <p class="callout">Столбец n = 10 показывает, почему оценка не применяется к малым входам: различие между 33 и 100 операциями несущественно. Столбец n = 10⁶ показывает обратное: при том же алгоритме различие между <code>O(n log n)</code> и <code>O(n²)</code> достигает пяти порядков. <strong>На этом экране заканчивается первая пара.</strong></p>
+        </div>
+        <span class="pair-number">III · КЛАССЫ</span>
+      </section>
+
+      <!-- 29 · четыре правила -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="3">
+        <div class="slide-inner">
+          <p class="eyebrow">Раздел IV · анализ программ</p>
+          <h2>Правила определения класса по тексту программы</h2>
+          <div class="rules-grid rules-grid--four">
+            <article><span class="rules-grid__mark">+</span><b>Последовательные участки складываются</b><p>Два прохода по списку дают <code>n + n</code>. По свойству суммы остаётся старшее слагаемое.</p><small>при n = 100 это <b>200</b> операций, а не 10 000</small></article>
+            <article><span class="rules-grid__mark">×</span><b>Вложенные циклы перемножаются</b><p>Цикл по n внутри цикла по n даёт <code>n · n</code>; при разных величинах — <code>O(n·m)</code>.</p><small>100 заказов × 100 курьеров — <b>10 000</b> проверок</small></article>
+            <article><span class="rules-grid__mark">÷</span><b>Деление данных даёт логарифм</b><p>Если объём данных на каждом шаге сокращается в постоянное число раз, число шагов равно <code>log n</code>.</p><small>1024 чека — <b>10</b> шагов, 10⁶ — <b>20</b></small></article>
+            <article><span class="rules-grid__mark">ƒ</span><b>Стоимость вызова умножается на число проходов</b><p>Операция стоимостью <code>O(n)</code> внутри цикла по n даёт <code>O(n²)</code>, даже если цикл в коде один.</p><small>разбор — следующий экран</small></article>
+          </div>
+          <p class="note">Порядок анализа: определить величину, которая растёт; выписать стоимость каждого участка; сложить последовательные и перемножить вложенные; отбросить множители и младшие слагаемые. Для рекурсивных решений порядок иной — экраны 32–33.</p>
+        </div>
+        <span class="pair-number">IV · АНАЛИЗ</span>
+      </section>
+
+      <!-- 30 · скрытая стоимость -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="3">
+        <div class="slide-inner split split--cost">
+          <div>
+            <p class="eyebrow">Раздел IV · стоимость библиотечных операций</p>
+            <h2>Операции, содержащие скрытый проход</h2>
+            <p class="lead">Отсутствие цикла в тексте не означает постоянной стоимости: часть операций языка выполняет полный просмотр внутри себя. Ниже фрагмент 10 из <code>fragments.py</code>: цикл записан один, сложность квадратичная.</p>
+            <pre class="demo-code"><code>def unique_keep_order(rows):
+    result = []
+    for row in rows:            # n итераций
+        if row not in result:   # до n сравнений
+            result.append(row)
+    return result</code></pre>
+            <p class="note">Число операций: n итераций × до n сравнений = <strong>O(n²)</strong>. На отчёте из 10 000 строк без повторов это до 50 миллионов сравнений. Замена списка <code>result</code> на множество снижает оценку до <code>O(n)</code> ценой <code>O(n)</code> памяти.</p>
+          </div>
+          <table class="cost-table">
+            <thead><tr><th>Операция</th><th>Стоимость</th></tr></thead>
+            <tbody>
+              <tr><td><code>x in data</code> · список</td><td class="cost-table__bad">O(n)</td></tr>
+              <tr><td><code>x in seen</code> · множество</td><td class="cost-table__good">O(1)</td></tr>
+              <tr><td><code>sorted(data)</code></td><td>O(n log n)</td></tr>
+              <tr><td><code>data[1:]</code> · копирование среза</td><td class="cost-table__bad">O(n)</td></tr>
+              <tr><td><code>data.insert(0, x)</code> · сдвиг</td><td class="cost-table__bad">O(n)</td></tr>
+              <tr><td><code>data.pop(0)</code> · сдвиг</td><td class="cost-table__bad">O(n)</td></tr>
+              <tr><td><code>sum(data)</code>, <code>max(data)</code></td><td>O(n)</td></tr>
+              <tr><td><code>data.append(x)</code></td><td class="cost-table__good">O(1)*</td></tr>
+              <tr><td><code>len(data)</code></td><td class="cost-table__good">O(1)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <span class="pair-number">IV · АНАЛИЗ</span>
+      </section>
+
+      <!-- 31 · три случая -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="3">
+        <div class="slide-inner">
+          <p class="eyebrow">Раздел IV · зависимость от данных</p>
+          <h2>Лучший, средний и худший случай</h2>
+          <p class="lead">На входах одного размера алгоритм может выполнять разное число операций. Линейный поиск прекращает работу при первом совпадении, поэтому T(n) — не одна функция, а три.</p>
+          <div class="runs">
+            <article>
+              <small>лучший случай · Ω(1)</small>
+              <p class="runs__data">[<b>902</b>, 417, 133, 604, 288, 715, 950, 366]</p>
+              <p class="runs__ops"><b>1</b> сравнение</p>
+              <p>Искомый элемент находится в первой позиции.</p>
+            </article>
+            <article>
+              <small>средний случай · O(n)</small>
+              <p class="runs__data">[417, 133, 604, <b>902</b>, 288, 715, 950, 366]</p>
+              <p class="runs__ops"><b>4</b> сравнения</p>
+              <p>Математическое ожидание по равновероятным позициям равно (n+1)/2 — тот же порядок роста.</p>
+            </article>
+            <article class="runs--worst">
+              <small>худший случай · O(n)</small>
+              <p class="runs__data">[417, 133, 604, 288, 715, 950, 366, <b>481</b>]</p>
+              <p class="runs__ops"><b>8</b> сравнений</p>
+              <p>Элемент отсутствует либо находится в последней позиции.</p>
+            </article>
+          </div>
+          <p class="note">В ответе указывают <strong>худший случай</strong>: он даёт гарантию, не зависящую от распределения данных, и именно его проверяет тестирующая система, подавая предельный вход. Средний случай называют дополнительно, когда он отличается по порядку: у быстрой сортировки O(n log n) в среднем и O(n²) в худшем, у поиска по хеш-таблице O(1) в среднем и O(n) в худшем.</p>
+        </div>
+        <span class="pair-number">IV · АНАЛИЗ</span>
+      </section>
+
+      <!-- 32 · дерево рекурсии -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="4">
+        <div class="slide-inner split split--cost">
+          <div>
+            <p class="eyebrow">Раздел IV · рекурсивные алгоритмы</p>
+            <h2>Дерево вызовов и подсчёт по уровням</h2>
+            <p class="lead">Для рекурсивного решения число операций считают не по строкам, а по <strong>дереву вызовов</strong>: сколько работы выполняется на каждом уровне и сколько уровней всего.</p>
+            <p class="note">Сортировка слиянием: вызов на массиве длины n порождает два вызова на половинах и выполняет слияние за O(n). На каждом уровне суммарная длина обрабатываемых участков равна n, а уровней — log₂n. Произведение даёт <strong>O(n log n)</strong>.</p>
+            <p class="note">Тот же приём применяется к любой рекурсии: выписать работу одного уровня, определить число уровней, перемножить. Если работа по уровням неодинакова, суммируют геометрическую прогрессию.</p>
+          </div>
+          <div class="rec-tree">
+            <div class="rec-tree__head"><span>сортировка слиянием · n = 8</span><span>работа уровня</span></div>
+            <div class="rec-tree__row"><span class="rec-tree__level">уровень 0</span><div class="rec-tree__blocks"><i style="--w:100%">8</i></div><b>8</b></div>
+            <div class="rec-tree__row"><span class="rec-tree__level">уровень 1</span><div class="rec-tree__blocks"><i style="--w:50%">4</i><i style="--w:50%">4</i></div><b>8</b></div>
+            <div class="rec-tree__row"><span class="rec-tree__level">уровень 2</span><div class="rec-tree__blocks"><i style="--w:25%">2</i><i style="--w:25%">2</i><i style="--w:25%">2</i><i style="--w:25%">2</i></div><b>8</b></div>
+            <div class="rec-tree__row"><span class="rec-tree__level">уровень 3</span><div class="rec-tree__blocks"><i style="--w:12.5%">1</i><i style="--w:12.5%">1</i><i style="--w:12.5%">1</i><i style="--w:12.5%">1</i><i style="--w:12.5%">1</i><i style="--w:12.5%">1</i><i style="--w:12.5%">1</i><i style="--w:12.5%">1</i></div><b>8</b></div>
+            <p class="rec-tree__sum">уровней log₂8 = 3 слияния · работа уровня n = 8 · итого <b>24</b> просмотра</p>
+          </div>
+        </div>
+        <span class="pair-number">IV · АНАЛИЗ</span>
+      </section>
+
+      <!-- 33 · рекуррентности -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="3">
+        <div class="slide-inner">
+          <p class="eyebrow">Раздел IV · типовые рекуррентные соотношения</p>
+          <h2>Четыре соотношения, которые нужно узнавать</h2>
+          <table class="rec-table">
+            <thead><tr><th>Соотношение</th><th>Что происходит</th><th>Уровней</th><th>Работа уровня</th><th>Итог</th></tr></thead>
+            <tbody>
+              <tr><td>T(n) = T(n/2) + O(1)</td><td>задача уменьшается вдвое, работа постоянна</td><td>log n</td><td>1</td><td>O(log n)</td></tr>
+              <tr><td>T(n) = T(n−1) + O(1)</td><td>задача уменьшается на единицу, работа постоянна</td><td>n</td><td>1</td><td>O(n)</td></tr>
+              <tr><td>T(n) = 2·T(n/2) + O(n)</td><td>два вызова на половинах, объединение за линейное время</td><td>log n</td><td>n</td><td>O(n log n)</td></tr>
+              <tr><td>T(n) = T(n−1) + O(n)</td><td>задача уменьшается на единицу, работа линейна</td><td>n</td><td>до n</td><td>O(n²)</td></tr>
+              <tr class="rec-table__worst"><td>T(n) = 2·T(n−1) + O(1)</td><td>каждый шаг порождает два вызова того же размера</td><td>n</td><td>2ᵏ</td><td>O(2ⁿ)</td></tr>
+            </tbody>
+          </table>
+          <p class="callout">Первая строка — бинарный поиск, третья — сортировка слиянием, четвёртая — сортировка выбором в рекурсивной записи, пятая — числа Фибоначчи без запоминания. Общий метод решения таких соотношений даёт мастер-теорема; в этом курсе достаточно узнавания четырёх типовых форм и подсчёта по уровням дерева.</p>
+        </div>
+        <span class="pair-number">IV · АНАЛИЗ</span>
+      </section>
+
+      <!-- 34 · амортизация -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="4">
+        <div class="slide-inner split split--cost">
+          <div>
+            <p class="eyebrow">Раздел IV · амортизированный анализ</p>
+            <h2>Стоимость, усреднённая по последовательности операций</h2>
+            <p class="lead">Отдельная операция может быть дорогой, но если такие операции редки, средняя стоимость по всей последовательности остаётся постоянной. Эта средняя величина называется <strong>амортизированной стоимостью</strong>.</p>
+            <p class="note">Список в Python хранится в непрерывном участке памяти фиксированной ёмкости. Когда ёмкость исчерпана, выделяется новый участок примерно вдвое больше и элементы копируются: одна операция <code>append</code> стоит O(n). Все остальные — O(1).</p>
+            <p class="note">Подсчёт для 1000 добавлений: расширений — 10, суммарно скопировано 1023 элемента, всего около 2023 операций, то есть <strong>2,02 операции на одно добавление</strong>. Величина не растёт с n, поэтому <code>append</code> считают операцией амортизированной стоимости O(1).</p>
+          </div>
+          <table class="simplify-table">
+            <thead><tr><th>Добавление №</th><th>Ёмкость до</th><th>Расширение</th><th>Скопировано</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>0</td><td>да</td><td>0</td></tr>
+              <tr><td>2</td><td>1</td><td>да</td><td>1</td></tr>
+              <tr><td>3</td><td>2</td><td>да</td><td>2</td></tr>
+              <tr><td>5</td><td>4</td><td>да</td><td>4</td></tr>
+              <tr><td>9</td><td>8</td><td>да</td><td>8</td></tr>
+              <tr><td>10…16</td><td>16</td><td>нет</td><td>0</td></tr>
+              <tr><td>513…1000</td><td>1024</td><td>нет</td><td>0</td></tr>
+            </tbody>
+          </table>
+          <p class="note note--under">Различайте: <strong>средний случай</strong> — усреднение по распределению входных данных; <strong>амортизированная стоимость</strong> — усреднение по последовательности операций, без предположений о данных.</p>
+        </div>
+        <span class="pair-number">IV · АНАЛИЗ</span>
+      </section>
+
+      <!-- 35 · за клавиатуру · склад -->
+      <section class="slide slide--practice" data-kind="practice" data-accent="lime" data-time="6">
+        <div class="slide-inner split split--practice">
+          <div>
+            <p class="eyebrow">За клавиатуру · склад · 6 минут</p>
+            <h2>Воспроизвести подсчёт самостоятельно</h2>
+            <p class="lead">Скрипт <code>opcount.py</code> считает те же операции, что показывали прогоны: увеличивает счётчик там, где сравниваются два значения. Замеров времени в нём нет.</p>
+            <ol class="task-list">
+              <li>Скопируйте <code>course-materials/complexity/</code> в <code>lesson_03/</code>.</li>
+              <li>Выполните <code>python opcount.py --sizes 8 16 32 64 128 1024</code>.</li>
+              <li>Во второй таблице выпишите множители при удвоении n и сопоставьте каждый с классом.</li>
+              <li>Объясните, почему множитель логарифмического класса уменьшается с ростом n, а квадратичного остаётся около четырёх.</li>
+            </ol>
+            <p class="task-check">Контроль: добавьте <code>--sizes 2048</code>. Множитель квадратичного класса останется около 4,00, логарифмического приблизится к 1,10.</p>
+          </div>
+          <div class="timer-card">
+            <span class="timer-card__value" data-timer="6">06:00</span>
+            <p>Числа записывайте в <code>lesson_03/notes.md</code>: они потребуются в практике.</p>
+            <button class="file-button" type="button" data-file="opcount.py">Показать opcount.py</button>
+          </div>
+        </div>
+        <span class="pair-number">РУКИ</span>
+      </section>
+
+      <!-- 36 · типовые ошибки анализа -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="3">
+        <div class="slide-inner">
+          <p class="eyebrow">Раздел IV · разбор ошибок</p>
+          <h2>Три ошибки анализа и их исправление</h2>
+          <div class="examples">
+            <article>
+              <b>Ошибка 1 · сложение вместо умножения</b>
+<pre><code>for order in orders:      # n
+    for item in order:    # m
+        check(item)</code></pre>
+              <p><b>Неверно:</b> O(n + m). <b>Верно:</b> O(n·m) — циклы вложены, значит стоимости перемножаются. Если m — среднее число позиций в заказе, оценку записывают через суммарное число позиций.</p>
+              <small>правило произведения</small>
+            </article>
+            <article>
+              <b>Ошибка 2 · пропущенная стоимость операции</b>
+<pre><code>for value in data:
+    if value in seen_list:
+        ...</code></pre>
+              <p><b>Неверно:</b> O(n), «цикл один». <b>Верно:</b> O(n²) — проверка принадлежности списку сама стоит O(n). Замена <code>seen_list</code> на множество даёт O(n).</p>
+              <small>правило вызова</small>
+            </article>
+            <article>
+              <b>Ошибка 3 · оценка по лучшему случаю</b>
+<pre><code>for i in range(len(data)):
+    if data[i] == target:
+        return i</code></pre>
+              <p><b>Неверно:</b> O(1), «обычно находится быстро». <b>Верно:</b> O(n) — оценка берётся по худшему случаю, когда элемент отсутствует. Ранний выход указывают отдельно.</p>
+              <small>выбор случая</small>
+            </article>
+          </div>
+          <p class="note">Приём самопроверки: подставить n = 8 и n = 16, посчитать операции и сравнить числа. Рост вдвое подтверждает линейную оценку, вчетверо — квадратичную, увеличение на постоянную величину — логарифмическую.</p>
+        </div>
+        <span class="pair-number">IV · АНАЛИЗ</span>
+      </section>
+
+      <!-- 37 · S(n) -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="3">
+        <div class="slide-inner split">
+          <div>
+            <p class="eyebrow">Раздел V · пространственная сложность</p>
+            <h2>S(n) — объём дополнительной памяти</h2>
+            <p class="lead"><strong>S(n)</strong> — функция, задающая объём памяти, который алгоритм использует <strong>сверх</strong> памяти, занятой входными данными.</p>
+            <p class="note">Входной список в оценку не входит: он существовал до вызова. Переменные, число которых не зависит от n, дают <code>O(1)</code>, сколько бы их ни было: три счётчика — постоянная величина.</p>
+            <p class="note">Алгоритм с оценкой <code>S(n) = O(1)</code> называют работающим <strong>на месте</strong> (in-place). Такое требование часто ставится в условии задачи и исключает решения, создающие копию входных данных.</p>
+          </div>
+          <div class="memory-split">
+            <div class="memory-split__side">
+              <p class="memory-split__label">не входит в S(n)</p>
+              <ul><li>входной список</li><li>переданная строка</li><li>аргументы-числа</li></ul>
+            </div>
+            <div class="memory-split__side memory-split__side--own">
+              <p class="memory-split__label">входит в S(n)</p>
+              <ul><li>множество или словарь: <code>O(n)</code></li><li>копия списка, срез <code>data[1:]</code>: <code>O(n)</code></li><li>результат <code>sorted()</code>: <code>O(n)</code></li><li>кадры стека рекурсии: <code>O(глубины)</code></li><li>счётчики и индексы: <code>O(1)</code></li></ul>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">V · ПАМЯТЬ</span>
+      </section>
+
+      <!-- 38 · стек рекурсии -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="3">
+        <div class="slide-inner split split--cost">
+          <div>
+            <p class="eyebrow">Раздел V · память рекурсивных решений</p>
+            <h2>Стек вызовов как расход памяти</h2>
+            <p class="lead">Каждый незавершённый вызов функции занимает кадр стека: аргументы, локальные переменные, адрес возврата. Рекурсия глубины d расходует <strong>O(d)</strong> дополнительной памяти, даже если явных структур данных алгоритм не создаёт.</p>
+            <p class="note">Отсюда практическое следствие: рекурсивный обход списка из 10⁶ элементов завершится ошибкой переполнения стека, тогда как эквивалентный цикл отработает без затрат памяти. В CPython предел глубины по умолчанию — около 1000 вызовов.</p>
+            <p class="note">Для сортировки слиянием глубина равна log₂n, что даёт <code>O(log n)</code> памяти под стек плюс <code>O(n)</code> под вспомогательные массивы. Для рекурсивного суммирования списка глубина равна n, то есть <code>S(n) = O(n)</code> при том, что итеративный вариант даёт <code>O(1)</code>.</p>
+          </div>
+          <div class="examples examples--pair">
+            <article>
+              <b>Рекурсивно · S(n) = O(n)</b>
+<pre><code>def total(data, i=0):
+    if i == len(data):
+        return 0
+    return data[i] + total(data, i + 1)</code></pre>
+              <p>Глубина рекурсии равна длине списка: одновременно существует n незавершённых вызовов.</p>
+              <small>T(n) = O(n) · S(n) = O(n)</small>
+            </article>
+            <article>
+              <b>Итеративно · S(n) = O(1)</b>
+<pre><code>def total(data):
+    result = 0
+    for value in data:
+        result += value
+    return result</code></pre>
+              <p>Одна переменная независимо от длины списка. Время то же, память постоянна.</p>
+              <small>T(n) = O(n) · S(n) = O(1)</small>
+            </article>
+          </div>
+        </div>
+        <span class="pair-number">V · ПАМЯТЬ</span>
+      </section>
+
+      <!-- 39 · размен -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="3">
+        <div class="slide-inner">
+          <p class="eyebrow">Раздел V · соотношение времени и памяти</p>
+          <h2>Три решения одной задачи</h2>
+          <p class="lead">Задача: определить, содержит ли список из 1000 пропусков два одинаковых номера. Три решения с разными оценками; выбор определяется ограничениями условия, а не предпочтением.</p>
+          <div class="examples">
+            <article>
+              <b>Перебор пар</b>
+<pre><code>for i in range(len(badges)):
+    for j in range(i + 1, len(badges)):
+        if badges[i] == badges[j]:
+            return True</code></pre>
+              <p>Дополнительной памяти не требует. 499 500 сравнений при n = 1000.</p>
+              <small>T(n) = O(n²) · S(n) = O(1)</small>
+            </article>
+            <article>
+              <b>Сортировка и проход</b>
+<pre><code>badges.sort()
+for i in range(1, len(badges)):
+    if badges[i] == badges[i - 1]:
+        return True</code></pre>
+              <p>Промежуточный вариант: изменяет исходный список, дополнительной памяти почти не требует.</p>
+              <small>T(n) = O(n log n) · S(n) = O(1)</small>
+            </article>
+            <article>
+              <b>Множество просмотренных</b>
+<pre><code>seen = set()
+for badge in badges:
+    if badge in seen:
+        return True
+    seen.add(badge)</code></pre>
+              <p>Самое быстрое решение. Хранит до 1000 номеров и не изменяет исходные данные.</p>
+              <small>T(n) = O(n) · S(n) = O(n)</small>
+            </article>
+          </div>
+          <p class="callout">Формулировка для собеседования: «Есть три варианта. Перебор пар — O(n²) времени и O(1) памяти. Сортировка — O(n log n) и O(1), но изменяет входные данные. Множество — O(n) и O(n). Какой выбрать, зависит от того, что ограничено в задаче». Такой ответ показывает владение разменом, а не одним решением.</p>
+        </div>
+        <span class="pair-number">V · ПАМЯТЬ</span>
+      </section>
+
+      <!-- 40 · нижняя граница -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="4">
+        <div class="slide-inner split split--cost">
+          <div>
+            <p class="eyebrow">Раздел VI · границы метода</p>
+            <h2>Нижняя граница сортировки сравнениями</h2>
+            <p class="lead">Асимптотическая оценка отвечает не только на вопрос «сколько стоит этот алгоритм», но и на вопрос <strong>«насколько быстрым он может быть в принципе»</strong>. Для сортировки сравнениями ответ известен и доказан.</p>
+            <p class="note">Работу алгоритма представляют <strong>деревом решений</strong>: узел — сравнение двух элементов, две ветви — два исхода, лист — итоговый порядок. Для n элементов различных порядков n!, значит листьев не меньше n!. Двоичное дерево с L листьями имеет высоту не менее log₂L, а высота — это число сравнений в худшем случае.</p>
+            <p class="formal__line formal__line--inline">log₂(n!) ≈ n·log₂n − 1,44n = Ω(n log n)</p>
+            <p class="note">Следствие: ни один алгоритм, основанный на сравнениях, не может отсортировать быстрее, чем за <code>O(n log n)</code>. Сортировка слиянием этой границы достигает, то есть является оптимальной по порядку.</p>
+          </div>
+          <div class="dtree">
+            <div class="dtree__head"><span>дерево решений · n = 3</span><span>6 листьев</span></div>
+            <svg viewBox="0 0 300 190" role="img" aria-label="Дерево решений для сортировки трёх элементов">
+              <g class="dtree__edges">
+                <line x1="150" y1="26" x2="80" y2="76"/><line x1="150" y1="26" x2="220" y2="76"/>
+                <line x1="80" y1="76" x2="40" y2="126"/><line x1="80" y1="76" x2="120" y2="126"/>
+                <line x1="220" y1="76" x2="180" y2="126"/><line x1="220" y1="76" x2="260" y2="126"/>
+                <line x1="40" y1="126" x2="26" y2="166"/><line x1="40" y1="126" x2="62" y2="166"/>
+                <line x1="120" y1="126" x2="106" y2="166"/><line x1="120" y1="126" x2="142" y2="166"/>
+                <line x1="180" y1="126" x2="166" y2="166"/><line x1="180" y1="126" x2="202" y2="166"/>
+                <line x1="260" y1="126" x2="246" y2="166"/><line x1="260" y1="126" x2="282" y2="166"/>
+              </g>
+              <g class="dtree__nodes">
+                <circle cx="150" cy="26" r="13"/><text x="150" y="30">a·b</text>
+                <circle cx="80" cy="76" r="13"/><text x="80" y="80">b·c</text>
+                <circle cx="220" cy="76" r="13"/><text x="220" y="80">b·c</text>
+                <circle cx="40" cy="126" r="13"/><text x="40" y="130">a·c</text>
+                <circle cx="120" cy="126" r="13"/><text x="120" y="130">a·c</text>
+                <circle cx="180" cy="126" r="13"/><text x="180" y="130">a·c</text>
+                <circle cx="260" cy="126" r="13"/><text x="260" y="130">a·c</text>
+              </g>
+              <g class="dtree__leaves">
+                <rect x="16" y="158" width="20" height="16" rx="2"/><rect x="52" y="158" width="20" height="16" rx="2"/>
+                <rect x="96" y="158" width="20" height="16" rx="2"/><rect x="132" y="158" width="20" height="16" rx="2"/>
+                <rect x="156" y="158" width="20" height="16" rx="2"/><rect x="192" y="158" width="20" height="16" rx="2"/>
+                <rect x="236" y="158" width="20" height="16" rx="2"/><rect x="272" y="158" width="20" height="16" rx="2"/>
+              </g>
+            </svg>
+            <p class="dtree__sum">3! = 6 порядков · высота ≥ log₂6 = 2,58 → <b>не менее 3 сравнений</b></p>
+            <table class="dtree__table">
+              <tr><th>n</th><th>log₂(n!)</th><th>минимум сравнений</th></tr>
+              <tr><td>3</td><td>2,6</td><td>3</td></tr>
+              <tr><td>5</td><td>6,9</td><td>7</td></tr>
+              <tr><td>8</td><td>15,3</td><td>16</td></tr>
+              <tr><td>1 000</td><td>8 523</td><td>8 524</td></tr>
+            </table>
+          </div>
+        </div>
+        <span class="pair-number">VI · ГРАНИЦЫ</span>
+      </section>
+
+      <!-- 41 · константы и машина -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="3">
+        <div class="slide-inner split split--cost">
+          <div>
+            <p class="eyebrow">Раздел VI · расхождение с экспериментом</p>
+            <h2>Что оценка не учитывает</h2>
+            <p class="lead">Отброшенные постоянные множители существуют и влияют на время. Асимптотика утверждает, что при достаточно большом n они не важны; вопрос в том, насколько большим должно быть n.</p>
+            <p class="note"><strong>Константа реализации.</strong> Пусть алгоритм с оценкой <code>O(n log n)</code> имеет множитель 100, а квадратичный — множитель 1. Тогда квадратичный выигрывает вплоть до n ≈ 1000: при n = 128 это 16 384 операции против 89 600.</p>
+            <p class="note"><strong>Расположение данных в памяти.</strong> Модель RAM считает все обращения равноценными, но обращение к соседним ячейкам быстрее произвольного в десятки раз за счёт кэша. Поэтому проход по массиву на практике быстрее прохода по связному списку той же длины, хотя оценка у обоих <code>O(n)</code>.</p>
+            <p class="note"><strong>Стоимость самих операций.</strong> Сложение малых чисел и сложение чисел из тысячи разрядов в модели равноценны, в действительности различаются на порядки.</p>
+          </div>
+          <table class="simplify-table">
+            <thead><tr><th>n</th><th>100·n log n</th><th>n²</th><th>Быстрее</th></tr></thead>
+            <tbody>
+              <tr><td>16</td><td>6 400</td><td>256</td><td>O(n²)</td></tr>
+              <tr><td>64</td><td>38 400</td><td>4 096</td><td>O(n²)</td></tr>
+              <tr><td>256</td><td>204 800</td><td>65 536</td><td>O(n²)</td></tr>
+              <tr><td>1 000</td><td>997 000</td><td>10⁶</td><td>примерно равны</td></tr>
+              <tr><td>10 000</td><td>1,3·10⁷</td><td>10⁸</td><td>O(n log n)</td></tr>
+              <tr><td>10⁶</td><td>2·10⁹</td><td>10¹²</td><td>O(n log n)</td></tr>
+            </tbody>
+          </table>
+          <p class="note note--under">Практический вывод: оценка определяет выбор при больших входах, эксперимент — при известных и небольших. Оба инструмента применяются вместе.</p>
+        </div>
+        <span class="pair-number">VI · ГРАНИЦЫ</span>
+      </section>
+
+      <!-- 42 · малые входы -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="3">
+        <div class="slide-inner split">
+          <div>
+            <p class="eyebrow">Раздел VI · где худшая оценка не показательна</p>
+            <h2>Малые входы и особые распределения данных</h2>
+            <p class="lead">Оценка худшего случая описывает гарантию. Если реальные данные систематически отличаются от худшего случая, гарантия остаётся верной, но перестаёт описывать типичное поведение программы.</p>
+            <ul class="big-list big-list--dense">
+              <li><span>01</span> <b>Почти упорядоченные данные.</b> Сортировка вставками имеет <code>O(n²)</code> в худшем случае и <code>O(n)</code> на почти упорядоченном входе. Timsort в CPython опирается именно на это свойство и находит уже упорядоченные участки.</li>
+              <li><span>02</span> <b>Малые входы.</b> Библиотечные сортировки переключаются на вставки при длине участка менее 64 элементов: на таком размере простой алгоритм с меньшей константой выигрывает.</li>
+              <li><span>03</span> <b>Хеш-таблица.</b> <code>O(1)</code> в среднем и <code>O(n)</code> в худшем случае — при массовых совпадениях хешей. На практике исходят из среднего, но в задачах на устойчивость к худшему случаю это учитывают.</li>
+            </ul>
+          </div>
+          <div class="side-card side-card--wide">
+            <p class="side-card__label">Как это формулируют на собеседовании</p>
+            <p>Указание среднего случая рядом с худшим показывает понимание предмета: «В худшем случае O(n²), но на почти отсортированных данных — O(n); если известно, что вход приходит почти упорядоченным, разница существенна».</p>
+            <p class="side-card__foot">Обратная ошибка — назвать средний случай, умолчав о худшем. Проверяющая система подаёт предельный вход, и решение, рассчитанное на типичные данные, на нём не проходит.</p>
+          </div>
+        </div>
+        <span class="pair-number">VI · ГРАНИЦЫ</span>
+      </section>
+
+      <!-- 43 · P и NP -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="3">
+        <div class="slide-inner split split--cost">
+          <div>
+            <p class="eyebrow">Раздел VI · классы задач</p>
+            <h2>Полиномиальная разрешимость: P и NP</h2>
+            <p class="lead">Классы сложности описывают алгоритмы. Существует и классификация <strong>задач</strong> — по тому, известен ли для них полиномиальный алгоритм.</p>
+            <p class="note"><strong>P</strong> — задачи, решаемые за полиномиальное время <code>O(n^k)</code>: сортировка, поиск кратчайшего пути, проверка связности графа.</p>
+            <p class="note"><strong>NP</strong> — задачи, для которых <strong>готовое решение проверяется</strong> за полиномиальное время, но способ его найти за такое время неизвестен: задача коммивояжёра, о рюкзаке, о раскраске графа.</p>
+            <p class="note">Вопрос о совпадении P и NP остаётся открытым с 1971 года и входит в список семи задач тысячелетия. Практическое следствие: для NP-полных задач ищут не точное решение, а приближённое либо решение для ограниченного размера входа.</p>
+          </div>
+          <div class="side-card side-card--wide">
+            <p class="side-card__label">Почему это относится к теме занятия</p>
+            <p>Если задача известна как NP-полная, попытки найти для неё точный полиномиальный алгоритм на собеседовании неуместны: ожидается перебор с отсечениями, динамическое программирование по подмножествам либо приближённый алгоритм.</p>
+            <p class="side-card__foot">Пример: задача о рюкзаке решается динамическим программированием за <code>O(n·W)</code>, где W — вместимость. Это не полиномиальная оценка относительно размера входа: W записывается log W разрядами, поэтому такую оценку называют <strong>псевдополиномиальной</strong>. Разбор — раздел 7 курса.</p>
+          </div>
+        </div>
+        <span class="pair-number">VI · ГРАНИЦЫ</span>
+      </section>
+
+      <!-- 44 · ограничения -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="3">
+        <div class="slide-inner">
+          <p class="eyebrow">Раздел VII · применение</p>
+          <h2>Ограничение входа определяет допустимый класс</h2>
+          <p class="lead">Обратная задача анализа: по ограничению из условия определить, какие решения имеют шанс уложиться в лимит времени. Ориентир для Python — <strong>10⁷ элементарных операций в секунду</strong>; величина приблизительная и зависит от машины и содержимого цикла.</p>
+          <table class="limits-table">
+            <thead><tr><th>Ограничение</th><th>Допустимый класс</th><th>Типичное решение</th></tr></thead>
+            <tbody>
+              <tr><td>n ≤ 12</td><td>O(n!)</td><td>перебор перестановок</td></tr>
+              <tr><td>n ≤ 25</td><td>O(2ⁿ)</td><td>перебор подмножеств</td></tr>
+              <tr><td>n ≤ 500</td><td>O(n³)</td><td>тройной вложенный цикл, матрицы</td></tr>
+              <tr><td>n ≤ 5 000</td><td>O(n²)</td><td>перебор всех пар</td></tr>
+              <tr><td>n ≤ 10⁵</td><td>O(n log n)</td><td>сортировка, бинарный поиск по ответу</td></tr>
+              <tr><td>n ≤ 10⁶</td><td>O(n)</td><td>проходы, множество, словарь</td></tr>
+              <tr class="limits-table__last"><td>n ≤ 10⁹</td><td>O(log n) или O(1)</td><td>формула, половинное деление</td></tr>
+            </tbody>
+          </table>
+          <p class="note">Последняя строка: при <code>n ≤ 10⁹</code> один проход по входу требует около двух минут — значит, исключён самим ограничением. Если при этом на входе одно число, а не список, ответ получают формулой либо делением пополам.</p>
+        </div>
+        <span class="pair-number">VII · ПРИМЕНЕНИЕ</span>
+      </section>
+
+      <!-- 45 · формулировка -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="3">
+        <div class="slide-inner split">
+          <div>
+            <p class="eyebrow">Раздел VII · формулировка оценки</p>
+            <h2>Как оценка сообщается на собеседовании</h2>
+            <p class="lead">Ответ состоит из четырёх элементов: класс по времени с указанием подсчитанных операций, класс по памяти с указанием хранимого, худший случай и рассмотренные альтернативы.</p>
+            <div class="micro micro--wide">
+              <p class="micro__label">Образец полного ответа</p>
+              <p class="micro__out"><b>Время</b> — O(n): один проход, на каждом элементе проверка по множеству за O(1).</p>
+              <p class="micro__out"><b>Память</b> — O(n): храню множество просмотренных номеров.</p>
+              <p class="micro__out"><b>Худший случай</b> — все номера различны: ранний выход не срабатывает, множество заполняется целиком.</p>
+              <p class="micro__out"><b>Альтернатива</b> — перебор пар: O(n²) времени и O(1) памяти; выбрал первый вариант, поскольку ограничения по памяти в условии нет.</p>
+            </div>
+          </div>
+          <div class="side-card side-card--wide">
+            <p class="side-card__label">Что оценивает интервьюер</p>
+            <ul class="check-list">
+              <li>названы операции, а не только запись класса</li>
+              <li>память оценена отдельно от времени</li>
+              <li>указан вход, на котором достигается худший случай</li>
+              <li>назван отвергнутый вариант и причина отказа</li>
+              <li>оценка произнесена <strong>до</strong> написания кода, а не после</li>
+            </ul>
+            <p class="side-card__foot">Последний пункт существеннее прочих: обсуждение сложности до кодирования показывает, что решение выбрано осознанно. Эти же четыре элемента составляют заметку о сложности в портфолио.</p>
+          </div>
+        </div>
+        <span class="pair-number">VII · ПРИМЕНЕНИЕ</span>
+      </section>
+
+      <!-- 46 · порядок разбора -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="2">
+        <div class="slide-inner">
+          <p class="eyebrow">Раздел VII · рабочий порядок</p>
+          <h2>Последовательность анализа незнакомого кода</h2>
+          <div class="steps-row">
+            <div><span>01</span><b>Найти величину, которая растёт</b><p>Что именно называется n: элементы списка, символы строки, вершины графа. При нескольких входах — все величины.</p></div>
+            <div><span>02</span><b>Выделить базовую операцию</b><p>Сравнение, сложение, просмотр ребра — то, что выполняется чаще прочего и определяет порядок роста.</p></div>
+            <div><span>03</span><b>Выписать стоимость участков</b><p>Для каждого цикла — число итераций; для каждого вызова — его собственная стоимость, включая библиотечные операции.</p></div>
+            <div><span>04</span><b>Сложить и перемножить</b><p>Последовательные участки складываются, вложенные перемножаются; для рекурсии — работа уровня умножается на число уровней.</p></div>
+            <div><span>05</span><b>Упростить запись</b><p>Отбросить постоянные множители и младшие слагаемые, оставить старшее.</p></div>
+            <div><span>06</span><b>Проверить подстановкой</b><p>Посчитать операции при n = 8 и n = 16: рост вдвое подтверждает O(n), вчетверо — O(n²), на постоянную величину — O(log n).</p></div>
+          </div>
+          <p class="note">Тот же порядок применяется к оценке памяти: вместо числа операций выписывается объём созданных структур, включая кадры стека для рекурсивных решений.</p>
+        </div>
+        <span class="pair-number">VII · ПРИМЕНЕНИЕ</span>
+      </section>
+
+      <!-- 47 · практика · 12 фрагментов -->
+      <section class="slide slide--practice" data-kind="practice" data-accent="lime" data-time="14">
+        <div class="slide-inner">
+          <p class="eyebrow">Практика · двенадцать фрагментов · 14 минут</p>
+          <h2>Определить класс сложности чужого кода</h2>
+          <div class="practice-grid">
+            <div>
+              <p class="lead">В файле <code>fragments.py</code> двенадцать работающих функций из разных предметных областей: стадион, пункт выдачи, проходная, склад, архив чеков, теплица, курьеры, служба поддержки, отчёт, упаковка.</p>
+              <ol class="task-list">
+                <li>Откройте <code>answers.py</code>: три словаря — <code>TIME</code>, <code>SPACE</code>, <code>WORST_CASE</code>.</li>
+                <li>Укажите T(n) и S(n) для всех двенадцати фрагментов, применяя порядок разбора с экрана 46.</li>
+                <li>Опишите худший случай для фрагментов 01 и 04 с указанием входных данных.</li>
+                <li>Выполните проверку <code>pytest test_lesson_03.py -q</code> и исправляйте до полного прохождения.</li>
+              </ol>
+            </div>
+            <div class="practice-grid__aside">
+              <p class="practice-grid__label">Критерии</p>
+              <ul>
+                <li>Запись без множителей и младших слагаемых</li>
+                <li>S(n) — только дополнительная память</li>
+                <li>Худший случай назван через входные данные</li>
+              </ul>
+              <p class="practice-grid__label">Если оценка не сходится</p>
+              <p>Подставьте n = 8 и n = 16, посчитайте операции и сравните числа: рост вдвое, вчетверо или на постоянную величину прямо указывает на класс.</p>
+              <div class="file-button-row">
+                <button class="file-button" type="button" data-file="fragments.py">Показать fragments.py</button>
+                <button class="file-button" type="button" data-file="answers.py">Показать answers.py</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">ПРАКТИКА</span>
+      </section>
+
+      <!-- 48 · автопроверка -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="3">
+        <div class="slide-inner split">
+          <div>
+            <p class="eyebrow">Практика · устройство проверки</p>
+            <h2>Проверка сверяет отпечаток, а не текст</h2>
+            <p class="lead">В <code>test_lesson_03.py</code> хранятся не оценки, а отпечатки: <code>sha256</code> от нормализованной записи вместе с именем фрагмента, первые шестнадцать символов.</p>
+            <ul class="big-list big-list--dense">
+              <li><span>01</span> По отпечатку исходная строка не восстанавливается.</li>
+              <li><span>02</span> Имя фрагмента входит в хеш, поэтому совпадающие ответы дают разные отпечатки.</li>
+              <li><span>03</span> Нормализация приводит записи к одному виду: <code>O(n^2)</code>, <code>O(n²)</code> и <code>o(N^2)</code> равнозначны.</li>
+              <li><span>04</span> Число попыток не ограничено: тест называет фрагмент, но не верный ответ.</li>
+            </ul>
+          </div>
+          <div class="terminal-card terminal-card--slim">
+<pre>$ pytest test_lesson_03.py -q
+....F.....F...............
+
+FAILED test_time[07_average_and_spikes]
+  07_average_and_spikes: время — «O(n^2)»
+  неверно. Посчитайте операции на n = 8 и n = 16
+
+FAILED test_time[03_has_duplicate_badges]
+  03_has_duplicate_badges: запись «O(2n)»
+  не из списка. Константы и младшие
+  слагаемые в оценке не пишутся.
+
+2 failed, 24 passed in 0.02s</pre>
+          </div>
+        </div>
+        <span class="pair-number">ПРАКТИКА</span>
+      </section>
+
+      <!-- 49 · за клавиатуру · ограничения -->
+      <section class="slide slide--practice" data-kind="practice" data-accent="lime" data-time="8">
+        <div class="slide-inner split split--practice">
+          <div>
+            <p class="eyebrow">За клавиатуру · шесть условий · 8 минут</p>
+            <h2>Подобрать решение под ограничение</h2>
+            <p class="lead">В файле <code>limits.md</code> шесть условий с ограничениями. Для каждого укажите допустимый класс, предлагаемое решение и причину, по которой более простое решение не подходит.</p>
+            <ol class="task-list">
+              <li>Номера заказов за сутки, <code>n ≤ 200 000</code>: есть ли среди них два одинаковых.</li>
+              <li>Цены на складе, <code>n ≤ 100 000</code>: три наименьшие.</li>
+              <li>Архив чеков <code>n ≤ 10⁷</code>, запросов <code>q ≤ 10⁵</code>: присутствует ли чек.</li>
+              <li>Остальные три условия — в файле. Ответы поместите в <code>lesson_03/limits.md</code>.</li>
+            </ol>
+            <p class="task-check">Контроль: в условиях 3 и 6 оценка содержит две величины. Запись одной буквой означает предположение о малости второго входа, которого условие не даёт.</p>
+          </div>
+          <div class="timer-card">
+            <span class="timer-card__value" data-timer="8">08:00</span>
+            <p>Код не требуется: класс, решение и обоснование.</p>
+            <button class="file-button" type="button" data-file="limits.md">Показать limits.md</button>
+          </div>
+        </div>
+        <span class="pair-number">РУКИ</span>
+      </section>
+
+      <!-- 50 · приёмка -->
+      <section class="slide slide--practice" data-kind="practice" data-accent="pink" data-time="12">
+        <div class="slide-inner split split--practice">
+          <div>
+            <p class="eyebrow">Приёмка · ветклиника · 12 минут</p>
+            <h2>Оценить незнакомый алгоритм</h2>
+            <p class="lead">Дана функция, определяющая по журналу приёмов час с наибольшим числом визитов и количество различных пород в этот час. Код работающий, изменять его не требуется.</p>
+            <ol class="task-list">
+              <li><b>T(n)</b> с указанием подсчитанных операций.</li>
+              <li><b>S(n)</b>: объём дополнительной памяти и что в нём хранится.</li>
+              <li><b>Худший случай</b>: журнал, при котором выполняется наибольшее число операций.</li>
+              <li><b>Строка со скрытой стоимостью</b>: операция, содержащая внутренний проход.</li>
+            </ol>
+            <p class="task-check">Ответы — в <code>lesson_03/acceptance.md</code>. Оценка засчитывается при наличии обоснования: запись класса без указания операций не показывает хода рассуждения.</p>
+          </div>
+          <div class="timer-card timer-card--control">
+            <span class="timer-card__value" data-timer="12">12:00</span>
+            <p>Без ИИ и поисковых систем. Запуск файла и добавление счётчиков разрешены.</p>
+            <button class="file-button" type="button" data-file="acceptance_vetclinic.py">Показать acceptance_vetclinic.py</button>
+          </div>
+        </div>
+        <span class="pair-number">КОНТРОЛЬ</span>
+      </section>
+
+      <!-- 51 · фиксация -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="4">
+        <div class="slide-inner split split--cost">
+          <div>
+            <p class="eyebrow">Фиксация · результат занятия в репозитории</p>
+            <h2>Заметка о сложности и Pull Request</h2>
+            <p class="lead">Начиная с этого занятия каждое решение в портфолио сопровождается заметкой по шаблону <code>templates/complexity.md</code>: задача, подход, инвариант, T(n), S(n), худший случай, отвергнутые варианты.</p>
+            <p class="note">Обязательный элемент таблицы — столбец «откуда»: рядом с оценкой указываются подсчитанные операции. Запись класса без обоснования не позволяет проверить рассуждение ни преподавателю, ни интервьюеру.</p>
+          </div>
+          <div class="git-flow git-flow--stack">
+            <div><span>01</span><b>Issue</b><p><code>complexity-baseline</code>: разметка фрагментов, ограничения, приёмка.</p></div>
+            <div><span>02</span><b>Ветка</b><p><code>lesson-03</code> от собственной <code>main</code>.</p></div>
+            <div><span>03</span><b>Коммиты</b><p>Отдельно <code>answers.py</code>, отдельно заметки о сложности.</p></div>
+            <div><span>04</span><b>Pull Request</b><p>В описании — фрагменты, вызвавшие затруднение, и способ разрешения.</p></div>
+            <div><span>05</span><b>Review</b><p>Комментарий к оценке другого студента: контраргумент либо подтверждение подсчёта.</p></div>
+          </div>
+        </div>
+        <span class="pair-number">GIT</span>
+      </section>
+
+      <!-- 52 · сводка -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="3">
+        <div class="slide-inner">
+          <p class="eyebrow">Справка · материал занятия в сжатом виде</p>
+          <h2>Сводка</h2>
+          <div class="cheat cheat--six">
+            <article>
+              <b>Определение</b>
+              <p><code>T(n) = O(f(n))</code><br>⟺ ∃ c, n₀: T(n) ≤ c·f(n)<br>при всех n ≥ n₀</p>
+            </article>
+            <article>
+              <b>Классы</b>
+              <p>1 ≺ log n ≺ n ≺ n log n<br>≺ n² ≺ n³ ≺ 2ⁿ ≺ n!</p>
+            </article>
+            <article>
+              <b>Свойства</b>
+              <p>O(c·f) = O(f)<br>O(f) + O(g) = O(max)<br>O(f) · O(g) = O(f·g)</p>
+            </article>
+            <article>
+              <b>Правила анализа</b>
+              <p>подряд — складываем<br>вложено — перемножаем<br>деление — логарифм<br>вызов в цикле — умножаем</p>
+            </article>
+            <article>
+              <b>Дорогие операции</b>
+              <p><code>x in список</code> — O(n)<br><code>sorted()</code> — O(n log n)<br><code>data[1:]</code> — O(n)<br><code>insert(0, x)</code> — O(n)</p>
+            </article>
+            <article>
+              <b>Рекуррентности</b>
+              <p>T(n/2)+1 → log n<br>2T(n/2)+n → n log n<br>T(n−1)+n → n²<br>2T(n−1)+1 → 2ⁿ</p>
+            </article>
+          </div>
+          <p class="note">Форма ответа: «Время <b>O(?)</b>, поскольку <i>подсчитанные операции</i>. Память <b>O(?)</b>: хранится <i>что</i>. Худший случай — <i>входные данные</i>. Альтернатива — <i>вариант</i> и причина отказа».</p>
+        </div>
+        <span class="pair-number">СПРАВКА</span>
+      </section>
+
+      <!-- 53 · заблуждения -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="3">
+        <div class="slide-inner">
+          <p class="eyebrow">Справка · распространённые ошибки</p>
+          <h2>Шесть неверных утверждений</h2>
+          <div class="myths">
+            <div><s>Два цикла подряд дают O(n²)</s><p>Последовательные участки складываются: <code>n + n = 2n</code>, класс <code>O(n)</code>. Перемножаются только вложенные.</p></div>
+            <div><s>Половина пар — другой класс</s><p><code>n(n−1)/2</code> отличается от <code>n²</code> постоянным множителем, который отбрасывается по свойству оценок.</p></div>
+            <div><s>Нет цикла — значит O(1)</s><p><code>sorted()</code>, <code>in</code> для списка и срез выполняют проход по всем элементам без явного цикла.</p></div>
+            <div><s>O(n²) всегда хуже O(n log n)</s><p>При постоянном множителе 100 у второго квадратичное решение выигрывает до n ≈ 1000. Оценка описывает поведение при росте n.</p></div>
+            <div><s>Сложность зависит от языка</s><p>Число операций определяется алгоритмом. От реализации и машины зависит время выполнения — занятие 4.</p></div>
+            <div><s>Рекурсия не расходует память</s><p>Каждый незавершённый вызов занимает кадр стека: глубина d даёт <code>O(d)</code> дополнительной памяти.</p></div>
+          </div>
+        </div>
+        <span class="pair-number">СПРАВКА</span>
+      </section>
+
+      <!-- 54 · границы применимости -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="2">
+        <div class="slide-inner split">
+          <div>
+            <p class="eyebrow">Итог · что даёт и чего не даёт оценка</p>
+            <h2>Границы применимости метода</h2>
+            <ul class="big-list">
+              <li><span>—</span> Время выполнения в секундах</li>
+              <li><span>—</span> Какое из двух решений быстрее на конкретном входе</li>
+              <li><span>—</span> Объём памяти в мегабайтах</li>
+              <li><span>—</span> Целесообразность оптимизации участка программы</li>
+            </ul>
+            <p class="note">Оценка определяет одно: <strong>как изменится объём работы при росте входа</strong>. Этого достаточно, чтобы выбрать решение до его написания и отсечь заведомо неподходящие — поэтому на собеседовании сложность обсуждается до кода.</p>
+          </div>
+          <div class="side-card side-card--next">
+            <p class="side-card__label">Занятие 4 · продолжение темы</p>
+            <p class="side-card__big">Экспериментальные замеры</p>
+            <p>Два сегодняшних решения будут <strong>измерены</strong>: <code>perf_counter</code>, прогрев, серия повторов, медиана, CSV и график «размер входа — время».</p>
+            <p>Первым действием проверим домашний расчёт замером и разберём, в каких случаях эксперимент расходится с теоретической оценкой — константы, кэш и малые входы из раздела VI.</p>
+          </div>
+        </div>
+        <span class="pair-number">ИТОГ</span>
+      </section>
+
+      <!-- 55 · вопрос на выход -->
+      <section class="slide slide--question" data-kind="question" data-accent="lime" data-time="2">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос на выход</p>
+          <h2>Алгоритм выполняет 2n + 5 сравнений.<br>Укажите класс сложности и обоснуйте.</h2>
+          <p class="question-hint">Полный ответ содержит три элемента: запись класса, применённые свойства оценок и пару (c, n₀), при которой выполняется определение.</p>
+        </div>
+        <span class="pair-number">ИТОГ</span>
+      </section>
+
+      <!-- 56 · ДЗ -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="2">
+        <div class="slide-inner split">
+          <div>
+            <p class="eyebrow">Домашнее задание № 3 · к следующему занятию</p>
+            <h2>Максим Николаевич не хочет задавать домашнее задание. Но очень хочет</h2>
+            <ol class="hw-cards">
+              <li><b>①</b><div><b>Заметка о сложности</b><p>Составить заметку по шаблону <code>templates/complexity.md</code> для собственного решения диагностической задачи занятия 1 — <code>two_sum</code> полным перебором. Заполняются все семь блоков.</p></div></li>
+              <li><b>②</b><div><b>Расчёт для n = 100 000</b><p>Вычислить по формуле число сравнений при <code>n = 100 000</code> и определить, укладывается ли решение в одну секунду по ориентиру 10⁷ операций.</p></div></li>
+              <li><b>③</b><div><b>Способ снижения оценки</b><p>Указать структуру данных, заменяющую перебор, получаемые T(n) и S(n) и то, за счёт чего снижается оценка. Код не требуется.</p></div></li>
+            </ol>
+          </div>
+          <figure class="meme-frame meme-frame--portrait tilt-right">
+            <img src="../../../shared/memes/meme-millionaire.jpg" alt="Кот с подписью «надеюсь после учёбы стану миллионером»">
+          </figure>
+        </div>
+        <span class="pair-number">ДЗ</span>
+      </section>
+
+      <!-- 57 · ДЗ · порядок сдачи -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="1">
+        <div class="slide-inner">
+          <p class="eyebrow">Домашнее задание № 3 · порядок сдачи</p>
+          <h2>Куда положить и как сдать</h2>
+          <div class="hw-order">
+            <div><b>Файл</b><p><code>complexity_two_sum.md</code> в папке <code>lesson_03/</code>. В первой строке — фамилия и группа.</p></div>
+            <div><b>Ветка и PR</b><p>Ветка <code>hw-03</code>, коммит с содержательным сообщением, Pull Request в собственную <code>main</code>.</p></div>
+            <div><b>Срок</b><p>До начала занятия 4: с проверки расчётов начинается следующее занятие.</p></div>
+            <div><b>Критерии</b><p>Семь блоков заметки, заполненный столбец «откуда», расчёт по формуле, обоснованная замена структуры данных.</p></div>
+          </div>
+          <p class="note">Про ИИ: расчёт и формулировки выполняются самостоятельно — в этом состоит задание. Оформление текста и приведение файла к <code>.md</code> модели можно поручить. <mark>Я сам так делаю всегда, поэтому и вам запрещать не буду.</mark> Содержание должно остаться вашим: расчёт потребуется защитить числами на занятии 4.</p>
+          <button class="file-button file-button--print" id="hwDownload" type="button">Скачать задание в PDF →</button>
+        </div>
+        <span class="pair-number">ДЗ</span>
+      </section>
+
+    </main>
+
+    <footer class="controls">
+      <button class="nav-button" id="prevButton" type="button" aria-label="Предыдущий слайд">←</button>
+      <div class="progress" id="progress" aria-hidden="true"></div>
+      <button class="nav-button" id="nextButton" type="button" aria-label="Следующий слайд">→</button>
+      <span class="key-hint">← → / пробел</span>
+    </footer>
+  </div>
+
+  <aside class="sources-panel" id="sourcesPanel" aria-hidden="true">
+    <div class="sources-backdrop" data-close-sources></div>
+    <div class="sources-sheet" role="dialog" aria-modal="true" aria-labelledby="sourcesTitle">
+      <button class="sources-close" type="button" data-close-sources aria-label="Закрыть">×</button>
+      <p class="eyebrow">Занятие 3 · раздел 1 · КТП ОП.04 · две пары</p>
+      <h2 id="sourcesTitle">План занятия</h2>
+      <ol class="plan-list">
+        <li><b>I · Мера · 12 мин</b><span>Экраны 2–5. Постановка задачи, выбор меры, модель RAM и её допущения, происхождение записи.</span></li>
+        <li><b>II · Аппарат · 21 мин</b><span>Экраны 6–12. Размер входа, T(n), определение O через c и n₀, семейство обозначений, свойства, иерархия, форма записи.</span></li>
+        <li><b>III · Классы · 39 мин</b><span>Экраны 13–28. Каталог, шесть классов по два экрана, полиномиальные и факториальные, сравнение, график, таблица значений.</span></li>
+        <li><b>— конец первой пары —</b><span>72 минуты. Вторая пара начинается с анализа программ.</span></li>
+        <li><b>IV · Анализ · 26 мин</b><span>Экраны 29–36. Правила, скрытая стоимость, три случая, дерево рекурсии, рекуррентности, амортизация, запуск <code>opcount.py</code>, разбор ошибок.</span></li>
+        <li><b>V · Память · 9 мин</b><span>Экраны 37–39. S(n), стек рекурсии, три решения одной задачи.</span></li>
+        <li><b>VI · Границы · 13 мин</b><span>Экраны 40–43. Нижняя граница сортировки, константы и кэш, особые распределения, P и NP.</span></li>
+        <li><b>VII · Применение · 8 мин</b><span>Экраны 44–46. Ограничения, формулировка ответа, порядок разбора кода.</span></li>
+        <li><b>VIII · Лаборатория · 41 мин</b><span>Экраны 47–51. Разметка фрагментов, автопроверка, ограничения, приёмка, фиксация в Git.</span></li>
+        <li><b>IX · Итог · 13 мин</b><span>Экраны 52–57. Сводка, ошибки, границы применимости, вопрос на выход, ДЗ.</span></li>
+      </ol>
+      <p class="plan-foot">Полный прогон — 183 минуты на две пары. Раскладка и перечень снимаемого — в <code>LESSON_PLAN.md</code>. Не снимаются ни при какой спешке экраны 6–12 (аппарат), 13–28 (классы), 47 и 50.</p>
+    </div>
+  </aside>
+
+  <div class="file-modal" id="fileModal" aria-hidden="true">
+    <div class="file-modal__backdrop" data-close-file></div>
+    <div class="file-modal__sheet" role="dialog" aria-modal="true">
+      <div class="file-modal__head">
+        <span id="fileModalName">файл</span>
+        <div>
+          <button class="file-modal__copy" type="button" id="fileCopy">Копировать</button>
+          <button class="file-modal__close" type="button" data-close-file aria-label="Закрыть">×</button>
+        </div>
+      </div>
+      <pre id="fileModalBody"></pre>
+    </div>
+  </div>
+
+  <div class="file-vault" hidden>
+    <template data-file-name="opcount.py">&quot;&quot;&quot;Счётчик операций · занятие 3.
+
+Скрипт не измеряет время. Он считает, сколько раз выполнится сравнение —
+та операция, ради которой алгоритм и написан. Секунды зависят от машины,
+фоновой нагрузки и версии Python; число сравнений не зависит ни от чего,
+кроме размера входа. Именно про него говорит O-нотация.
+
+Каждое решение получает худший для себя вход: искомого элемента нет,
+одинаковых номеров нет. Так видно верхнюю границу, а не удачный случай.
+
+    python course-materials/complexity/opcount.py
+    python course-materials/complexity/opcount.py --sizes 8 16 32 64
+
+Замеры настоящего времени — на следующем занятии, в benchmarks/.
+&quot;&quot;&quot;
+import argparse
+
+
+class Counter:
+    &quot;&quot;&quot;Считает сравнения. Каждое обращение к сравнению проходит через него.&quot;&quot;&quot;
+
+    def __init__(self):
+        self.value = 0
+
+    def equal(self, left, right):
+        self.value += 1
+        return left == right
+
+    def less(self, left, right):
+        self.value += 1
+        return left &lt; right
+
+
+def linear_search(data, target, ops):
+    &quot;&quot;&quot;Поиск перебором: сравниваем с каждым элементом подряд.&quot;&quot;&quot;
+    for item in data:
+        if ops.equal(item, target):
+            return True
+    return False
+
+
+def pairwise_duplicates(data, ops):
+    &quot;&quot;&quot;Двойной цикл: каждый элемент сравнивается с каждым следующим.&quot;&quot;&quot;
+    for i in range(len(data)):
+        for j in range(i + 1, len(data)):
+            if ops.equal(data[i], data[j]):
+                return True
+    return False
+
+
+def set_duplicates(data, ops):
+    &quot;&quot;&quot;Один проход: каждый элемент проверяется по множеству просмотренных.&quot;&quot;&quot;
+    seen = set()
+    for item in data:
+        ops.value += 1          # проверка принадлежности множеству
+        if item in seen:
+            return True
+        seen.add(item)
+    return False
+
+
+def binary_search(sorted_data, target, ops):
+    &quot;&quot;&quot;Половинное деление: на каждом шаге отбрасывается половина отрезка.&quot;&quot;&quot;
+    low, high = 0, len(sorted_data) - 1
+    while low &lt;= high:
+        middle = (low + high) // 2
+        if ops.equal(sorted_data[middle], target):
+            return True
+        if ops.less(sorted_data[middle], target):
+            low = middle + 1
+        else:
+            high = middle - 1
+    return False
+
+
+def merge_sort(data, ops):
+    &quot;&quot;&quot;Сортировка слиянием: log n уровней, на каждом просматривается n элементов.&quot;&quot;&quot;
+    if len(data) &lt;= 1:
+        return data
+    middle = len(data) // 2
+    left = merge_sort(data[:middle], ops)
+    right = merge_sort(data[middle:], ops)
+
+    result = []
+    i = j = 0
+    while i &lt; len(left) and j &lt; len(right):
+        if ops.less(left[i], right[j]):
+            result.append(left[i])
+            i += 1
+        else:
+            result.append(right[j])
+            j += 1
+    result.extend(left[i:])
+    result.extend(right[j:])
+    return result
+
+
+def take_first(data, ops):
+    &quot;&quot;&quot;Обращение по индексу: одна операция, сколько бы ни было элементов.&quot;&quot;&quot;
+    ops.value += 1
+    return data[0]
+
+
+COLUMNS = [
+    (&quot;O(1)&quot;, &quot;первый элемент&quot;, take_first),
+    (&quot;O(log n)&quot;, &quot;бинарный поиск&quot;, lambda data, ops: binary_search(data, -1, ops)),
+    (&quot;O(n)&quot;, &quot;поиск перебором&quot;, lambda data, ops: linear_search(data, -1, ops)),
+    (&quot;O(n log n)&quot;, &quot;сортировка слиянием&quot;, lambda data, ops: merge_sort(data, ops)),
+    (&quot;O(n²)&quot;, &quot;все пары&quot;, lambda data, ops: pairwise_duplicates(data, ops)),
+]
+
+
+def run(sizes):
+    table = []
+    for size in sizes:
+        data = list(range(size))          # худший вход: искомого числа в нём нет
+        row = []
+        for _, _, call in COLUMNS:
+            ops = Counter()
+            call(data, ops)
+            row.append(ops.value)
+        table.append((size, row))
+    return table
+
+
+def main():
+    parser = argparse.ArgumentParser(description=&quot;Счётчик сравнений&quot;)
+    parser.add_argument(&quot;--sizes&quot;, nargs=&quot;+&quot;, type=int, default=[8, 16, 32, 64, 128])
+    args = parser.parse_args()
+    sizes = sorted(args.sizes)
+    table = run(sizes)
+
+    head = f&quot;{&#x27;n&#x27;:&gt;6}&quot; + &quot;&quot;.join(f&quot;{name:&gt;13}&quot; for name, _, _ in COLUMNS)
+    print(&quot;СКОЛЬКО СРАВНЕНИЙ ВЫПОЛНИТСЯ&quot;)
+    print(head)
+    print(&quot;-&quot; * len(head))
+    for size, row in table:
+        print(f&quot;{size:&gt;6}&quot; + &quot;&quot;.join(f&quot;{value:&gt;13}&quot; for value in row))
+
+    print(&quot;\nВО СКОЛЬКО РАЗ БОЛЬШЕ, КОГДА n УДВАИВАЕТСЯ&quot;)
+    print(head)
+    print(&quot;-&quot; * len(head))
+    for (prev_size, prev), (size, row) in zip(table, table[1:]):
+        if size != prev_size * 2:
+            continue
+        cells = []
+        for before, after in zip(prev, row):
+            cells.append(&quot;—&quot; if before == 0 else f&quot;{after / before:.2f}x&quot;)
+        print(f&quot;{size:&gt;6}&quot; + &quot;&quot;.join(f&quot;{cell:&gt;13}&quot; for cell in cells))
+
+    print(&quot;\nЧто здесь видно:&quot;)
+    for name, note, _ in COLUMNS:
+        print(f&quot;  {name:&lt;11} {note}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</template>
+    <template data-file-name="fragments.py">&quot;&quot;&quot;Двенадцать фрагментов для разметки сложности · занятие 3.
+
+Каждая функция рабочая: её можно запустить и посмотреть, что она делает.
+Ваша задача — не переписать код, а назвать его стоимость.
+
+Для каждого фрагмента в answers.py укажите:
+    время   T(n)  — как растёт число операций с ростом входа;
+    память  S(n)  — сколько дополнительной памяти нужно сверх самого входа.
+
+Дополнительная память — это то, что функция создаёт сама. Список, который
+пришёл в аргументах, в S(n) не входит: он уже существовал до вызова.
+
+Проверка:
+    pytest course-materials/complexity/test_lesson_03.py
+
+Запуск для просмотра результатов:
+    python course-materials/complexity/fragments.py
+&quot;&quot;&quot;
+
+
+# --- 01 · стадион: поиск пропуска в списке ------------------------------
+def find_pass(passes, code):
+    &quot;&quot;&quot;Возвращает индекс пропуска code или -1, если такого нет.&quot;&quot;&quot;
+    for i in range(len(passes)):
+        if passes[i] == code:
+            return i
+    return -1
+
+
+# --- 02 · пункт выдачи: первая и последняя заявка смены ------------------
+def first_and_last(orders):
+    &quot;&quot;&quot;Возвращает пару (первая заявка, последняя заявка) или None.&quot;&quot;&quot;
+    if not orders:
+        return None
+    return orders[0], orders[-1]
+
+
+# --- 03 · проходная: есть ли одинаковые пропуска -------------------------
+def has_duplicate_badges(badges):
+    &quot;&quot;&quot;True, если в списке есть хотя бы два одинаковых номера.&quot;&quot;&quot;
+    for i in range(len(badges)):
+        for j in range(i + 1, len(badges)):
+            if badges[i] == badges[j]:
+                return True
+    return False
+
+
+# --- 04 · проходная: то же самое через множество -------------------------
+def has_duplicate_badges_fast(badges):
+    &quot;&quot;&quot;True, если в списке есть хотя бы два одинаковых номера.&quot;&quot;&quot;
+    seen = set()
+    for badge in badges:
+        if badge in seen:
+            return True
+        seen.add(badge)
+    return False
+
+
+# --- 05 · прайс склада: три самые дешёвые позиции ------------------------
+def three_cheapest(prices):
+    &quot;&quot;&quot;Возвращает три наименьшие цены по возрастанию.&quot;&quot;&quot;
+    return sorted(prices)[:3]
+
+
+# --- 06 · архив чеков: поиск по отсортированным номерам ------------------
+def find_receipt(sorted_ids, target):
+    &quot;&quot;&quot;Возвращает индекс номера target или -1. Список отсортирован.&quot;&quot;&quot;
+    low, high = 0, len(sorted_ids) - 1
+    while low &lt;= high:
+        middle = (low + high) // 2
+        if sorted_ids[middle] == target:
+            return middle
+        if sorted_ids[middle] &lt; target:
+            low = middle + 1
+        else:
+            high = middle - 1
+    return -1
+
+
+# --- 07 · теплица: среднее и число выбросов -----------------------------
+def average_and_spikes(temperatures):
+    &quot;&quot;&quot;Возвращает пару (среднее, сколько значений выше среднего).&quot;&quot;&quot;
+    total = 0
+    for value in temperatures:
+        total += value
+    average = total / len(temperatures)
+
+    spikes = 0
+    for value in temperatures:
+        if value &gt; average:
+            spikes += 1
+    return average, spikes
+
+
+# --- 08 · курьеры: самая близкая пара точек -----------------------------
+def closest_pair_distance(points):
+    &quot;&quot;&quot;Возвращает наименьшее расстояние между двумя точками маршрута.&quot;&quot;&quot;
+    best = None
+    for i in range(len(points)):
+        for j in range(i + 1, len(points)):
+            (x1, y1), (x2, y2) = points[i], points[j]
+            distance = abs(x1 - x2) + abs(y1 - y2)
+            if best is None or distance &lt; best:
+                best = distance
+    return best
+
+
+# --- 09 · служба поддержки: частота слов в обращении ---------------------
+def word_counts(words):
+    &quot;&quot;&quot;Возвращает словарь «слово → сколько раз встретилось».&quot;&quot;&quot;
+    counts = {}
+    for word in words:
+        counts[word] = counts.get(word, 0) + 1
+    return counts
+
+
+# --- 10 · отчёт по заказам: убрать повторы, сохранив порядок -------------
+def unique_keep_order(rows):
+    &quot;&quot;&quot;Возвращает список без повторов, порядок первых появлений сохранён.&quot;&quot;&quot;
+    result = []
+    for row in rows:
+        if row not in result:
+            result.append(row)
+    return result
+
+
+# --- 11 · упаковка: сколько раз коробку можно разделить пополам ----------
+def halving_steps(size):
+    &quot;&quot;&quot;Возвращает число делений пополам, пока размер не станет 1.&quot;&quot;&quot;
+    steps = 0
+    while size &gt; 1:
+        size //= 2
+        steps += 1
+    return steps
+
+
+# --- 12 · склад: слияние двух отсортированных накладных ------------------
+def merge_sorted(left, right):
+    &quot;&quot;&quot;Сливает два отсортированных списка в один отсортированный.&quot;&quot;&quot;
+    result = []
+    i = j = 0
+    while i &lt; len(left) and j &lt; len(right):
+        if left[i] &lt;= right[j]:
+            result.append(left[i])
+            i += 1
+        else:
+            result.append(right[j])
+            j += 1
+    result.extend(left[i:])
+    result.extend(right[j:])
+    return result
+
+
+if __name__ == &quot;__main__&quot;:
+    print(&quot;01&quot;, find_pass([417, 902, 133], 133))
+    print(&quot;02&quot;, first_and_last([417, 902, 133]))
+    print(&quot;03&quot;, has_duplicate_badges([417, 902, 417]))
+    print(&quot;04&quot;, has_duplicate_badges_fast([417, 902, 417]))
+    print(&quot;05&quot;, three_cheapest([90, 15, 240, 60, 15]))
+    print(&quot;06&quot;, find_receipt([101, 204, 315, 480, 512], 480))
+    print(&quot;07&quot;, average_and_spikes([21, 24, 30, 19]))
+    print(&quot;08&quot;, closest_pair_distance([(0, 0), (3, 4), (1, 1)]))
+    print(&quot;09&quot;, word_counts([&quot;заявка&quot;, &quot;склад&quot;, &quot;заявка&quot;]))
+    print(&quot;10&quot;, unique_keep_order([&quot;A-1&quot;, &quot;B-2&quot;, &quot;A-1&quot;, &quot;C-3&quot;]))
+    print(&quot;11&quot;, halving_steps(1000))
+    print(&quot;12&quot;, merge_sorted([1, 4, 9], [2, 3, 10]))
+</template>
+    <template data-file-name="answers.py">&quot;&quot;&quot;Ваши ответы по фрагментам из fragments.py · занятие 3.
+
+Заполните оба словаря и запустите проверку:
+
+    pytest course-materials/complexity/test_lesson_03.py
+
+Проверка сравнивает не текст, а отпечаток ответа, поэтому подсмотреть
+правильные оценки в тестах нельзя. Зато можно проверять себя сколько угодно
+раз: тест называет номер фрагмента, но не называет верный ответ.
+
+Как записывать оценку:
+
+    O(1)        O(log n)      O(n)        O(n log n)      O(n^2)
+    O(n + m)    — когда входов два и они растут независимо
+
+Регистр букв и пробелы значения не имеют: «o(N LOG N)» засчитается.
+Записи «O(2n)», «O(n/2)» и «O(n^2 + n)» — нет: константы и младшие
+слагаемые в оценке не пишутся.
+
+Незаполненный ответ — пустая строка. Тест покажет его как «не заполнено»,
+а не как ошибку.
+&quot;&quot;&quot;
+
+# Время: как растёт число операций с ростом входа.
+TIME = {
+    &quot;01_find_pass&quot;: &quot;&quot;,
+    &quot;02_first_and_last&quot;: &quot;&quot;,
+    &quot;03_has_duplicate_badges&quot;: &quot;&quot;,
+    &quot;04_has_duplicate_badges_fast&quot;: &quot;&quot;,
+    &quot;05_three_cheapest&quot;: &quot;&quot;,
+    &quot;06_find_receipt&quot;: &quot;&quot;,
+    &quot;07_average_and_spikes&quot;: &quot;&quot;,
+    &quot;08_closest_pair_distance&quot;: &quot;&quot;,
+    &quot;09_word_counts&quot;: &quot;&quot;,
+    &quot;10_unique_keep_order&quot;: &quot;&quot;,
+    &quot;11_halving_steps&quot;: &quot;&quot;,
+    &quot;12_merge_sorted&quot;: &quot;&quot;,
+}
+
+# Память: сколько функция занимает дополнительно к тому, что ей передали.
+SPACE = {
+    &quot;01_find_pass&quot;: &quot;&quot;,
+    &quot;02_first_and_last&quot;: &quot;&quot;,
+    &quot;03_has_duplicate_badges&quot;: &quot;&quot;,
+    &quot;04_has_duplicate_badges_fast&quot;: &quot;&quot;,
+    &quot;05_three_cheapest&quot;: &quot;&quot;,
+    &quot;06_find_receipt&quot;: &quot;&quot;,
+    &quot;07_average_and_spikes&quot;: &quot;&quot;,
+    &quot;08_closest_pair_distance&quot;: &quot;&quot;,
+    &quot;09_word_counts&quot;: &quot;&quot;,
+    &quot;10_unique_keep_order&quot;: &quot;&quot;,
+    &quot;11_halving_steps&quot;: &quot;&quot;,
+    &quot;12_merge_sorted&quot;: &quot;&quot;,
+}
+
+# Худший случай двух фрагментов — одной строкой: при каком входе
+# работы больше всего и почему.
+WORST_CASE = {
+    &quot;01_find_pass&quot;: &quot;&quot;,
+    &quot;04_has_duplicate_badges_fast&quot;: &quot;&quot;,
+}
+</template>
+    <template data-file-name="limits.md"># Выбор решения под ограничения · занятие 3
+
+Вторая часть работы на паре. Первая — разметить чужой код (`fragments.py`);
+здесь обратный ход: по ограничению из условия назвать, какое решение вообще
+имеет шанс пройти.
+
+## Ориентир, которым пользуются на секции
+
+Проверяющая система обычно даёт 1–2 секунды на тест. Для Python берут
+ориентир **около 10⁷ простых операций в секунду**. Это не характеристика
+языка и не константа из стандарта: цифра зависит от машины, от того, что
+именно делается внутри цикла, и от версии интерпретатора. Она нужна ровно
+для одного — прикинуть за десять секунд, укладывается решение или нет.
+
+| Ограничение | Что успевает уложиться | Что обычно имеется в виду |
+|---|---|---|
+| n ≤ 20 | даже `O(2ⁿ)` | перебор всех подмножеств, полный перебор вариантов |
+| n ≤ 500 | `O(n³)` | тройной вложенный цикл, работа с матрицей |
+| n ≤ 5 000 | `O(n²)` | все пары элементов |
+| n ≤ 10⁵ | `O(n log n)` | сортировка, бинарный поиск по ответу |
+| n ≤ 10⁶ | `O(n)` | один-два прохода, множество или словарь |
+| n ≤ 10⁹ | `O(log n)` или `O(1)` | по такому входу нельзя даже пройти один раз |
+
+Последняя строка — самая полезная. Если в условии стоит `n ≤ 10⁹`, а вход
+при этом одно число, а не список, то проход по всем значениям исключён
+самим ограничением: ответ считается формулой или половинным делением.
+
+## Задание
+
+Для каждой ситуации запишите три строки: **какой класс сложности проходит**,
+**какое решение** вы предложите и **что мешает** взять решение попроще.
+Ответы — в свою заметку `lesson_03/limits.md`.
+
+1. Список номеров заказов за сутки, `n ≤ 200 000`. Найти, есть ли среди них
+   хотя бы два одинаковых.
+2. Список цен на складе, `n ≤ 100 000`. Найти три самые дешёвые позиции.
+3. Отсортированный архив чеков, `n ≤ 10⁷`, запросов `q ≤ 10⁵`. По каждому
+   запросу сказать, есть ли такой чек.
+4. Координаты курьеров, `n ≤ 3 000`. Найти два ближайших друг к другу.
+5. Одно число `k ≤ 10⁹`. Сказать, сколько раз его можно разделить пополам
+   до единицы.
+6. Два списка накладных, `n ≤ 10⁵` и `m ≤ 10⁵`, оба отсортированы. Собрать
+   из них один отсортированный список.
+
+## На что смотрят при проверке
+
+- класс сложности назван для **времени и для памяти**, а не только для времени;
+- сказано, при каком входе решение работает дольше всего;
+- если выбран более сложный подход — названо, что мешало обойтись простым;
+- в ситуациях 3 и 6 в оценке две буквы, а не одна: величины растут независимо.
+
+## Частая ошибка на этом задании
+
+«`n ≤ 200 000`, значит нужен `O(n)`» — вывод верный, но не потому, что
+двести тысяч большое число. `O(n²)` здесь означает 4·10¹⁰ операций, это
+часы работы. А вот при `n ≤ 5 000` тот же `O(n²)` даёт 2,5·10⁷ операций,
+а если сравниваются только пары `i &lt; j`, то вдвое меньше — и решение проходит,
+хотя алгоритм не изменился ни на строку. Класс сложности сам
+по себе не хороший и не плохой — его сравнивают с ограничением.
+</template>
+    <template data-file-name="acceptance_vetclinic.py">&quot;&quot;&quot;Приёмка занятия 3: чужой код, незнакомая задача.
+
+Ветклиника ведёт журнал приёмов: для каждого визита записаны час начала
+и порода. Функция busiest_hour отвечает, в какой час было больше всего
+приёмов и сколько разных пород пришло в этот час.
+
+Код рабочий, менять его не нужно. Ответьте на четыре вопроса — письменно,
+в lesson_03/acceptance.md:
+
+1. T(n) — как растёт число операций с ростом числа визитов. Назовите,
+   какие именно операции вы считали.
+2. S(n) — сколько памяти функция занимает дополнительно ко входу.
+3. Худший случай: при каком журнале работы больше всего и почему.
+4. Одна строка кода делает больше работы, чем кажется по её виду.
+   Найдите её и скажите, сколько операций за ней стоит.
+
+Засчитывается ответ, в котором названы операции, а не только буква
+в скобках. «O(n log n)» без объяснения — это угадывание.
+&quot;&quot;&quot;
+
+
+def busiest_hour(visits):
+    &quot;&quot;&quot;Возвращает (час, число приёмов, число разных пород) или None.
+
+    visits — список пар (час, порода): [(9, &quot;кошка&quot;), (9, &quot;такса&quot;), ...]
+    &quot;&quot;&quot;
+    if not visits:
+        return None
+
+    by_hour = {}
+    for hour, breed in visits:
+        if hour not in by_hour:
+            by_hour[hour] = []
+        by_hour[hour].append(breed)
+
+    ordered = sorted(by_hour.items(), key=lambda pair: len(pair[1]), reverse=True)
+    best_hour, breeds = ordered[0]
+
+    distinct = 0
+    counted = set()
+    for breed in breeds:
+        if breed not in counted:
+            counted.add(breed)
+            distinct += 1
+
+    return best_hour, len(breeds), distinct
+
+
+if __name__ == &quot;__main__&quot;:
+    journal = [
+        (9, &quot;кошка&quot;), (9, &quot;такса&quot;), (9, &quot;кошка&quot;), (10, &quot;хорёк&quot;),
+        (11, &quot;кошка&quot;), (11, &quot;овчарка&quot;), (11, &quot;кошка&quot;), (11, &quot;попугай&quot;),
+        (12, &quot;такса&quot;),
+    ]
+    print(busiest_hour(journal))
+    print(busiest_hour([]))
+</template>
+  </div>
+
+  <div class="hw-sheet">
+    <header class="hw-head">
+      <div>
+        <p class="hw-course">ОП.04 · Основы алгоритмизации и программирования · 3 курс</p>
+        <h1>Домашнее задание № 3</h1>
+        <p class="hw-sub">Занятие 3 — временная сложность и O-нотация</p>
+      </div>
+      <div class="hw-mark">А/П</div>
+    </header>
+
+    <p class="hw-joke">Максим Николаевич не хочет задавать вам домашнее задание. Но очень хочет.</p>
+
+    <figure class="hw-meme">
+      <img src="../../../shared/memes/meme-millionaire.jpg" alt="">
+    </figure>
+
+    <h2>Что нужно сделать</h2>
+    <ol class="hw-list">
+      <li><b>Заметка о сложности.</b> Возьмите своё решение диагностической задачи занятия 1 — two_sum полным перебором — и напишите к нему заметку по шаблону course-materials/templates/complexity.md. Заполняются все семь блоков: задача, подход, инвариант, T(n), S(n), худший случай, что пробовали до этого. В таблице обязателен столбец «откуда»: рядом с оценкой стоит причина, а не только запись в скобках.</li>
+      <li><b>Прикидка на 100 000.</b> Посчитайте по формуле, сколько сравнений сделает ваше решение при n = 100 000. Запуск не нужен — нужен расчёт. Дальше сравните полученное число с ориентиром 10⁷ операций в секунду и скажите, укладывается ли решение в одну секунду.</li>
+      <li><b>Что менять.</b> Если не укладывается — назовите структуру данных, которую взяли бы вместо перебора, и какой стала бы оценка по времени и по памяти. Код писать не нужно: нужен ответ и причина, по которой новая структура снимает лишнюю работу.</li>
+    </ol>
+    <p class="hw-note">Объём — одна страница. Задание не про то, чтобы написать быстрый код, а про то, чтобы назвать стоимость до запуска. На занятии 4 мы измерим ваше решение и проверим прикидку настоящим временем.</p>
+
+    <h2>Как сдавать</h2>
+    <table class="hw-table">
+      <tr><th>Файл</th><td>complexity_two_sum.md в личном репозитории курса, папка lesson_03/. Формат Markdown, в первой строке — имя и группа.</td></tr>
+      <tr><th>Ветка и PR</th><td>Ветка hw-03, коммит с понятным сообщением, затем Pull Request в свою main с коротким описанием. Merge делаете сами после проверки.</td></tr>
+      <tr><th>Срок</th><td>До начала занятия 4: с проверки этих прикидок занятие и начнётся.</td></tr>
+      <tr><th>Проверяем</th><td>Все семь блоков заметки, заполненный столбец «откуда», посчитанную прикидку и названную причину замены структуры данных.</td></tr>
+      <tr><th>ИИ</th><td>Сначала считаете и формулируете сами — это и есть задание. Дальше можно попросить модель причесать текст и оформить .md файл. <mark>Я сам так делаю всегда, поэтому и вам запрещать не буду.</mark> Важно, чтобы содержание осталось вашим: прикидку вы будете защищать числами на следующем занятии.</td></tr>
+    </table>
+
+    <h2>Словарь занятия</h2>
+    <dl class="hw-gloss">
+      <dt>O-нотация</dt><dd>Запись верхней границы роста: число операций растёт не быстрее указанной функции. O(n) — «порядка n», а не «ровно n операций».</dd>
+      <dt>T(n)</dt><dd>Временная сложность: как растёт число операций с ростом размера входа n.</dd>
+      <dt>S(n)</dt><dd>Пространственная сложность: сколько памяти решение занимает дополнительно к полученному входу.</dd>
+      <dt>Худший случай</dt><dd>Вход, на котором решение делает больше всего работы. Именно по нему называется оценка.</dd>
+      <dt>Средний случай</dt><dd>Оценка по всем возможным входам сразу. Для линейного поиска это n/2 — тот же класс O(n).</dd>
+      <dt>Логарифмическое время</dt><dd>O(log n): каждый шаг отбрасывает половину оставшихся данных. Тысяча элементов — десять шагов.</dd>
+      <dt>Размен время/память</dt><dd>Ускорение решения за счёт дополнительной структуры: множество или словарь снимают перебор, но занимают память O(n).</dd>
+      <dt>Complexity note</dt><dd>Заметка о сложности рядом с решением: подход, инвариант, T(n), S(n), худший случай и отвергнутые варианты.</dd>
+    </dl>
+
+    <p class="hw-foot">Материалы занятия — в course-materials/complexity/. Вопросы по заданию — на паре или в чате группы.</p>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

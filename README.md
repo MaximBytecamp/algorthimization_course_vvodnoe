@@ -6,13 +6,15 @@
 |---|---|
 | `op04-algoritmizaciya/` | ОП.04 «Основы алгоритмизации и программирования», 3 курс: вводная презентация, КТП, стартовый репозиторий студента и материалы преподавателя |
 | `mdk0101-razrabotka-modulei/` | МДК.01.01 «Разработка программных модулей», 2 курс: вводная презентация и КТП |
-| `shared/` | правила текста (`VOICE.md`, `TEXT_REVIEW.md`, `EDITORIAL_REWRITE.md`), общая папка мемов, фотографии и [разбор git со скриншотами](shared/git-guide/README.md) |
+| `shared/` | правила текста (`VOICE.md`, `TEXT_REVIEW.md`, `EDITORIAL_REWRITE.md`), правило непохожести колод ([`DECK_VARIETY.md`](shared/DECK_VARIETY.md) и реестр [`DECK_REGISTRY.md`](shared/DECK_REGISTRY.md)), общая папка мемов, фотографии и [разбор git со скриншотами](shared/git-guide/README.md) |
 
 ## Как устроена дисциплина внутри
 
 ```
 op04-algoritmizaciya/
   index.html, styles.css, script.js   вводная презентация
+  lessons/NN-tema/                    колода занятия: index.html, styles.css,
+                                      app.js и LESSON_PLAN.md — методичка
   assets/                             логотипы компаний и фотографии
   starter-pack/                       шаблон репозитория для студента
   course-materials/                   что выдаётся по ходу занятий
