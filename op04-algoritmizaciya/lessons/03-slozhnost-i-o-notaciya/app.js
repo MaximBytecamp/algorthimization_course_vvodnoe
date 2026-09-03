@@ -186,8 +186,17 @@
     }
   });
 
+  // Две печатные формы: задание на дом и раздаточные карточки.
+  // Какая печатается, решает атрибут data-print на body — см. @media print.
+  function printSheet(kind) {
+    document.body.dataset.print = kind;
+    window.print();
+    window.setTimeout(() => { delete document.body.dataset.print; }, 800);
+  }
   const hwDownload = document.getElementById('hwDownload');
-  if (hwDownload) hwDownload.addEventListener('click', () => window.print());
+  if (hwDownload) hwDownload.addEventListener('click', () => printSheet('hw'));
+  const cardsDownload = document.getElementById('cardsDownload');
+  if (cardsDownload) cardsDownload.addEventListener('click', () => printSheet('cards'));
 
   fullscreenButton.addEventListener('click', async () => {
     try {
