@@ -1,0 +1,1331 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0C2733">
+  <title>Занятие 2 · UTM-метки</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&family=Unbounded:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../styles.css">
+  <style>
+    /* Занятие 2 — цепочка «вопрос → ответ», продолжение занятия 1.
+       Ведущий приём — линейка ссылки (.ruler): один и тот же адрес показан
+       полосой сегментов, под каждым сегментом подпись, что он даёт в запросе.
+       Линейка возвращается через всю колоду, набирая пары ключ=значение.
+       Второй приём, разовый, — свод разметки (.tally): четыре написания одной
+       кампании и то, во что они превращаются в отчёте. */
+
+    .wrap { max-width: 1080px; }
+    .say  { max-width: 940px; color: #33405A; font-size: clamp(13.5px, 1.15vw, 17.5px); line-height: 1.5; margin-top: 1.4vh; }
+    .say + .say { margin-top: .9vh; }
+    .say b { color: var(--brand-ink); }
+    .say code, .k { color: var(--brand-blue); font-weight: 700; font-family: var(--mono); }
+    .lead-in { margin-top: 1vh; color: #7C8896; font: 600 clamp(11px, .95vw, 13px)/1.5 var(--mono); }
+
+    /* ===== ВЕДУЩИЙ ПРИЁМ: линейка ссылки =====================================
+       Полоса сегментов адреса. У каждого сегмента своя подпись под ним —
+       поэтому подпись и сегмент нарисованы одним элементом, а не двумя рядами:
+       два ряда пришлось бы выравнивать вручную, и они разъезжались бы. */
+    .ruler { margin-top: 1.8vh; max-width: 1040px; }
+    .ruler__strip { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0; }
+    .ruler .seg { display: flex; flex-direction: column; min-width: 0; }
+    .ruler .seg > b { padding: 11px 10px; border: 3px solid var(--brand-ink); border-right-width: 0;
+      background: #fff; color: #33405A; font: 700 clamp(11px, .98vw, 15px)/1.25 var(--mono);
+      overflow-wrap: break-word; text-align: center; flex: 1; display: flex; align-items: center; justify-content: center; }
+    .ruler .seg:last-child > b { border-right-width: 3px; }
+    .ruler .seg > i { padding: 6px 4px 0; font-style: normal; text-align: center;
+      color: #7C8896; font: 700 clamp(8.5px, .72vw, 10.5px)/1.25 var(--mono);
+      letter-spacing: .04em; text-transform: uppercase; }
+    /* роли сегментов */
+    .ruler .seg.base > b { background: #F1F3F8; color: #7C8896; }
+    .ruler .seg.mark > b { background: var(--brand-ink); color: #fff; font-size: clamp(15px, 1.3vw, 21px); }
+    .ruler .seg.pair > b { background: #E4F2EF; color: #0B5E52; border-color: var(--brand-ink); }
+    .ruler .seg.pair > i { color: #0B5E52; }
+    .ruler .seg.bad  > b { background: #FFF4F5; color: #C0384A; border-color: #C0384A; }
+    .ruler .seg.bad  > i { color: #C0384A; }
+    .ruler .seg.ghost > b { background: repeating-linear-gradient(45deg, #F6F4EF 0 7px, #EEF0EC 7px 14px);
+      color: #A6AFC2; border-style: dashed; }
+    .ruler__note { margin-top: 10px; color: #5A6183; font-size: clamp(12px, 1vw, 15px); line-height: 1.45; }
+    .ruler__note b { color: var(--brand-ink); }
+    .ruler__note code { color: var(--brand-blue); font-weight: 700; font-family: var(--mono); }
+    @media (max-width: 820px) {
+      .ruler .seg > b { border-right-width: 3px; border-bottom-width: 0; }
+      .ruler .seg:last-child > b { border-bottom-width: 3px; }
+      .ruler__strip { flex-direction: column; }
+    }
+
+    /* ===== ВТОРОЙ ПРИЁМ: свод разметки ======================================
+       Слева — что написали четверо, справа — во что это превратилось в отчёте. */
+    .tally { margin-top: 1.6vh; display: grid; grid-template-columns: 1fr 34px 1fr; gap: 12px; align-items: start; }
+    .tally__side { border: 3px solid var(--brand-ink); background: #fff; box-shadow: 4px 4px 0 var(--brand-ink); }
+    .tally__side > h4 { margin: 0; padding: 8px 12px; background: var(--brand-ink); color: #fff;
+      font: 700 10px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .07em; }
+    .tally__row { display: grid; grid-template-columns: 74px 1fr; gap: 10px; padding: 7px 12px;
+      border-bottom: 1px solid #D7DCEA; align-items: baseline; }
+    .tally__row:last-child { border-bottom: 0; }
+    .tally__row > b { color: #7C8896; font: 700 10.5px/1.3 var(--mono); }
+    .tally__row > span { color: #33405A; font: 600 clamp(10px, .85vw, 12.5px)/1.4 var(--mono); overflow-wrap: break-word; }
+    .tally__row em { font-style: normal; color: #C0384A; font-weight: 700; }
+    .tally__row.ok > span { color: #137333; }
+    .tally > i { display: grid; place-items: center; color: var(--brand-blue); font: 800 18px/1 var(--mono); font-style: normal; padding-top: 40px; }
+    .tally table { width: 100%; border-collapse: collapse; }
+    .tally td { padding: 7px 12px; border-bottom: 1px solid #D7DCEA; font: 600 clamp(10px, .85vw, 12.5px)/1.35 var(--mono); color: #33405A; }
+    .tally td:last-child { text-align: right; color: var(--brand-ink); font-weight: 700; }
+    .tally tr:last-child td { border-bottom: 0; }
+    .tally tr.sum td { background: #E4F2EF; color: #0B5E52; }
+    .tally__cap { margin-top: 10px; color: #5A6183; font-size: clamp(12px, 1vw, 15px); line-height: 1.45; }
+    .tally__cap b { color: var(--brand-ink); }
+    @media (max-width: 900px) { .tally { grid-template-columns: 1fr; } .tally > i { padding: 0; transform: rotate(90deg); } }
+
+    /* ===== справочник меток ================================================= */
+    .dict { margin-top: 1.6vh; width: 100%; border-collapse: collapse; border: 3px solid var(--brand-ink);
+      box-shadow: 4px 4px 0 var(--brand-ink); background: #fff; }
+    .dict th { padding: 9px 12px; background: var(--brand-ink); color: #fff; text-align: left;
+      font: 700 10px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+    .dict td { padding: 8px 12px; border-bottom: 1px solid #D7DCEA; color: #33405A;
+      font-size: clamp(11px, .92vw, 14px); line-height: 1.35; }
+    .dict tbody tr:last-child td { border-bottom: 0; }
+    .dict td.m { font-family: var(--mono); font-weight: 700; color: #0B5E52; }
+    .dict tfoot td { background: #F6F4EF; color: #5A6183; font-size: clamp(10.5px, .85vw, 12.5px); }
+
+    /* ===== шесть правил справочника ========================================= */
+    .rulebook { margin-top: 1.5vh; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .rulebook > div { padding: 10px 13px; border: 2px solid var(--brand-ink); background: #fff; }
+    .rulebook b { display: block; color: var(--brand-blue); font: 700 9.5px/1.3 var(--mono);
+      text-transform: uppercase; letter-spacing: .06em; }
+    .rulebook strong { display: block; margin: 5px 0 4px; font: 700 clamp(11.5px, .95vw, 14.5px)/1.25 var(--mono); color: var(--brand-ink); }
+    .rulebook span { display: block; color: #5A6183; font-size: clamp(10.5px, .86vw, 13px); line-height: 1.4; }
+    @media (max-width: 900px) { .rulebook { grid-template-columns: 1fr 1fr; } }
+
+    /* ===== контроль: найти испорченную ссылку =============================== */
+    .hunt { margin-top: 1.5vh; padding: 0; counter-reset: hn; display: grid; gap: 7px; max-width: 1040px; }
+    .hunt > li { list-style: none; position: relative; padding: 9px 12px 9px 42px; border: 2px solid #C9D2EA;
+      background: #fff; color: #33405A; font: 600 clamp(10px, .88vw, 13px)/1.45 var(--mono); overflow-wrap: break-word; }
+    .hunt > li::before { counter-increment: hn; content: counter(hn); position: absolute; left: 10px; top: 8px;
+      width: 22px; height: 22px; display: grid; place-items: center; border: 2px solid var(--brand-ink);
+      color: var(--brand-ink); font: 800 11px/1 var(--display); }
+    .hunt em { font-style: normal; color: var(--brand-blue); }
+
+    /* ===== две ссылки бок о бок ============================================= */
+    .versus { margin-top: 1.6vh; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+    .versus > figure { margin: 0; padding: 12px 14px; border: 3px solid var(--brand-ink); background: #fff;
+      box-shadow: 4px 4px 0 var(--brand-ink); }
+    .versus > figure.bad { border-color: #C0384A; box-shadow: 4px 4px 0 #C0384A; background: #FFF4F5; }
+    .versus b { display: block; font: 700 10px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .07em;
+      color: #137333; }
+    .versus > figure.bad b { color: #C0384A; }
+    .versus img { display: block; margin-top: 9px; width: 100%; max-height: 30vh; object-fit: contain;
+      object-position: left top; border: 2px solid var(--brand-ink); background: #1f1f1f; }
+    .versus figcaption { margin-top: 8px; color: #5A6183; font-size: clamp(11px, .92vw, 14px); line-height: 1.4; }
+    .versus figcaption code { color: var(--brand-blue); font-weight: 700; font-family: var(--mono); }
+    @media (max-width: 900px) { .versus { grid-template-columns: 1fr; } }
+
+    /* --- перенесено из занятия 1: формы, которые здесь работают так же ------ */
+    .derive { margin-top: 1.6vh; display: grid; gap: 7px; max-width: 1040px; }
+    .derive__r { display: grid; grid-template-columns: minmax(0, 300px) 30px 1fr; align-items: stretch; gap: 10px; }
+    .derive__r > code { padding: 9px 12px; background: #071219; color: #6BE3CE; border: 2px solid var(--brand-ink);
+      font: 700 clamp(11px, .92vw, 14px)/1.35 var(--mono); overflow-wrap: break-word; display: block; }
+    .derive__r > i { display: grid; place-items: center; color: var(--brand-blue); font: 800 17px/1 var(--mono); font-style: normal; }
+    .derive__r > span { padding: 9px 12px; border: 2px solid var(--brand-ink); background: #fff; color: #33405A;
+      font-size: clamp(12px, 1vw, 15px); line-height: 1.4; display: block; }
+    .derive__r > span b { color: var(--brand-ink); }
+    .derive__r.link > code, .derive__r.link > span { border-color: #2E7D50; background: #ecfdf5; color: #137333; }
+    .derive__r.link > code { background: #071219; color: #6BE3CE; }
+    .derive__r.link > span b { color: #137333; }
+    .derive__r.empty > code { color: #ff9aa3; }
+    .derive__r.empty > span { border-color: #C0384A; background: #FFF4F5; color: #C0384A; }
+    .derive__r.empty > span b { color: #C0384A; }
+    @media (max-width: 820px) { .derive__r { grid-template-columns: 1fr; } .derive__r > i { display: none; } }
+
+    .ex { margin-top: 1.4vh; display: grid; gap: 7px; max-width: 1040px; }
+    .ex > div { display: grid; grid-template-columns: 128px 1fr; gap: 12px; align-items: start;
+      padding: 8px 12px; border-left: 5px solid var(--brand-blue); background: #F2FAF8; }
+    .ex > div > b { color: var(--brand-blue); font: 700 10px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+    .ex > div > span { color: #33405A; font-size: clamp(12px, 1vw, 15px); line-height: 1.45; }
+    .ex code { color: var(--brand-ink); background: #E4F2EF; padding: 1px 5px; font-weight: 700;
+      font-family: var(--mono); font-size: .92em; }
+    .ex .was { color: #C0384A; } .ex .now { color: #137333; }
+    @media (max-width: 820px) { .ex > div { grid-template-columns: 1fr; gap: 3px; } }
+
+    .reds { margin-top: 1.5vh; display: grid; gap: 7px; max-width: 1040px; }
+    .reds > div { display: grid; grid-template-columns: 285px 1fr; gap: 12px; padding: 9px 13px;
+      border: 2px solid #C0384A; background: #FFF4F5; }
+    .reds b { color: #C0384A; font: 700 clamp(10.5px, .9vw, 13.5px)/1.35 var(--mono); overflow-wrap: break-word; }
+    .reds span { color: #33405A; font-size: clamp(11.5px, .95vw, 14.5px); line-height: 1.4; }
+    .reds span code { color: var(--brand-blue); font-weight: 700; font-family: var(--mono); }
+    @media (max-width: 820px) { .reds > div { grid-template-columns: 1fr; gap: 4px; } }
+
+    .src { margin-top: 1.4vh; display: grid; grid-template-columns: 1fr 34px 1fr; gap: 12px; align-items: center; }
+    .src pre { margin: 0; padding: 12px 14px; border: 3px solid var(--brand-ink); background: #071219; color: #C8DDD8;
+      font: 600 clamp(10px, .85vw, 13px)/1.65 var(--mono); white-space: pre; overflow-x: auto; box-shadow: 4px 4px 0 var(--brand-ink); }
+    .src pre em { color: #6BE3CE; font-style: normal; }
+    .src pre i { color: #7C8896; font-style: normal; }
+    .src > i { display: grid; place-items: center; color: var(--brand-blue); font: 800 18px/1 var(--mono); font-style: normal; }
+    .src__cap { margin-top: 6px; color: #7C8896; font: 600 10.5px/1.4 var(--mono); }
+    @media (max-width: 900px) { .src { grid-template-columns: 1fr; } .src > i { transform: rotate(90deg); } }
+
+    .pane { margin-top: 1.6vh; display: grid; grid-template-columns: minmax(0, 290px) 1fr; gap: 18px; align-items: start; }
+    .pane > figure { margin: 0; }
+    .pane img { display: block; width: 100%; max-height: 38vh; object-fit: contain; object-position: top left;
+      border: 3px solid var(--brand-ink); box-shadow: 5px 5px 0 var(--brand-ink); background: #1f1f1f; }
+    .pane figcaption { margin-top: 7px; color: #5A6183; font: 600 10.5px/1.4 var(--mono); }
+    .fields { display: grid; gap: 5px; }
+    .fields > div { display: grid; grid-template-columns: 152px 1fr; gap: 12px; align-items: baseline;
+      padding: 6px 10px; border-left: 4px solid #C9D2EA; }
+    .fields > div.key { border-left-color: var(--brand-blue); background: #F2FAF8; }
+    .fields b { color: var(--brand-blue); font: 700 clamp(10.5px, .9vw, 13px)/1.35 var(--mono); overflow-wrap: break-word; }
+    .fields span { color: #33405A; font-size: clamp(11.5px, .98vw, 14.5px); line-height: 1.4; }
+    .fields span code { color: var(--brand-blue); font-weight: 700; font-family: var(--mono); }
+    @media (max-width: 900px) { .pane { grid-template-columns: 1fr; } .fields > div { grid-template-columns: 1fr; gap: 2px; } }
+
+    .gap3 { margin-top: 1.6vh; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; align-items: stretch; max-width: 900px; }
+    .gap3 > div { padding: 14px 16px; border: 3px solid var(--brand-ink); text-align: center; background: #fff; }
+    .gap3 > div + div { border-left-width: 0; }
+    .gap3 b { display: block; color: var(--brand-blue); font: 700 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+    .gap3 strong { display: block; margin-top: 6px; font: 800 clamp(24px, 3vw, 42px)/1 var(--display); }
+    .gap3 span { display: block; margin-top: 4px; color: #5A6183; font-size: 11.5px; line-height: 1.35; }
+    @media (max-width: 820px) { .gap3 { grid-template-columns: 1fr; } }
+
+    .steps { margin-top: 1.6vh; counter-reset: s; max-width: 1000px; padding: 0; }
+    .steps > li { list-style: none; position: relative; margin: 7px 0; padding: 9px 14px 9px 48px;
+      border-bottom: 2px solid #C9D2EA; color: #33405A; font-size: clamp(12.5px, 1.05vw, 17px); line-height: 1.45; }
+    .steps > li::before { counter-increment: s; content: counter(s); position: absolute; left: 8px; top: 8px;
+      width: 28px; height: 28px; display: grid; place-items: center; background: var(--brand-blue); color: #fff;
+      font: 800 14px/1 var(--display); }
+    .steps > li b { color: var(--brand-ink); } .steps > li code { color: var(--brand-blue); font-weight: 700; font-family: var(--mono); }
+
+    /* Пункты приёмки: отметка нарисована через ::before с абсолютным положением.
+       Сеткой строку делать нельзя — голый текст рядом с <b> стал бы отдельной
+       ячейкой, и пункт развалился бы на несколько рядов. */
+    .accept { margin-top: 1.6vh; max-width: 1000px; padding: 0; }
+    .accept li { list-style: none; position: relative; padding: 10px 0 10px 42px;
+      border-bottom: 2px solid #C9D2EA; color: #33405A; font-size: clamp(12.5px, 1.05vw, 16.5px); line-height: 1.45; }
+    .accept li::before { content: "\2713"; position: absolute; left: 0; top: 9px;
+      width: 26px; height: 26px; display: grid; place-items: center;
+      border: 3px solid var(--brand-ink); color: var(--brand-blue); font-weight: 800; font-size: 14px; }
+    .accept li b { color: var(--brand-ink); } .accept li code { color: var(--brand-blue); font-weight: 700; font-family: var(--mono); }
+
+    .hwpair { margin-top: 1.4vh; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+    .hwpair > .hwcard { padding: 14px 16px; border: 3px solid var(--brand-ink); background: #fff;
+      box-shadow: 4px 4px 0 var(--brand-ink); }
+    .hwpair > .hwcard:last-child { background: #F2FAF8; }
+    .hwpair b { display: block; color: var(--brand-blue); font: 700 10px/1 var(--mono);
+      text-transform: uppercase; letter-spacing: .07em; }
+    .hwpair strong { display: block; margin: 6px 0 8px; font-size: clamp(13.5px, 1.15vw, 17px); line-height: 1.2; }
+    .hwpair ol { margin: 0; padding-left: 17px; color: #33405A; font-size: clamp(11.5px, .96vw, 14.5px); line-height: 1.45; }
+    .hwpair li + li { margin-top: 4px; }
+    .hwpair code { color: var(--brand-blue); font-weight: 700; font-family: var(--mono); }
+    .hwpair .due { margin: 8px 0 0; padding-top: 7px; border-top: 2px solid #C9D2EA;
+      color: #5A6183; font: 600 10.5px/1.4 var(--mono); }
+    @media (max-width: 820px) { .hwpair { grid-template-columns: 1fr; } }
+
+    .figreal { display: flex; flex-direction: column; align-items: flex-start; margin-top: 1.8vh; max-width: 1040px; }
+    .figreal img { display: block; width: auto; max-width: 100%; max-height: 40vh;
+      border: 3px solid var(--brand-ink); box-shadow: 6px 6px 0 var(--brand-ink); background: #fff; }
+    .figreal figcaption { margin-top: 7px; color: #5A6183; font: 600 12px/1.5 var(--mono); }
+    .figreal figcaption b { color: var(--brand-blue); }
+    .figreal figcaption code { color: var(--brand-blue); }
+    .figrow { margin-top: 1.8vh; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+    .figrow figure { margin: 0; }
+    .figrow img { display: block; width: auto; max-width: 100%; max-height: 24vh;
+      border: 3px solid var(--brand-ink); box-shadow: 5px 5px 0 var(--brand-ink); background: #fff; }
+    .figrow figcaption { margin-top: 7px; color: #5A6183; font: 600 11px/1.4 var(--mono); }
+    .figrow figcaption code { color: var(--brand-blue); }
+    @media (max-width: 900px) { .figrow { grid-template-columns: 1fr; } }
+
+    .t2__ghost { position: absolute; right: 0; bottom: 3vh; font: 700 clamp(26px, 4.4vw, 64px)/1.2 var(--mono);
+      color: rgba(14,147,132,.10); white-space: pre; pointer-events: none; }
+
+    /* --- содержательные экраны: контент прижат к верху, вмещается без прокрутки --- */
+    .slide--answer .slide-inner { justify-content: flex-start; padding: 3vh 0 2.4vh; overflow-y: auto; overflow-x: hidden; }
+    .slide--answer .slide-inner > h2 { margin-top: .8vh; }
+    .slide--question .slide-inner { justify-content: safe center; overflow-y: auto; overflow-x: hidden; padding: 2.6vh 0; }
+    .slide--title .slide-inner { overflow: hidden; }
+
+    @media (max-height: 800px) {
+      .slide--question h1 { font-size: clamp(28px, 3.4vw, 48px); }
+      .slide--question .question-hint { margin-top: 3vh; }
+      .say { font-size: clamp(13px, 1.05vw, 16px); line-height: 1.45; }
+      .figreal img { max-height: 32vh; } .figrow img { max-height: 21vh; }
+      .pane img { max-height: 34vh; } .versus img { max-height: 24vh; }
+      h2 { font-size: clamp(22px, 2.5vw, 36px); }
+    }
+    @media (max-height: 730px) {
+      .t2__ghost { font-size: clamp(20px, 3vw, 40px); bottom: 1vh; }
+      .say { font-size: 12.5px; line-height: 1.4; margin-top: 1vh; }
+      .figreal img { max-height: 20vh; } .figrow img { max-height: 16vh; }
+      .pane img { max-height: 28vh; } .versus img { max-height: 17vh; }
+      .figreal figcaption, .figrow figcaption { font-size: 10.5px; }
+      .steps > li { padding: 7px 12px 7px 42px; font-size: 12.5px; line-height: 1.4; margin: 5px 0; }
+      .steps > li::before { width: 24px; height: 24px; font-size: 12px; top: 6px; }
+      .accept li { padding: 7px 0; font-size: 12.5px; }
+      .ruler .seg > b { padding: 8px 8px; } .ruler { margin-top: 1.2vh; }
+      .derive__r > code, .derive__r > span { padding: 7px 10px; }
+      .rulebook > div { padding: 8px 11px; }
+      .slide--answer .slide-inner { padding: 2.2vh 0 1.8vh; }
+      .slide--answer .slide-inner > h2 { margin-top: .4vh; }
+      h2 { font-size: clamp(20px, 2.2vw, 32px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="boot" id="boot">
+    <div class="boot__scanlines" aria-hidden="true"></div>
+    <div class="boot-card">
+      <div class="boot-card__top"><span>ОП.03 · ЗАНЯТИЕ 2</span><span>2 ак. часа</span></div>
+      <p class="boot-card__title">UTM-<br><em>метки</em></p>
+      <dl class="boot-card__fields">
+        <div><dt>Тема</dt><dd>определяем источник перехода и заявки</dd></div>
+        <div><dt>Формат</dt><dd>практическое занятие: разбор, затем работа руками</dd></div>
+        <div><dt>Опора</dt><dd>занятие 1: событие, запрос <code>/g/collect</code>, поле <code>ep.source</code></dd></div>
+        <div><dt>Результат</dt><dd>таблица UTM-ссылок и тестовые заявки с источником</dd></div>
+      </dl>
+    </div>
+    <p class="boot__hint">нажмите любую клавишу, чтобы начать <i>▸</i></p>
+  </div>
+
+  <div class="deck" id="deck" aria-live="polite">
+    <header class="chrome">
+      <button class="brand" type="button" data-go="0" aria-label="На первый слайд">
+        <span class="brand-mark">И<span>/</span>Т</span>
+        <span class="brand-copy">Занятие 2<br>UTM-метки</span>
+      </button>
+      <div class="chrome-right">
+        <button class="icon-button" id="sourcesButton" type="button" aria-label="Открыть источники">S</button>
+        <button class="icon-button" id="fullscreenButton" type="button" aria-label="Полноэкранный режим">⛶</button>
+        <span class="counter"><span id="currentNumber">01</span><i>/</i><span id="totalNumber">56</span></span>
+      </div>
+    </header>
+
+    <main class="slides">
+
+      <!-- 01 · титул -->
+      <section class="slide slide--title is-active" data-kind="title" data-accent="lime">
+        <div class="slide-inner">
+          <p class="eyebrow">ОП.03 · занятие 2 · 2 академических часа</p>
+          <h1>UTM-<br>метки</h1>
+          <div class="title-meta"><span>определяем источник перехода и заявки</span><span>продолжение занятия 1</span></div>
+          <div class="t2__ghost" aria-hidden="true">?utm_source=
+&amp;utm_medium=
+&amp;utm_campaign=</div>
+        </div>
+        <span class="pair-number">01</span>
+      </section>
+
+      <!-- 02 · точка входа: долг с прошлого занятия -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">С чего начинаем · долг с занятия 1</p>
+          <h2>В прошлый раз мы поймали это поле и обещали его починить</h2>
+          <p class="say">На занятии 1 мы вскрыли учебный стенд в панели сетевых запросов и нашли событие <code>generate_lead</code>. Все его поля были на месте, кроме одного: <code>ep.source</code> приходил то со значением, то со строкой <code>(not set)</code>. Разница была не в событии, а в ссылке, по которой человек пришёл на страницу.</p>
+          <div class="figrow">
+            <figure><img src="../02-cifrovaya-voronka/shots/source-compare.png" alt="Событие generate_lead с меткой utm_source и без неё"><figcaption>кадр с занятия 1: слева переход по размеченной ссылке, справа — по обычной</figcaption></figure>
+            <figure><img src="shots/saved-plain.png" alt="Сохранённая заявка, у которой все поля источника имеют значение (not set)"><figcaption>чем это оборачивается в заявке: источник неизвестен</figcaption></figure>
+          </div>
+          <p class="lead-in">Сегодня разбираем, как устроена размеченная ссылка, и доводим источник от неё до строки в таблице заявок.</p>
+        </div>
+        <span class="pair-number">01</span>
+      </section>
+
+      <!-- 03 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="blue">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 1</p>
+          <h1>Почему браузер вообще<br>не знает, откуда пришёл человек?</h1>
+          <p class="question-hint">Казалось бы, эти данные должны быть у него</p>
+        </div>
+        <span class="pair-number">02</span>
+      </section>
+      <!-- 04 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ</p>
+          <h2>Потому что источник перехода — не свойство браузера, а надпись, которую делает человек</h2>
+          <p class="say">Браузер сообщает о себе многое сам: язык, разрешение экрана, версию. Эти данные у него есть, потому что они описывают его самого. А «человек пришёл из рассылки приёмной комиссии» — не свойство браузера, а факт о рекламной работе, который браузеру взять неоткуда.</p>
+          <p class="say">Есть одна подсказка — заголовок <code>Referer</code>: адрес страницы, с которой перешли. Но он рассказывает мало и часто пропадает совсем. Переход из мобильного приложения, из мессенджера, из письма в почтовом клиенте или из документа не оставляет его вовсе — с точки зрения аналитики такой переход выглядит прямым заходом. Отсюда и раздутый канал <b>direct</b>, о котором шла речь в конце занятия 1.</p>
+          <p class="say">Поэтому источник не вычисляют, а <b>записывают заранее</b>: тот, кто публикует ссылку, дописывает в неё пометку о том, где эта ссылка стоит. Пометка едет вместе с адресом и доезжает до отчёта.</p>
+        </div>
+        <span class="pair-number">02</span>
+      </section>
+
+      <!-- 05 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="pink">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 2</p>
+          <h1>Из чего вообще<br>состоит ссылка?</h1>
+          <p class="question-hint">Разберём адрес по частям, прежде чем что-то в него дописывать</p>
+        </div>
+        <span class="pair-number">03</span>
+      </section>
+      <!-- 06 A · линейка, часть 1 -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · часть 1 · то, без чего ссылки не бывает</p>
+          <h2>Три обязательные части: схема, узел, путь</h2>
+          <div class="ruler">
+            <div class="ruler__strip">
+              <span class="seg base"><b>https://</b><i>схема</i></span>
+              <span class="seg base"><b>kolledzh.ru</b><i>узел</i></span>
+              <span class="seg base"><b>/kursy</b><i>путь</i></span>
+            </div>
+            <p class="ruler__note"><b>Схема</b> — по каким правилам общаться с сервером. <b>Узел</b> — имя машины, к которой обращаемся. <b>Путь</b> — что именно на этой машине запрашиваем. Этих трёх частей достаточно, чтобы страница открылась: адрес <code>https://kolledzh.ru/kursy</code> — законченный и рабочий.</p>
+          </div>
+          <p class="say">Строение адреса описано не соглашением между сайтами, а стандартом — RFC&nbsp;3986. Поэтому любой браузер, любой сервер и любая система аналитики разбирают адрес на одни и те же части одинаково.</p>
+        </div>
+        <span class="pair-number">03</span>
+      </section>
+
+      <!-- 07 A · линейка, часть 2 -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · часть 2 · то, что дописывают</p>
+          <h2>После вопросительного знака начинается строка запроса</h2>
+          <div class="ruler">
+            <div class="ruler__strip">
+              <span class="seg base"><b>https://</b><i>схема</i></span>
+              <span class="seg base"><b>kolledzh.ru</b><i>узел</i></span>
+              <span class="seg base"><b>/kursy</b><i>путь</i></span>
+              <span class="seg mark"><b>?</b><i>начало</i></span>
+              <span class="seg pair"><b>page=2</b><i>пара 1</i></span>
+              <span class="seg mark"><b>&amp;</b><i>разделитель</i></span>
+              <span class="seg pair"><b>sort=new</b><i>пара 2</i></span>
+            </div>
+            <p class="ruler__note"><b>Строка запроса</b> — это довесок к адресу: набор пар «имя=значение». Знак <code>?</code> отмечает её начало и ставится <b>один раз</b>. Пары отделяются друг от друга знаком <code>&amp;</code>. Внутри пары имя и значение разделяет <code>=</code>.</p>
+          </div>
+          <p class="say">Страница откроется и без этого довеска. Строка запроса нужна, чтобы передать странице дополнительные сведения: какую показать страницу списка, в каком порядке, по какому запросу искать. Метка источника — такой же довесок, только читает её не сама страница, а код счётчика.</p>
+        </div>
+        <span class="pair-number">03</span>
+      </section>
+
+      <!-- 08 A · синтаксис -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · часть 3 · четыре правила синтаксиса</p>
+          <h2>Что считается правильно составленной строкой запроса</h2>
+          <div class="ex">
+            <div><b>один «?»</b><span>Вопросительный знак отделяет путь от строки запроса и встречается <b>один раз</b>. Всё после него — пары. Второй <code>?</code> знаком-разделителем уже не считается: он становится обычным символом внутри значения.</span></div>
+            <div><b>«&amp;» между парами</b><span><code class="now">?a=1&amp;b=2</code> — две пары. <code class="was">?a=1?b=2</code> — одна пара, у которой значение равно <code>1?b=2</code>. Ошибка не видна глазом и не мешает странице открыться.</span></div>
+            <div><b>без пробелов</b><span>Пробел в адресе не допускается. Если он всё же нужен внутри значения, его записывают кодом: <code>%20</code>. Тем же способом кодируются кириллица и знаки препинания.</span></div>
+            <div><b>регистр значим</b><span>Значения сравниваются посимвольно: <code class="was">VK</code> и <code class="now">vk</code> — <b>разные строки</b>. Для системы аналитики это два разных источника, а не один, записанный по-разному.</span></div>
+          </div>
+          <p class="lead-in">Три из этих четырёх правил станут причинами конкретных ошибок в отчёте — разберём каждую отдельно.</p>
+        </div>
+        <span class="pair-number">03</span>
+      </section>
+
+      <!-- 09 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="orange">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 3</p>
+          <h1>А можно дописать в адрес<br>что угодно?</h1>
+          <p class="question-hint">Сайт же не знает про наши пары</p>
+        </div>
+        <span class="pair-number">04</span>
+      </section>
+      <!-- 10 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ</p>
+          <h2>Можно: незнакомые пары сервер просто не читает</h2>
+          <p class="say">Сервер разбирает строку запроса и берёт из неё только те имена, которые ему нужны. Пара с незнакомым именем не вызывает ошибки — её никто не запрашивает, и она остаётся лежать в адресе. Проверить это можно прямо сейчас: допишите к адресу любой открытой страницы <code>?proverka=1</code> и перезагрузите — страница откроется как обычно.</p>
+          <div class="ruler">
+            <div class="ruler__strip">
+              <span class="seg base"><b>https://kolledzh.ru/kursy</b><i>адрес страницы</i></span>
+              <span class="seg mark"><b>?</b><i>начало</i></span>
+              <span class="seg ghost"><b>proverka=1</b><i>сервер не читает</i></span>
+            </div>
+            <p class="ruler__note">Именно на этом свойстве и держатся метки источника. Их <b>не читает сервер сайта</b> — их читает код счётчика, который работает в браузере и разбирает адрес самостоятельно.</p>
+          </div>
+          <p class="say">Отсюда следствие для практики: разметить можно ссылку на <b>любой</b> сайт, даже если у вас нет к нему доступа, и ссылка останется рабочей. А вот попадёт ли метка в отчёт — зависит от того, установлен ли на сайте счётчик, который её прочитает.</p>
+        </div>
+        <span class="pair-number">04</span>
+      </section>
+
+      <!-- 11 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="blue">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 4</p>
+          <h1>Так что такое<br>UTM-метка?</h1>
+          <p class="question-hint">Теперь у нас есть, из чего собрать определение</p>
+        </div>
+        <span class="pair-number">05</span>
+      </section>
+      <!-- 12 A · определение -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · определение</p>
+          <h2>UTM-метка — это пара «имя=значение» в строке запроса, описывающая источник перехода</h2>
+          <p class="say"><b>Что это.</b> Обычная пара в строке запроса, у которой имя начинается с <code>utm_</code>, а значение задаёт человек, публикующий ссылку. Никакого особого статуса у неё в адресе нет: для браузера это такой же довесок, как <code>page=2</code>.</p>
+          <p class="say"><b>Как работает.</b> Человек переходит по размеченной ссылке. Адрес вместе с меткой попадает в адресную строку, оттуда — в поле <code>dl</code> запроса события. Код счётчика читает адрес, вырезает значения меток и кладёт их в отдельные поля события. Дальше система аналитики собирает из этих полей строки отчёта по источникам.</p>
+          <p class="say"><b>Зачем нужна.</b> Чтобы у каждой заявки был известен источник и каналы можно было сравнивать между собой: где переходов много, а заявок мало; какая рассылка сработала, а какая нет. Без метки такие переходы сливаются в <code>direct</code> и <code>(not set)</code>, и сравнивать становится нечего.</p>
+        </div>
+        <span class="pair-number">05</span>
+      </section>
+
+      <!-- 13 A · происхождение -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · продолжение · откуда взялось название</p>
+          <h2>Три буквы достались от системы, которой больше нет</h2>
+          <p class="say">UTM расшифровывается как <b>Urchin Tracking Module</b> — «модуль отслеживания Urchin». Urchin — название системы веб-аналитики компании Urchin Software Corporation, появившейся в 1996 году. Формат меток придумали там, задолго до Google.</p>
+          <p class="say">В апреле 2005 года Google купил Urchin, а в ноябре того же года запустил на его основе Google Analytics. Метки перешли в новую систему как есть — вместе с приставкой <code>utm_</code> в именах. Размеченных ссылок к тому моменту было уже слишком много, чтобы менять формат: переименование сломало бы разметку на всех сайтах разом.</p>
+          <p class="say">Сама система Urchin закрыта в 2012 году, а её приставка осталась в адресах и работает до сих пор. Метки читает не только Google Analytics: <code>utm_*</code> понимают Яндекс.Метрика, почтовые рассылки, рекламные кабинеты и системы управления заявками. Формат стал общим не по стандарту, а потому что его поддержали все.</p>
+          <p class="lead-in">Практический вывод: имена меток менять нельзя. <code>utm_source</code> — это имя, на которое настроены чужие системы, а не слово, которое можно сократить по своему вкусу.</p>
+        </div>
+        <span class="pair-number">05</span>
+      </section>
+
+      <!-- 14 A · пять параметров -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · продолжение · сколько их всего</p>
+          <h2>Меток пять: три обязательные и две для рекламы</h2>
+          <div class="derive">
+            <div class="derive__r link"><code>utm_source</code><i>→</i><span><b>Откуда.</b> Площадка, на которой стоит ссылка: сообщество, рассылка, партнёрский сайт, афиша с QR-кодом</span></div>
+            <div class="derive__r link"><code>utm_medium</code><i>→</i><span><b>Каким способом.</b> Тип канала: пост в соцсети, письмо, платное объявление, переход с чужого сайта</span></div>
+            <div class="derive__r link"><code>utm_campaign</code><i>→</i><span><b>В рамках чего.</b> Конкретное мероприятие или набор: день открытых дверей сентября 2026 года</span></div>
+            <div class="derive__r"><code>utm_term</code><i>→</i><span>Поисковый запрос, по которому показали платное объявление. В обычной работе не нужен</span></div>
+            <div class="derive__r"><code>utm_content</code><i>→</i><span>Что именно нажали, когда в одном письме или объявлении две разные ссылки</span></div>
+          </div>
+          <p class="say">Обязательная только одна — <code>utm_source</code>: без неё разметка не имеет смысла, потому что неизвестна площадка. На практике всегда ставят три первые: по одному <code>utm_source</code> нельзя отличить пост от письма, а сентябрьскую кампанию — от мартовской.</p>
+          <p class="lead-in">Мы работаем с тремя. Две последние разберём позже, когда дойдём до платных объявлений.</p>
+        </div>
+        <span class="pair-number">05</span>
+      </section>
+
+      <!-- 15 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="orange">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 5</p>
+          <h1>Что писать<br>в utm_source?</h1>
+          <p class="question-hint">Разбираем по одной метке за раз</p>
+        </div>
+        <span class="pair-number">06</span>
+      </section>
+      <!-- 16 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · метка 1 из 3</p>
+          <h2><code class="k">utm_source</code> — название площадки, на которой стоит ссылка</h2>
+          <p class="say">Отвечает на вопрос «где человек увидел ссылку». Не «как» и не «зачем» — именно место. Значение придумывает тот, кто размечает; закрытого списка здесь нет, и в этом главная опасность: два человека назовут одну площадку по-разному, и в отчёте появятся две строки.</p>
+          <div class="ex">
+            <div><b>vk</b><span>Сообщество колледжа во «ВКонтакте». Не <code class="was">vk.com</code>, не <code class="was">VK</code>, не <code class="was">вконтакте</code> — одно написание на всю группу</span></div>
+            <div><b>priem_email</b><span>Рассылка приёмной комиссии. Название говорит, <b>чья</b> рассылка: писем на сайте может быть несколько</span></div>
+            <div><b>afisha_qr</b><span>Печатная афиша с QR-кодом в холле. Офлайн-источник тоже размечается — иначе такие переходы попадут в <code>direct</code></span></div>
+            <div><b>partner_site</b><span>Ссылка на сайте партнёра. Если партнёров несколько, у каждого своё значение: <code>partner_lyceum</code>, <code>partner_cdo</code></span></div>
+          </div>
+        </div>
+        <span class="pair-number">06</span>
+      </section>
+
+      <!-- 17 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="pink">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 6</p>
+          <h1>А utm_medium —<br>разве не то же самое?</h1>
+          <p class="question-hint">Эти две метки путают чаще всего</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+      <!-- 18 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · метка 2 из 3</p>
+          <h2><code class="k">utm_medium</code> — не место, а способ доставки ссылки</h2>
+          <p class="say">Разница видна, когда одна и та же площадка работает двумя способами. Сообщество во «ВКонтакте» может дать переход из обычного поста и из платного объявления. Площадка одна, <code>utm_source=vk</code> в обоих случаях — а вести себя эти переходы будут по-разному, и считать их вместе нельзя: за одни заплатили, за другие нет.</p>
+          <table class="dict">
+            <thead><tr><th>Что произошло</th><th>utm_source</th><th>utm_medium</th></tr></thead>
+            <tbody>
+              <tr><td>Обычный пост в сообществе колледжа</td><td class="m">vk</td><td class="m">social</td></tr>
+              <tr><td>Платное объявление в том же сообществе</td><td class="m">vk</td><td class="m">cpc</td></tr>
+              <tr><td>Письмо приёмной комиссии</td><td class="m">priem_email</td><td class="m">email</td></tr>
+              <tr><td>Ссылка со страницы партнёра</td><td class="m">partner_site</td><td class="m">referral</td></tr>
+            </tbody>
+          </table>
+          <p class="lead-in">Проверка себя: <code>utm_source</code> отвечает «где увидели», <code>utm_medium</code> — «каким способом ссылка туда попала».</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 19 A · закрытый список medium -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · продолжение · почему здесь нельзя выдумывать значения</p>
+          <h2>Шесть значений <code class="k">utm_medium</code>, которые аналитика узнаёт сама</h2>
+          <p class="say">В отличие от <code>utm_source</code>, у <code>utm_medium</code> есть фактически сложившийся список. Google Analytics разбирает заявки по каналам по значению именно этой метки, и узнаёт он ограниченный набор строк:</p>
+          <div class="ruler">
+            <div class="ruler__strip">
+              <span class="seg pair"><b>organic</b><i>поиск</i></span>
+              <span class="seg pair"><b>cpc</b><i>платное объявление</i></span>
+              <span class="seg pair"><b>email</b><i>письмо</i></span>
+              <span class="seg pair"><b>social</b><i>соцсети</i></span>
+              <span class="seg pair"><b>referral</b><i>чужой сайт</i></span>
+              <span class="seg pair"><b>affiliate</b><i>партнёрская программа</i></span>
+            </div>
+            <p class="ruler__note">Написали <code>rassylka</code> вместо <code>email</code> — переходы попадут в строку <b>Unassigned</b>: канал не определён. Данные не потеряются, но готовый отчёт по каналам будет бесполезен, пока значение не исправят на следующей кампании. Задним числом уже отправленные события не меняются — на занятии 1 мы это разбирали.</p>
+          </div>
+          <p class="say">Для офлайновых источников подходящего значения в списке нет. Мы будем писать <code>qr</code> для афиш — с пониманием, что такие переходы окажутся в <b>Unassigned</b>. Это осознанное решение справочника, а не ошибка: важнее отличать афишу от рассылки, чем попасть в готовую категорию.</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 20 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="lime">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 7</p>
+          <h1>Зачем нужна<br>третья метка?</h1>
+          <p class="question-hint">Площадка известна, способ известен — что ещё</p>
+        </div>
+        <span class="pair-number">08</span>
+      </section>
+      <!-- 21 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · метка 3 из 3</p>
+          <h2><code class="k">utm_campaign</code> — повод, по которому ссылку опубликовали</h2>
+          <p class="say">Первые две метки описывают дорогу, третья — задачу. Колледж каждый год зовёт на день открытых дверей и каждый год пишет об этом во «ВКонтакте». Без третьей метки переходы сентября 2026 года и марта 2026 года окажутся в одной строке отчёта, и сравнить два набора будет нечем.</p>
+          <div class="ex">
+            <div><b>sept_open_2026</b><span>День открытых дверей, сентябрь 2026. Понятно, что за мероприятие и когда — сравнивать можно и через год</span></div>
+            <div><b>dod</b><span class="was">Сокращение, которое через полгода не расшифрует никто, включая того, кто его написал</span></div>
+            <div><b>test</b><span class="was">Название на время проверки, которое остаётся в ссылке навсегда и потом висит в отчёте отдельной строкой</span></div>
+            <div><b>Сентябрь 2026</b><span class="was">Пробел и кириллица. В адресе превратится в <code>%D0%A1%D0%B5...%202026</code> — разберём это подробно через несколько экранов</span></div>
+          </div>
+          <p class="lead-in">Рабочее правило: в названии кампании должны быть <b>повод</b> и <b>период</b>. Тогда отчёт читается без пояснений.</p>
+        </div>
+        <span class="pair-number">08</span>
+      </section>
+
+      <!-- 22 A · собранная ссылка целиком -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · продолжение · линейка целиком</p>
+          <h2>Собираем ссылку из частей, которые уже разобрали</h2>
+          <div class="ruler">
+            <div class="ruler__strip">
+              <span class="seg base"><b>https://kolledzh.ru/kursy</b><i>адрес страницы</i></span>
+              <span class="seg mark"><b>?</b><i>начало</i></span>
+              <span class="seg pair"><b>utm_source=vk</b><i>где увидели</i></span>
+              <span class="seg mark"><b>&amp;</b><i>·</i></span>
+              <span class="seg pair"><b>utm_medium=social</b><i>каким способом</i></span>
+              <span class="seg mark"><b>&amp;</b><i>·</i></span>
+              <span class="seg pair"><b>utm_campaign=sept_open_2026</b><i>по какому поводу</i></span>
+            </div>
+            <p class="ruler__note">Первая часть — адрес той страницы, куда человек должен попасть; она не меняется от канала к каналу. Меняется только довесок: для рассылки в тех же трёх парах будут другие значения, а страница останется той же.</p>
+          </div>
+          <p class="say">Такую ссылку и публикуют. Человек, который по ней перейдёт, увидит обычную страницу курсов — довесок на её содержимое не влияет. Зато в адресной строке останется запись о том, откуда он пришёл, и её прочитает счётчик.</p>
+        </div>
+        <span class="pair-number">08</span>
+      </section>
+
+      <!-- 23 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="blue">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 8</p>
+          <h1>Как метка из адреса<br>попадает в отчёт?</h1>
+          <p class="question-hint">Проследим весь путь, как на занятии 1 прослеживали событие</p>
+        </div>
+        <span class="pair-number">09</span>
+      </section>
+      <!-- 24 A · маршрут метки -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · пять шагов, ни одного лишнего</p>
+          <h2>Маршрут одного значения: от ссылки до строки отчёта</h2>
+          <div class="derive">
+            <div class="derive__r link"><code>?utm_source=vk</code><i>→</i><span><b>Шаг 1.</b> Человек нажал размеченную ссылку. Адрес с довеском оказался в адресной строке браузера</span></div>
+            <div class="derive__r link"><code>dl=…?utm_source=vk&amp;…</code><i>→</i><span><b>Шаг 2.</b> Счётчик отправил событие. В поле <code>dl</code> он положил адрес страницы <b>целиком</b>, вместе с довеском</span></div>
+            <div class="derive__r link"><code>ep.source=vk</code><i>→</i><span><b>Шаг 3.</b> Код страницы вырезал значение метки из адреса и положил его отдельным полем события</span></div>
+            <div class="derive__r link"><code>utm_source=vk</code><i>→</i><span><b>Шаг 4.</b> Тот же код записал значение в скрытое поле формы — и оно уехало вместе с заявкой в таблицу</span></div>
+            <div class="derive__r link"><code>строка «vk» · 12</code><i>→</i><span><b>Шаг 5.</b> Аналитика сложила события с одинаковым значением и показала их одной строкой отчёта</span></div>
+          </div>
+          <p class="say">Шаги 3 и 4 — разные и независимые. Первый ведёт значение в аналитику, второй — в таблицу заявок. Настроить можно один и забыть про другой: тогда в аналитике источник будет, а в заявке останется <code>(not set)</code>. Это ровно та точка разрыва «форма → таблица», которую мы отмечали на занятии 1.</p>
+        </div>
+        <span class="pair-number">09</span>
+      </section>
+
+      <!-- 25 A · код стенда -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · шаг 3 крупным планом · код учебного стенда</p>
+          <h2>Слева — код, который вырезает метки, справа — что улетело</h2>
+          <div class="src">
+            <div>
+              <pre><i>// читаем метки из адресной строки</i>
+const q = new URLSearchParams(location.search);
+const c = {
+  source:   q.get(<em>'utm_source'</em>)   || <em>'(not set)'</em>,
+  medium:   q.get(<em>'utm_medium'</em>)   || <em>'(not set)'</em>,
+  campaign: q.get(<em>'utm_campaign'</em>) || <em>'(not set)'</em>
+};
+
+gtag(<i>'event'</i>, <em>'generate_lead'</em>, {
+  form_id: <em>'lead_main'</em>,
+  source:   c.source,
+  medium:   c.medium,
+  campaign: c.campaign
+});</pre>
+              <p class="src__cap">stend/analytics.js + stend/form.js</p>
+            </div>
+            <i>→</i>
+            <div>
+              <pre><em>en</em>=generate_lead
+<em>ep.form_id</em>=lead_main
+<em>ep.source</em>=vk
+<em>ep.medium</em>=social
+<em>ep.campaign</em>=sept_open_2026</pre>
+              <p class="src__cap">вкладка Payload</p>
+            </div>
+          </div>
+          <p class="say">Вся «магия разметки» — это <code>URLSearchParams</code> и три вызова <code>get</code>. Метода <code>get</code> возвращает значение по имени или <code>null</code>, если такой пары в адресе нет; тогда срабатывает <code>||</code> и подставляется строка <code>(not set)</code>. Именно она и приходила в отчёт на прошлом занятии.</p>
+        </div>
+        <span class="pair-number">09</span>
+      </section>
+
+      <!-- 26 A · настоящий кадр -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · тот же переход, снятый на стенде</p>
+          <h2>Адресная строка и вкладка Payload одного и того же перехода</h2>
+          <div class="pane">
+            <figure>
+              <img src="shots/payload-ep-good.png" alt="Вкладка Payload: поля dl, en, ep.source, ep.medium, ep.campaign">
+              <figcaption>настоящий кадр · Payload · событие generate_lead</figcaption>
+            </figure>
+            <div class="fields">
+              <div><b>адресная строка</b><span>что видит человек: <code>localhost/?utm_source=vk&amp;utm_medium=social&amp;utm_campaign=sept_open_2026</code></span></div>
+              <div class="key"><b>dl</b><span>адрес страницы целиком — вместе со всеми тремя метками. Их сюда никто не переписывал: браузер отдал адрес как есть</span></div>
+              <div class="key"><b>ep.source = vk</b><span>значение вырезано кодом страницы из <code>utm_source</code>. На прошлом занятии здесь было <code>(not set)</code></span></div>
+              <div class="key"><b>ep.medium = social</b><span>из <code>utm_medium</code>. Новое поле: на занятии 1 стенд эту метку не читал</span></div>
+              <div class="key"><b>ep.campaign = sept_open_2026</b><span>из <code>utm_campaign</code>. По нему в отчёте можно отделить сентябрьскую кампанию от мартовской</span></div>
+              <div><b>ep.form_id · epn.value</b><span>поля не про источник: какая форма отправлена и её ценность. Разбирали на занятии 1</span></div>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">09</span>
+      </section>
+
+      <!-- 27 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="orange">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 9</p>
+          <h1>Почему метки надо писать<br>по одному правилу?</h1>
+          <p class="question-hint">Разберём на числах, что бывает, когда правила нет</p>
+        </div>
+        <span class="pair-number">10</span>
+      </section>
+      <!-- 28 A · свод: четыре написания -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · свод разметки · одна кампания, четыре человека</p>
+          <h2>Четверо разметили один день открытых дверей — каждый по-своему</h2>
+          <div class="tally">
+            <div class="tally__side">
+              <h4>что написали в ссылках</h4>
+              <div class="tally__row"><b>Аня</b><span>utm_source=vk<br>utm_medium=social<br>utm_campaign=sept_open_2026</span></div>
+              <div class="tally__row"><b>Борис</b><span>utm_source=<em>VK</em><br>utm_medium=<em>Social</em><br>utm_campaign=sept_open_2026</span></div>
+              <div class="tally__row"><b>Вера</b><span>utm_source=<em>vk.com</em><br>utm_medium=<em>post</em><br>utm_campaign=<em>sept-open-2026</em></span></div>
+              <div class="tally__row"><b>Глеб</b><span>utm_source=vk<br>utm_medium=social<br>utm_campaign=<em>Сентябрь ДОД</em></span></div>
+            </div>
+            <i>→</i>
+            <div class="tally__side">
+              <h4>что получилось в отчёте по источникам</h4>
+              <table>
+                <tr><td>vk / social / sept_open_2026</td><td>12</td></tr>
+                <tr><td>VK / Social / sept_open_2026</td><td>9</td></tr>
+                <tr><td>vk.com / post / sept-open-2026</td><td>11</td></tr>
+                <tr><td>vk / social / %D0%A1%D0%B5%D0%BD…</td><td>8</td></tr>
+              </table>
+            </div>
+          </div>
+          <p class="tally__cap">Переходов было <b>40</b>, площадка одна, повод один. В отчёте — <b>четыре строки</b>, и самая большая из них — 12. Руководитель, который посмотрит на такой отчёт, увидит четыре слабых источника вместо одного сильного.</p>
+        </div>
+        <span class="pair-number">10</span>
+      </section>
+
+      <!-- 29 A · свод: после справочника -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · тот же свод после единого справочника</p>
+          <h2>Те же сорок переходов, записанные одинаково</h2>
+          <div class="tally">
+            <div class="tally__side">
+              <h4>что написали в ссылках</h4>
+              <div class="tally__row ok"><b>Аня</b><span>utm_source=vk<br>utm_medium=social<br>utm_campaign=sept_open_2026</span></div>
+              <div class="tally__row ok"><b>Борис</b><span>utm_source=vk<br>utm_medium=social<br>utm_campaign=sept_open_2026</span></div>
+              <div class="tally__row ok"><b>Вера</b><span>utm_source=vk<br>utm_medium=social<br>utm_campaign=sept_open_2026</span></div>
+              <div class="tally__row ok"><b>Глеб</b><span>utm_source=vk<br>utm_medium=social<br>utm_campaign=sept_open_2026</span></div>
+            </div>
+            <i>→</i>
+            <div class="tally__side">
+              <h4>что получилось в отчёте по источникам</h4>
+              <table>
+                <tr class="sum"><td>vk / social / sept_open_2026</td><td>40</td></tr>
+              </table>
+            </div>
+          </div>
+          <p class="tally__cap">Данные те же самые: ни одного лишнего перехода не появилось и ни один не потерялся. Изменилось только написание — и вместо четырёх строк по 8–12 получилась одна на 40. <b>Справочник меток не улучшает результат кампании, он делает результат видимым.</b></p>
+          <p class="lead-in">Отсюда и требование методички: договориться о написании нужно <b>до</b> публикации ссылок. Задним числом уже отправленные события не переписываются.</p>
+        </div>
+        <span class="pair-number">10</span>
+      </section>
+
+      <!-- 30 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="pink">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 10</p>
+          <h1>Почему «VK» и «vk» —<br>это два источника?</h1>
+          <p class="question-hint">Человек-то видит одно и то же слово</p>
+        </div>
+        <span class="pair-number">11</span>
+      </section>
+      <!-- 31 A · регистр -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · ошибка 1 · регистр</p>
+          <h2>Потому что значения не сравниваются по смыслу — они сравниваются посимвольно</h2>
+          <p class="say">Собирая отчёт, система группирует события по значению поля. Группировка — это сравнение строк: код проверяет, совпадает ли первый символ с первым, второй со вторым. Строки <code>VK</code> и <code>vk</code> различаются в обоих символах, поэтому попадают в разные группы. Никакого «понимания», что это одна и та же социальная сеть, здесь нет и не предполагается.</p>
+          <div class="ruler">
+            <div class="ruler__strip">
+              <span class="seg pair"><b>utm_source=vk</b><i>строка 1 отчёта · 12</i></span>
+              <span class="seg bad"><b>utm_source=VK</b><i>строка 2 отчёта · 9</i></span>
+              <span class="seg bad"><b>utm_source=Vk</b><i>строка 3 отчёта · 3</i></span>
+            </div>
+            <p class="ruler__note">Одно сообщество, один повод, три строки. Заметить это в отчёте трудно: строки стоят не рядом, а в разных местах списка, отсортированного по числу переходов.</p>
+          </div>
+          <p class="say">Лечится это не проверкой отчёта, а правилом на входе: <b>значения меток пишем только строчными латинскими буквами</b>. Регистр — единственная из ошибок разметки, которую можно исключить полностью одним соглашением.</p>
+        </div>
+        <span class="pair-number">11</span>
+      </section>
+
+      <!-- 32 A · пробел -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · ошибка 2 · пробел</p>
+          <h2>Пробела в адресе не существует — он превращается в код</h2>
+          <p class="say">По стандарту RFC&nbsp;3986 в адресе допустим ограниченный набор символов, и пробела среди них нет. Когда пробел всё-таки попадает в значение, браузер заменяет его на <b>процентный код</b> — знак процента и шестнадцатеричный номер символа. Пробел получает номер 20, отсюда <code>%20</code>.</p>
+          <div class="ruler">
+            <div class="ruler__strip">
+              <span class="seg base"><b>написали</b><i>в ссылке</i></span>
+              <span class="seg bad"><b>utm_campaign=sept open</b><i>с пробелом</i></span>
+              <span class="seg mark"><b>→</b><i>·</i></span>
+              <span class="seg bad"><b>utm_campaign=sept%20open</b><i>в адресной строке</i></span>
+            </div>
+            <p class="ruler__note">Встречается и второй вариант записи — <code>sept+open</code>: знак «плюс» вместо пробела достался от формата, которым браузер отправляет данные форм. Обе записи попадаются в жизни, и <b>это две разные строки</b>: значения <code>sept%20open</code> и <code>sept+open</code> дадут в отчёте две группы.</p>
+          </div>
+          <p class="say">Поэтому пробел в значениях не ставят вовсе. Слова разделяют символом подчёркивания: <code>sept_open_2026</code>. Подчёркивание допустимо в адресе как есть, ни во что не превращается и читается человеком без усилий.</p>
+        </div>
+        <span class="pair-number">11</span>
+      </section>
+
+      <!-- 33 A · кириллица, настоящий кадр -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · ошибка 3 · кириллица · настоящий кадр со стенда</p>
+          <h2>Что делается со ссылкой, размеченной по-русски</h2>
+          <div class="versus">
+            <figure>
+              <b>по справочнику</b>
+              <img src="shots/url-bar.png" alt="Адресная строка: utm_source=vk, utm_medium=social, utm_campaign=sept_open_2026">
+              <figcaption>Адрес читается целиком. Значение метки видно глазом, ссылку можно проверить, не открывая инструменты разработчика.</figcaption>
+            </figure>
+            <figure class="bad">
+              <b>кириллица и пробелы</b>
+              <img src="shots/url-bar-bad.png" alt="Адресная строка: utm_source=VK%20Реклама, utm_campaign=Сентябрь%20День%20открытых%20дверей">
+              <figcaption>Пробелы уже стали <code>%20</code>. Кириллицу браузер показывает по-русски, но в запрос она уйдёт кодами — по три символа <code>%D0%…</code> на каждую букву.</figcaption>
+            </figure>
+          </div>
+          <p class="lead-in">Оба адреса рабочие: обе страницы откроются. Разница проявится в отчёте — посмотрим, чем именно это оборачивается.</p>
+        </div>
+        <span class="pair-number">11</span>
+      </section>
+
+      <!-- 34 A · что видно в Payload -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · та же испорченная ссылка · вкладка Payload</p>
+          <h2>Кириллица в поле <code class="k">dl</code> занимает восемь строк вместо одной</h2>
+          <div class="pane">
+            <figure>
+              <img src="shots/payload-utm-bad.png" alt="Вкладка Payload испорченной ссылки: длинное закодированное поле dl и значения ep.source, ep.medium, ep.campaign">
+              <figcaption>настоящий кадр · Payload · та же форма, размеченная по-русски</figcaption>
+            </figure>
+            <div class="fields">
+              <div><b>dl</b><span>Адрес разбух: каждая русская буква записана тремя символами — <code>%D0%B5</code>, <code>%D0%BA</code> и так далее. Прочитать значение метки в этом виде нельзя</span></div>
+              <div class="key"><b>ep.source = VK Реклама</b><span>Вкладка Payload показывает значения раскодированными, поэтому здесь видно исходную строку — с прописными буквами и пробелом внутри</span></div>
+              <div class="key"><b>ep.medium = Social</b><span>Не <code>social</code>. В отчёте по каналам это значение <b>не совпадёт</b> с ожидаемым и уйдёт в Unassigned</span></div>
+              <div class="key"><b>ep.campaign = Сентябрь День открытых дверей</b><span>Строка с двумя пробелами и кириллицей. Совпасть с такой же строкой из чужой ссылки она может только при точном посимвольном повторе</span></div>
+            </div>
+          </div>
+          <p class="say">Событие ушло, данные не потерялись — и в этом ловушка. Ошибка разметки ничего не ломает заметным образом: она проявится через месяц, когда отчёт по каналам придётся объяснять.</p>
+        </div>
+        <span class="pair-number">11</span>
+      </section>
+
+      <!-- 35 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="orange">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 11</p>
+          <h1>Какие ещё бывают<br>ошибки разметки?</h1>
+          <p class="question-hint">Соберём их в один список — по симптому в отчёте</p>
+        </div>
+        <span class="pair-number">12</span>
+      </section>
+      <!-- 36 A · реестр ошибок -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · шесть ошибок · слева симптом, справа причина в ссылке</p>
+          <h2>Что видно в отчёте и что искать в ссылке</h2>
+          <div class="reds">
+            <div><b>vk, VK и Vk — три строки</b><span>Регистр не приведён к строчным. Смотреть на значения <code>utm_source</code> в опубликованных ссылках</span></div>
+            <div><b>sept%20open и sept+open</b><span>В значении был пробел, а разные системы записали его по-разному. Заменить пробел на <code>_</code></span></div>
+            <div><b>%D0%A1%D0%B5%D0%BD…</b><span>Кириллица в значении. Перевести название на латиницу: <code>sept_open_2026</code></span></div>
+            <div><b>источник у всех заявок — (not set)</b><span>Метку не поставили вовсе. Проверить саму опубликованную ссылку, а не отчёт</span></div>
+            <div><b>метки нет в отчёте, хотя в ссылке она есть</b><span>Опечатка в <b>имени</b>: <code>utm_sourse</code>, <code>utm_soure</code>, <code>utm_Source</code>. Счётчик ищет точное имя и не находит его</span></div>
+            <div><b>utm_campaign склеился с utm_medium</b><span>Вместо <code>&amp;</code> написан второй <code>?</code>: <code>…utm_medium=social?utm_campaign=sept</code>. Всё после второго <code>?</code> стало частью значения <code>utm_medium</code></span></div>
+          </div>
+          <p class="lead-in">Первые три — ошибки написания значения, вторые три — ошибки сборки самой ссылки. Первые видно в отчёте, вторые — только в ссылке.</p>
+        </div>
+        <span class="pair-number">12</span>
+      </section>
+
+      <!-- 37 A · седьмая, отдельная -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · продолжение · седьмая ошибка, которую не видно нигде</p>
+          <h2>Метка после решётки не читается вообще</h2>
+          <p class="say">У адреса есть ещё одна часть, о которой мы не говорили, — <b>фрагмент</b>: всё, что стоит после знака <code>#</code>. Он придуман для перехода к разделу внутри страницы и, в отличие от строки запроса, <b>не отправляется на сервер вовсе</b>: браузер обрабатывает его сам.</p>
+          <div class="ruler">
+            <div class="ruler__strip">
+              <span class="seg base"><b>https://kolledzh.ru/kursy</b><i>адрес</i></span>
+              <span class="seg mark"><b>#</b><i>фрагмент</i></span>
+              <span class="seg bad"><b>utm_source=vk</b><i>сюда никто не смотрит</i></span>
+            </div>
+            <p class="ruler__note">Код счётчика читает метки из <b>строки запроса</b> — это свойство <code>location.search</code>, то есть часть адреса от <code>?</code> до <code>#</code>. Всё, что после решётки, лежит в другом свойстве и в разбор не попадает.</p>
+          </div>
+          <p class="say">Ошибка редкая, но неприятная: ссылка выглядит размеченной, открывается нормально, а источник у всех переходов остаётся <code>(not set)</code>. Появляется она обычно при копировании ссылки из адресной строки страницы, у которой уже был якорь: метку дописывают в конец, за решётку, не заметив её.</p>
+          <p class="lead-in">Правило простое: <b>метки всегда идут после <code>?</code> и до <code>#</code></b>. Если в адресе есть якорь, довесок вставляют перед ним.</p>
+        </div>
+        <span class="pair-number">12</span>
+      </section>
+
+      <!-- 38 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="lime">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 12</p>
+          <h1>Как договориться,<br>чтобы все писали одинаково?</h1>
+          <p class="question-hint">Памяти на это не хватает — нужен документ</p>
+        </div>
+        <span class="pair-number">13</span>
+      </section>
+      <!-- 39 A · шесть правил -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · справочник меток · часть 1 · правила написания</p>
+          <h2>Шесть правил, которые закрывают шесть ошибок</h2>
+          <div class="rulebook">
+            <div><b>правило 1</b><strong>только строчные</strong><span>Никаких прописных букв в значениях. Закрывает разбиение <code>vk</code> / <code>VK</code> / <code>Vk</code> на три строки</span></div>
+            <div><b>правило 2</b><strong>только латиница</strong><span>Русские названия переводим: «сентябрь» → <code>sept</code>. Закрывает превращение значения в <code>%D0%…</code></span></div>
+            <div><b>правило 3</b><strong>_ вместо пробела</strong><span>Слова разделяем подчёркиванием, не пробелом и не дефисом. Один разделитель на весь справочник</span></div>
+            <div><b>правило 4</b><strong>medium — из списка</strong><span><code>organic · cpc · email · social · referral · affiliate</code>, плюс согласованный <code>qr</code>. Своих значений не выдумываем</span></div>
+            <div><b>правило 5</b><strong>в campaign — повод и период</strong><span><code>sept_open_2026</code>, а не <code>dod</code> и не <code>test</code>. Через год название должно читаться так же</span></div>
+            <div><b>правило 6</b><strong>ссылка собирается из справочника</strong><span>Не по памяти и не копированием чужой ссылки. Значения берём из таблицы, новую строку в неё вносим до публикации</span></div>
+          </div>
+          <p class="say">Правила 1–3 относятся к тому, <b>как записаны символы</b>, правила 4–5 — к тому, <b>какие слова выбраны</b>, правило 6 — к порядку работы. Ни одно из них не следует из технического ограничения: адрес с прописной буквой и кириллицей вполне рабочий. Это соглашение, и держится оно только на том, что его соблюдают все.</p>
+        </div>
+        <span class="pair-number">13</span>
+      </section>
+
+      <!-- 40 A · таблица справочника -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · справочник меток · часть 2 · таблица каналов</p>
+          <h2>Справочник группы: четыре канала одной кампании</h2>
+          <table class="dict">
+            <thead><tr><th>Канал</th><th>utm_source</th><th>utm_medium</th><th>utm_campaign</th></tr></thead>
+            <tbody>
+              <tr><td>Пост в сообществе колледжа</td><td class="m">vk</td><td class="m">social</td><td class="m">sept_open_2026</td></tr>
+              <tr><td>Рассылка приёмной комиссии</td><td class="m">priem_email</td><td class="m">email</td><td class="m">sept_open_2026</td></tr>
+              <tr><td>QR-код на печатной афише в холле</td><td class="m">afisha_qr</td><td class="m">qr</td><td class="m">sept_open_2026</td></tr>
+              <tr><td>Ссылка со страницы партнёра</td><td class="m">partner_site</td><td class="m">referral</td><td class="m">sept_open_2026</td></tr>
+            </tbody>
+            <tfoot><tr><td colspan="4">Столбец <code>utm_campaign</code> одинаков у всех четырёх строк — это одна кампания, доставленная четырьмя способами. Различают каналы первые два столбца.</td></tr></tfoot>
+          </table>
+          <p class="say">Такую таблицу заводят один раз и дополняют по мере появления каналов. Она же служит списком, по которому потом проверяют отчёт: если в отчёте появилось значение, которого нет в таблице, — значит, кто-то разметил ссылку мимо справочника.</p>
+          <p class="lead-in">Эту таблицу вы заполните на практике под свои каналы и сдадите как результат занятия.</p>
+        </div>
+        <span class="pair-number">13</span>
+      </section>
+
+      <!-- 41 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="blue">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 13</p>
+          <h1>Как проверить ссылку<br>до того, как её опубликовали?</h1>
+          <p class="question-hint">После публикации исправлять поздно</p>
+        </div>
+        <span class="pair-number">14</span>
+      </section>
+      <!-- 42 A · проверка в адресной строке -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · проверка 1 из 2 · адресная строка · 15 секунд</p>
+          <h2>Открыть ссылку и прочитать адрес глазами</h2>
+          <figure class="figreal">
+            <img src="shots/url-bar.png" alt="Адресная строка браузера с тремя метками">
+            <figcaption>настоящий кадр · адресная строка после перехода по размеченной ссылке</figcaption>
+          </figure>
+          <div class="ex">
+            <div><b>что смотреть 1</b><span>Метки <b>на месте</b> и не пропали при переходе. Бывает, что сайт перенаправляет посетителя на другой адрес и довесок теряется по дороге</span></div>
+            <div><b>что смотреть 2</b><span>Разделители <b>правильные</b>: один <code>?</code> в начале довеска, дальше только <code>&amp;</code>. Второй <code>?</code> — уже ошибка</span></div>
+            <div><b>что смотреть 3</b><span><b>Нет</b> знаков <code>%20</code> и последовательностей <code>%D0%…</code>. Если они есть — в значении остались пробел или кириллица</span></div>
+          </div>
+        </div>
+        <span class="pair-number">14</span>
+      </section>
+
+      <!-- 43 A · проверка в Payload -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · проверка 2 из 2 · панель Network · как на занятии 1</p>
+          <h2>Убедиться, что счётчик метку прочитал</h2>
+          <p class="say">Адресная строка показывает только то, что метка <b>доехала до браузера</b>. Прочитал ли её код счётчика и уехала ли она в событие — видно лишь в запросе. Порядок тот же, что на прошлом занятии: <code>F12</code> → вкладка <b>Network</b> → фильтр <code>collect</code> → отправить форму → выбрать строку <code>en=generate_lead</code> → вкладка <b>Payload</b>.</p>
+          <div class="figrow">
+            <figure><img src="shots/net-rows-utm.png" alt="Список запросов collect в панели Network"><figcaption>1. строки <code>collect</code> · статус 204 · тип ping</figcaption></figure>
+            <figure><img src="shots/payload-ep-good.png" alt="Поля ep.source, ep.medium, ep.campaign во вкладке Payload"><figcaption>2. три поля источника на месте и записаны строчными</figcaption></figure>
+          </div>
+          <p class="lead-in">Проверять нужно оба места. Метка в адресе есть, а <code>ep.source</code> пуст — значит, счётчик её не читает: либо опечатка в имени, либо метка стоит после решётки.</p>
+        </div>
+        <span class="pair-number">14</span>
+      </section>
+
+      <!-- 44 A · чего проверка не покажет -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · продолжение · границы этой проверки</p>
+          <h2>Три случая, которые проверка на своём компьютере не поймает</h2>
+          <div class="reds">
+            <div><b>сокращатель ссылок</b><span>Длинную ссылку сокращают, чтобы поместить в пост. Сам сокращатель метки сохраняет, но проверять надо <b>короткий</b> адрес: перенаправление могло быть настроено на страницу без довеска</span></div>
+            <div><b>чужая площадка переписывает адрес</b><span>Некоторые площадки дописывают в ссылку свои пары или обрезают чужие. Проверять нужно ту ссылку, которая <b>уже опубликована</b>, а не ту, что вы отдали на публикацию</span></div>
+            <div><b>переход вглубь сайта</b><span>Человек пришёл по размеченной ссылке на главную, а форму заполнил на третьей странице. Метки в адресе там уже нет — и если сайт их не сохранил, источник заявки потеряется</span></div>
+          </div>
+          <p class="say">Первые два случая — про площадку, третий — про сам сайт, и он самый частый. Разберём его отдельно: это последний участок маршрута, где источник ещё можно потерять.</p>
+        </div>
+        <span class="pair-number">14</span>
+      </section>
+
+      <!-- 45 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="pink">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 14</p>
+          <h1>Метка есть в адресе —<br>значит, она будет и в заявке?</h1>
+          <p class="question-hint">Возвращаемся к точке разрыва с занятия 1</p>
+        </div>
+        <span class="pair-number">15</span>
+      </section>
+      <!-- 46 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ</p>
+          <h2>Нет. Форма отправляет только то, что в ней есть</h2>
+          <p class="say">Метка живёт в адресе страницы. Форма отправляет содержимое своих полей: имя, контакт, комментарий. Адрес страницы в форму не входит — это два разных набора данных, и сами по себе они не соединяются. Поэтому заявка уезжает в таблицу без источника, даже когда в аналитике он определён правильно.</p>
+          <p class="say">Соединяют их <b>скрытыми полями</b>. Скрытое поле — это поле формы, которое не показывается посетителю и не заполняется им: значение туда кладёт код страницы. Для человека формы три поля, для сервера — шесть.</p>
+          <div class="src">
+            <div>
+              <pre><i>&lt;!-- в вёрстке формы --&gt;</i>
+&lt;input type=<em>"hidden"</em> name=<em>"utm_source"</em>&gt;
+&lt;input type=<em>"hidden"</em> name=<em>"utm_medium"</em>&gt;
+&lt;input type=<em>"hidden"</em> name=<em>"utm_campaign"</em>&gt;</pre>
+              <p class="src__cap">stend/index.html</p>
+            </div>
+            <i>→</i>
+            <div>
+              <pre><i>// при загрузке страницы</i>
+document.getElementById(<em>'utm_source'</em>)
+        .value = c.source;
+document.getElementById(<em>'utm_medium'</em>)
+        .value = c.medium;
+document.getElementById(<em>'utm_campaign'</em>)
+        .value = c.campaign;</pre>
+              <p class="src__cap">stend/form.js</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">15</span>
+      </section>
+
+      <!-- 47 A · сохранённая заявка -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · продолжение · две заявки со стенда</p>
+          <h2>Одна и та же форма, отправленная с меткой и без неё</h2>
+          <div class="versus">
+            <figure>
+              <b>переход по размеченной ссылке</b>
+              <img src="shots/saved-tagged.png" alt="Сохранённая заявка с полями vk, social, sept_open_2026">
+              <figcaption>Три поля источника заполнены. Такую заявку можно отнести к каналу и посчитать в отчёте по кампании.</figcaption>
+            </figure>
+            <figure class="bad">
+              <b>переход по обычной ссылке</b>
+              <img src="shots/saved-plain.png" alt="Сохранённая заявка, у которой все поля источника имеют значение (not set)">
+              <figcaption>Имя и контакт на месте — с человеком связаться можно. Откуда он пришёл, не узнает уже никто.</figcaption>
+            </figure>
+          </div>
+          <p class="say">Обратите внимание: вторая заявка не бракованная. Менеджер отработает её точно так же. Потеряна не заявка, а <b>возможность оценить канал</b>: через месяц по такой таблице нельзя будет сказать, что дало результат, а что нет.</p>
+        </div>
+        <span class="pair-number">15</span>
+      </section>
+
+      <!-- 48 A · переход вглубь сайта -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · продолжение · последний участок, где источник теряется</p>
+          <h2>Человек пришёл на главную, а форму заполнил на третьей странице</h2>
+          <p class="say">Переход внутри сайта делается по обычной ссылке из меню — без довеска. На второй странице <code>location.search</code> уже пуст, и код, читающий метки оттуда, вернёт <code>(not set)</code>. Заявка с внутренней страницы потеряет источник, хотя человек пришёл по размеченной ссылке.</p>
+          <p class="say">Решение — запомнить значение при первом заходе. На стенде это одна строка: метки складываются в <code>sessionStorage</code> — хранилище браузера, которое живёт до закрытия вкладки. Если в адресе меток нет, значения берутся оттуда. Такой способ называют <b>первым касанием</b>: за источник заявки считается та ссылка, по которой человек попал на сайт.</p>
+          <div class="figrow">
+            <figure><img src="shots/peek-tagged.png" alt="Скрытые поля на посадочной странице: vk, social, sept_open_2026"><figcaption>1. посадочная страница: значения взяты из адреса</figcaption></figure>
+            <figure><img src="shots/peek-second-page.png" alt="Скрытые поля на внутренней странице: те же три значения"><figcaption>2. внутренняя страница: меток в адресе нет, значения те же</figcaption></figure>
+          </div>
+        </div>
+        <span class="pair-number">15</span>
+      </section>
+
+      <!-- 49 · демонстрация -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Демонстрация · преподаватель · 10 минут</p>
+          <h2>Проводим одно значение от ссылки до строки заявки</h2>
+          <ol class="steps">
+            <li>Открыть стенд <b>без метки</b> → <code>F12</code> → <b>Network</b>, фильтр <code>collect</code>. Отправить форму → в заявке три <code>(not set)</code>.</li>
+            <li>Открыть стенд по ссылке <code>?utm_source=vk&amp;utm_medium=social&amp;utm_campaign=sept_open_2026</code> → показать адресную строку.</li>
+            <li>Показать блок скрытых полей под формой: значения уже подставлены, до отправки.</li>
+            <li>Отправить форму → выбрать <code>en=generate_lead</code> → <b>Payload</b> → <code>ep.source</code>, <code>ep.medium</code>, <code>ep.campaign</code>.</li>
+            <li>Показать сохранённую заявку: те же три значения дошли до строки таблицы.</li>
+            <li>Открыть ссылку с меткой <code>?utm_source=VK Реклама</code> → сравнить <code>dl</code> и <code>ep.source</code> с прошлым запросом.</li>
+            <li>Перейти по меню на «Программу курса» → меток в адресе нет, значения в скрытых полях прежние.</li>
+          </ol>
+        </div>
+        <span class="pair-number">16</span>
+      </section>
+
+      <!-- 50 · практика -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Практическая работа · 45 минут · индивидуально или в паре</p>
+          <h2>Собрать четыре ссылки и довезти источник до заявки</h2>
+          <ol class="steps">
+            <li><b>Заполнить справочник</b> (10 мин). Четыре канала своей учебной кампании: для каждого — <code>utm_source</code>, <code>utm_medium</code>, <code>utm_campaign</code>. Значения по шести правилам, <code>utm_medium</code> из списка.</li>
+            <li><b>Собрать ссылки</b> (10 мин). Четыре адреса стенда с довесками из своей таблицы. Записать каждый в файл целиком, а не «как в третьей строке».</li>
+            <li><b>Открыть и проверить</b> (15 мин). По каждой ссылке: адресная строка → <b>Payload</b> → три поля <code>ep.*</code>. Отправить форму → снять кадр сохранённой заявки.</li>
+            <li><b>Сломать намеренно</b> (10 мин). Взять пятую ссылку и испортить одним способом из реестра. Открыть, зафиксировать, чем именно отличается результат, и как это выглядело бы в отчёте.</li>
+          </ol>
+          <p class="lead-in">Тестовые данные в форме: условное имя, учебный адрес почты, пометка «проверка». Настоящие персональные данные не вводить.</p>
+        </div>
+        <span class="pair-number">17</span>
+      </section>
+
+      <!-- 51 · контроль -->
+      <section class="slide slide--question" data-kind="question" data-accent="pink">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Контроль · 5 минут</p>
+          <h1>Две из шести ссылок<br>размечены неправильно</h1>
+          <p class="question-hint">Найдите их и назовите, что именно сломано</p>
+        </div>
+        <span class="pair-number">18</span>
+      </section>
+      <!-- 52 · шесть ссылок -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Контроль · все шесть ведут на одну страницу и все шесть открываются</p>
+          <h2>Одна кампания, шесть каналов</h2>
+          <ol class="hunt">
+            <li>https://kolledzh.ru/kursy<em>?</em>utm_source=vk<em>&amp;</em>utm_medium=social<em>&amp;</em>utm_campaign=sept_open_2026</li>
+            <li>https://kolledzh.ru/kursy<em>?</em>utm_source=priem_email<em>&amp;</em>utm_medium=email<em>&amp;</em>utm_campaign=sept_open_2026</li>
+            <li>https://kolledzh.ru/kursy<em>?</em>utm_source=VK<em>&amp;</em>utm_medium=Social<em>&amp;</em>utm_campaign=Сентябрь 2026</li>
+            <li>https://kolledzh.ru/kursy<em>?</em>utm_source=afisha_qr<em>&amp;</em>utm_medium=qr<em>&amp;</em>utm_campaign=sept_open_2026</li>
+            <li>https://kolledzh.ru/kursy<em>?</em>utm_source=tg<em>&amp;</em>utm_medium=social<em>?</em>utm_campaign=sept_open_2026</li>
+            <li>https://kolledzh.ru/kursy<em>?</em>utm_source=partner_site<em>&amp;</em>utm_medium=referral<em>&amp;</em>utm_campaign=sept_open_2026</li>
+          </ol>
+          <p class="lead-in">Подсказка: одна ошибка — в написании значений, другая — в сборке самой ссылки. Вторую глазами заметить труднее.</p>
+        </div>
+        <span class="pair-number">18</span>
+      </section>
+      <!-- 53 · разбор контроля -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Контроль · разбор</p>
+          <h2>Ссылки 3 и 5</h2>
+          <div class="reds">
+            <div><b>№ 3 · три ошибки сразу</b><span>Прописные буквы в <code>VK</code> и <code>Social</code> — отдельные строки отчёта. Кириллица и пробел в <code>Сентябрь 2026</code> — значение уедет как <code>%D0%A1…%202026</code>. Значение <code>Social</code> не совпадёт с <code>social</code>, и канал попадёт в Unassigned</span></div>
+            <div><b>№ 5 · второй знак «?»</b><span>Вместо <code>&amp;</code> перед <code>utm_campaign</code> стоит <code>?</code>. Меток в такой ссылке не три, а две: <code>utm_medium</code> получает значение <code>social?utm_campaign=sept_open_2026</code>, а метки <code>utm_campaign</code> в адресе нет вовсе</span></div>
+          </div>
+          <p class="say">Остальные четыре собраны по справочнику. Строка&nbsp;4 с <code>utm_medium=qr</code> — не ошибка: значение согласовано, и мы заранее знаем, что готовый отчёт по каналам отнесёт эти переходы в Unassigned.</p>
+          <p class="lead-in">Ошибка в ссылке № 5 не видна в отчёте никак: там просто не будет строки по кампании. Именно поэтому ссылку проверяют до публикации, а не отчёт после.</p>
+        </div>
+        <span class="pair-number">18</span>
+      </section>
+
+      <!-- 54 · приёмка -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Приёмка · к концу пары</p>
+          <h2>Что должно быть сделано</h2>
+          <ul class="accept">
+            <li><b>Справочник меток</b> — четыре канала, для каждого три значения. Все значения проходят по шести правилам.</li>
+            <li><b>Таблица ссылок</b> — четыре собранных адреса целиком, рядом с каждым название канала.</li>
+            <li><b>Четыре тестовые заявки</b> — по одной на канал. У каждой в кадре видны <code>utm_source</code>, <code>utm_medium</code>, <code>utm_campaign</code>.</li>
+            <li><b>Один разбор поломки</b> — что испортили в пятой ссылке, что изменилось в <code>ep.*</code> и как это выглядело бы в отчёте.</li>
+            <li><b>Контрольный вопрос</b> — показать в Payload собственное событие и назвать, из какой части адреса взялось значение <code>ep.source</code>.</li>
+          </ul>
+        </div>
+        <span class="pair-number">19</span>
+      </section>
+
+      <!-- 55 · ДЗ -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Домашнее задание · два, с разными сроками</p>
+          <h2>Максим Николаевич не хочет задавать домашнее задание. Но очень хочет</h2>
+          <div class="hwpair">
+            <div class="hwcard">
+              <b>№ 1 · к занятию 3</b>
+              <strong>Справочник меток на свой проект</strong>
+              <ol>
+                <li>Расширить справочник до <b>восьми</b> каналов: добавить платное объявление, партнёрскую ссылку, подпись в письме и один канал на свой выбор.</li>
+                <li>Собрать восемь ссылок и проверить каждую: адресная строка и три поля <code>ep.*</code> в Payload.</li>
+                <li>Найти в интернете <b>три реальные размеченные ссылки</b> (рассылка, пост, объявление). Для каждой выписать значения меток и оценить по шести правилам: что сделано верно, что нарушено.</li>
+              </ol>
+              <p class="due">файл homework_02.md · ветка hw-03 · до занятия 3</p>
+            </div>
+            <div class="hwcard">
+              <b>№ 2 · разбор случая</b>
+              <strong>Что ещё дописывают в чужие ссылки</strong>
+              <ol>
+                <li>Метки <code>utm_*</code> ставит владелец ссылки. Но в адресах попадаются и чужие пары: <code>fbclid</code>, <code>gclid</code>, <code>yclid</code>, <code>_openstat</code>.</li>
+                <li>Выбрать одну из них и разобрать: кто её дописывает, в какой момент, что она содержит и кому доступна.</li>
+                <li>Свой замер: открыть пять ссылок из рассылок и соцсетей и выписать все пары, которые оказались в адресе помимо <code>utm_*</code>.</li>
+                <li>Источники: не менее трёх, хотя бы один — документация системы или отчёт регулятора.</li>
+              </ol>
+              <p class="due">файл research_02.md · ветка hw-03-research</p>
+            </div>
+          </div>
+          <p class="note">Порядок сдачи прежний: запрос на слияние в собственную ветку <code>main</code>, бланки — кнопка печати в PDF. Про ИИ: разметку, проверку в Payload и собственный замер делаете сами; модель допускается для формулировок и оформления. <mark>Я сам так делаю всегда, поэтому и вам запрещать не буду.</mark></p>
+        </div>
+        <span class="pair-number">ДЗ</span>
+      </section>
+
+      <!-- 56 · итог -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Итог занятия · и что дальше</p>
+          <h2>Долг с занятия 1 закрыт: источник доезжает до заявки целым</h2>
+          <div class="gap3">
+            <div><b>было</b><strong>(not set)</strong><span>источник заявки неизвестен</span></div>
+            <div><b>стало</b><strong>vk</strong><span>в событии и в строке таблицы</span></div>
+            <div><b>цена</b><strong>6</strong><span>правил справочника, которые надо соблюдать всем</span></div>
+          </div>
+          <p class="say">Разметка — единственный участок маршрута, где данные создаёт <b>человек, а не программа</b>. Всё остальное на этом пути работает само: браузер отдаёт адрес, счётчик читает метку, форма кладёт значение в скрытое поле, аналитика группирует строки. Поэтому и ошибки здесь человеческие — прописная буква, пробел, лишний знак вопроса, — а последствия у них машинные: строка в отчёте разделится надвое, и никто об этом не сообщит.</p>
+          <p class="say">На занятии 3 мы возьмём собранные вами заявки и займёмся тем, что происходит с ними дальше: как из потока заявок собирается отчёт, почему число в нём зависит от выбранного периода и что делать с теми переходами, у которых источник всё-таки остался неизвестным.</p>
+        </div>
+        <span class="pair-number">20</span>
+      </section>
+
+    </main>
+
+    <footer class="controls">
+      <button class="nav-button" id="prevButton" type="button" aria-label="Предыдущий слайд">←</button>
+      <div class="progress" id="progress" aria-hidden="true"></div>
+      <button class="nav-button" id="nextButton" type="button" aria-label="Следующий слайд">→</button>
+      <span class="key-hint">← → / пробел</span>
+    </footer>
+  </div>
+
+  <aside class="sources-panel" id="sourcesPanel" aria-hidden="true">
+    <div class="sources-backdrop" data-close-sources></div>
+    <div class="sources-sheet" role="dialog" aria-modal="true" aria-labelledby="sourcesTitle">
+      <button class="sources-close" type="button" data-close-sources aria-label="Закрыть">×</button>
+      <p class="eyebrow">Проверяемая основа занятия</p>
+      <h2 id="sourcesTitle">Источники</h2>
+      <ol>
+        <li><a href="https://en.wikipedia.org/wiki/UTM_parameters" target="_blank" rel="noreferrer"><strong>UTM parameters</strong><span>Пять параметров и их назначение: <code>utm_source</code>, <code>utm_medium</code>, <code>utm_campaign</code>, <code>utm_term</code>, <code>utm_content</code></span></a></li>
+        <li><a href="https://en.wikipedia.org/wiki/Urchin_(software)" target="_blank" rel="noreferrer"><strong>Urchin (software)</strong><span>Происхождение приставки: Urchin Software Corporation, покупка компании Google в апреле 2005 года, закрытие продукта в 2012 году</span></a></li>
+        <li><a href="https://datatracker.ietf.org/doc/html/rfc3986" target="_blank" rel="noreferrer"><strong>RFC 3986 · Uniform Resource Identifier</strong><span>Строение адреса: схема, узел, путь, строка запроса, фрагмент; процентное кодирование символов</span></a></li>
+        <li><a href="https://developer.mozilla.org/docs/Web/API/URLSearchParams" target="_blank" rel="noreferrer"><strong>MDN · URLSearchParams</strong><span>Разбор строки запроса в браузере; метод <code>get</code> и его поведение при отсутствии параметра</span></a></li>
+        <li><a href="https://developer.mozilla.org/docs/Web/API/Window/sessionStorage" target="_blank" rel="noreferrer"><strong>MDN · sessionStorage</strong><span>Хранилище вкладки: сохранение источника при переходе на внутренние страницы</span></a></li>
+        <li><a href="https://support.google.com/analytics/answer/9756891" target="_blank" rel="noreferrer"><strong>Google Analytics · группы каналов по умолчанию</strong><span>Значения <code>utm_medium</code>, по которым переходы распределяются по каналам; строка Unassigned</span></a></li>
+        <li><a href="https://developers.google.com/analytics/devguides/collection/protocol/ga4" target="_blank" rel="noreferrer"><strong>GA4 Measurement Protocol</strong><span>Параметры запроса сбора: <code>en</code>, <code>dl</code>, <code>ep.*</code> — используются здесь так же, как на занятии 1</span></a></li>
+        <li><a href="https://developer.mozilla.org/docs/Web/HTTP/Headers/Referer" target="_blank" rel="noreferrer"><strong>MDN · заголовок Referer</strong><span>Почему источник перехода нельзя определить автоматически и когда заголовок не передаётся</span></a></li>
+      </ol>
+      <p class="sources-note">Тема и результат занятия — из КТП дисциплины ОП.03, занятие 2. Все кадры панели Network и адресной строки сняты на учебном стенде <code>stend/index.html</code> в папке занятия. Числа в своде разметки — учебный пример. Полный конспект лекции — файл <code>LESSON.md</code>.</p>
+    </div>
+  </aside>
+
+  <div class="hw-sheet" id="homeworkSheet" aria-hidden="true">
+    <header class="hw-head">
+      <div>
+        <p class="hw-course">ОП.03 · Информационные технологии · 2 курс</p>
+        <h1>Занятие 2 · UTM-метки</h1>
+        <p class="hw-sub">Бланки для практической работы и домашнего задания</p>
+      </div>
+      <div class="hw-mark">И/Т</div>
+    </header>
+
+    <p class="hw-joke">Четыре ссылки собираются на паре, восемь — дома. Настоящие адреса, настоящие поля запроса.</p>
+
+    <h2>1. Справочник меток</h2>
+    <table class="hw-table">
+      <tr><th>Канал</th><th>utm_source</th><th>utm_medium</th><th>utm_campaign</th></tr>
+      <tr><td>1.</td><td></td><td></td><td></td></tr>
+      <tr><td>2.</td><td></td><td></td><td></td></tr>
+      <tr><td>3.</td><td></td><td></td><td></td></tr>
+      <tr><td>4.</td><td></td><td></td><td></td></tr>
+      <tr><td>5.</td><td></td><td></td><td></td></tr>
+      <tr><td>6.</td><td></td><td></td><td></td></tr>
+      <tr><td>7.</td><td></td><td></td><td></td></tr>
+      <tr><td>8.</td><td></td><td></td><td></td></tr>
+    </table>
+
+    <h2>2. Таблица собранных ссылок</h2>
+    <table class="hw-table">
+      <tr><th>№</th><th>Канал</th><th>Ссылка целиком</th></tr>
+      <tr><td>1</td><td></td><td></td></tr>
+      <tr><td>2</td><td></td><td></td></tr>
+      <tr><td>3</td><td></td><td></td></tr>
+      <tr><td>4</td><td></td><td></td></tr>
+    </table>
+
+    <h2>3. Проверка: что пришло в событие и в заявку</h2>
+    <table class="hw-table">
+      <tr><th>№</th><th>ep.source</th><th>ep.medium</th><th>ep.campaign</th><th>Заявка: поля заполнены?</th></tr>
+      <tr><td>1</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>2</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>3</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>4</td><td></td><td></td><td></td><td></td></tr>
+    </table>
+
+    <h2>4. Намеренная поломка</h2>
+    <table class="hw-table">
+      <tr><th>Что испортили в ссылке</th><th>Что изменилось в полях ep.*</th><th>Как это выглядело бы в отчёте</th></tr>
+      <tr><td></td><td></td><td></td></tr>
+    </table>
+
+    <h2>Понятия занятия</h2>
+    <dl class="hw-gloss">
+      <dt>Строка запроса</dt><dd>часть адреса после «?»: пары «имя=значение», разделённые «&amp;»</dd>
+      <dt>UTM-метка</dt><dd>пара в строке запроса с именем на utm_, описывающая источник перехода</dd>
+      <dt>utm_source</dt><dd>площадка, на которой стоит ссылка: где человек её увидел</dd>
+      <dt>utm_medium</dt><dd>способ доставки ссылки: social, email, cpc, referral, organic, affiliate</dd>
+      <dt>utm_campaign</dt><dd>повод публикации: мероприятие и период</dd>
+      <dt>Процентное кодирование</dt><dd>запись недопустимого в адресе символа кодом: пробел — %20, кириллица — %D0…</dd>
+      <dt>Скрытое поле</dt><dd>поле формы, невидимое посетителю; значение в него кладёт код страницы</dd>
+      <dt>Первое касание</dt><dd>правило: источником заявки считается ссылка, по которой человек попал на сайт</dd>
+    </dl>
+
+    <p class="hw-foot">Полный конспект лекции — LESSON.md в папке занятия. Порядок сдачи: файл lesson_03/utm_links.md, ветка hw-03, запрос на слияние в собственную ветку main. Справочник и четыре ссылки — к концу пары, домашнее задание — до занятия 3.</p>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
