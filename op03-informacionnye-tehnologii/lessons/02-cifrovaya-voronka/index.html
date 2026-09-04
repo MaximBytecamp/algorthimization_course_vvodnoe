@@ -277,6 +277,27 @@
     .reds span code { color: var(--brand-blue); font-weight: 700; }
     @media (max-width: 820px) { .reds > div { grid-template-columns: 1fr; gap: 4px; } }
 
+    /* --- пример: «вот так это выглядит на деле» --- */
+    .ex { margin-top: 1.4vh; display: grid; gap: 7px; max-width: 1040px; }
+    .ex > div { display: grid; grid-template-columns: 118px 1fr; gap: 12px; align-items: start;
+      padding: 8px 12px; border-left: 5px solid var(--brand-blue); background: #F2FAF8; }
+    .ex > div > b { color: var(--brand-blue); font: 700 10px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+    .ex > div > span { color: #33405A; font-size: clamp(12px, 1vw, 15px); line-height: 1.45; }
+    .ex code { color: var(--brand-ink); background: #E4F2EF; padding: 1px 5px; font-weight: 700;
+      font-family: var(--mono); font-size: .92em; }
+    .ex .was { color: #C0384A; } .ex .now { color: #137333; }
+    @media (max-width: 820px) { .ex > div { grid-template-columns: 1fr; gap: 3px; } }
+
+    /* --- код страницы рядом с полями запроса --- */
+    .src { margin-top: 1.4vh; display: grid; grid-template-columns: 1fr 34px 1fr; gap: 12px; align-items: center; }
+    .src pre { margin: 0; padding: 12px 14px; border: 3px solid var(--brand-ink); background: #071219; color: #C8DDD8;
+      font: 600 clamp(10px, .85vw, 13px)/1.65 var(--mono); white-space: pre; overflow-x: auto; box-shadow: 4px 4px 0 var(--brand-ink); }
+    .src pre em { color: #6BE3CE; font-style: normal; }
+    .src pre i { color: #7C8896; font-style: normal; }
+    .src > i { display: grid; place-items: center; color: var(--brand-blue); font: 800 18px/1 var(--mono); font-style: normal; }
+    .src__cap { margin-top: 6px; color: #7C8896; font: 600 10.5px/1.4 var(--mono); }
+    @media (max-width: 900px) { .src { grid-template-columns: 1fr; } .src > i { transform: rotate(90deg); } }
+
     /* --- меню тем исследования --- */
     .cases { margin-top: 1.4vh; display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
     .cases > article { padding: 8px 10px; border: 2px solid var(--brand-ink); background: #fff; }
@@ -321,7 +342,7 @@
       <div class="chrome-right">
         <button class="icon-button" id="sourcesButton" type="button" aria-label="Открыть источники">S</button>
         <button class="icon-button" id="fullscreenButton" type="button" aria-label="Полноэкранный режим">⛶</button>
-        <span class="counter"><span id="currentNumber">01</span><i>/</i><span id="totalNumber">54</span></span>
+        <span class="counter"><span id="currentNumber">01</span><i>/</i><span id="totalNumber">58</span></span>
       </div>
     </header>
 
@@ -652,6 +673,59 @@ _et=3758</div>
         <span class="pair-number">11</span>
       </section>
 
+      <!-- 26b · проверяем на примерах -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · шаг 3 · проверка на примерах</p>
+          <h2>Измените одно — и увидите, какое поле поменялось</h2>
+          <div class="ex">
+            <div><b>en</b><span>Нажали кнопку, но форму не отправили → уйдёт <code>en=select_content</code>, а не <span class="now">generate_lead</span>. Имя события меняется от того, <b>какое действие</b> вы сделали.</span></div>
+            <div><b>dl</b><span>Открыли <code>/lp</code> → <span class="was">dl=…/lp</span>. Открыли <code>/lp?utm_source=vk</code> → <span class="now">dl=…/lp?utm_source=vk</span>. Поле повторяет адресную строку <b>символ в символ</b>.</span></div>
+            <div><b>ep.source</b><span>Меняем в ссылке <code>utm_source=college</code> на <code>utm_source=vk</code> → в запросе станет <span class="now">ep.source=vk</span>. Убрали метку совсем → <span class="was">ep.source=(not set)</span>.</span></div>
+            <div><b>dt</b><span>Поменяли в вёрстке <code>&lt;title&gt;</code> с «Курс…» на «Оставить заявку» → в следующем запросе <code>dt</code> будет уже новым. Значение берётся в момент отправки.</span></div>
+            <div><b>ep.form_id</b><span>Добавили на страницу вторую форму с <code>id="lead_footer"</code> → заявки из неё придут с <span class="now">ep.form_id=lead_footer</span>. Так их и различают в отчёте.</span></div>
+            <div><b>_et</b><span>Отправили сразу → около <span class="was">_et=800</span>. Почитали страницу две минуты → <span class="now">_et=120000</span>. Секунды бездействия сюда не попадают.</span></div>
+          </div>
+        </div>
+        <span class="pair-number">11</span>
+      </section>
+
+      <!-- 26c · код страницы → поля запроса -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · шаг 3 · откуда это в коде</p>
+          <h2>Слева — код учебного стенда, справа — что улетело</h2>
+          <div class="src">
+            <div>
+              <pre>form.addEventListener(<i>'submit'</i>, () =&gt; {
+  gtag(<i>'event'</i>, <em>'generate_lead'</em>, {
+    form_id: <em>'lead_main'</em>,
+    source:  currentSource(),
+    value:   <em>0</em>,
+    currency:<em>'RUB'</em>
+  });
+});
+
+<i>// currentSource() — это буквально:</i>
+new URLSearchParams(location.search)
+      .get(<em>'utm_source'</em>) || <em>'(not set)'</em></pre>
+              <p class="src__cap">stend/index.html</p>
+            </div>
+            <i>→</i>
+            <div>
+              <pre><em>en</em>=generate_lead
+<em>ep.form_id</em>=lead_main
+<em>ep.source</em>=college
+<em>epn.value</em>=0
+<em>ep.currency</em>=RUB</pre>
+              <p class="src__cap">вкладка Payload</p>
+            </div>
+          </div>
+          <p class="say">Второй аргумент <code class="k">gtag('event', …)</code> становится параметром <code class="k">en</code>. Каждый ключ объекта — отдельным полем: строка превращается в <code class="k">ep.имя</code>, число — в <code class="k">epn.имя</code>. Никакой магии: что программист написал в объекте, то и уходит в запросе.</p>
+        </div>
+        <span class="pair-number">11</span>
+      </section>
+
       <!-- 26b · служебные поля -->
       <section class="slide slide--answer" data-kind="answer" data-accent="pink">
         <div class="slide-inner wrap">
@@ -665,7 +739,25 @@ _et=3758</div>
             <div class="derive__r"><code>ul=ru-ru · sr=1470x956</code><i>←</i><span>язык браузера и разрешение экрана. Браузер сообщает их сам, не спрашивая</span></div>
             <div class="derive__r"><code>_s=5</code><i>←</i><span>порядковый номер запроса в этом визите: это пятое событие подряд</span></div>
           </div>
-          <p class="say">Разница принципиальная. Верхняя группа с прошлого экрана — <b>про действие</b>: её задаёт сайт. Эта группа — <b>про вас и ваш браузер</b>: она уходит автоматически при любом событии, даже если сайт ничего специально не настраивал.</p>
+          <p class="say">Разница принципиальная. Поля с прошлых экранов — <b>про действие</b>: их задаёт сайт. Эта группа — <b>про вас и ваш браузер</b>: она уходит автоматически при любом событии, даже если сайт ничего специально не настраивал.</p>
+        </div>
+        <span class="pair-number">11</span>
+      </section>
+
+      <!-- 27b · служебные поля на примерах -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · шаг 3 · служебные поля на примерах</p>
+          <h2>Что нужно сделать, чтобы каждое из них изменилось</h2>
+          <div class="ex">
+            <div><b>cid</b><span>Открыть тот же сайт в <b>приватном окне</b> → будет другой <code>cid</code>. Для аналитики это <b>другой человек</b>, хотя за компьютером тот же вы. Очистили cookie — то же самое.</span></div>
+            <div><b>sid</b><span>Ушли со страницы и вернулись через <b>40 минут</b> → <code>cid</code> тот же, а <code>sid</code> новый: начался новый визит. Вернулись через 5 минут — визит продолжается.</span></div>
+            <div><b>sct</b><span>Первый заход — <span class="was">sct=1</span>. Зашли на следующий день — <span class="now">sct=2</span>. По этому полю отличают новых посетителей от вернувшихся.</span></div>
+            <div><b>sr</b><span>На ноутбуке <code>sr=1470x956</code>, на телефоне будет что-то вроде <code>sr=390x844</code>. Отсюда в отчётах берётся разбивка по устройствам.</span></div>
+            <div><b>ul</b><span>Переключили язык браузера на английский → <code>ul=en-us</code>. Поле про <b>настройку браузера</b>, а не про язык страницы.</span></div>
+            <div><b>_s</b><span>Первое событие визита — <span class="was">_s=1</span>, пятое — <span class="now">_s=5</span>. Если в панели видно <code>_s=1</code> у события в середине визита, значит счётчик перезапустился.</span></div>
+          </div>
+          <p class="lead-in">Проверьте на паре: откройте стенд в обычном и приватном окне и сравните <code class="k">cid</code> в двух запросах.</p>
         </div>
         <span class="pair-number">11</span>
       </section>
@@ -903,7 +995,21 @@ _et=3758</div>
               <p>В <code class="k">direct</code> попадают мессенджеры, приложения, письма без меток — недоразмеченный трафик.</p>
             </div>
           </div>
-          <p class="lead-in">Это причины со стороны разметки. Но цифры расходятся и по техническим причинам — их разберём на следующем экране.</p>
+        </div>
+        <span class="pair-number">15</span>
+      </section>
+
+      <!-- 41b · как заметить и как починить -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Те же три ловушки · как заметить и как починить</p>
+          <h2>Разбор по одной</h2>
+          <div class="ex">
+            <div><b>Регистр</b><span><b>Пример.</b> Кампания дала 16 переходов, но в отчёте три строки по 8, 5 и 3 — и ни одна не выглядит успешной.<br><b>Как заметить:</b> отсортируйте источники по алфавиту — одинаковые слова с разным регистром встанут рядом.<br><b>Как починить:</b> справочник меток, все значения только строчными; при приёме заявки приводить <code>source</code> к нижнему регистру.</span></div>
+            <div><b>(not set)</b><span><b>Пример.</b> 47 % заявок без источника. Похоже, что «половина людей приходит ниоткуда».<br><b>Как заметить:</b> сравните долю <code>(not set)</code> по дням — если она скакнула, значит где-то потеряли метку.<br><b>Как починить:</b> найти, на каком переходе теряется: метка была в ссылке, но не дошла до формы, или форма не передала поле в таблицу.</span></div>
+            <div><b>direct</b><span><b>Пример.</b> 61 % «прямых заходов» у сайта, который нигде не рекламируется офлайн.<br><b>Как заметить:</b> посмотрите, есть ли у этих визитов referrer — если пусто и переходов много, это не лояльность.<br><b>Как починить:</b> размечать ссылки в рассылках, мессенджерах, QR-кодах и документах — там метки теряются чаще всего.</span></div>
+          </div>
+          <p class="lead-in">Это причины со стороны разметки. Дальше — технические причины, из-за которых цифры не сойдутся даже при идеальных метках.</p>
         </div>
         <span class="pair-number">15</span>
       </section>
