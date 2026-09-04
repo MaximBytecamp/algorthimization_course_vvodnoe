@@ -116,10 +116,15 @@
     .versus b { display: block; font: 700 10px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .07em;
       color: #137333; }
     .versus > figure.bad b { color: #C0384A; }
-    .versus img { display: block; margin-top: 9px; width: 100%; max-height: 30vh; object-fit: contain;
-      object-position: left top; border: 2px solid var(--brand-ink); background: #1f1f1f; }
+    /* Ширина по картинке, а не по колонке: кадры здесь разной формы — широкая
+       адресная строка и вытянутая форма. При width:100% у вертикальных кадров
+       по бокам оставался фон подложки. */
+    .versus img { display: block; margin-top: 9px; width: auto; max-width: 100%; max-height: 30vh;
+      border: 2px solid var(--brand-ink); background: #fff; }
     .versus figcaption { margin-top: 8px; color: #5A6183; font-size: clamp(11px, .92vw, 14px); line-height: 1.4; }
     .versus figcaption code { color: var(--brand-blue); font-weight: 700; font-family: var(--mono); }
+    /* широкие кадры вроде адресной строки в две колонки нечитаемы — им нужна вся ширина */
+    .versus.stack { grid-template-columns: 1fr; }
     @media (max-width: 900px) { .versus { grid-template-columns: 1fr; } }
 
     /* --- перенесено из занятия 1: формы, которые здесь работают так же ------ */
@@ -222,6 +227,13 @@
       color: #5A6183; font: 600 10.5px/1.4 var(--mono); }
     @media (max-width: 820px) { .hwpair { grid-template-columns: 1fr; } }
 
+    /* строка, которую студент набирает руками: крупно, целиком, без переносов слов */
+    .typeline { margin-top: 1.6vh; max-width: 1040px; padding: 14px 16px; border: 3px solid var(--brand-ink);
+      background: #071219; box-shadow: 5px 5px 0 var(--brand-ink); color: #6BE3CE;
+      font: 700 clamp(11px, 1.05vw, 16px)/1.5 var(--mono); overflow-wrap: break-word; }
+    .typeline .dim { color: #7C8896; }
+    .typeline__cap { margin-top: 8px; color: #7C8896; font: 600 clamp(10px, .88vw, 12px)/1.45 var(--mono); }
+
     /* кнопка печати бланков: window.print() вызывает script.js по id */
     .pdf-button { align-self: flex-start; margin-top: 1.6vh; padding: 11px 20px; border: 3px solid var(--brand-ink);
       background: var(--brand-blue); color: #fff; box-shadow: 4px 4px 0 var(--brand-ink);
@@ -307,7 +319,7 @@
       <div class="chrome-right">
         <button class="icon-button" id="sourcesButton" type="button" aria-label="Открыть источники">S</button>
         <button class="icon-button" id="fullscreenButton" type="button" aria-label="Полноэкранный режим">⛶</button>
-        <span class="counter"><span id="currentNumber">01</span><i>/</i><span id="totalNumber">56</span></span>
+        <span class="counter"><span id="currentNumber">01</span><i>/</i><span id="totalNumber">62</span></span>
       </div>
     </header>
 
@@ -336,9 +348,125 @@
             <figure><img src="../02-cifrovaya-voronka/shots/source-compare.png" alt="Событие generate_lead с меткой utm_source и без неё"><figcaption>кадр с занятия 1: слева переход по размеченной ссылке, справа — по обычной</figcaption></figure>
             <figure><img src="shots/saved-plain.png" alt="Сохранённая заявка, у которой все поля источника имеют значение (not set)"><figcaption>чем это оборачивается в заявке: источник неизвестен</figcaption></figure>
           </div>
-          <p class="lead-in">Сегодня разбираем, как устроена размеченная ссылка, и доводим источник от неё до строки в таблице заявок.</p>
+          <p class="lead-in">Начнём не с определений: сначала семь минут за клавиатурой, чтобы увидеть результат, и только потом разберём, из чего он складывается.</p>
         </div>
         <span class="pair-number">01</span>
+      </section>
+
+
+      <!-- П1 · заставка быстрой практики -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">За клавиатуру · 7 минут · до всякой теории</p>
+          <h2>Сначала посмотрим, как это работает, — разбираться будем потом</h2>
+          <p class="say">Тему проще понять, когда уже видел результат своими глазами. Поэтому начнём не с определений, а с семи минут работы руками: откроем учебный стенд, допишем к его адресу три пары и посмотрим, что от этого изменится в заявке и в запросе.</p>
+          <ol class="steps">
+            <li>Отправить форму <b>как есть</b> и посмотреть на сохранённую заявку.</li>
+            <li>Дописать в адрес три пары и нажать <code>Enter</code>.</li>
+            <li>Пролистать до формы и сравнить строку под ней с тем, что было.</li>
+            <li>Отправить форму ещё раз — и сравнить две заявки.</li>
+            <li>Открыть <b>Network</b> → <b>Payload</b> и найти там те же три значения.</li>
+          </ol>
+          <p class="lead-in">Адрес стенда выдаётся на занятии. Данные в форму — только тестовые: условное имя, учебный адрес почты, пометка «проверка».</p>
+        </div>
+        <span class="pair-number">ПР</span>
+      </section>
+
+      <!-- П2 · шаг 1 -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Шаг 1 из 5 · как есть</p>
+          <h2>Открыть стенд по обычной ссылке и отправить форму</h2>
+          <div class="figrow">
+            <figure><img src="shots/stend-hero.png" alt="Учебный стенд: страница курса с кнопкой «Оставить заявку»"><figcaption>1. обычная страница курса, никаких меток в адресе</figcaption></figure>
+            <figure><img src="shots/saved-plain.png" alt="Сохранённая заявка: три поля источника со значением (not set)"><figcaption>2. заявка сохранена — и три поля источника пусты</figcaption></figure>
+          </div>
+          <p class="say">Имя и контакт на месте, заявка полноценная. А вот откуда пришёл человек — неизвестно: во всех трёх полях источника стоит <code>(not set)</code>. Ровно это мы и видели на занятии 1, только там смотрели на поле <code>ep.source</code> в запросе, а здесь — на строку таблицы.</p>
+        </div>
+        <span class="pair-number">ПР</span>
+      </section>
+
+      <!-- П3 · шаг 2 -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Шаг 2 из 5 · дописать в адрес</p>
+          <h2>Добавить к адресу три пары и нажать <code class="k">Enter</code></h2>
+          <p class="say">Щёлкнуть по адресной строке, поставить курсор в самый конец адреса и дописать то, что ниже. Пробелов внутри быть не должно — набирайте одной строкой.</p>
+          <div class="typeline"><span class="dim">адрес_стенда</span>?utm_source=vk&amp;utm_medium=social&amp;utm_campaign=sept_open_2026</div>
+          <p class="typeline__cap">после ввода — Enter, страница перезагрузится</p>
+          <figure class="figreal">
+            <img src="shots/url-bar.png" alt="Адресная строка браузера с тремя дописанными парами">
+            <figcaption>так адресная строка выглядит <b>после</b> перезагрузки</figcaption>
+          </figure>
+          <p class="say">Обратите внимание: страница не изменилась. Тот же заголовок, та же кнопка, та же форма. Довесок в адресе на содержимое страницы не влияет.</p>
+        </div>
+        <span class="pair-number">ПР</span>
+      </section>
+
+      <!-- П4 · шаг 3 -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Шаг 3 из 5 · сравнить строку под формой</p>
+          <h2>Форма та же, а под ней кое-что поменялось</h2>
+          <div class="versus">
+            <figure class="bad">
+              <b>до того, как дописали</b>
+              <img src="shots/form-plain.png" alt="Форма стенда и строка под ней: три значения (not set)">
+              <figcaption>Три поля со значением <code>(not set)</code>. Форму никто не трогал — значения появились сами при загрузке страницы.</figcaption>
+            </figure>
+            <figure>
+              <b>после того, как дописали</b>
+              <img src="shots/form-tagged.png" alt="Та же форма, строка под ней: vk, social, sept_open_2026">
+              <figcaption>Те же три поля, но со значениями из адреса. Ни одно из полей формы посетитель не заполнял.</figcaption>
+            </figure>
+          </div>
+          <p class="lead-in">Строка под формой — учебная: на настоящем сайте её нет. Она показывает, что лежит в полях, которых посетитель не видит.</p>
+        </div>
+        <span class="pair-number">ПР</span>
+      </section>
+
+      <!-- П5 · шаг 4 -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Шаг 4 из 5 · отправить ещё раз</p>
+          <h2>Две заявки с одной и той же формы</h2>
+          <div class="versus">
+            <figure class="bad">
+              <b>первая отправка · без довеска</b>
+              <img src="shots/saved-plain.png" alt="Заявка без источника: три значения (not set)">
+              <figcaption>Источник неизвестен. Через месяц по такой строке нельзя сказать, откуда пришёл человек.</figcaption>
+            </figure>
+            <figure>
+              <b>вторая отправка · с довеском</b>
+              <img src="shots/saved-tagged.png" alt="Заявка с источником: vk, social, sept_open_2026">
+              <figcaption>Источник записан. Заявку можно отнести к каналу и посчитать в отчёте по кампании.</figcaption>
+            </figure>
+          </div>
+          <p class="say">Разница между этими двумя строками — <b>единственное</b>, чего мы добились дописыванием трёх пар в адрес. Ни форма, ни страница, ни код сайта при этом не менялись.</p>
+        </div>
+        <span class="pair-number">ПР</span>
+      </section>
+
+      <!-- П6 · шаг 5 и мост в разбор -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Шаг 5 из 5 · и что дальше</p>
+          <h2>Те же три значения — в запросе события</h2>
+          <div class="pane">
+            <figure>
+              <img src="shots/payload-ep-good.png" alt="Вкладка Payload: поля ep.source, ep.medium, ep.campaign">
+              <figcaption>Network → фильтр collect → строка generate_lead → Payload</figcaption>
+            </figure>
+            <div class="fields">
+              <div class="key"><b>ep.source = vk</b><span>то самое поле, которое на занятии 1 приходило пустым</span></div>
+              <div class="key"><b>ep.medium = social</b><span>появилось оттуда же — из адреса</span></div>
+              <div class="key"><b>ep.campaign = sept_open_2026</b><span>и третье значение доехало целиком</span></div>
+              <div><b>что получилось</b><span>одна и та же надпись дошла до <b>двух</b> разных мест: до строки заявки и до поля события</span></div>
+            </div>
+          </div>
+          <p class="say">Вы это сделали — теперь разберём, почему сработало. Дальше по порядку: из чего вообще состоит ссылка, почему сайт не спотыкается о незнакомый довесок, что означают имена <code>utm_source</code>, <code>utm_medium</code>, <code>utm_campaign</code> и по каким правилам подбирают их значения, чтобы отчёт не рассыпался на четыре строки вместо одной.</p>
+        </div>
+        <span class="pair-number">ПР</span>
       </section>
 
       <!-- 03 Q -->
@@ -346,7 +474,7 @@
         <div class="slide-inner question-layout">
           <p class="eyebrow">Вопрос 1</p>
           <h1>Почему браузер вообще<br>не знает, откуда пришёл человек?</h1>
-          <p class="question-hint">Казалось бы, эти данные должны быть у него</p>
+          <p class="question-hint">Источник мы только что вписали руками. А взять его готовым было нельзя?</p>
         </div>
         <span class="pair-number">02</span>
       </section>
@@ -367,7 +495,7 @@
         <div class="slide-inner question-layout">
           <p class="eyebrow">Вопрос 2</p>
           <h1>Из чего вообще<br>состоит ссылка?</h1>
-          <p class="question-hint">Разберём адрес по частям, прежде чем что-то в него дописывать</p>
+          <p class="question-hint">Три пары мы в адрес уже дописали — теперь разберём, куда именно</p>
         </div>
         <span class="pair-number">03</span>
       </section>
@@ -836,7 +964,7 @@ gtag(<i>'event'</i>, <em>'generate_lead'</em>, {
         <div class="slide-inner wrap">
           <p class="eyebrow">Ответ · ошибка 3 · кириллица · настоящий кадр со стенда</p>
           <h2>Что делается со ссылкой, размеченной по-русски</h2>
-          <div class="versus">
+          <div class="versus stack">
             <figure>
               <b>по справочнику</b>
               <img src="shots/url-bar.png" alt="Адресная строка: utm_source=vk, utm_medium=social, utm_campaign=sept_open_2026">
@@ -1107,7 +1235,7 @@ document.getElementById(<em>'utm_campaign'</em>)
       <!-- 49 · демонстрация -->
       <section class="slide slide--answer" data-kind="answer" data-accent="orange">
         <div class="slide-inner wrap">
-          <p class="eyebrow">Демонстрация · преподаватель · 10 минут</p>
+          <p class="eyebrow">Демонстрация · преподаватель · 7 минут</p>
           <h2>Проводим одно значение от ссылки до строки заявки</h2>
           <ol class="steps">
             <li>Открыть стенд <b>без метки</b> → <code>F12</code> → <b>Network</b>, фильтр <code>collect</code>. Отправить форму → в заявке три <code>(not set)</code>.</li>
@@ -1125,13 +1253,13 @@ document.getElementById(<em>'utm_campaign'</em>)
       <!-- 50 · практика -->
       <section class="slide slide--answer" data-kind="answer" data-accent="orange">
         <div class="slide-inner wrap">
-          <p class="eyebrow">Практическая работа · 45 минут · индивидуально или в паре</p>
+          <p class="eyebrow">Практическая работа · 28 минут · индивидуально или в паре</p>
           <h2>Собрать четыре ссылки и довезти источник до заявки</h2>
           <ol class="steps">
-            <li><b>Заполнить справочник</b> (10 мин). Четыре канала своей учебной кампании: для каждого — <code>utm_source</code>, <code>utm_medium</code>, <code>utm_campaign</code>. Значения по шести правилам, <code>utm_medium</code> из списка.</li>
-            <li><b>Собрать ссылки</b> (10 мин). Четыре адреса стенда с довесками из своей таблицы. Записать каждый в файл целиком, а не «как в третьей строке».</li>
-            <li><b>Открыть и проверить</b> (15 мин). По каждой ссылке: адресная строка → <b>Payload</b> → три поля <code>ep.*</code>. Отправить форму → снять кадр сохранённой заявки.</li>
-            <li><b>Сломать намеренно</b> (10 мин). Взять пятую ссылку и испортить одним способом из реестра. Открыть, зафиксировать, чем именно отличается результат, и как это выглядело бы в отчёте.</li>
+            <li><b>Заполнить справочник</b> (8 мин). Четыре канала своей учебной кампании: для каждого — <code>utm_source</code>, <code>utm_medium</code>, <code>utm_campaign</code>. Значения по шести правилам, <code>utm_medium</code> из списка.</li>
+            <li><b>Собрать ссылки</b> (7 мин). Четыре адреса стенда с довесками из своей таблицы. Записать каждый в файл целиком, а не «как в третьей строке».</li>
+            <li><b>Открыть и проверить</b> (8 мин). По каждой ссылке: адресная строка → <b>Payload</b> → три поля <code>ep.*</code>. Отправить форму → снять кадр сохранённой заявки.</li>
+            <li><b>Сломать намеренно</b> (5 мин). Взять пятую ссылку и испортить одним способом из реестра. Открыть, зафиксировать, чем именно отличается результат, и как это выглядело бы в отчёте.</li>
           </ol>
           <p class="lead-in">Тестовые данные в форме: условное имя, учебный адрес почты, пометка «проверка». Настоящие персональные данные не вводить.</p>
         </div>
