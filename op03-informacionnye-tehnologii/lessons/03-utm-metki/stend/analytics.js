@@ -1,14 +1,28 @@
 /* Учебный аналог gtag.js для занятия 2. Отличие от стенда занятия 1: из адреса
    вырезается не только utm_source, но и utm_medium с utm_campaign, а первое
    значение запоминается в sessionStorage — чтобы метка не потерялась при переходе
-   на вторую страницу сайта. Запрос строится в формате Measurement Protocol (GA4,
-   версия 2) и уходит через navigator.sendBeacon. Настоящий gtag.js делает то же
-   самое, только адрес приёмника — google-analytics.com. */
+   на вторую страницу сайта. Строка параметров собирается в формате Measurement
+   Protocol (GA4, версия 2) — те же поля, что уходят с настоящего сайта.
+
+   Как событие отправляется. Настоящий gtag.js делает POST на
+   google-analytics.com/g/collect через navigator.sendBeacon. Учебному стенду это
+   не подходит: его открывают через Live Server, «python3 -m http.server» и другие
+   раздатчики статики, а они адреса /g/collect не знают и на POST отвечают 404 или
+   405 — строки в панели Network краснеют, будто стенд сломан.
+
+   Поэтому стенд отправляет событие запросом картинки: браузер загружает
+   прозрачный пиксель 1x1 (g/collect.gif), а все поля события едут в строке
+   запроса этой картинки. Так работали счётчики до появления sendBeacon — на
+   занятии 1 мы разбирали этот способ под названием «отслеживающий пиксель»,
+   и часть рекламных счётчиков пользуется им до сих пор. Файл существует,
+   поэтому любой сервер отвечает на такой запрос кодом 200. */
 (function () {
   var TID = 'G-4EXAMPLE99';
-  var ENDPOINT = (location.protocol === 'file:')
+  // Открытый файлом стенд слать некуда — используем настоящий адрес Google.
+  var VIA_FILE = location.protocol === 'file:';
+  var ENDPOINT = VIA_FILE
     ? 'https://www.google-analytics.com/g/collect'
-    : '/g/collect';
+    : 'g/collect.gif';
 
   function rnd(n) { var s = ''; while (s.length < n) s += Math.floor(Math.random() * 36).toString(36); return s; }
 
@@ -92,8 +106,14 @@
     });
     q.set('_et', String(Math.round(performance.now() - loadTs)));
     var url = ENDPOINT + '?' + q.toString();
-    if (navigator.sendBeacon) navigator.sendBeacon(url);
-    else fetch(url, { method: 'POST', keepalive: true });
+    if (VIA_FILE) {
+      // Настоящий приёмник: как это делает gtag.js на живом сайте.
+      if (navigator.sendBeacon) navigator.sendBeacon(url);
+      else fetch(url, { method: 'POST', keepalive: true });
+    } else {
+      // Запрос картинки: параметры события лежат в её адресе.
+      new Image().src = url;
+    }
   }
 })();
 
