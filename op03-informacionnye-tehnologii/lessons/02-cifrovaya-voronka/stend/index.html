@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Курс «Аналитика с нуля» — учебный стенд</title>
+
+  <!-- Учебный аналог gtag.js. Строит запрос /g/collect в формате Measurement Protocol
+       (GA4, версия 2) и отправляет его через navigator.sendBeacon на тот же origin.
+       Настоящий gtag.js делает ровно то же самое, только адрес — google-analytics.com. -->
+  <script>
+    (function () {
+      var TID = 'G-4EXAMPLE99';
+      // Если стенд открыт как файл (file://), слать некуда — используем настоящий
+      // адрес Google Analytics: он принимает запрос и отвечает 204, как на любом сайте.
+      // Если стенд отдаётся сервером (localhost), шлём на свой /g/collect — работает без интернета.
+      var ENDPOINT = (location.protocol === 'file:')
+        ? 'https://www.google-analytics.com/g/collect'
+        : '/g/collect';
+      function rnd(n){ var s=''; while(s.length<n) s+=Math.floor(Math.random()*36).toString(36); return s; }
+      var cid = localStorage.getItem('_ga_cid');
+      if (!cid) { cid = Math.floor(Date.now()/1000) + '.' + Math.floor(1e9*Math.random()); localStorage.setItem('_ga_cid', cid); }
+      var sid = String(Math.floor(Date.now()/1000));
+      var loadTs = performance.now();
+      var seq = 0;
+
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function () {
+        var a = arguments;
+        window.dataLayer.push(a);
+        if (a[0] === 'event') sendCollect(a[1], a[2] || {});
+        if (a[0] === 'config') sendCollect('page_view', {});
+      };
+
+      function sendCollect(name, params) {
+        seq += 1;
+        var q = new URLSearchParams();
+        q.set('v', '2');
+        q.set('tid', TID);
+        q.set('gtm', '45je' + rnd(4) + 'v' + (89000 + seq));
+        q.set('_p', String(Math.floor(1e9 * Math.random())));
+        q.set('cid', cid);
+        q.set('ul', (navigator.language || 'ru-ru').toLowerCase());
+        q.set('sr', screen.width + 'x' + screen.height);
+        q.set('_s', String(seq));
+        q.set('sid', sid);
+        q.set('sct', '1');
+        q.set('seg', '1');
+        q.set('dl', location.href);
+        if (document.referrer) q.set('dr', document.referrer);
+        q.set('dt', document.title);
+        q.set('en', name);
+        Object.keys(params).forEach(function (k) {
+          var v = params[k];
+          if (typeof v === 'number') q.set('epn.' + k, String(v));
+          else q.set('ep.' + k, String(v));
+        });
+        q.set('_et', String(Math.round(performance.now() - loadTs)));
+        var url = ENDPOINT + '?' + q.toString();
+        if (navigator.sendBeacon) navigator.sendBeacon(url);
+        else fetch(url, { method: 'POST', keepalive: true });
+      }
+    })();
+
+    gtag('js', new Date());
+    gtag('config', 'G-4EXAMPLE99');
+
+    function currentSource(){
+      const p = new URLSearchParams(location.search);
+      return p.get('utm_source') || '(not set)';
+    }
+    let scrollFired = false;
+    addEventListener('scroll', () => {
+      const d = document.documentElement;
+      const pct = (d.scrollTop + d.clientHeight) / d.scrollHeight;
+      if (!scrollFired && pct > 0.85) {
+        scrollFired = true;
+        gtag('event', 'scroll', { percent_scrolled: 90 });
+      }
+    }, { passive: true });
+  </script>
+
+  <style>
+    :root { --ink:#111827; --blue:#2563eb; --paper:#f8fafc; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: -apple-system, Segoe UI, Roboto, sans-serif; color: var(--ink); background: var(--paper); }
+    .hero { padding: 72px 24px 56px; text-align:center; background: linear-gradient(180deg,#eef2ff,#f8fafc); }
+    .hero h1 { margin:0 0 12px; font-size: clamp(28px,5vw,46px); letter-spacing:-.02em; }
+    .hero p { margin:0 auto 28px; max-width: 620px; color:#475569; font-size: 18px; line-height:1.5; }
+    .cta { display:inline-block; padding:16px 32px; border:0; border-radius:10px; background: var(--blue); color:#fff;
+      font-size:17px; font-weight:600; cursor:pointer; }
+    .block { max-width: 760px; margin: 0 auto; padding: 40px 24px; }
+    .block h2 { font-size: 24px; }
+    .block p { color:#475569; line-height:1.6; }
+    .spacer { height: 900px; background: repeating-linear-gradient(180deg,#f8fafc 0 40px,#eef2ff 40px 80px); }
+    form { max-width: 460px; margin: 0 auto; display:grid; gap:14px; background:#fff; padding:28px; border:1px solid #e2e8f0; border-radius:14px; }
+    form h2 { margin:0; }
+    label { font-weight:600; font-size:14px; }
+    input, textarea { width:100%; padding:12px; border:1px solid #cbd5e1; border-radius:8px; font: inherit; }
+    button[type=submit] { padding:14px; border:0; border-radius:8px; background: var(--blue); color:#fff; font-weight:600; font-size:16px; cursor:pointer; }
+    .thanks { display:none; max-width:460px; margin:0 auto; padding:28px; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:14px; text-align:center; }
+    .thanks.on { display:block; }
+    footer { padding: 40px 24px; text-align:center; color:#94a3b8; font-size:13px; }
+  </style>
+</head>
+<body>
+
+  <section class="hero">
+    <h1>Курс «Веб-аналитика с нуля»</h1>
+    <p>Четыре занятия, живой проект и разбор реальных данных. Оставьте заявку — пришлём программу и расписание.</p>
+    <button class="cta" id="cta" type="button">Оставить заявку</button>
+  </section>
+
+  <div class="block">
+    <h2>Что внутри</h2>
+    <p>Как устроена цифровая воронка, откуда берутся события, как читать отчёты и не обманываться цифрами. Много практики: каждый участник собирает собственную воронку и дашборд.</p>
+  </div>
+
+  <div class="spacer" aria-hidden="true"></div>
+
+  <div class="block">
+    <h2>Оставить заявку</h2>
+    <form id="lead">
+      <div><label for="name">Имя</label><input id="name" name="name" autocomplete="off"></div>
+      <div><label for="contact">Телефон или e-mail</label><input id="contact" name="contact" autocomplete="off"></div>
+      <div><label for="msg">Комментарий</label><textarea id="msg" name="msg" rows="3"></textarea></div>
+      <button type="submit">Отправить</button>
+    </form>
+    <div class="thanks" id="thanks">Заявка принята. Мы свяжемся с вами в течение дня.</div>
+  </div>
+
+  <footer>Учебный стенд дисциплины ОП.03. Идентификатор аналитики учебный, данные не сохраняются.</footer>
+
+  <script>
+    const cta = document.getElementById('cta');
+    const form = document.getElementById('lead');
+    const thanks = document.getElementById('thanks');
+    let formStarted = false;
+
+    cta.addEventListener('click', () => {
+      gtag('event', 'select_content', { content_type: 'cta', item_id: 'lead_button' });
+      document.getElementById('lead').scrollIntoView({ behavior: 'smooth' });
+    });
+
+    form.addEventListener('focusin', () => {
+      if (formStarted) return;
+      formStarted = true;
+      gtag('event', 'form_start', { form_id: 'lead_main' });
+    });
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      gtag('event', 'generate_lead', {
+        form_id: 'lead_main',
+        source: currentSource(),
+        value: 0,
+        currency: 'RUB'
+      });
+      form.style.display = 'none';
+      thanks.classList.add('on');
+    });
+  </script>
+</body>
+</html>
