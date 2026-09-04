@@ -1,0 +1,1047 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0C2733">
+  <title>Занятие 1 · Цифровая воронка</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&family=Unbounded:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../styles.css">
+  <style>
+    /* Занятие 1 — цепочка «вопрос → ответ». Разбор с нуля: студенты тему не знают.
+       Экран вопроса — из общих стилей (.slide--question). Экран ответа — проза,
+       книжная цитата (.q) или один поясняющий рисунок. */
+
+    .wrap { max-width: 1080px; }
+    .say  { max-width: 940px; margin-top: 2.4vh; color: #33405A; font-size: clamp(15px, 1.4vw, 21px); line-height: 1.66; }
+    .say + .say { margin-top: 1.4vh; }
+    .say b { color: var(--brand-ink); }
+    .say code, .k { color: var(--brand-blue); font-weight: 700; font-family: var(--mono); }
+    .lead-in { margin-top: 1.2vh; color: #7C8896; font: 600 13px/1.5 var(--mono); }
+
+    /* книжная цитата */
+    .q { margin: 3vh 0 0; max-width: 900px; border-left: 5px solid var(--brand-blue); padding: 2px 0 2px 22px; }
+    .q p { margin: 0; font-size: clamp(17px, 1.75vw, 27px); line-height: 1.42; font-style: italic; color: var(--brand-ink); }
+    .q cite { display: block; margin-top: 12px; font: 700 11px/1.5 var(--mono); letter-spacing: .07em;
+      text-transform: uppercase; color: #5A6183; font-style: normal; }
+    .q + .q { margin-top: 2vh; }
+
+    /* воронка */
+    .funnel { margin: 3vh 0 0; display: grid; gap: 6px; max-width: 640px; justify-items: center; }
+    .funnel div { display: flex; align-items: center; justify-content: space-between; padding: 0 16px;
+      height: 44px; border: 3px solid var(--brand-ink); background: var(--brand-blue); color: #fff;
+      box-shadow: 3px 3px 0 var(--brand-ink); font: 700 13px/1 var(--mono); }
+    .funnel div:nth-child(1) { width: 100%; }
+    .funnel div:nth-child(2) { width: 74%; }
+    .funnel div:nth-child(3) { width: 50%; }
+    .funnel div:nth-child(4) { width: 26%; background: #2E7D50; }
+    .funnel small { display: block; margin-top: 10px; color: #7C8896; font: 600 12px/1.4 var(--mono); }
+
+    /* «событий много — обращений мало» */
+    .punch { margin-top: 2.4vh; max-width: 640px; }
+    .punch div { display: grid; grid-template-columns: 130px 1fr 70px; align-items: center; gap: 12px; margin: 7px 0; }
+    .punch b { font: 700 12px/1 var(--mono); }
+    .punch i { height: 22px; border: 3px solid var(--brand-ink); display: block; }
+    .punch i.ev { width: 100%; background: #C0384A; }
+    .punch i.re { width: 12%; background: #2E7D50; }
+    .punch span { font: 700 13px/1 var(--mono); color: #33405A; }
+
+    /* сводка четырёх понятий */
+    .four { margin-top: 2.6vh; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border: 3px solid var(--brand-ink); max-width: 940px; }
+    .four div { padding: 12px 14px; border-right: 2px solid #C9D2EA; }
+    .four div:last-child { border-right: 0; }
+    .four b { display: block; font: 700 11px/1 var(--mono); color: var(--brand-blue); text-transform: uppercase; letter-spacing: .06em; }
+    .four span { display: block; margin-top: 6px; font-size: clamp(12px, 1vw, 15px); color: #33405A; line-height: 1.4; }
+
+    /* запрос как письмо */
+    .letter { margin-top: 3vh; max-width: 840px; border: 3px solid var(--brand-ink); background: #fff; box-shadow: 6px 6px 0 var(--brand-ink); position: relative; }
+    .letter::before { content: ""; position: absolute; top: 0; left: 0; border: 20px solid transparent; border-top-color: var(--brand-light); border-left-color: var(--brand-light); }
+    .letter__to { padding: 13px 18px; border-bottom: 2px dashed #C9D2EA; font: 600 13px/1.7 var(--mono); color: #33405A; }
+    .letter__to b { color: var(--brand-blue); }
+    .letter__body { padding: 15px 18px; font: 600 clamp(11px,.98vw,15px)/1.9 var(--mono); color: #071219; background: #F4F6FC; white-space: pre-wrap; word-break: break-all; }
+
+    /* построчный разбор параметров */
+    .parse { margin-top: 3vh; display: grid; gap: 8px; max-width: 1000px; }
+    .parse__r { display: grid; grid-template-columns: 230px 1fr; border: 2px solid var(--brand-ink); }
+    .parse__r > code { padding: 10px 14px; background: #071219; color: #6BE3CE; font: 700 clamp(12px,1vw,15px)/1.4 var(--mono); }
+    .parse__r > span { padding: 10px 14px; color: #33405A; font-size: clamp(12px,1vw,15px); line-height: 1.45; }
+    .parse__r > span b { color: var(--brand-ink); }
+
+    /* панель Network */
+    .net { margin-top: 3vh; border: 3px solid var(--brand-ink); box-shadow: 5px 5px 0 var(--brand-ink); background: #0B1B24; overflow: hidden; font-family: var(--mono); }
+    .net__bar { display: flex; gap: 10px; padding: 8px 12px; background: var(--brand-ink); color: #CFE9E4; font-size: 11px; }
+    .net__bar .f { margin-left: auto; padding: 2px 8px; border: 1px solid #3A5560; color: #8FD6C9; }
+    .net__row { display: grid; grid-template-columns: 2.3fr .5fr .6fr .5fr 1.5fr; gap: 12px; padding: 8px 14px; font-size: 12px; color: #C8DDD8; border-bottom: 1px solid #16262E; }
+    .net__row.h { color: #6E8E96; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+    .net__row.hit { background: rgba(47,169,140,.16); color: #fff; }
+    .net__row .e { color: #6BE3CE; }
+    .net__row i { align-self: center; height: 8px; background: #2FA98C; border-radius: 2px; }
+
+    /* историческая лента */
+    .era { margin-top: 3vh; display: flex; }
+    .era__seg { flex: 1; padding: 15px 14px; border: 3px solid var(--brand-ink); border-right-width: 0; background: #fff; }
+    .era__seg:last-child { border-right-width: 3px; }
+    .era__seg:nth-child(odd) { background: #F6F4EF; }
+    .era__seg b { display: block; font: 800 clamp(14px,1.5vw,21px)/1 var(--display); color: var(--brand-blue); }
+    .era__seg strong { display: block; margin: 7px 0 5px; font-size: clamp(13px,1.1vw,17px); }
+    .era__seg span { color: #5A6183; font-size: clamp(11px,.92vw,14px); line-height: 1.4; }
+
+    /* маршрут заявки */
+    .path { margin-top: 3vh; display: flex; flex-wrap: wrap; gap: 6px; }
+    .path span { display: flex; align-items: center; gap: 6px; padding: 9px 11px; border: 3px solid var(--brand-ink); background: #fff; box-shadow: 3px 3px 0 var(--brand-ink); font: 600 12px/1 var(--mono); color: #33405A; }
+    .path span b { color: var(--brand-ink); font: 700 10px/1 var(--pixel); }
+    .path span em { font-style: normal; font: 700 9px/1 var(--pixel); padding: 2px 5px; }
+    .path span em.m { background: #F3E2C4; color: #8A5B10; }
+    .path span em.a { background: var(--brand-light); color: var(--brand-blue); }
+
+    /* стык крупным планом */
+    .seam { margin-top: 3.4vh; display: grid; grid-template-columns: 1fr 120px 1fr; align-items: center; }
+    .seam__box { padding: 24px 18px; border: 3px solid var(--brand-ink); background: #fff; box-shadow: 5px 5px 0 var(--brand-ink); text-align: center; }
+    .seam__box b { font: 800 clamp(15px,1.6vw,23px)/1 var(--display); }
+    .seam__box span { display: block; margin-top: 5px; color: #5A6183; font-size: 13px; }
+    .seam__gap { position: relative; height: 116px; }
+    .seam__gap::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; background: repeating-linear-gradient(#C0384A 0 8px, transparent 8px 16px); transform: translateX(-50%); }
+    .seam__drop { position: absolute; left: 50%; top: 60%; transform: translate(-50%,0) rotate(-14deg); padding: 6px 10px; border: 2px solid #C0384A; color: #C0384A; background: #FFF4F5; font: 700 12px/1 var(--mono); opacity: .85; }
+
+    /* три ловушки отчёта */
+    .traps { margin-top: 3vh; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .traps__c b { display: block; font-size: clamp(13px,1.1vw,17px); }
+    .traps__c table { width: 100%; border-collapse: collapse; margin-top: 8px; border: 2px solid var(--brand-ink); }
+    .traps__c td { padding: 6px 9px; border-bottom: 1px solid #D7DCEA; font: 600 12px/1.2 var(--mono); color: #33405A; }
+    .traps__c tr:last-child td { border-bottom: 0; }
+    .traps__c td:last-child { text-align: right; color: var(--brand-ink); }
+    .traps__c tr.bad td { background: #FFF4F5; color: #C0384A; }
+    .traps__c p { margin: 8px 0 0; color: #5A6183; font-size: 12px; line-height: 1.4; }
+
+    /* в объективе / за кадром */
+    .frame { margin-top: 3vh; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .frame__in, .frame__out { padding: 18px 20px; }
+    .frame__in { border: 4px double var(--brand-ink); background: #fff; box-shadow: 5px 5px 0 var(--brand-ink); }
+    .frame__out { border: 3px dashed #8A93B2; background: #F6F4EF; color: #6b7280; }
+    .frame b { display: block; font: 700 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; }
+    .frame__in b { color: var(--brand-blue); }
+    .frame ul { margin: 0; padding-left: 18px; line-height: 1.7; font-size: clamp(12px,1vw,16px); }
+    .frame__in ul { color: #33405A; }
+
+    /* практика */
+    .steps { margin-top: 2.6vh; counter-reset: s; max-width: 1000px; }
+    .steps > li { list-style: none; position: relative; margin: 9px 0; padding: 11px 14px 11px 48px; border-bottom: 2px solid #C9D2EA; color: #33405A; font-size: clamp(13px,1.12vw,18px); line-height: 1.5; }
+    .steps > li::before { counter-increment: s; content: counter(s); position: absolute; left: 8px; top: 9px; width: 28px; height: 28px; display: grid; place-items: center; background: var(--brand-blue); color: #fff; font: 800 14px/1 var(--display); }
+    .steps > li b { color: var(--brand-ink); } .steps > li code { color: var(--brand-blue); font-weight: 700; }
+    .didsee { margin-top: 2.6vh; border: 3px solid var(--brand-ink); box-shadow: 5px 5px 0 var(--brand-ink); }
+    .didsee > div { display: grid; grid-template-columns: 1fr 1fr; }
+    .didsee > div + div { border-top: 2px solid #C9D2EA; }
+    .didsee > div > * { padding: 10px 14px; font-size: clamp(12px,1vw,16px); color: #33405A; }
+    .didsee > div > *:first-child { border-right: 2px solid #C9D2EA; }
+    .didsee .head > * { background: var(--brand-ink); color: #fff; font: 700 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+    .didsee code { color: var(--brand-blue); font-weight: 700; }
+
+    /* приёмка / ДЗ */
+    .accept { margin-top: 2.8vh; max-width: 1000px; }
+    .accept li { list-style: none; display: grid; grid-template-columns: 30px 1fr; gap: 12px; padding: 11px 0; border-bottom: 2px solid #C9D2EA; color: #33405A; font-size: clamp(13px,1.1vw,17px); line-height: 1.45; }
+    .accept li::before { content: "\2713"; display: grid; place-items: center; width: 26px; height: 26px; border: 3px solid var(--brand-ink); color: var(--brand-blue); font-weight: 800; }
+    .accept li b { color: var(--brand-ink); } .accept li code { color: var(--brand-blue); font-weight: 700; }
+    .hw { margin-top: 2.8vh; max-width: 1000px; counter-reset: h; }
+    .hw li { list-style: none; position: relative; margin: 10px 0; padding-left: 40px; color: #33405A; font-size: clamp(13px,1.12vw,18px); line-height: 1.55; }
+    .hw li::before { counter-increment: h; content: counter(h, upper-roman); position: absolute; left: 0; top: 2px; color: var(--brand-blue); font: 800 15px/1 var(--display); }
+    .hw li b { color: var(--brand-ink); } .hw li code { color: var(--brand-blue); font-weight: 700; }
+
+    /* настоящий скриншот (снят скриптом на учебном стенде) */
+    .figreal { margin: 2.6vh 0 0; max-width: 1040px; }
+    .figreal img { display: block; width: 100%; border: 3px solid var(--brand-ink); box-shadow: 6px 6px 0 var(--brand-ink); background: #fff; }
+    .figreal figcaption { margin-top: 8px; color: #5A6183; font: 600 12px/1.5 var(--mono); }
+    .figreal figcaption b { color: var(--brand-blue); }
+    .figrow { margin: 2.6vh 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+    .figrow figure { margin: 0; }
+    .figrow img { display: block; width: 100%; border: 3px solid var(--brand-ink); box-shadow: 5px 5px 0 var(--brand-ink); background: #fff; }
+    .figrow figcaption { margin-top: 7px; color: #5A6183; font: 600 11px/1.4 var(--mono); }
+    @media (max-width: 900px) { .figrow { grid-template-columns: 1fr; } }
+
+    .shot { margin: 2.6vh 0 0; border: 3px dashed var(--brand-ink); background: #F6F4EF; overflow: hidden; max-width: 1000px; }
+    .shot img { display: block; width: 100%; min-height: 170px; max-height: 42vh; object-fit: contain; background: repeating-linear-gradient(45deg, #EEF0EC 0 10px, #F6F4EF 10px 20px); color: #5A6183; }
+    .shot figcaption { padding: 9px 13px; border-top: 3px dashed var(--brand-ink); color: #5A6183; font-size: 12px; line-height: 1.4; }
+    .shot figcaption b { color: var(--brand-blue); }
+
+    .t1__ghost { position: absolute; right: -2vw; bottom: -8vh; font: 700 clamp(26px,4.4vw,64px)/1.2 var(--mono); color: rgba(14,147,132,.10); white-space: pre; pointer-events: none; }
+
+    @media (max-width: 900px) {
+      .four, .traps, .frame { grid-template-columns: 1fr; }
+      .era { flex-direction: column; }
+      .era__seg { border-right-width: 3px; border-bottom-width: 0; }
+      .era__seg:last-child { border-bottom-width: 3px; }
+      .seam { grid-template-columns: 1fr; } .seam__gap { height: 56px; }
+      .didsee > div, .letter__body { grid-template-columns: 1fr; }
+      .parse__r { grid-template-columns: 1fr; }
+    }
+
+    /* --- содержательные экраны: контент прижат к верху, вмещается без прокрутки --- */
+    .slide--answer .slide-inner { justify-content: flex-start; padding: 3vh 0 2.4vh; overflow-y: auto; overflow-x: hidden; }
+    /* экраны вопроса: центр, но при нехватке высоты — прижимаются к верху, а не срезаются */
+    .slide--question .slide-inner { justify-content: safe center; overflow-y: auto; overflow-x: hidden; padding: 2.6vh 0; }
+    @media (max-height: 800px) {
+      .slide--question h1 { font-size: clamp(28px, 3.4vw, 48px); }
+      .slide--question .question-hint { margin-top: 3vh; }
+      .say { font-size: clamp(13px, 1.05vw, 16px); line-height: 1.45; }
+      .figreal img { max-height: 32vh; } .figrow img { max-height: 26vh; }
+      .anno img { max-height: 28vh; }
+      .example-row article { padding: 14px; } .example-row p { margin-top: 8px; }
+      .def > div { padding: 10px 15px; } .def p { margin-top: 4px; }
+      h2 { font-size: clamp(22px, 2.5vw, 36px); }
+    }
+    @media (max-height: 730px) {
+      .figreal img { max-height: 18vh; } .figrow img { max-height: 17vh; } .anno img { max-height: 20vh; } .pane img { max-height: 34vh; }
+      .slide--answer .slide-inner { padding: 2.2vh 0 1.8vh; }
+      .slide--answer .slide-inner > h2 { margin-top: .4vh; }
+      .figreal, .figrow { margin-top: 1.2vh; }
+      .say { font-size: 12.5px; line-height: 1.4; margin-top: 1vh; }
+      .letter__to { padding: 8px 13px; font-size: 11.5px; line-height: 1.5; }
+      .letter__body { padding: 10px 13px; font-size: 11px; line-height: 1.6; }
+      .derive__r > code, .derive__r > span { padding: 7px 10px; }
+      .anno-legend > div { font-size: 12.5px; line-height: 1.35; }
+      .figreal figcaption, .figrow figcaption { font-size: 10.5px; }
+      h2 { font-size: clamp(20px, 2.2vw, 32px); }
+    }
+    .slide--answer .slide-inner > h2 { margin-top: .8vh; }
+    .slide--title .slide-inner { overflow: hidden; }
+    .t1__ghost { bottom: 3vh; right: 0; }
+    .say { font-size: clamp(13.5px, 1.15vw, 17.5px); line-height: 1.5; margin-top: 1.4vh; }
+    .say + .say { margin-top: .9vh; }
+    .q p { font-size: clamp(15px, 1.35vw, 21px); line-height: 1.38; }
+    .q { margin-top: 1.8vh; } .q cite { margin-top: 8px; }
+    .lead-in { margin-top: 1vh; font-size: clamp(11px, .95vw, 13px); }
+    /* картинки масштабируются по высоте, чтобы всегда помещаться */
+    .figreal { display: flex; flex-direction: column; align-items: flex-start; margin-top: 1.8vh; }
+    .figreal img { width: auto; max-width: 100%; max-height: 40vh; }
+    .figreal figcaption { margin-top: 7px; }
+    .figrow { margin-top: 1.8vh; }
+    .figrow img { max-height: 30vh; width: auto; max-width: 100%; }
+    .funnel, .four, .parse, .traps, .frame, .era, .path, .seam { margin-top: 1.8vh; }
+    .steps, .didsee, .accept, .hw { margin-top: 1.6vh; }
+    .def { margin-top: 1.8vh; gap: 9px; } .def > div { padding: 12px 18px; }
+
+    /* --- скриншот с пронумерованными указателями --- */
+    .anno { position: relative; margin-top: 1.6vh; max-width: 880px; }
+    .anno img { display: block; width: 100%; max-height: 34vh; object-fit: contain; object-position: left top;
+      border: 3px solid var(--brand-ink); box-shadow: 5px 5px 0 var(--brand-ink); background: #0B1B24; }
+    .anno .pin { position: absolute; transform: translate(-50%, -50%); width: 24px; height: 24px; border-radius: 50%;
+      background: #C0384A; color: #fff; border: 3px solid #fff; box-shadow: 0 2px 7px rgba(0,0,0,.45);
+      display: grid; place-items: center; font: 800 12px/1 var(--display); }
+    .anno-legend { margin-top: 11px; display: grid; gap: 6px; }
+    .anno-legend > div { display: grid; grid-template-columns: 24px 1fr; gap: 12px; align-items: start;
+      color: #33405A; font-size: clamp(12.5px, 1.05vw, 16px); line-height: 1.45; }
+    .anno-legend > div > b { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+      background: #C0384A; color: #fff; font: 800 11px/1 var(--display); margin-top: 1px; }
+    .anno-legend > div > span b { color: var(--brand-ink); font-weight: 700; }
+    .anno-legend code { color: var(--brand-blue); font-weight: 700; }
+
+    /* --- параметр ← откуда он берётся --- */
+    .derive { margin-top: 1.6vh; display: grid; gap: 7px; max-width: 1040px; }
+    .derive__r { display: grid; grid-template-columns: minmax(0, 280px) 30px 1fr; align-items: stretch; gap: 10px; }
+    .derive__r > code { padding: 9px 12px; background: #071219; color: #6BE3CE; border: 2px solid var(--brand-ink);
+      font: 700 clamp(11px, .92vw, 14px)/1.35 var(--mono); word-break: break-all; display: flex; align-items: center; }
+    .derive__r > i { display: grid; place-items: center; color: var(--brand-blue); font: 800 17px/1 var(--mono); font-style: normal; }
+    .derive__r > span { padding: 9px 12px; border: 2px solid var(--brand-ink); background: #fff; color: #33405A;
+      font-size: clamp(12px, 1vw, 15px); line-height: 1.4; display: flex; align-items: center; }
+    .derive__r > span b { color: var(--brand-ink); }
+    .derive__r.link > code, .derive__r.link > span { border-color: #2E7D50; background: #ecfdf5; color: #137333; }
+    .derive__r.link > span b { color: #137333; }
+    .derive__r.empty > code { color: #ff9aa3; }
+    .derive__r.empty > span { border-color: #C0384A; background: #FFF4F5; color: #C0384A; }
+    .derive__r.empty > span b { color: #C0384A; }
+    @media (max-width: 820px) { .derive__r { grid-template-columns: 1fr; } .derive__r > i { display: none; } }
+
+    /* --- панель детали запроса: снимок слева, разбор полей справа --- */
+    .pane { margin-top: 1.6vh; display: grid; grid-template-columns: minmax(0, 300px) 1fr; gap: 18px; align-items: start; }
+    .pane > figure { margin: 0; }
+    .pane img { display: block; width: 100%; max-height: 46vh; object-fit: contain; object-position: top left;
+      border: 3px solid var(--brand-ink); box-shadow: 5px 5px 0 var(--brand-ink); background: #1f1f1f; }
+    .pane figcaption { margin-top: 7px; color: #5A6183; font: 600 10.5px/1.4 var(--mono); }
+    .fields { display: grid; gap: 5px; }
+    .fields > div { display: grid; grid-template-columns: 152px 1fr; gap: 12px; align-items: baseline;
+      padding: 6px 10px; border-left: 4px solid #C9D2EA; }
+    .fields > div.key { border-left-color: var(--brand-blue); background: #F2FAF8; }
+    .fields b { color: var(--brand-blue); font: 700 clamp(10.5px, .9vw, 13px)/1.35 var(--mono); overflow-wrap: break-word; }
+    .fields span { color: #33405A; font-size: clamp(11.5px, .98vw, 14.5px); line-height: 1.4; }
+    .fields span code { color: var(--brand-blue); font-weight: 700; }
+    @media (max-width: 900px) { .pane { grid-template-columns: 1fr; } .fields > div { grid-template-columns: 1fr; gap: 2px; } }
+
+    /* --- красные строки --- */
+    .reds { margin-top: 1.6vh; display: grid; gap: 8px; max-width: 1020px; }
+    .reds > div { display: grid; grid-template-columns: 250px 1fr; gap: 12px; padding: 10px 13px;
+      border: 2px solid #C0384A; background: #FFF4F5; }
+    .reds b { color: #C0384A; font: 700 clamp(11px, .95vw, 14px)/1.35 var(--mono); }
+    .reds span { color: #33405A; font-size: clamp(12px, 1vw, 15px); line-height: 1.4; }
+    .reds span code { color: var(--brand-blue); font-weight: 700; }
+    @media (max-width: 820px) { .reds > div { grid-template-columns: 1fr; gap: 4px; } }
+  </style>
+</head>
+<body>
+  <div class="boot" id="boot">
+    <div class="boot__scanlines" aria-hidden="true"></div>
+    <div class="boot-card">
+      <div class="boot-card__top"><span>ОП.03 · ЗАНЯТИЕ 1</span><span>2 ак. часа</span></div>
+      <p class="boot-card__title">Цифровая<br><em>воронка</em></p>
+      <dl class="boot-card__fields">
+        <div><dt>Тема</dt><dd>как данные проходят от ссылки до заявки</dd></div>
+        <div><dt>Формат</dt><dd>лекция «вопрос → ответ», затем практика</dd></div>
+        <div><dt>Уровень</dt><dd>с нуля, без предварительных знаний</dd></div>
+        <div><dt>Результат</dt><dd>карта воронки v1 и журнал событий по действующему сайту</dd></div>
+      </dl>
+    </div>
+    <p class="boot__hint">нажмите любую клавишу, чтобы начать <i>▸</i></p>
+  </div>
+
+  <div class="deck" id="deck" aria-live="polite">
+    <header class="chrome">
+      <button class="brand" type="button" data-go="0" aria-label="На первый слайд">
+        <span class="brand-mark">И<span>/</span>Т</span>
+        <span class="brand-copy">Занятие 1<br>Цифровая воронка</span>
+      </button>
+      <div class="chrome-right">
+        <button class="icon-button" id="sourcesButton" type="button" aria-label="Открыть источники">S</button>
+        <button class="icon-button" id="fullscreenButton" type="button" aria-label="Полноэкранный режим">⛶</button>
+        <span class="counter"><span id="currentNumber">01</span><i>/</i><span id="totalNumber">45</span></span>
+      </div>
+    </header>
+
+    <main class="slides">
+
+      <!-- 01 · титул -->
+      <section class="slide slide--title is-active" data-kind="title" data-accent="orange">
+        <div class="slide-inner">
+          <p class="eyebrow">ОП.03 · занятие 1 · 2 академических часа</p>
+          <h1>Цифровая<br>воронка</h1>
+          <div class="title-meta"><span>как данные проходят от ссылки до заявки</span><span>разбираем с нуля</span></div>
+          <div class="t1__ghost" aria-hidden="true">? что это
+? зачем
+? где это видно</div>
+        </div>
+        <span class="pair-number">01</span>
+      </section>
+
+      <!-- 02 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="blue">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 1</p>
+          <h1>О чём это<br>занятие?</h1>
+          <p class="question-hint">Одно предложение, к которому мы вернёмся в конце</p>
+        </div>
+        <span class="pair-number">01</span>
+      </section>
+      <!-- 03 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ</p>
+          <h2>Про то, что происходит между «человек кликнул ссылку» и «мы увидели цифру в отчёте»</h2>
+          <p class="say">Между этими двумя моментами данные проходят длинный путь через несколько систем. Сегодня мы разберём этот путь по частям: из чего он состоит, кто им управляет и где он рвётся.</p>
+          <p class="say">К концу пары каждый из вас откроет действующий сайт, своими глазами увидит, какие данные он отправляет, и составит карту этого пути.</p>
+        </div>
+        <span class="pair-number">01</span>
+      </section>
+
+      <!-- 04 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="pink">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 2</p>
+          <h1>Что происходит,<br>когда вы открываете сайт?</h1>
+          <p class="question-hint">Кроме того, что загружается страница</p>
+        </div>
+        <span class="pair-number">02</span>
+      </section>
+      <!-- 05 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ</p>
+          <h2>Загружается страница — и одновременно сайт сообщает о вас наружу</h2>
+          <p class="say">Открытие страницы — это не один запрос, а несколько десятков. Часть из них ничего не приносит на экран: они уходят на серверы аналитики и сообщают, что страницу открыли. Пока вы читаете и прокручиваете, отправляются новые — уже про ваши действия. Из них и собирается всё, что потом видно в отчётах.</p>
+          <figure class="figreal">
+            <img src="shots/stend-01-hero.png" alt="Учебный стенд: обычная страница курса с кнопкой">
+            <figcaption><b>Учебный стенд</b> — обычная страница; запросы уже ушли.</figcaption>
+          </figure>
+        </div>
+        <span class="pair-number">02</span>
+      </section>
+
+      <!-- 06 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="lime">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 3</p>
+          <h1>Хорошо. А что такое<br>воронка?</h1>
+          <p class="question-hint">Слово из названия темы, начнём с него</p>
+        </div>
+        <span class="pair-number">03</span>
+      </section>
+      <!-- 07 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · определение и происхождение</p>
+          <h2>Воронка — это путь клиента, разбитый на шаги, на каждом из которых часть людей отсеивается</h2>
+          <p class="say">Наверх входит много людей — те, кто увидел рекламу или ссылку. Донизу доходят немногие — те, кто оставил заявку. Форма воронки показывает это сужение: чем ниже шаг, тем меньше людей на нём осталось.</p>
+          <p class="say">Модель, из которой выросла воронка, предложил рекламист <b>Элиас Сент-Эльмо Льюис</b> в 1898 году: внимание → интерес → желание → действие. Изображать её именно воронкой стали позже; этот образ закрепил <b>Уильям Таунсенд</b> в книге «Bond Salesmanship» (1924).</p>
+          <div class="q"><p>«Клиента нужно провести через четыре ступени: привлечь внимание, вызвать интерес, пробудить желание и подтолкнуть к действию».</p><cite>Э. Сент-Эльмо Льюис · модель AIDA, 1898</cite></div>
+        </div>
+        <span class="pair-number">03</span>
+      </section>
+
+      <!-- 08 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="orange">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 4</p>
+          <h1>Почему её рисуют<br>сужающейся?</h1>
+          <p class="question-hint">Почему не лестницей и не прямой линией</p>
+        </div>
+        <span class="pair-number">04</span>
+      </section>
+      <!-- 09 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ</p>
+          <h2>Потому что переход на каждый следующий шаг делают не все</h2>
+          <p class="say">Ширина полосы — это число людей, дошедших до шага. Разница между соседними полосами — потеря на переходе. Именно эти потери нас интересуют: воронку строят не ради красивой картинки, а чтобы найти шаг, на котором отсеивается больше всего.</p>
+          <div class="funnel">
+            <div><span>увидели страницу</span><span>1000</span></div>
+            <div><span>нажали кнопку</span><span>620</span></div>
+            <div><span>открыли форму</span><span>410</span></div>
+            <div><span>оставили заявку</span><span>190</span></div>
+          </div>
+          <small class="funnel">Между «нажали кнопку» и «увидели страницу» теряется 380 человек — самый большой обрыв.</small>
+        </div>
+        <span class="pair-number">04</span>
+      </section>
+
+      <!-- 10 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="blue">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 5</p>
+          <h1>А что значит<br>«цифровая» воронка?</h1>
+          <p class="question-hint">Воронки строили и до интернета</p>
+        </div>
+        <span class="pair-number">05</span>
+      </section>
+      <!-- 11 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ</p>
+          <h2>Каждый шаг можно измерить автоматически, потому что действие оставляет цифровой след</h2>
+          <p class="say">До интернета доля дошедших до покупки оценивалась опросами и догадками. В цифровой воронке каждый переход фиксируется сам: нажатие, открытие формы, отправка — всё это записывается в момент, когда происходит. Поэтому воронку видно не приблизительно, а по числам.</p>
+          <div class="q"><p>«Половину денег, которые я трачу на рекламу, я выбрасываю впустую. Беда в том, что я не знаю, какую именно половину».</p><cite>фразу приписывают Джону Ванамейкеру, владельцу универмагов, конец XIX века</cite></div>
+          <p class="say">Цифровая воронка существует, чтобы ответить на этот вопрос — какая половина.</p>
+        </div>
+        <span class="pair-number">05</span>
+      </section>
+
+      <!-- 12 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="pink">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 6</p>
+          <h1>Что считается<br>одним шагом воронки?</h1>
+          <p class="question-hint">Чем измеряется переход</p>
+        </div>
+        <span class="pair-number">06</span>
+      </section>
+      <!-- 13 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · первое из четырёх понятий</p>
+          <h2>Событие</h2>
+          <p class="say">Сначала есть <b>действие</b> — то, что человек сделал в интерфейсе: нажал, прокрутил, ввёл текст. Действие само по себе нигде не сохраняется: если его не зафиксировать программно, оно происходит и исчезает.</p>
+          <p class="say"><b>Событие</b> — это зафиксированный факт действия, переданный в систему аналитики. У него есть имя, например <code>generate_lead</code>, и набор параметров. Событие отвечает на вопрос «что произошло». Исправить переданное событие нельзя — можно только отправить новое.</p>
+          <p class="lead-in">Шаг воронки — это событие. «Открыли форму» — событие <code>form_start</code>. «Оставили заявку» — событие <code>generate_lead</code>.</p>
+        </div>
+        <span class="pair-number">06</span>
+      </section>
+
+      <!-- 14 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="lime">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 7</p>
+          <h1>Значит, 200 событий —<br>это 200 клиентов?</h1>
+          <p class="question-hint">Здесь чаще всего ошибаются</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+      <!-- 15 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · второе понятие</p>
+          <h2>Нет. Событие — это не заявка</h2>
+          <p class="say"><b>Заявка</b> — это запись со смысловыми данными обращения: имя, контакт, текст, источник, время. Она хранится в таблице или системе управления заявками и отвечает на вопрос «с кем и о чём». Одно нажатие кнопки — это событие; заявка появляется, только если человек заполнил и отправил форму.</p>
+          <div class="punch">
+            <div><b>событий</b><i class="ev"></i><span>200</span></div>
+            <div><b>заявок</b><i class="re"></i><span>24</span></div>
+          </div>
+          <div class="q"><p>«Тщеславные метрики — это красивые растущие числа, по которым нельзя понять, что делать дальше. Полезные метрики отвечают на вопрос: какое решение принять».</p><cite>Эрик Рис, «Бизнес с нуля» (The Lean Startup), 2011 — пересказ</cite></div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 16 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="orange">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 8</p>
+          <h1>Что происходит<br>с заявкой дальше?</h1>
+          <p class="question-hint">После того как форма отправлена</p>
+        </div>
+        <span class="pair-number">08</span>
+      </section>
+      <!-- 17 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · третье понятие и сводка</p>
+          <h2>Её обрабатывают, и у неё меняется статус</h2>
+          <p class="say"><b>Статус</b> — это этап обработки заявки: <code>new</code>, <code>in progress</code>, <code>done</code>, при необходимости <code>rejected</code>. Он отвечает на вопрос «на каком этапе работа» и меняется многократно — людьми и автоматизацией. Заявки и их статусы хранятся в системе управления заявками (CRM).</p>
+          <div class="four">
+            <div><b>действие</b><span>что человек сделал; нигде не хранится</span></div>
+            <div><b>событие</b><span>что произошло; в аналитике; неизменяемо</span></div>
+            <div><b>заявка</b><span>с кем и о чём; в таблице / CRM</span></div>
+            <div><b>статус</b><span>на каком этапе; в CRM; меняется</span></div>
+          </div>
+          <p class="lead-in">Аналитик считает события, менеджер работает с заявками, руководитель смотрит на статусы. Три роли — три взгляда на один поток.</p>
+        </div>
+        <span class="pair-number">08</span>
+      </section>
+
+      <!-- 18 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="blue">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 9</p>
+          <h1>Как действие<br>превращается в данные?</h1>
+          <p class="question-hint">Что происходит технически в момент нажатия</p>
+        </div>
+        <span class="pair-number">09</span>
+      </section>
+      <!-- 19 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ</p>
+          <h2>Программа в браузере отправляет письмо — HTTP-запрос</h2>
+          <p class="say">В момент действия скрипт на странице собирает строку с параметрами и отправляет её на сервер системы аналитики. С точки зрения сети это ничем не отличается от загрузки картинки; разница в том, что вместо картинки передаётся описание произошедшего. Ниже — настоящий запрос, пойманный на учебном стенде после нажатия «Отправить».</p>
+          <div class="letter">
+            <div class="letter__to">От: страница <b>?utm_source=college&amp;utm_medium=post&amp;utm_campaign=sept_open</b><br>Кому: <b>www.google-analytics.com&nbsp;/g/collect</b> &nbsp;·&nbsp; Метод: <b>POST</b></div>
+            <div class="letter__body">en=generate_lead
+tid=G-4EXAMPLE99
+dl=http://localhost/?utm_source=college&utm_medium=post&utm_campaign=sept_open
+dt=Курс «Аналитика с нуля» — учебный стенд
+ep.form_id=lead_main
+ep.source=college
+epn.value=0
+_et=3758</div>
+          </div>
+        </div>
+        <span class="pair-number">09</span>
+      </section>
+
+      <!-- 20 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="pink">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 10</p>
+          <h1>И что написано<br>внутри этого письма?</h1>
+          <p class="question-hint">Разберём по одному параметру</p>
+        </div>
+        <span class="pair-number">10</span>
+      </section>
+      <!-- 21 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · параметры запроса /g/collect · значения с учебного стенда</p>
+          <h2>Каждый ключ — одна строчка смысла</h2>
+          <div class="parse">
+            <div class="parse__r"><code>tid=G-4EXAMPLE99</code><span><b>Куда</b> поступит событие — идентификатор ресурса аналитики. Разные сайты пишут в разные <code class="k">tid</code>.</span></div>
+            <div class="parse__r"><code>en=generate_lead</code><span><b>Имя события.</b> По нему строят отчёты. Бывает автоматическим (<code class="k">page_view</code>) или заданным вручную.</span></div>
+            <div class="parse__r"><code>dl=…&nbsp;·&nbsp;dt=…</code><span>Адрес и заголовок страницы, с которой отправлено событие. В <code class="k">dl</code> видны метки <code class="k">utm_*</code> из ссылки.</span></div>
+            <div class="parse__r"><code>ep.source=college</code><span>Дополнительный параметр. Здесь «college» подставился из метки <code class="k">utm_source</code> в адресе. Без метки было бы <code class="k">(not set)</code>.</span></div>
+            <div class="parse__r"><code>_et=3758</code><span>Engagement time: 3758 мс — столько человек взаимодействовал со страницей до отправки.</span></div>
+          </div>
+          <p class="lead-in">Всё, что мы настраиваем в диспетчере тегов и в аналитике, в итоге меняет именно эти строки.</p>
+        </div>
+        <span class="pair-number">10</span>
+      </section>
+
+      <!-- 21b · доказательство: с меткой и без -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · продолжение · откуда берётся <code class="k">ep.source</code></p>
+          <h2>Один и тот же клик, две разные ссылки</h2>
+          <figure class="figreal">
+            <img src="shots/source-compare.png" alt="Событие generate_lead с меткой utm_source и без неё">
+            <figcaption><b>Событие одинаковое — различается один параметр.</b> Слева переход был по ссылке с <code class="k">utm_source=college</code>, справа — по ссылке без метки. Это и чиним на занятии 2.</figcaption>
+          </figure>
+        </div>
+        <span class="pair-number">10</span>
+      </section>
+
+      <!-- 22 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="lime">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 11</p>
+          <h1>Это можно увидеть<br>своими глазами?</h1>
+          <p class="question-hint">Без доступа к самой аналитике</p>
+        </div>
+        <span class="pair-number">11</span>
+      </section>
+      <!-- 23 A · шаг 1 -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · шаг 1 из 7 · настроить панель</p>
+          <h2>Открыть Network и оставить только запросы аналитики</h2>
+          <figure class="anno">
+            <img src="shots/net-toolbar.png" alt="Верх панели DevTools: вкладки, кнопка Preserve log, поле фильтра">
+            <span class="pin" style="left:56%;top:9%">1</span>
+            <span class="pin" style="left:27%;top:30%">2</span>
+            <span class="pin" style="left:6%;top:70%">3</span>
+          </figure>
+          <div class="anno-legend">
+            <div><b>1</b><span>Нажать <code>F12</code> (или <code>Cmd&nbsp;+&nbsp;Option&nbsp;+&nbsp;I</code>) и перейти на вкладку <b>Network</b>.</span></div>
+            <div><b>2</b><span>Поставить галочку <b>Preserve log</b> — чтобы список не очищался при переходах.</span></div>
+            <div><b>3</b><span>В поле <b>Filter</b> вписать <code>collect</code> — останутся только запросы к системе аналитики.</span></div>
+          </div>
+        </div>
+        <span class="pair-number">11</span>
+      </section>
+
+      <!-- 24 A · шаг 2 -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · шаг 2 из 7 · действие даёт строку</p>
+          <h2>Каждое действие на странице — новая строка в списке</h2>
+          <div class="figrow">
+            <figure><img src="shots/stend-button.png" alt="Кнопка «Оставить заявку» на учебном стенде"><figcaption>1. нажали кнопку и отправили форму на стенде</figcaption></figure>
+            <figure><img src="shots/net-rows.png" alt="Список запросов collect в панели Network"><figcaption>2. в панели появились строки <code>collect?…&amp;en=…</code></figcaption></figure>
+          </div>
+          <p class="say">Открытие страницы даёт <code class="k">page_view</code>, прокрутка — <code class="k">scroll</code>, нажатие кнопки — <code class="k">select_content</code>, отправка формы — <code class="k">generate_lead</code>. Имя действия записано прямо в адресе строки, в параметре <code class="k">en=</code>.</p>
+        </div>
+        <span class="pair-number">11</span>
+      </section>
+
+      <!-- 25 A · шаг 3 -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · шаг 3 из 7 · открыть запрос → откуда каждый параметр</p>
+          <h2>Клик по строке → вкладка Payload → разбор значений</h2>
+          <div class="derive">
+            <div class="derive__r"><code>en=generate_lead</code><i>←</i><span>вы нажали кнопку «Отправить»</span></div>
+            <div class="derive__r"><code>dt=Курс «Аналитика с нуля»…</code><i>←</i><span>тег&nbsp;<b>&lt;title&gt;</b>&nbsp;открытой страницы</span></div>
+            <div class="derive__r link"><code>dl=…/?utm_source=college&amp;…</code><i>←</i><span>адресная строка браузера целиком, вместе с метками</span></div>
+            <div class="derive__r link"><code>ep.source=college</code><i>←</i><span>кусок&nbsp;<b>utm_source</b>&nbsp;из того же адреса</span></div>
+            <div class="derive__r"><code>_et=3758</code><i>←</i><span>сколько миллисекунд вы были на странице до нажатия</span></div>
+            <div class="derive__r"><code>tid=G-4EXAMPLE99</code><i>←</i><span>настроено на сайте один раз, от вас не зависит</span></div>
+          </div>
+          <p class="lead-in">Зелёные строки связаны: <code class="k">ep.source</code> — это просто вырезка из адреса <code class="k">dl</code>. На занятии 2 мы задаём метки так, чтобы эта вырезка была осмысленной.</p>
+        </div>
+        <span class="pair-number">11</span>
+      </section>
+
+      <!-- 26 A · шаг 4: где пусто -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · шаг 4 из 7 · где в запросе пусто и почему</p>
+          <h2>Тот же запрос, но переход был без метки</h2>
+          <div class="derive">
+            <div class="derive__r"><code>en=generate_lead</code><i>←</i><span>кнопку нажали — событие есть</span></div>
+            <div class="derive__r"><code>dl=http://localhost/</code><i>←</i><span>адрес есть, но меток в нём нет</span></div>
+            <div class="derive__r empty"><code>ep.source=(not set)</code><i>←</i><span><b>пусто:</b> вырезать <b>utm_source</b> не из чего</span></div>
+            <div class="derive__r empty"><code>dr=</code><i>←</i><span><b>пусто:</b> перешли не по ссылке, а открыли адрес напрямую — referrer отсутствует</span></div>
+          </div>
+          <p class="say"><code class="k">(not set)</code> и пустые поля — не ошибка панели. Это честное «значение получить неоткуда». Если в отчёте у половины заявок источник <code class="k">(not set)</code> — значит ссылки размечены не полностью.</p>
+        </div>
+        <span class="pair-number">11</span>
+      </section>
+
+      <!-- 27 A · читаем столбцы + 204/beacon -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · шаг 5 из 7 · что означают столбцы</p>
+          <h2>Что означают колонки строки <code class="k">collect</code></h2>
+          <figure class="anno">
+            <img src="shots/net-rows.png" alt="Строки запросов collect: столбцы Name, Status, Type, Size">
+            <span class="pin" style="left:5%;top:34%">1</span>
+            <span class="pin" style="left:41%;top:20%">2</span>
+            <span class="pin" style="left:52%;top:20%">3</span>
+            <span class="pin" style="left:82%;top:20%">4</span>
+          </figure>
+          <div class="anno-legend">
+            <div><b>1</b><span><b>Name</b> — адрес запроса. В нём виден <code>en=</code> — имя события.</span></div>
+            <div><b>2</b><span><b>Status 204</b> — «принято, тела ответа нет». Серверу нечего вернуть, поэтому ответ пустой.</span></div>
+            <div><b>3</b><span><b>Type ping</b> — запрос ушёл через <code>navigator.sendBeacon</code>: браузер дошлёт его, даже если вкладку закрыть.</span></div>
+            <div><b>4</b><span><b>Size 0.1 kB</b> — вес крошечный: улетает только строка параметров.</span></div>
+          </div>
+        </div>
+        <span class="pair-number">11</span>
+      </section>
+
+      <!-- 28 A · шаг 6: Headers -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · шаг 6 из 7 · вкладка Headers</p>
+          <h2>Куда ушёл запрос и что ответил сервер</h2>
+          <div class="pane">
+            <figure>
+              <img src="shots/net-headers.png" alt="Вкладка Headers: Request URL, Request Method POST, Status Code 204 No Content">
+              <figcaption>настоящий кадр · вкладка Headers</figcaption>
+            </figure>
+            <div class="fields">
+              <div class="key"><b>Request URL</b><span>Весь запрос одной строкой. До <code>?</code> — адрес приёмника (<code>/g/collect</code>), после — параметры через <code>&amp;</code>.</span></div>
+              <div><b>%D0%9A%D1%83…</b><span>Кириллица и спецсимволы закодированы: <code>://</code> превращается в <code>%3A%2F%2F</code>, буквы — в <code>%D0…</code>. Читать удобнее во вкладке Payload.</span></div>
+              <div><b>Request Method</b><span><code>POST</code> — способ отправки. Данные всё равно лежат в адресе, а не в теле.</span></div>
+              <div class="key"><b>Status Code</b><span><code>204 No Content</code> с зелёной точкой — сервер принял запрос, возвращать нечего. Это норма для аналитики.</span></div>
+              <div><b>Remote Address</b><span>Куда физически ушёл запрос: адрес и порт сервера-приёмника.</span></div>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">11</span>
+      </section>
+
+      <!-- 29 A · шаг 7: Payload -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · шаг 7 из 7 · вкладка Payload · тот же запрос, разобранный по полям</p>
+          <h2>Query String Parameters — все поля события</h2>
+          <div class="pane">
+            <figure>
+              <img src="shots/net-payload.png" alt="Вкладка Payload: список параметров запроса collect">
+              <figcaption>настоящий кадр · вкладка Payload</figcaption>
+            </figure>
+            <div class="fields">
+              <div><b>v · tid</b><span>версия протокола и идентификатор ресурса аналитики — <b>куда</b> уходит событие</span></div>
+              <div><b>cid · sid · sct · seg</b><span>анонимный идентификатор браузера, номер визита и признак вовлечённости</span></div>
+              <div><b>ul · sr</b><span>язык интерфейса (<code>ru-ru</code>) и разрешение экрана (<code>1470x956</code>)</span></div>
+              <div class="key"><b>dl · dt</b><span>адрес и заголовок страницы. Внутри <code>dl</code> лежат метки <code>utm_*</code></span></div>
+              <div class="key"><b>en</b><span><b>имя события</b> — <code>generate_lead</code>. Главное поле: по нему строят отчёты</span></div>
+              <div class="key"><b>ep.form_id · ep.source</b><span>строковые параметры события: <code>lead_main</code> и <code>college</code></span></div>
+              <div><b>epn.value · ep.currency</b><span>числовой параметр и валюта — для событий с суммой</span></div>
+              <div><b>_et</b><span>engagement time: <code>6900</code> мс взаимодействия со страницей до отправки</span></div>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">11</span>
+      </section>
+
+      <!-- 30 A · если строка красная -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Что делать, если строка подсвечена красным</p>
+          <h2>Красная строка — это ответ сервера, а не поломка</h2>
+          <div class="reds">
+            <div><b>404 Not Found</b><span>Адрес <code>/g/collect</code> не обслуживается тем сервером, с которого открыта страница. Запрос ушёл, <b>все параметры во вкладке Payload читаются</b> — для разбора этого достаточно.</span></div>
+            <div><b>(failed) ERR_BLOCKED_BY_CLIENT</b><span>Запрос заблокировало расширение-блокировщик или режим приватности. Отключите блокировщик для этой вкладки и повторите.</span></div>
+            <div><b>(failed) ERR_INTERNET_DISCONNECTED</b><span>Нет сети, а стенд открыт файлом и шлёт на настоящий адрес Google. Поднимите локальный сервер: <code>python3 -m http.server 8000</code> в папке <code>stend/</code>.</span></div>
+            <div><b>(blocked) CORS / mixed content</b><span>Страница по <code>https</code>, а приёмник по <code>http</code> — браузер не пропустит. На стенде такого не будет, но на чужих сайтах встречается.</span></div>
+          </div>
+          <p class="lead-in">Во всех случаях запрос браузер сформировал. Смотреть нужно на Payload: разбор параметров от кода ответа не зависит.</p>
+        </div>
+        <span class="pair-number">11</span>
+      </section>
+
+      <!-- 31 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="blue">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 12</p>
+          <h1>Всегда ли так<br>измеряли?</h1>
+          <p class="question-hint">Короткая историческая справка</p>
+        </div>
+        <span class="pair-number">12</span>
+      </section>
+      <!-- 27 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · как считали посещения в разные годы</p>
+          <h2>От журналов сервера к встроенным счётчикам</h2>
+          <div class="era">
+            <div class="era__seg"><b>конец 1990-х</b><strong>Журналы сервера</strong><span>Каждая строка журнала — один запрос файла. Проблема: кэш браузера и сети доставки контента — запрос до сервера не доходит.</span></div>
+            <div class="era__seg"><b>2000-е</b><strong>Пиксель 1×1</strong><span>Данные кладут в адрес прозрачной картинки. Термин «web bug» ввёл исследователь приватности Ричард Смит в 1999 году.</span></div>
+            <div class="era__seg"><b>с 2014</b><strong>sendBeacon</strong><span>Браузер дослыает запрос после выгрузки страницы; фиксируются события ухода.</span></div>
+            <div class="era__seg"><b>сегодня</b><strong>Встроенные счётчики</strong><span>Скрипт на странице срабатывает при каждом просмотре; журналы сервера — для диагностики и безопасности.</span></div>
+          </div>
+        </div>
+        <span class="pair-number">12</span>
+      </section>
+
+      <!-- 29 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="pink">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 13</p>
+          <h1>Кто ведёт заявку<br>от ссылки до отчёта?</h1>
+          <p class="question-hint">Человек или программа</p>
+        </div>
+        <span class="pair-number">13</span>
+      </section>
+      <!-- 29 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · маршрут из десяти станций</p>
+          <h2>И человек, и программа — по очереди</h2>
+          <div class="path">
+            <span><b>1</b> ссылка <em class="m">руч</em></span>
+            <span><b>2</b> сайт <em class="a">авто</em></span>
+            <span><b>3</b> диспетчер тегов <em class="a">авто</em></span>
+            <span><b>4</b> аналитика <em class="a">авто</em></span>
+            <span><b>5</b> форма <em class="m">руч</em></span>
+            <span><b>6</b> таблица <em class="a">авто</em></span>
+            <span><b>7</b> автоматизация <em class="a">авто</em></span>
+            <span><b>8</b> CRM <em class="m">руч</em></span>
+            <span><b>9</b> уведомление <em class="a">авто</em></span>
+            <span><b>10</b> дашборд <em class="a">авто</em></span>
+          </div>
+          <p class="say">Ручными участками управляют люди: ссылку размечает специалист по продвижению, форму заполняет посетитель, статус изменяет менеджер. Остальное работает автоматически.</p>
+        </div>
+        <span class="pair-number">13</span>
+      </section>
+
+      <!-- 30 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="lime">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 14</p>
+          <h1>Где на этом маршруте<br>теряются данные?</h1>
+          <p class="question-hint">И почему именно там</p>
+        </div>
+        <span class="pair-number">14</span>
+      </section>
+      <!-- 31 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · четвёртое понятие</p>
+          <h2>На стыках, а не внутри станций</h2>
+          <div class="seam">
+            <div class="seam__box"><b>ФОРМА</b><span>ручной участок</span></div>
+            <div class="seam__gap"><div class="seam__drop">поле source</div></div>
+            <div class="seam__box"><b>ТАБЛИЦА</b><span>автоматический участок</span></div>
+          </div>
+          <p class="say"><b>Точка разрыва</b> — стык двух шагов или систем, на котором данные теряются, искажаются или дублируются. Форма не передала поле <code class="k">source</code> — в отчёте у заявки источник останется <code class="k">(not set)</code>. Внутри самой формы и самой таблицы данные при этом целы. Рвётся именно на переходе, чаще всего — там, где ручной участок передаёт данные автоматическому.</p>
+        </div>
+        <span class="pair-number">14</span>
+      </section>
+
+      <!-- 32 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="orange">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 15</p>
+          <h1>Почему аналитика, таблица<br>и CRM показывают разные цифры?</h1>
+          <p class="question-hint">Три типичные ловушки</p>
+        </div>
+        <span class="pair-number">15</span>
+      </section>
+      <!-- 33 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ · как отчёт вводит в заблуждение</p>
+          <h2>Чаще всего — из-за разметки источников</h2>
+          <div class="traps">
+            <div class="traps__c"><b>Регистр меток</b>
+              <table><tr class="bad"><td>utm_source=VK</td><td>8</td></tr><tr class="bad"><td>utm_source=vk</td><td>5</td></tr><tr class="bad"><td>utm_source=Vk</td><td>3</td></tr></table>
+              <p>Одна кампания, размеченная непоследовательно, распадается на строки с малыми числами.</p>
+            </div>
+            <div class="traps__c"><b>Незаполненный источник</b>
+              <table><tr><td>vk / telegram</td><td>53%</td></tr><tr class="bad"><td>(not set)</td><td>47%</td></tr></table>
+              <p><code class="k">(not set)</code> — не сбой, а «значение не получено». Метку не поставили или потеряли.</p>
+            </div>
+            <div class="traps__c"><b>Прямые заходы</b>
+              <table><tr class="bad"><td>direct</td><td>61%</td></tr><tr><td>остальное</td><td>39%</td></tr></table>
+              <p>В <code class="k">direct</code> попадают мессенджеры, приложения, письма без меток — недоразмеченный трафик.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">15</span>
+      </section>
+
+      <!-- 34 Q -->
+      <section class="slide slide--question" data-kind="question" data-accent="blue">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Вопрос 16</p>
+          <h1>Что из этого<br>мы делаем на курсе?</h1>
+          <p class="question-hint">Границы учебного проекта</p>
+        </div>
+        <span class="pair-number">16</span>
+      </section>
+      <!-- 35 A -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Ответ</p>
+          <h2>В объективе и за кадром</h2>
+          <div class="frame">
+            <div class="frame__in"><b>в объективе</b>
+              <ul>
+                <li>один учебный сайт с формой и кнопкой</li>
+                <li>воронка из 4 шагов: просмотр → кнопка → форма → заявка</li>
+                <li>учебные источники и тестовые заявки</li>
+                <li>автоматизация, CRM в учебном режиме, уведомления</li>
+                <li>один дашборд на собственных данных</li>
+              </ul>
+            </div>
+            <div class="frame__out"><b>за кадром</b>
+              <ul>
+                <li>рекламные бюджеты и закупка трафика</li>
+                <li>персональные данные реальных людей</li>
+                <li>промышленная CRM и корпоративные интеграции</li>
+                <li>серверное отслеживание, модели атрибуции</li>
+                <li>нагрузка и масштабирование</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">16</span>
+      </section>
+
+      <!-- 36 · демонстрация -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Демонстрация · преподаватель · 10 минут</p>
+          <h2>Фиксируем событие <code class="k">generate_lead</code> на учебном стенде</h2>
+          <ol class="steps">
+            <li>Открыть учебный стенд (<code>stend/index.html</code>) → <code>F12</code> → вкладка <b>Network</b>, фильтр <code>collect</code>, включить <b>Preserve log</b>.</li>
+            <li>Перезагрузить страницу → строка <code>en=page_view</code>. Прокрутить → <code>en=scroll</code>.</li>
+            <li>Нажать «Оставить заявку», заполнить и отправить форму → появляются <code>select_content</code>, <code>form_start</code>, <code>generate_lead</code>.</li>
+            <li>Выбрать <code>en=generate_lead</code> → <b>Payload</b> → разобрать параметры: <code>en</code>, <code>dl</code>, <code>ep.form_id</code>, <code>ep.source</code>.</li>
+          </ol>
+          <div class="figrow">
+            <figure><img src="shots/stend-01-hero.png" alt="Учебный стенд: страница с кнопкой «Оставить заявку»"><figcaption>стенд: страница и кнопка призыва к действию</figcaption></figure>
+            <figure><img src="shots/devtools-network-real.png" alt="Панель Network: запросы collect со статусом 204"><figcaption>панель Network после прохода: 4 × collect · 204 · ping</figcaption></figure>
+          </div>
+        </div>
+        <span class="pair-number">17</span>
+      </section>
+
+      <!-- 37 · практика -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Практическая работа · 48 минут · индивидуально или в паре</p>
+          <h2>Действие на сайте — строка в панели запросов</h2>
+          <div class="didsee">
+            <div class="head"><span>что делаете</span><span>что появляется в Network</span></div>
+            <div><span>открываете страницу</span><span><code>en=page_view</code> · параметры <code>dl</code>, <code>dt</code></span></div>
+            <div><span>прокручиваете вниз</span><span><code>en=scroll</code></span></div>
+            <div><span>нажимаете кнопку</span><span><code>en=select_content</code></span></div>
+            <div><span>открываете форму</span><span><code>en=form_start</code></span></div>
+            <div><span>отправляете форму (тестовыми данными)</span><span><code>en=generate_lead</code> · <code>ep.source=(not set)</code></span></div>
+          </div>
+          <p class="note">В журнал заносите 5–7 событий: действие · имя <code class="k">en</code> · ключевые параметры · система-получатель. Затем заполняете карту воронки по 7 станциям и отмечаете 3 точки разрыва. Если строк <code>collect</code> нет — фильтр <code>collect|mc.yandex|analytics</code>, примите cookie, отключите блокировщик.</p>
+        </div>
+        <span class="pair-number">17</span>
+      </section>
+
+      <!-- 38 · приёмка -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Результат занятия · файл funnel_map_01.md, ветка hw-02</p>
+          <h2>Что должно быть в карте воронки v1</h2>
+          <ul class="accept">
+            <li><span><b>Карта воронки</b> — все 7 станций, у каждой указано: ручное управление или автоматическое.</span></li>
+            <li><span><b>Журнал событий</b> — 5–7 событий, зафиксированных лично, с параметрами и системой-получателем.</span></li>
+            <li><span><b>Точки разрыва</b> — не менее трёх, для каждой указано последствие далее по маршруту.</span></li>
+            <li><span><b>Итог проекта</b> — 2–3 предложения о том, что покажет собранная воронка к концу семестра.</span></li>
+          </ul>
+          <p class="callout"><b>Контрольный вопрос индивидуально:</b> откройте панель запросов, покажите одно своё событие, назовите имя, адрес и один параметр; определите — событие это, заявка или статус.</p>
+          <button class="source-link" id="hwDownload" type="button">Скачать бланки в PDF →</button>
+        </div>
+        <span class="pair-number">17</span>
+      </section>
+
+      <!-- 39 · ДЗ -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange">
+        <div class="slide-inner wrap">
+          <p class="eyebrow">Домашнее задание · к занятию 2</p>
+          <h2>Максим Николаевич не хочет задавать домашнее задание. Но очень хочет</h2>
+          <ol class="hw">
+            <li><b>Повторить журнал на втором сайте.</b> Ещё один сайт с формой, снова 5–7 событий с параметрами.</li>
+            <li><b>Сравнить два сайта.</b> Где событий больше и почему? Где источник определён (<code>source</code>, <code>utm_*</code>), а где имеет значение <code>(not set)</code>? Объём — 5–6 предложений.</li>
+            <li><b>Сформулировать одну проверяемую гипотезу.</b> Выбрать точку разрыва из своей карты и описать, как проверить её на занятии 2.</li>
+          </ol>
+          <p class="note">Бланк — в PDF с прошлого экрана. Использование ИИ: наблюдения и сравнение — самостоятельно; модель допускается для редактирования формулировок и оформления файла. <mark>Я сам так делаю всегда, поэтому и вам запрещать не буду.</mark></p>
+        </div>
+        <span class="pair-number">ДЗ</span>
+      </section>
+
+    </main>
+
+    <footer class="controls">
+      <button class="nav-button" id="prevButton" type="button" aria-label="Предыдущий слайд">←</button>
+      <div class="progress" id="progress" aria-hidden="true"></div>
+      <button class="nav-button" id="nextButton" type="button" aria-label="Следующий слайд">→</button>
+      <span class="key-hint">← → / пробел</span>
+    </footer>
+  </div>
+
+  <aside class="sources-panel" id="sourcesPanel" aria-hidden="true">
+    <div class="sources-backdrop" data-close-sources></div>
+    <div class="sources-sheet" role="dialog" aria-modal="true" aria-labelledby="sourcesTitle">
+      <button class="sources-close" type="button" data-close-sources aria-label="Закрыть">×</button>
+      <p class="eyebrow">Проверяемая основа занятия</p>
+      <h2 id="sourcesTitle">Источники</h2>
+      <ol>
+        <li><a href="https://en.wikipedia.org/wiki/Purchase_funnel" target="_blank" rel="noreferrer"><strong>Purchase funnel</strong><span>История воронки: модель Э. Сент-Эльмо Льюиса (AIDA), диаграмма У. Таунсенда, «Bond Salesmanship» (1924)</span></a></li>
+        <li><a href="https://en.wikipedia.org/wiki/John_Wanamaker" target="_blank" rel="noreferrer"><strong>John Wanamaker</strong><span>Фраза о «половине рекламного бюджета»</span></a></li>
+        <li><a href="https://en.wikipedia.org/wiki/Lean_startup" target="_blank" rel="noreferrer"><strong>Eric Ries, «The Lean Startup» (2011)</strong><span>Тщеславные (vanity) и практические (actionable) метрики</span></a></li>
+        <li><a href="https://developer.chrome.com/docs/devtools/network/" target="_blank" rel="noreferrer"><strong>Chrome DevTools</strong><span>Панель Network: запросы, фильтры, Preserve log, Payload</span></a></li>
+        <li><a href="https://developers.google.com/analytics/devguides/collection/protocol/ga4" target="_blank" rel="noreferrer"><strong>GA4 Measurement Protocol</strong><span>Параметры запроса сбора: <code>en</code>, <code>ep.*</code>, <code>dl</code>, <code>dt</code>, <code>tid</code></span></a></li>
+        <li><a href="https://developer.mozilla.org/docs/Web/API/Navigator/sendBeacon" target="_blank" rel="noreferrer"><strong>MDN</strong><span><code>navigator.sendBeacon()</code> — доставка запроса при выгрузке страницы</span></a></li>
+        <li><a href="https://developer.mozilla.org/docs/Web/HTTP/Status/204" target="_blank" rel="noreferrer"><strong>MDN</strong><span>HTTP 204 No Content — ответ без тела</span></a></li>
+        <li><a href="https://en.wikipedia.org/wiki/Web_beacon" target="_blank" rel="noreferrer"><strong>Web beacon</strong><span>«web bug», термин Р. Смита (1999); прозрачный пиксель 1×1</span></a></li>
+      </ol>
+      <p class="sources-note">Тема и результат занятия — из КТП дисциплины ОП.03, занятие 1. Значения в макетах панелей — учебный пример. Полный конспект лекции — файл <code>LESSON.md</code> в папке занятия.</p>
+    </div>
+  </aside>
+
+  <div class="hw-sheet" id="homeworkSheet" aria-hidden="true">
+    <header class="hw-head">
+      <div>
+        <p class="hw-course">ОП.03 · Информационные технологии · 2 курс</p>
+        <h1>Занятие 1 · Цифровая воронка</h1>
+        <p class="hw-sub">Бланки для практической работы и домашнего задания</p>
+      </div>
+      <div class="hw-mark">И/Т</div>
+    </header>
+
+    <p class="hw-joke">Один сайт разбирается на паре, второй — дома. Настоящие запросы, настоящие параметры.</p>
+
+    <h2>1. Карта воронки (версия 1)</h2>
+    <table class="hw-table">
+      <tr><th>Станция</th><th>Что происходит</th><th>Где хранятся данные</th><th>Управление</th><th>Способ проверки</th></tr>
+      <tr><td>1. Переход по ссылке</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>2. Просмотр страницы</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>3. Нажатие кнопки</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>4. Открытие формы</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>5. Отправка формы (заявка)</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>6. Обработка / маршрутизация</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>7. Отчёт / дашборд</td><td></td><td></td><td></td><td></td></tr>
+    </table>
+
+    <h2>2. Журнал событий (5–7 записей)</h2>
+    <table class="hw-table">
+      <tr><th>№</th><th>Выполненное действие</th><th>Имя события (en)</th><th>Ключевые параметры</th><th>Система-получатель (адрес)</th></tr>
+      <tr><td>1</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>2</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>3</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>4</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>5</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>6</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>7</td><td></td><td></td><td></td><td></td></tr>
+    </table>
+
+    <h2>3. Точки разрыва (не менее трёх)</h2>
+    <table class="hw-table">
+      <tr><th>Стык (между какими шагами)</th><th>Что теряется</th><th>Последствие далее по маршруту</th></tr>
+      <tr><td></td><td></td><td></td></tr>
+      <tr><td></td><td></td><td></td></tr>
+      <tr><td></td><td></td><td></td></tr>
+    </table>
+
+    <h2>4. Итог проекта</h2>
+    <p class="hw-note">2–3 предложения о том, что покажет собранная цифровая воронка к концу семестра. ______________________________________________________________________________________________________________</p>
+
+    <h2>Понятия занятия</h2>
+    <dl class="hw-gloss">
+      <dt>Воронка</dt><dd>путь клиента по шагам, на каждом из которых часть людей отсеивается</dd>
+      <dt>Действие</dt><dd>что человек сделал в интерфейсе; само по себе нигде не хранится</dd>
+      <dt>Событие</dt><dd>зафиксированный факт действия, переданный в аналитику; имеет имя (en) и параметры; неизменяемо</dd>
+      <dt>Заявка</dt><dd>запись со смысловыми данными обращения; хранится в таблице или CRM</dd>
+      <dt>Статус</dt><dd>этап обработки заявки: new → in progress → done; меняется многократно</dd>
+      <dt>Точка разрыва</dt><dd>стык шагов или систем, где данные теряются, искажаются или дублируются</dd>
+    </dl>
+
+    <p class="hw-foot">Полный конспект лекции — LESSON.md в папке занятия. Порядок сдачи: файл lesson_02/funnel_map_01.md, ветка hw-02, запрос на слияние в собственную ветку main. Карта — к концу пары, домашнее задание — до занятия 2.</p>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
