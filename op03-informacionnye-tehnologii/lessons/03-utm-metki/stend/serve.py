@@ -28,7 +28,9 @@ class StendHandler(SimpleHTTPRequestHandler):
     """Отдаёт файлы стенда и принимает события на /g/collect."""
 
     def _is_collect(self):
-        return self.path.split('?')[0] == '/g/collect'
+        # Текущий стенд шлёт событие запросом картинки g/collect.gif;
+        # адрес /g/collect оставлен для совместимости со старыми копиями.
+        return self.path.split('?')[0] in ('/g/collect', '/g/collect.gif')
 
     def _accept_event(self):
         # 204 No Content: запрос принят, тела ответа нет — норма для аналитики.
@@ -44,7 +46,8 @@ class StendHandler(SimpleHTTPRequestHandler):
 
     # Часть счётчиков отправляет события обычным GET — принимаем и его.
     def do_GET(self):
-        if self._is_collect():
+        # Картинку отдаём как обычный файл — просто отмечаем событие в журнале.
+        if self.path.split('?')[0] == '/g/collect':
             return self._accept_event()
         super().do_GET()
 
