@@ -20,6 +20,19 @@
       '<b>utm_source</b> = ' + mark(c.source) + '<br>' +
       '<b>utm_medium</b> = ' + mark(c.medium) + '<br>' +
       '<b>utm_campaign</b> = ' + mark(c.campaign);
+
+    /* Если источника нет, поясняем почему. Чаще всего внутреннюю страницу
+       открывают напрямую — тогда перехода с размеченной ссылки не было
+       и запоминать в sessionStorage оказалось нечего. */
+    if (c.source === '(not set)' && c.medium === '(not set)' && c.campaign === '(not set)') {
+      var inner = /programma\.html$/.test(location.pathname);
+      peek.insertAdjacentHTML('beforeend',
+        '<div class="hint">' +
+        (inner
+          ? 'Источник неизвестен: эту страницу открыли напрямую. Начните с главной по размеченной ссылке и перейдите сюда через меню — тогда значения сохранятся.'
+          : 'Источник неизвестен: в адресе нет меток. Допишите к адресу <b>?utm_source=vk&amp;utm_medium=social&amp;utm_campaign=sept_open_2026</b> и нажмите Enter.') +
+        '</div>');
+    }
   }
 
   var cta = document.getElementById('cta');
