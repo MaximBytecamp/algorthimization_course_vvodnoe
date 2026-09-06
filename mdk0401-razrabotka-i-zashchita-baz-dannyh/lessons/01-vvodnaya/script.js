@@ -5,17 +5,17 @@
      Единицы 24, 27, 30 и 32 — самостоятельные работы.
      --------------------------------------------------------- */
   const SECTIONS = [
-    { tag: 'Р1',  from: 1,  to: 2,  hours: 4,  color: '#F5A524', title: 'Архитектура хранения' },
-    { tag: 'Р2',  from: 3,  to: 7,  hours: 10, color: '#4ADE80', title: 'MongoDB' },
-    { tag: 'Р3',  from: 8,  to: 12, hours: 10, color: '#A78BFA', title: 'ClickHouse' },
-    { tag: 'Р4',  from: 13, to: 16, hours: 8,  color: '#FB7185', title: 'Интеграция и Redis' },
-    { tag: 'Р5',  from: 17, to: 22, hours: 12, color: '#22D3EE', title: 'RabbitMQ' },
-    { tag: 'Р6',  from: 23, to: 33, hours: 22, color: '#7DD3FC', title: 'Защита платформы' },
-    { tag: 'Р7',  from: 34, to: 38, hours: 10, color: '#F472B6', title: 'Управление доступом' },
-    { tag: 'Р8',  from: 39, to: 43, hours: 10, color: '#FBBF24', title: 'Копии и восстановление' },
-    { tag: 'Р9',  from: 44, to: 48, hours: 10, color: '#34D399', title: 'Производительность' },
-    { tag: 'Р10', from: 49, to: 53, hours: 10, color: '#818CF8', title: 'Тесты и эксплуатация' },
-    { tag: 'Р11', from: 54, to: 57, hours: 8,  color: '#F87171', title: 'Жизненный цикл и зачёт' }
+    { tag: 'Р1',  from: 1,  to: 2,  hours: 4,  color: '#D97706', title: 'Архитектура хранения' },
+    { tag: 'Р2',  from: 3,  to: 7,  hours: 10, color: '#16A34A', title: 'MongoDB' },
+    { tag: 'Р3',  from: 8,  to: 12, hours: 10, color: '#7C3AED', title: 'ClickHouse' },
+    { tag: 'Р4',  from: 13, to: 16, hours: 8,  color: '#E11D48', title: 'Интеграция и Redis' },
+    { tag: 'Р5',  from: 17, to: 22, hours: 12, color: '#0891B2', title: 'RabbitMQ' },
+    { tag: 'Р6',  from: 23, to: 33, hours: 22, color: '#2563EB', title: 'Защита платформы' },
+    { tag: 'Р7',  from: 34, to: 38, hours: 10, color: '#DB2777', title: 'Управление доступом' },
+    { tag: 'Р8',  from: 39, to: 43, hours: 10, color: '#CA8A04', title: 'Копии и восстановление' },
+    { tag: 'Р9',  from: 44, to: 48, hours: 10, color: '#059669', title: 'Производительность' },
+    { tag: 'Р10', from: 49, to: 53, hours: 10, color: '#4F46E5', title: 'Тесты и эксплуатация' },
+    { tag: 'Р11', from: 54, to: 57, hours: 8,  color: '#DC2626', title: 'Жизненный цикл и зачёт' }
   ];
   const SOLO = [24, 27, 30, 32];
 
