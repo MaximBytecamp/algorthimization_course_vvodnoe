@@ -18,7 +18,7 @@
       <div class="boot-card__top"><span>ОП.04 · ЗАНЯТИЕ 4</span><span>2026 / 2027</span></div>
       <p class="boot-card__title">Практические замеры<br><em>времени и памяти</em></p>
       <dl class="boot-card__fields">
-        <div><dt>Формат</dt><dd>лаборатория: контур, серия, приёмка</dd></div>
+        <div><dt>Формат</dt><dd>лекция с разбором кода и четыре запуска руками</dd></div>
         <div><dt>Объём</dt><dd>одна пара, 35 экранов</dd></div>
         <div><dt>Результат</dt><dd>свой contour.py, своя серия и паспорт эксперимента</dd></div>
         <div><dt>Файлы</dt><dd>benchmarks/ · lab.py · contour.py · METHOD.md</dd></div>
@@ -46,193 +46,214 @@
       <section class="slide slide--title is-active" data-kind="title" data-accent="blue" data-time="1">
         <div class="slide-inner title-layout">
           <div>
-            <p class="eyebrow">Занятие 4 · алгоритмизация · лаборатория</p>
+            <p class="eyebrow">Занятие 4 · алгоритмизация</p>
             <h1>Практические<br>замеры времени<br>и памяти</h1>
-            <p class="lead">На прошлом занятии мы считали операции: число сравнений не зависит ни от машины, ни от версии Python. Сегодня измеряем секунды и байты — они зависят от всего сразу. Разберём, из чего собран замер, и соберём его руками.</p>
+            <p class="lead">Занятие 3 считало операции: число сравнений не зависит ни от машины, ни от версии Python. Сегодня измеряем секунды и байты. Разберём, из каких строк состоит замер, какие часы для него годятся и почему одно измерение ничего не значит.</p>
             <div class="title-meta"><span>35 экранов</span><span>4 запуска руками</span><span>результат — свой CSV</span></div>
           </div>
           <div class="title-card">
-            <p class="title-card__label">Запись № 1 · сверка идентификаторов</p>
-            <div class="title-card__row"><span>Ожидали при удвоении n<br>для решения O(n²)</span><b>&times;4,00</b></div>
-            <div class="title-card__row title-card__row--miss"><span>Получили на замере<br>(n: 500 &rarr; 1000)</span><b>&times;3,60</b></div>
-            <div class="title-card__row"><span>Ожидали при удвоении n<br>для решения O(n)</span><b>&times;2,00</b></div>
-            <div class="title-card__row title-card__row--miss"><span>Получили на замере<br>(n: 2000 &rarr; 4000)</span><b>&times;2,50</b></div>
-            <p class="title-card__note">Оба результата отличаются от ожидания, причём в разные стороны. Сначала проверим методику, потом объясним расхождение свойствами кода и среды.</p>
+            <p class="title-card__label">Что будет на экранах</p>
+            <div class="title-card__row"><span>Функции модуля <code>time</code></span><b>4</b></div>
+            <div class="title-card__row"><span>Элементов контура замера</span><b>5</b></div>
+            <div class="title-card__row"><span>Размеров входа в серии</span><b>6</b></div>
+            <div class="title-card__row"><span>Дефектов в чужом замере</span><b>5</b></div>
+            <p class="title-card__note">Все числа на экранах получены запуском файлов из <code>course-materials/benchmarks/</code> на CPython 3.12.12. Кадры терминала — с этих же запусков.</p>
           </div>
         </div>
         <span class="pair-number">04</span>
       </section>
 
-      <!-- 02 · точка входа: запись № 1 -->
-      <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="2">
-        <div class="slide-inner">
-          <p class="eyebrow">Раздел I · лабораторный журнал · запись № 1</p>
-          <h2>Замер не подтвердил ни одно из двух ожиданий</h2>
-          <p class="lead">Мы сверяем пакет входящих идентификаторов с реестром известных. Перебор по списку имеет сложность <code>O(n&sup2;)</code>, проверка через множество — <code>O(n)</code>. Значит, при удвоении входа ждём рост примерно в четыре и в два раза. Серия из семи повторов дала другие множители.</p>
-          <div class="journal">
-            <div class="journal__head"><b>ЛАБОРАТОРНЫЙ ЖУРНАЛ · ЗАПИСЬ № 1</b><span>CPython 3.12.12 · 7 повторов · минимум серии</span></div>
-            <div class="journal__grid">
-              <div class="journal__cell journal__cell--wait">
-                <span>ожидание</span>
-                <b class="journal__big">&times;4,00</b>
-                <p>Перебор по списку: работа растёт как n&sup2;, вход удвоился.</p>
-                <p><b class="journal__big">&times;2,00</b></p>
-                <p>Проверка в множестве: работа растёт как n.</p>
-              </div>
-              <div class="journal__cell">
-                <span>сырые значения</span>
-                <p class="journal__rows">список&nbsp;&nbsp;&nbsp;500&nbsp;&nbsp;<b>1174,8</b><br>список&nbsp;&nbsp;1000&nbsp;&nbsp;<b>4231,2</b><br>множ.&nbsp;&nbsp;2000&nbsp;&nbsp;&nbsp;&nbsp;<b>49,1</b><br>множ.&nbsp;&nbsp;4000&nbsp;&nbsp;&nbsp;<b>122,7</b></p>
-                <p>Микросекунды на вызов, минимум серии из семи повторов.</p>
-              </div>
-              <div class="journal__cell journal__cell--miss">
-                <span>агрегат</span>
-                <b class="journal__big">&times;3,60</b>
-                <p>4231,2 / 1174,8 — список вырос медленнее, чем вчетверо.</p>
-                <p><b class="journal__big">&times;2,50</b></p>
-                <p>122,7 / 49,1 — множество выросло быстрее, чем вдвое.</p>
-              </div>
-              <div class="journal__cell journal__open">
-                вывод<br>&mdash;<br>запись открыта<br>до экрана 25
-              </div>
-            </div>
-          </div>
-          <p class="note">Вывод пока не пишем, и это не осторожность ради осторожности. Прежде чем объяснять расхождение, нужно убедиться, что оно не создано самим замером: границей участка, отсутствием прогрева, единственным повтором или неудачно выбранным агрегатом.</p>
-        </div>
-        <span class="pair-number">I · ЗАЧЕМ ИЗМЕРЯТЬ</span>
-      </section>
-
-      <!-- 03 · зачем измерять, если оценка есть -->
+      <!-- 02 · два решения -->
       <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="2">
         <div class="slide-inner">
-          <p class="eyebrow">Раздел I · зачем измерять, если оценка уже есть</p>
-          <h2>Асимптотика показывает рост, замер — цену запуска</h2>
-          <p class="lead">Оценка сложности сравнивает, как растёт работа при увеличении входа. Для инженерного решения этого мало: нужны секунды на конкретной машине и байты на конкретных данных. Вот три вопроса, на которые запись <code>O(n)</code> не отвечает вообще.</p>
-          <div class="cards4 cards4--three">
+          <p class="eyebrow">Раздел I · задача занятия</p>
+          <h2>Два решения одной задачи: сверка входящих с реестром</h2>
+          <p class="lead">Пришёл пакет из n идентификаторов. Нужно посчитать, сколько из них есть в реестре известных. Оба решения дают одинаковый ответ и различаются одной строкой — тем, где хранится реестр.</p>
+          <div class="examples examples--pair examples--tall">
             <article>
-              <b>вопрос 01</b>
-              <strong>Уложимся в лимит?</strong>
-              <p>Запись <code>O(n)</code> не говорит, займёт вызов 5 миллисекунд или 5 секунд. Лимит ответа сервиса проверяется запуском.</p>
-              <small>отвечает замер</small>
+              <b>match_list · проверка по списку</b>
+<pre><code>def match_list(registry, incoming):
+    known = list(registry)
+    return sum(1 for x in incoming
+               if x in known)</code></pre>
+              <p>Проверка <code>x in known</code> для списка сравнивает <code>x</code> с элементами подряд, пока не найдёт совпадение или не дойдёт до конца. Одна проверка стоит до n сравнений, проверок n штук.</p>
+              <small>оценка занятия 3: T(n) = O(n²)</small>
             </article>
             <article>
-              <b>вопрос 02</b>
-              <strong>Какое из двух решений быстрее здесь?</strong>
-              <p>Две реализации одного класса различаются постоянными расходами, обращениями к памяти и стоимостью операций Python.</p>
-              <small>отвечает замер</small>
-            </article>
-            <article>
-              <b>вопрос 03</b>
-              <strong>Сколько это в мегабайтах?</strong>
-              <p><code>S(n) = O(n)</code> описывает рост. Для лимита памяти контейнера нужны байты на элемент и пиковое значение.</p>
-              <small>отвечает замер</small>
+              <b>match_set · проверка по множеству</b>
+<pre><code>def match_set(registry, incoming):
+    known = set(registry)
+    return sum(1 for x in incoming
+               if x in known)</code></pre>
+              <p>Множество хранит значения по хеш-таблице: адрес ячейки считается из самого значения, поэтому проверка не зависит от размера реестра. Одна проверка — O(1) в среднем, проверок n штук.</p>
+              <small>оценка занятия 3: T(n) = O(n)</small>
             </article>
           </div>
-          <p class="note"><strong>Рабочая связка:</strong> сначала оценка отбрасывает заведомо неподходящий алгоритм — считать её дешевле, чем запускать. Потом замер проверяет уже выбранную реализацию в той среде, где она будет работать.</p>
+          <p class="note">Задача сквозная: на ней разбираются все пять элементов контура, на ней же вы проведёте свою серию. Файл с обоими решениями — <code>benchmarks/lab.py</code>.</p>
         </div>
         <span class="pair-number">I · ЗАЧЕМ ИЗМЕРЯТЬ</span>
       </section>
 
-      <!-- 04 · четыре величины и пять элементов контура -->
-      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="2">
-        <div class="slide-inner split split--top">
-          <div>
-            <p class="eyebrow">Раздел I · что именно мы измеряем</p>
-            <h2>Оценка и замер описывают разные величины</h2>
-            <p class="lead">Их удобно различать по обозначениям. <code>T(n)</code> и <code>S(n)</code> — функции роста: сколько операций и сколько дополнительной памяти требует алгоритм. <code>t(n)</code> и <code>m(n)</code> — результаты измерения на конкретном запуске.</p>
-            <table class="flat">
-              <tr><th>Величина</th><th>Что описывает</th><th>Откуда берётся</th></tr>
-              <tr><td><code>T(n)</code></td><td>рост числа операций</td><td>разбор кода</td></tr>
-              <tr><td><code>S(n)</code></td><td>рост дополнительной памяти</td><td>разбор кода</td></tr>
-              <tr class="flat__pick"><td><code>t(n)</code></td><td>время в микросекундах</td><td><code>perf_counter</code></td></tr>
-              <tr class="flat__pick"><td><code>m(n)</code></td><td>пиковую память в байтах</td><td><code>tracemalloc</code></td></tr>
-            </table>
-            <p class="note"><code>T(n)</code> не зависит от машины, <code>t(n)</code> зависит от неё целиком. Поэтому <code>t(n)</code> без описания условий запуска ничего не значит.</p>
-          </div>
-          <div>
-            <p class="eyebrow">Раздел I · из чего собран замер</p>
-            <div class="contour-map" data-map>
-              <p class="contour-map__label">Измерительный контур · пять обязательных элементов</p>
-              <ol>
-                <li data-step="data"><b>данные</b><span>одинаковый вход для всех решений, созданный до отсчёта</span></li>
-                <li data-step="bound"><b>граница</b><span>внутри участка только исследуемая операция</span></li>
-                <li data-step="warm"><b>прогрев</b><span>первый вызов выполняется до рабочей серии</span></li>
-                <li data-step="series"><b>серия</b><span>повторы, все сырые значения сохраняются</span></li>
-                <li data-step="agg"><b>агрегат</b><span>итоговое число и разброс рядом с ним</span></li>
-              </ol>
-              <p class="contour-map__foot">Мы разберём их по очереди, а на экране 13 вы соберёте этот контур сами — под автопроверку из семи тестов.</p>
-            </div>
-          </div>
-        </div>
-        <span class="pair-number">I · ЗАЧЕМ ИЗМЕРЯТЬ</span>
-      </section>
-
-      <!-- 05 · четыре часа Python -->
+      <!-- 03 · замер не сошёлся с ожиданием -->
       <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="2">
-        <div class="slide-inner split split--top split--shot">
+        <div class="slide-inner split split--cost">
           <div>
-            <p class="eyebrow">Раздел II · чем засекают время</p>
-            <h2>В <code>time</code> четыре разных часов, и они считают разное</h2>
-            <p class="lead">Функция <code>time.get_clock_info(имя)</code> сама рассказывает про часы: какое у них разрешение и монотонные ли они. Монотонные часы не могут пойти назад — это и делает их пригодными для интервалов.</p>
-            <table class="flat">
-              <tr><th>Часы</th><th>Что считают</th><th>Разрешение</th><th>Монотонные</th></tr>
-              <tr class="flat__pick"><td><code>perf_counter</code></td><td>прошедшее время, вместе с ожиданием</td><td>4&middot;10<sup>&minus;8</sup> с</td><td>да</td></tr>
-              <tr class="flat__pick"><td><code>process_time</code></td><td>процессорное время процесса</td><td>1&middot;10<sup>&minus;6</sup> с</td><td>да</td></tr>
-              <tr><td><code>monotonic</code></td><td>прошедшее время</td><td>4&middot;10<sup>&minus;8</sup> с</td><td>да</td></tr>
-              <tr class="flat__bad"><td><code>time</code></td><td>календарное время</td><td>1&middot;10<sup>&minus;6</sup> с</td><td>нет</td></tr>
-            </table>
-            <p class="note"><code>time.time()</code> для интервалов не годится: при синхронизации часов операционной системой оно может прыгнуть назад, и разность двух отсчётов окажется отрицательной. Именно эту ошибку мы найдём потом в чужом замере.</p>
+            <p class="eyebrow">Раздел I · зачем нужен замер</p>
+            <h2>Оценка предсказывает ×4 и ×2, замер даёт другие множители</h2>
+            <p class="lead">Если <code>T(n) = O(n²)</code>, то при удвоении n работа растёт примерно вчетверо; если <code>O(n)</code> — вдвое. Справа — множители, полученные запуском на шести размерах входа.</p>
+            <p class="note">Ни одно значение не совпало с ожиданием ровно, и промахи разнонаправленные: список рос медленнее четырёх раз, множество — быстрее двух. Причины разберём на экране 25, когда будет понятно, что сам замер сделан правильно.</p>
+          </div>
+          <table class="unit-table unit-table--wide">
+            <thead><tr><th>Удвоение n</th><th>список</th><th>множество</th><th>ожидание</th></tr></thead>
+            <tbody>
+              <tr><td>250 → 500</td><td class="unit-table__n">3,91</td><td class="unit-table__one">2,07</td><td>4,00 и 2,00</td></tr>
+              <tr><td>500 → 1000</td><td class="unit-table__n">3,60</td><td class="unit-table__one">2,15</td><td>4,00 и 2,00</td></tr>
+              <tr><td>1000 → 2000</td><td class="unit-table__n">3,96</td><td class="unit-table__one">2,13</td><td>4,00 и 2,00</td></tr>
+              <tr><td>2000 → 4000</td><td class="unit-table__n">4,05</td><td class="unit-table__one">2,50</td><td>4,00 и 2,00</td></tr>
+              <tr><td>4000 → 8000</td><td class="unit-table__n">3,93</td><td class="unit-table__one">1,95</td><td>4,00 и 2,00</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <span class="pair-number">I · ЗАЧЕМ ИЗМЕРЯТЬ</span>
+      </section>
+
+      <!-- 04 · четыре величины -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="2">
+        <div class="slide-inner">
+          <p class="eyebrow">Раздел I · определения</p>
+          <h2>Оценка и замер описывают разные величины</h2>
+          <p class="lead"><b>Замер</b> — измерение времени или памяти одного конкретного запуска программы на конкретной машине. Оценка сложности получается разбором кода и от машины не зависит; замер получается запуском и зависит от неё целиком.</p>
+          <div class="def-parts def-parts--four">
+            <div><b>T(n)</b><p>Число операций как функция размера входа. Получается счётом по коду. Единиц измерения нет.</p></div>
+            <div><b>S(n)</b><p>Дополнительная память как функция размера входа. Тоже счётом по коду, тоже без единиц.</p></div>
+            <div><b>t(n)</b><p>Время работы в секундах или микросекундах. Получается замером по часам.</p></div>
+            <div><b>m(n)</b><p>Пиковая дополнительная память в байтах. Получается замером через <code>tracemalloc</code>.</p></div>
+          </div>
+          <table class="unit-table unit-table--qa">
+            <thead><tr><th>Вопрос</th><th>Оценка</th><th>Замер</th><th>Почему</th></tr></thead>
+            <tbody>
+              <tr><td>Какое решение растёт быстрее?</td><td class="unit-table__one">да</td><td class="unit-table__n">нет</td><td>замер видит только те n, на которых запускали</td></tr>
+              <tr><td>Уложимся в лимит 200 мс?</td><td class="unit-table__n">нет</td><td class="unit-table__one">да</td><td>в записи O(n) секунд нет</td></tr>
+              <tr><td>Хватит ли 256 МБ контейнеру?</td><td class="unit-table__n">нет</td><td class="unit-table__one">да</td><td>байты на элемент считает только прибор</td></tr>
+              <tr><td>Какая реализация дешевле здесь?</td><td class="unit-table__n">нет</td><td class="unit-table__one">да</td><td>у решений одного класса разные постоянные расходы</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <span class="pair-number">I · ЗАЧЕМ ИЗМЕРЯТЬ</span>
+      </section>
+
+      <!-- 05 · часы и их свойства -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="2">
+        <div class="slide-inner split split--shot">
+          <div>
+            <p class="eyebrow">Раздел II · определения</p>
+            <h2>Часы описываются разрешением и монотонностью</h2>
+            <p class="lead"><b>Разрешение часов</b> — наименьший интервал, который они различают. <b>Монотонные часы</b> не могут пойти назад: их показания только растут. Оба свойства печатает <code>time.get_clock_info</code>, гадать не нужно.</p>
+            <div class="code-card">
+              <div class="code-card__head"><span>benchmarks/clock_info.py · функция main</span><span>свойства часов из самого Python</span></div>
+<pre><code>import time
+
+for name in ("perf_counter", "process_time", "time"):
+    info = time.get_clock_info(name)
+    print(f'{name}:')
+    print(f'    разрешение {info.resolution:.3e} с, '
+          f'монотонные: {info.monotonic}')
+    print(f'    реализация {info.implementation}')</code></pre>
+            </div>
+            <p class="note"><code>time.time()</code> возвращает календарное время и монотонным не является: при синхронизации часов операционной системой оно может уйти назад, и разность двух отсчётов окажется отрицательной. Для интервалов оно не годится.</p>
           </div>
           <figure class="shot-frame shot-frame--terminal">
-            <img src="shots/01-clocks.png" alt="Вывод clocks.py: свойства четырёх часов и сравнение прошедшего времени с процессорным">
-            <figcaption>Настоящий запуск <code>clocks.py</code> на CPython 3.12.12. Верхние четыре строки печатает сам <code>get_clock_info</code>, ниже — результат одного участка, засечённого двумя часами сразу.</figcaption>
+            <img src="shots/13-clock-info.png" alt="Вывод get_clock_info для perf_counter, process_time и time">
+            <figcaption>Запуск на CPython 3.12.12, macOS. <code>perf_counter</code> различает 4,167·10⁻⁸ с — это 41,7 наносекунды; у <code>process_time</code> разрешение в 24 раза грубее.</figcaption>
           </figure>
         </div>
         <span class="pair-number">II · ЧАСЫ</span>
       </section>
 
-      <!-- 06 · разрешение часов -->
-      <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="2">
-        <div class="slide-inner">
-          <p class="eyebrow">Раздел II · предел прибора</p>
-          <h2>Разрешение 40 наносекунд — это и есть цена деления</h2>
-          <p class="lead">Разрешение часов — наименьший интервал, который они вообще различают. У <code>perf_counter</code> это 4&middot;10<sup>&minus;8</sup> секунды, то есть 40 наносекунд. Отсюда простое правило: измеряемый участок должен быть в сотни раз длиннее цены деления, иначе мы измеряем сам прибор.</p>
-          <div class="magnitude">
-            <div class="magnitude__scale">
-              <div class="magnitude__item is-bad" style="--w:3%"><b>17 нс</b><span>одна проверка <code>x in known</code> по множеству</span><i>короче цены деления</i></div>
-              <div class="magnitude__item" style="--w:7%"><b>40 нс</b><span>разрешение <code>perf_counter</code></span><i>цена деления</i></div>
-              <div class="magnitude__item is-good" style="--w:34%"><b>66,4 мкс</b><span>сверка 4000 значений по множеству</span><i>1660 делений — измеряется уверенно</i></div>
-              <div class="magnitude__item is-good" style="--w:100%"><b>67 201,8 мкс</b><span>та же сверка перебором по списку</span><i>больше миллиона делений</i></div>
-            </div>
-          </div>
-          <p class="note">Верхняя строка — как раз тот случай, когда мерить нечем: одна проверка по множеству занимает <b>17 наносекунд</b>, это меньше цены деления. Поэтому отдельную операцию по секундомеру и не измеряют: её заворачивают в цикл на тысячи повторений и делят результат. Ровно так устроен модуль <code>timeit</code> в стандартной библиотеке, и ровно так устроен наш контур — решение получает сразу пакет из n значений.</p>
-        </div>
-        <span class="pair-number">II · ЧАСЫ</span>
-      </section>
-
-      <!-- 07 · прошедшее и процессорное -->
+      <!-- 06 · прошедшее и процессорное -->
       <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="2">
-        <div class="slide-inner split">
-          <div>
-            <p class="eyebrow">Раздел II · две разные секунды</p>
-            <h2>Ожидание входит в <code>perf_counter</code>, но не в <code>process_time</code></h2>
-            <p class="lead">Один и тот же участок в <code>clocks.py</code> содержит паузу <code>sleep(0.20)</code> и 400 000 сложений. Прошедшее время получилось <b>0,229 с</b>, процессорное — <b>0,024 с</b>. Разница в <b>0,205 с</b> — это пауза: во время неё процесс на процессоре не выполнялся, и <code>process_time</code> её не засчитал.</p>
-            <div class="micro">
-              <p class="micro__label">Как выбирать</p>
-              <p><b>perf_counter</b> — когда вопрос про задержку. Пользователь ждёт всё сразу: и вычисления, и сеть, и диск.</p>
-              <p><b>process_time</b> — когда вопрос про стоимость вычислений. Ожидание и чужая нагрузка на той же машине в число не попадут.</p>
-            </div>
-          </div>
-          <div class="side-card">
-            <p class="side-card__label">Что это значит для нашей задачи</p>
-            <p>Сверка идентификаторов ничего не ждёт: ни сети, ни диска. Значит, оба прибора покажут почти одно и то же, и мы берём <code>perf_counter</code> — у него разрешение лучше в 25 раз.</p>
-            <p>А вот если бы реестр лежал в базе, картина разошлась бы: <code>perf_counter</code> показал бы ожидание ответа, <code>process_time</code> — только разбор результата.</p>
-            <p class="side-card__foot">В паспорте эксперимента часы называются прямо: «измерено <code>perf_counter</code>». Без этой строки два отчёта нельзя сравнивать между собой.</p>
+        <div class="slide-inner">
+          <p class="eyebrow">Раздел II · две разные секунды</p>
+          <h2><code>perf_counter</code> считает ожидание, <code>process_time</code> — нет</h2>
+          <p class="lead"><b>Прошедшее время</b> — сколько времени прошло по стенным часам, вместе с ожиданием. <b>Процессорное время</b> — сколько времени процессор выполнял именно этот процесс. Разницу видно на участке, где есть и пауза, и вычисления.</p>
+          <div class="examples examples--pair examples--tall">
+            <article>
+              <b>Участок: пауза плюс вычисления</b>
+<pre><code>def workload():
+    time.sleep(0.20)                 # процессор свободен
+    total = 0
+    for value in range(400_000):     # процессор занят
+        total += value
+    return total</code></pre>
+              <p><code>sleep</code> снимает процесс с процессора на 0,2 секунды: программа стоит, но процессор в это время выполняет чужие задачи. Цикл, наоборот, занимает процессор целиком.</p>
+              <small>benchmarks/clocks.py</small>
+            </article>
+            <article>
+              <b>Два отсчёта вокруг одного участка</b>
+<pre><code>wall_start = time.perf_counter()
+cpu_start = time.process_time()
+
+workload()
+
+wall = time.perf_counter() - wall_start
+cpu = time.process_time() - cpu_start</code></pre>
+              <p>Часы не показывают «текущее время замера»: у <code>perf_counter</code> точка отсчёта вообще произвольная. Пригодна только <b>разность</b> двух отсчётов вокруг участка.</p>
+              <small>тот же файл, функция main</small>
+            </article>
           </div>
         </div>
         <span class="pair-number">II · ЧАСЫ</span>
       </section>
 
-      <!-- 08 · за клавиатуру 1 · часы -->
+      <!-- 07 · кадр clocks.py -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="2">
+        <div class="slide-inner split split--shot">
+          <div>
+            <p class="eyebrow">Раздел II · результат запуска</p>
+            <h2>0,229 секунды по одним часам и 0,024 по другим</h2>
+            <p class="lead">Тот же участок, те же 400 000 сложений, один запуск. Часы разошлись на 0,205 секунды — ровно на длительность паузы.</p>
+            <div class="micro">
+              <p class="micro__label">Как читать эти три строки</p>
+              <p class="micro__out"><b>0,229 с</b> — <code>perf_counter</code>: пауза засчитана, потому что пользователь её ждал.</p>
+              <p class="micro__out"><b>0,024 с</b> — <code>process_time</code>: за время паузы процессу не досталось процессора, и часы стояли.</p>
+              <p class="micro__out micro__out--strong">Отсюда правило выбора: задержка ответа измеряется <code>perf_counter</code>, стоимость вычислений — <code>process_time</code>.</p>
+            </div>
+            <p class="note">Наша задача ничего не ждёт: ни сети, ни диска. Поэтому дальше берём <code>perf_counter</code> — у него разрешение в 24 раза лучше.</p>
+          </div>
+          <figure class="shot-frame shot-frame--terminal">
+            <img src="shots/01-clocks.png" alt="Вывод clocks.py: свойства четырёх часов и сравнение прошедшего времени с процессорным">
+            <figcaption>Запуск <code>python benchmarks/clocks.py</code>. На вашей машине секунды будут другими, разница между двумя часами останется той же.</figcaption>
+          </figure>
+        </div>
+        <span class="pair-number">II · ЧАСЫ</span>
+      </section>
+
+      <!-- 08 · разрешение и timeit -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="2">
+        <div class="slide-inner split split--shot">
+          <div>
+            <p class="eyebrow">Раздел II · предел прибора</p>
+            <h2>Одна проверка короче цены деления, поэтому её гоняют циклом</h2>
+            <p class="lead">Проверка <code>x in known</code> по множеству занимает <b>11,1 наносекунды</b>. Разрешение <code>perf_counter</code> — <b>41,7 наносекунды</b>. Измерить такую операцию одним отсчётом нельзя: результат целиком состоит из погрешности прибора.</p>
+            <div class="code-card">
+              <div class="code-card__head"><span>терминал</span><span>модуль timeit из стандартной библиотеки</span></div>
+<pre><code>python -m timeit -s 'known = set(range(40000)); x = 4321' \
+                 'x in known'
+
+python -m timeit -s 'known = list(range(40000)); x = 4321' \
+                 'x in known'</code></pre>
+            </div>
+            <p class="note"><code>timeit</code> сам подбирает число повторений так, чтобы участок стал длиннее цены деления, и делит результат: 20 миллионов проверок по множеству и 10 тысяч по списку. Наш контур решает ту же задачу иначе — передаёт решению сразу пакет из n значений.</p>
+          </div>
+          <figure class="shot-frame shot-frame--terminal">
+            <img src="shots/12-timeit.png" alt="Вывод timeit: 11.1 наносекунды на проверку по множеству и 18.7 микросекунды по списку">
+            <figcaption>Разница между строками — <b>1685 раз</b> на реестре из 40 000 значений. Это цена одной проверки; дальше мы будем измерять цену n проверок.</figcaption>
+          </figure>
+        </div>
+        <span class="pair-number">II · ЧАСЫ</span>
+      </section>
+
+      <!-- 09 · за клавиатуру 1 -->
       <section class="slide slide--practice" data-kind="practice" data-accent="lime" data-time="4">
         <div class="slide-inner">
           <p class="eyebrow">За клавиатуру · разминка · 4 минуты</p>
@@ -244,14 +265,14 @@
 python benchmarks/clocks.py</code></pre>
               <ol class="task-list">
                 <li>Выпишите свои значения <code>perf_counter</code> и <code>process_time</code>.</li>
-                <li>Вычтите одно из другого и скажите, какая строка участка дала разницу.</li>
+                <li>Вычтите одно из другого и скажите, какая строка <code>workload</code> дала разницу.</li>
                 <li>Уберите <code>sleep(0.20)</code>, запустите снова и сравните результаты.</li>
               </ol>
             </div>
             <div class="lab__col">
-              <p class="lab__label">Проверка себя</p>
-              <p>Без <code>sleep</code> значения сблизятся: участок почти целиком состоит из вычислений, и ждать процессу нечего.</p>
-              <p class="lab__check">Полностью они не совпадут, и повторные запуски дадут немного разные числа. Так мы впервые увидим фоновый шум, ради которого дальше понадобится серия повторов.</p>
+              <p class="lab__label">Ожидаемый результат</p>
+              <p>Без <code>sleep</code> значения сблизятся: участок состоит из вычислений, ждать процессу нечего. Полностью они не совпадут — часть работы процесс тратит на то, чего <code>process_time</code> не считает.</p>
+              <p class="lab__check">Повторные запуски дадут разные числа. Запомните величину расхождения: ради него дальше понадобится серия повторов.</p>
               <div class="timer-card"><span class="timer-card__value" data-timer="4">04:00</span><p>Результат — две цифры и одно объяснение.</p></div>
             </div>
           </div>
@@ -259,43 +280,62 @@ python benchmarks/clocks.py</code></pre>
         <span class="pair-number">ЗА КЛАВИАТУРУ</span>
       </section>
 
-      <!-- 09 · граница: правило -->
+      <!-- 10 · определение границы -->
       <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="2">
-        <div class="slide-inner split split--top">
+        <div class="slide-inner split split--cost">
           <div>
-            <p class="eyebrow">Раздел III · второй элемент контура</p>
-            <h2>Граница замера — это строки между двумя отсчётами</h2>
-            <p class="lead">Мы ставим <code>start = perf_counter()</code>, выполняем участок и берём второй отсчёт. Всё, что оказалось между ними, попадает в число. Отсюда правило: внутри границы остаётся только исследуемая операция, а подготовка данных, печать и проверки выносятся наружу.</p>
-            <div class="code-card">
-              <div class="code-card__head"><span>contour.py · рабочая часть серии</span><span>граница выделена</span></div>
+            <p class="eyebrow">Раздел III · определение</p>
+            <h2>Граница замера — строки между двумя отсчётами</h2>
+            <p class="lead"><b>Граница замера</b> — участок кода, попавший между взятием первого и второго отсчёта часов. Всё, что внутри, входит в результат; всё, что снаружи, не входит. Из этого следует правило: внутри границы остаётся только исследуемая операция.</p>
+            <p class="note">Подготовка данных, печать и проверки выносятся наружу не из аккуратности, а потому что иначе измеряется не то. Насколько не то — видно на следующем экране, где цена каждой строки измерена отдельно.</p>
+          </div>
+          <div class="code-card">
+            <div class="code-card__head"><span>benchmarks/lab.py · функция series</span><span>граница выделена</span></div>
 <pre><code>registry, incoming = make_data(size)   <span>данные готовы заранее</span>
 func(registry[:32], incoming[:32])    <span>прогрев</span>
+
+gc.collect()                          <span>сборка мусора до отсчёта</span>
 start = time.perf_counter()           <span>&larr; отсчёт открыт</span>
 <mark>func(registry, incoming)</mark>              <span>исследуемая операция</span>
-value = time.perf_counter() - start   <span>&larr; отсчёт закрыт</span></code></pre>
-            </div>
-          </div>
-          <div class="contour-map" data-map data-active="bound">
-            <p class="contour-map__label">Где мы в контуре</p>
-            <ol>
-              <li data-step="data"><b>данные</b><span>одинаковый вход, созданный до отсчёта</span></li>
-              <li data-step="bound"><b>граница</b><span>внутри участка только исследуемая операция</span></li>
-              <li data-step="warm"><b>прогрев</b><span>первый вызов до рабочей серии</span></li>
-              <li data-step="series"><b>серия</b><span>повторы и сырые значения</span></li>
-              <li data-step="agg"><b>агрегат</b><span>итог и разброс рядом</span></li>
-            </ol>
-            <p class="contour-map__foot">Граница разбирается первой, потому что остальные элементы её не спасают: при неверной границе и прогрев, и сто повторов дадут устойчиво неверное число.</p>
+value = (time.perf_counter()          <span>&larr; отсчёт закрыт</span>
+         - start) * 1e6               <span>секунды &rarr; микросекунды</span></code></pre>
           </div>
         </div>
         <span class="pair-number">III · ГРАНИЦА</span>
       </section>
 
-      <!-- 10 · интерактивная граница -->
-      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="4">
+      <!-- 11 · цена строк участка -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="3">
+        <div class="slide-inner split split--shot">
+          <div>
+            <p class="eyebrow">Раздел III · цена каждой строки</p>
+            <h2>Цена строк одного участка различается в пятнадцать тысяч раз</h2>
+            <p class="lead">Режим <code>--boundary</code> в <code>lab.py</code> измеряет каждую часть участка отдельно, по семь повторов. При n = 4000 получилось так:</p>
+            <table class="unit-table unit-table--text">
+              <thead><tr><th>Строка участка</th><th>Что делает</th><th>мкс</th></tr></thead>
+              <tbody>
+                <tr><td><code>make_data(4000)</code></td><td>готовит реестр и пакет входящих</td><td class="unit-table__n">1214,5</td></tr>
+                <tr><td><code>list(registry)</code></td><td>копирует список</td><td class="unit-table__one">4,3</td></tr>
+                <tr><td><code>set(registry)</code></td><td>строит хеш-таблицу</td><td class="unit-table__one">53,0</td></tr>
+                <tr><td><code>x in known</code> · список</td><td>сверяет 4000 значений перебором</td><td class="unit-table__n">67&nbsp;201,8</td></tr>
+                <tr><td><code>x in known</code> · множество</td><td>сверяет те же 4000 по таблице</td><td class="unit-table__one">66,4</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <figure class="shot-frame shot-frame--terminal">
+            <img src="shots/02-boundary-cost.png" alt="Вывод lab.py --boundary 4000: цена генерации данных, копии списка, построения множества и двух видов сверки">
+            <figcaption>Запуск <code>python benchmarks/lab.py --boundary 4000</code>. Генерация данных дороже сверки по множеству в 18 раз: попади она внутрь границы, оба решения получили бы одинаковую надбавку в 1214 мкс.</figcaption>
+          </figure>
+        </div>
+        <span class="pair-number">III · ГРАНИЦА</span>
+      </section>
+
+      <!-- 12 · интерактивная граница -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="2">
         <div class="slide-inner">
-          <p class="eyebrow">Раздел III · демонстрация · граница двигается</p>
-          <h2>Одна и та же программа: от 66 до 1335 микросекунд</h2>
-          <p class="lead">Перед вами сверка по множеству при n = 4000. Строки кликаются: первый клик ставит начало участка, второй — конец. Число справа складывается из настоящей стоимости выбранных строк, каждая измерена отдельно как минимум из семи повторов.</p>
+          <p class="eyebrow">Раздел III · та же программа, разные границы</p>
+          <h2>Один и тот же код измеряется как 66 или как 1335 микросекунд</h2>
+          <p class="lead">Строки листинга кликаются: первый клик ставит начало участка, второй — конец. Число справа складывается из цены выбранных строк, измеренной на предыдущем экране.</p>
           <div class="boundary" data-boundary>
             <div class="boundary__code">
               <div class="boundary__head"><span>bench.py · n = 4000</span><span>кликните строку, чтобы задать границу</span></div>
@@ -308,7 +348,7 @@ value = time.perf_counter() - start   <span>&larr; отсчёт закрыт</sp
                 <li class="boundary__line" data-cost="0">        found += 1<i>&mdash;</i></li>
                 <li class="boundary__line" data-cost="1.3">print(f"совпадений {found}")<i>1,3</i></li>
               </ol>
-              <p class="boundary__note">Строки 5 и 6 — тело цикла: их стоимость уже посчитана в строке 4, отдельно она не измеряется. Результат работы: <b>384 совпадения</b> из 4000 входящих.</p>
+              <p class="boundary__note">Строки 5 и 6 — тело цикла, их стоимость уже посчитана в строке 4. Результат работы: <b>384 совпадения</b> из 4000 входящих.</p>
             </div>
             <div class="boundary__panel">
               <p>Внутри границы</p>
@@ -329,91 +369,76 @@ value = time.perf_counter() - start   <span>&larr; отсчёт закрыт</sp
         <span class="pair-number">III · ГРАНИЦА</span>
       </section>
 
-      <!-- 11 · кадр: цена частей участка -->
-      <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="2">
-        <div class="slide-inner split split--top split--shot">
-          <div>
-            <p class="eyebrow">Раздел III · откуда взяты числа демонстрации</p>
-            <h2>Каждую часть участка мы измерили отдельным запуском</h2>
-            <p class="lead">Режим <code>--boundary</code> в <code>lab.py</code> берёт пять кусков одного участка и меряет каждый по семь раз. Это тот самый список, из которого демонстрация складывает своё число — и его можно повторить на своей машине прямо сейчас.</p>
-            <div class="micro">
-              <p class="micro__label">Что видно из этих пяти строк</p>
-              <p>Генерация данных стоит <b>1214,5</b> мкс — в <b>18 раз</b> дороже самой сверки по множеству. Попади она внутрь границы, оба решения получили бы одинаковую надбавку, и разница между ними на глаз почти исчезла бы.</p>
-              <p>Построение множества (<b>53,0</b>) сопоставимо со сверкой (<b>66,4</b>). Поэтому от того, внутри оно или снаружи, зависит, во сколько раз одно решение обгонит другое: <b>1012&times;</b> или <b>563&times;</b>.</p>
-            </div>
-          </div>
-          <figure class="shot-frame shot-frame--terminal">
-            <img src="shots/02-boundary-cost.png" alt="Вывод lab.py --boundary 4000: цена генерации данных, копии списка, построения множества и двух видов сверки">
-            <figcaption>Запуск <code>python benchmarks/lab.py --boundary 4000</code>. Ваши числа будут другими — важны не микросекунды, а соотношение между строками.</figcaption>
-          </figure>
-        </div>
-        <span class="pair-number">III · ГРАНИЦА</span>
-      </section>
-
-      <!-- 12 · три промаха границы -->
-      <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="2">
+      <!-- 13 · три ошибки границы -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="3">
         <div class="slide-inner">
-          <p class="eyebrow">Раздел III · три типичных промаха</p>
-          <h2>Границу ставят одинаково для всех сравниваемых решений</h2>
-          <p class="lead">Ошибка в границе не роняет программу и не печатает трассировку: замер отработает и выдаст красивое число. Поэтому промахи ищут глазами по коду, и вот три, которые встречаются чаще всего.</p>
-          <div class="cards4 cards4--three">
-            <article class="is-bad">
-              <b>промах 01</b>
-              <strong>Подготовка внутри</strong>
-              <p>Генерация, чтение файла или распаковка попали внутрь участка. Общее большое слагаемое прибавляется к обоим решениям и скрывает разницу между ними.</p>
-              <small>симптом: числа подозрительно близки</small>
+          <p class="eyebrow">Раздел III · три ошибки, которые не видны по выводу программы</p>
+          <h2>Ошибка в границе не роняет программу и не печатает трассировку</h2>
+          <div class="examples examples--tall">
+            <article>
+              <b>Подготовка внутри границы</b>
+<pre><code>start = time.perf_counter()
+registry, incoming = make_data(n)
+func(registry, incoming)
+value = time.perf_counter() - start</code></pre>
+              <p>К обоим решениям прибавляется <b>1214,5</b> мкс. Сверка по множеству растёт с 66,4 до 1280,9 — в девятнадцать раз, — а по списку с 67 201,8 до 68 416,3, то есть на 2%. Разница между решениями схлопывается с 1012 до 53 раз.</p>
+              <small>симптом: решения подозрительно близки</small>
             </article>
-            <article class="is-bad">
-              <b>промах 02</b>
-              <strong>Печать и проверки внутри</strong>
-              <p>Внутри остался <code>print</code> или <code>assert</code>. Тогда число описывает не только алгоритм: печать одной строки в это окно стоила 1,3 мкс, а при прокрутке вывода — заметно больше.</p>
-              <small>симптом: высокий разброс серии</small>
+            <article>
+              <b>Печать внутри границы</b>
+<pre><code>start = time.perf_counter()
+func(registry, incoming)
+print(f"совпадений {found}")
+value = time.perf_counter() - start</code></pre>
+              <p>Печать одной строки в это окно терминала стоила <b>1,3</b> мкс — 2% от сверки по множеству. При выводе в файл будет одно число, при прокрутке в редакторе — другое. Замер начинает зависеть от того, куда смотрит вывод.</p>
+              <small>симптом: разброс серии скачет</small>
             </article>
-            <article class="is-bad">
-              <b>промах 03</b>
-              <strong>Разные границы у решений</strong>
-              <p>У одного решения внутри границы есть построение структуры, у другого — нет. Обе цифры верные, но отвечают на разные вопросы, и сравнивать их нельзя.</p>
+            <article>
+              <b>Разные границы у решений</b>
+<pre><code># у первого внутри только цикл
+start = ...; sum(1 for x in incoming
+                 if x in known)
+# у второго внутри ещё и подготовка
+start = ...; known = set(registry)
+             sum(...)</code></pre>
+              <p>Оба числа верные, но отвечают на разные вопросы. Сравнение циклов даёт <b>1012×</b>, сравнение решений целиком — <b>563×</b>. Пока граница не названа словами, обе цифры недоказуемы.</p>
               <small>симптом: находится только чтением кода</small>
             </article>
           </div>
-          <div class="micro">
-            <p class="micro__label">Как третий промах меняет вывод</p>
-            <p>Сравниваем только циклы: 66,4 против 67 201,8 мкс — <b>1012&times;</b>. Сравниваем решения целиком, вместе с построением множества и копией списка: 119,4 против 67 206,1 мкс — <b>563&times;</b>. Оба числа честные, поэтому границу записывают в отчёте словами.</p>
-          </div>
         </div>
         <span class="pair-number">III · ГРАНИЦА</span>
       </section>
 
-      <!-- 13 · за клавиатуру 2 · контур -->
-      <section class="slide slide--practice slide--dense" data-kind="practice" data-accent="lime" data-time="9">
+      <!-- 14 · за клавиатуру 2 · контур -->
+      <section class="slide slide--practice slide--dense" data-kind="practice" data-accent="lime" data-time="8">
         <div class="slide-inner">
-          <p class="eyebrow">За клавиатуру · измерительный контур · 9 минут</p>
+          <p class="eyebrow">За клавиатуру · измерительный контур · 8 минут</p>
           <h2>Соберите контур и доведите тесты до зелёного</h2>
           <div class="lab lab--shot">
             <div class="lab__col">
               <p class="lab__label">Что написать в contour.py</p>
               <ol class="task-list">
-                <li><code>make_data(size, seed)</code> — одинаковые данные при одном seed.</li>
-                <li><code>series(...)</code> — один прогрев и список сырых значений.</li>
-                <li><code>summarize(...)</code> — минимум, медиана, среднее, максимум и <code>max / min</code>.</li>
+                <li><code>make_data(size, seed)</code> — два списка длины <code>size</code> из <code>random.Random(seed)</code>.</li>
+                <li><code>series(...)</code> — один прогрев на срезах <code>[:32]</code>, затем цикл повторов с отсчётом вокруг единственного вызова.</li>
+                <li><code>summarize(...)</code> — словарь с ключами <code>min</code>, <code>median</code>, <code>mean</code>, <code>max</code>, <code>spread</code>.</li>
               </ol>
               <pre class="lab__cmd"><code>pytest course-materials/benchmarks/\
 test_lesson_04.py -q</code></pre>
-              <p class="lab__check">Тесты проверяют не микросекунды, а устройство контура: данные обязаны повторяться, генерация — оставаться снаружи границы, значений в серии — быть ровно столько, сколько повторов.</p>
+              <p class="lab__check">Тесты проверяют не микросекунды, а устройство контура: данные повторяются при одном seed, генерация остаётся снаружи границы, значений в серии ровно столько, сколько повторов.</p>
               <div class="file-button-row">
                 <button class="file-button" type="button" data-file="contour.py">Показать contour.py</button>
                 <button class="file-button" type="button" data-file="test_lesson_04.py">Показать тест</button>
               </div>
-              <div class="timer-card"><span class="timer-card__value" data-timer="9">09:00</span><p>Готово, когда все семь тестов зелёные.</p></div>
+              <div class="timer-card"><span class="timer-card__value" data-timer="8">08:00</span><p>Готово, когда все семь тестов зелёные.</p></div>
             </div>
             <div class="lab__col lab__col--shots">
               <figure class="shot-frame shot-frame--practice">
                 <img src="shots/03-pytest-red.png" alt="Семь провалившихся тестов на незаполненном бланке контура">
-                <figcaption>С чего начинается: в бланке стоят <code>NotImplementedError</code>, поэтому падают все семь.</figcaption>
+                <figcaption>Начало: в бланке стоят <code>NotImplementedError</code>, падают все семь тестов.</figcaption>
               </figure>
               <figure class="shot-frame shot-frame--practice">
                 <img src="shots/04-pytest-green.png" alt="Результат pytest: семь тестов пройдено">
-                <figcaption>Чем заканчивается. Если тест красный — прочитайте его имя, оно называет нарушенное правило.</figcaption>
+                <figcaption>Конец. Красный тест читайте по имени — оно называет нарушенное правило.</figcaption>
               </figure>
             </div>
           </div>
@@ -421,134 +446,216 @@ test_lesson_04.py -q</code></pre>
         <span class="pair-number">ЗА КЛАВИАТУРУ</span>
       </section>
 
-      <!-- 14 · кадр: генерация внутри границы -->
+      <!-- 15 · как выглядит нарушенная граница -->
       <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="2">
-        <div class="slide-inner split split--top">
+        <div class="slide-inner split split--cost">
           <div>
-            <p class="eyebrow">Раздел III · как выглядит нарушенная граница</p>
-            <h2>Тест ловит генерацию внутри участка по одному числу</h2>
-            <p class="lead">Здесь <code>series</code> написана почти правильно, но данные создаются заново на каждом повторе — внутри отсчёта. Программа работает, ошибок не выдаёт. Ловится это тем, что пустое решение, которое не делает вообще ничего, вдруг измеряется в <b>1343,7</b> мкс.</p>
+            <p class="eyebrow">Раздел III · разбор падения теста</p>
+            <h2>Генерация внутри границы ловится одним числом</h2>
+            <p class="lead">Слева — <code>series</code>, написанная почти правильно: данные создаются заново на каждом повторе, внутри отсчёта. Программа работает и печатает правдоподобные числа.</p>
             <div class="micro">
-              <p class="micro__label">Логика проверки</p>
-              <p>Тест измеряет два решения: пустое и такое, которое только генерирует данные. Если граница поставлена верно, пустое обязано оказаться в десятки раз дешевле. Здесь оно стоит <b>1343,7</b> против <b>2698,1</b> — то есть внутри границы почти целиком лежит <code>make_data</code>.</p>
-              <p>Никакой другой тест этого не увидит: числа правдоподобны, серия стабильна, агрегаты считаются верно.</p>
+              <p class="micro__label">Как это ловит тест</p>
+              <p class="micro__out">Тест измеряет решение, которое не делает ничего: <code>lambda a, b: None</code>. При верной границе оно обязано стоить единицы микросекунд.</p>
+              <p class="micro__out">Получилось <b>1343,7</b> мкс при цене генерации <b>2698,1</b>. Значит, внутри границы лежит <code>make_data</code>.</p>
+              <p class="micro__out micro__out--strong">Остальные шесть тестов проходят: серия стабильна, агрегаты считаются верно, данные повторяются.</p>
             </div>
           </div>
           <figure class="shot-frame shot-frame--terminal">
             <img src="shots/05-generation-inside.png" alt="Падение теста test_generation_is_outside_the_boundary с сообщением про подготовку данных внутри границы">
-            <figcaption>Шесть тестов из семи прошли. Сообщение падения называет не строку кода, а нарушенное правило методики — читать его стоит целиком.</figcaption>
+            <figcaption>Сообщение падения называет не строку кода, а нарушенное правило методики.</figcaption>
           </figure>
         </div>
         <span class="pair-number">III · ГРАНИЦА</span>
       </section>
 
-      <!-- 15 · шум и повторы -->
-      <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="2">
-        <div class="slide-inner">
-          <p class="eyebrow">Раздел IV · четвёртый элемент контура · зачем повторы</p>
-          <h2>Пятнадцать запусков одного и того же кода дали разные числа</h2>
-          <p class="lead">Код не менялся, вход не менялся, граница на месте. Значения всё равно разошлись: планировщик отдаёт процессор другим программам, работает сборщик мусора, меняется состояние кэшей. Поэтому мы сохраняем всю серию, а не одно число.</p>
-          <figure class="samples" data-samples="16524.7,16725.0,16711.2,16687.2,16838.3,16886.1,16793.5,16729.0,16727.7,16719.5,16729.8,16682.3,16574.1,16647.3,16685.7">
-            <div class="samples__stage"></div>
-            <div class="samples__axis"><span>ПОВТОР 01</span><span>микросекунды на вызов</span><span>ПОВТОР 15</span></div>
-            <div class="samples__legend">
-              <div class="is-pick"><span>минимум</span><b>16 524,7</b><p>Запуск, которому меньше всего помешали. Ближе всего к чистой стоимости кода.</p></div>
-              <div><span>медиана</span><b>16 719,5</b><p>Типичный запуск: половина серии быстрее, половина медленнее. Устойчива к одиночному выбросу.</p></div>
-              <div><span>среднее</span><b>16 710,8</b><p>Средняя стоимость повтора. Чем длиннее хвост помех, тем сильнее оно смещается вверх.</p></div>
-              <div class="is-bad"><span>максимум</span><b>16 886,1</b><p>Не свойство решения, а свойство момента: в эти миллисекунды машина занималась чем-то ещё.</p></div>
-            </div>
-          </figure>
-          <p class="note">Разброс <code>max / min</code> = <strong>1,02</strong> — серия спокойная, все значения лежат в пределах двух процентов. Если бы получилось 2 и больше, замер пришлось бы повторить: на такой машине разница между двумя близкими решениями просто утонет в шуме.</p>
-        </div>
-        <span class="pair-number">IV · СЕРИЯ</span>
-      </section>
-
-      <!-- 16 · агрегаты и разброс -->
-      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="2">
-        <div class="slide-inner">
-          <p class="eyebrow">Раздел IV · пятый элемент контура · чем свернуть серию</p>
-          <h2>Агрегат выбирают под вопрос, а разброс сохраняют всегда</h2>
-          <p class="lead">Одно итоговое число удобно для сравнения, но само по себе оно не показывает, насколько ему можно верить. Поэтому рядом с ним остаются минимум, медиана и отношение <code>max / min</code>.</p>
-          <table class="flat">
-            <tr><th>Агрегат</th><th>Что показывает</th><th>Где полезен</th><th>Что проверить рядом</th></tr>
-            <tr class="flat__pick"><td>минимум</td><td>лучший повтор серии</td><td>сравнение двух реализаций</td><td>не оторвался ли он от остальных значений</td></tr>
-            <tr><td>медиана</td><td>центральный повтор</td><td>типичное время вызова</td><td>есть ли длинный хвост задержек</td></tr>
-            <tr><td>среднее</td><td>среднюю стоимость повтора</td><td>оценка суммарной нагрузки</td><td>не тянут ли результат редкие выбросы</td></tr>
-            <tr><td>максимум</td><td>худший повтор этой серии</td><td>поиск нестабильности</td><td>для перцентилей и SLA семи повторов мало</td></tr>
-          </table>
-          <p class="note"><strong>Почему минимум.</strong> Помехи умеют только замедлять: ни планировщик, ни сборщик мусора не могут выполнить код быстрее, чем он выполняется. Значит, самый быстрый повтор ближе всех к чистой стоимости кода — но только при условии, что серия спокойная, а это как раз и показывает разброс. В нашей таблице он держится от <b>1,00</b> до <b>1,85</b>.</p>
-        </div>
-        <span class="pair-number">IV · СЕРИЯ</span>
-      </section>
-
-      <!-- 17 · прогрев -->
+      <!-- 16 · прогрев -->
       <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="2">
-        <div class="slide-inner split split--top">
+        <div class="slide-inner split split--cost">
           <div>
-            <p class="eyebrow">Раздел IV · третий элемент контура</p>
-            <h2>Первый вызов дороже остальных, и в серию он не идёт</h2>
-            <p class="lead">Замерим сверку по множеству десять раз подряд при n = 1000. Первый вызов занял <b>34,8</b> мкс, минимум следующих девяти — <b>21,1</b>. Разовая надбавка в <b>13,7</b> мкс — это холодные кэши и состояние аллокатора памяти, которые дальше уже не повторяются.</p>
-            <table class="flat flat--num">
-              <tr><th>Что оплачивает первый вызов</th><th>мкс</th></tr>
-              <tr class="flat__bad"><td>первый вызов, всё вместе</td><td>34,8</td></tr>
-              <tr><td>минимум следующих девяти</td><td>21,1</td></tr>
-              <tr><td>медиана следующих девяти</td><td>22,4</td></tr>
-              <tr class="flat__pick"><td>разовая надбавка</td><td>13,7</td></tr>
+            <p class="eyebrow">Раздел IV · определение</p>
+            <h2>Прогрев — вызов решения до начала серии</h2>
+            <p class="lead"><b>Прогрев</b> — один вызов измеряемой функции до первого отсчёта. Он нужен потому, что первый вызов оплачивает разовые расходы: заполнение кэшей процессора, подготовку внутренних структур интерпретатора, первое выделение памяти. В следующих вызовах эти расходы уже не повторяются.</p>
+            <table class="unit-table unit-table--wide">
+              <thead><tr><th>Десять вызовов match_set подряд, n = 1000</th><th>мкс</th></tr></thead>
+              <tbody>
+                <tr><td>вызов 1</td><td class="unit-table__n">34,8</td></tr>
+                <tr><td>минимум вызовов 2–10</td><td class="unit-table__one">21,1</td></tr>
+                <tr><td>медиана вызовов 2–10</td><td class="unit-table__one">22,4</td></tr>
+                <tr><td>надбавка первого вызова</td><td class="unit-table__n">13,7</td></tr>
+              </tbody>
             </table>
           </div>
-          <div class="side-card">
-            <p class="side-card__label">Что делает прогрев</p>
-            <p>Мы один раз вызываем ту же функцию до отсчёта, на коротком входе: <code>func(registry[:32], incoming[:32])</code>. После этого запускаем рабочую серию на полных данных и сохраняем каждый результат.</p>
-            <p>Прогрев убирает один известный источник различий — особенность первого вызова. Все остальные помехи он не устраняет, поэтому повторы всё равно обязательны.</p>
-            <p class="side-card__foot">Тест <code>test_series_warms_up_once</code> проверяет это прямо: решение обязано быть вызвано <b>восемь</b> раз при семи повторах, причём первый вызов — на коротком входе.</p>
+          <div class="code-card">
+            <div class="code-card__head"><span>benchmarks/lab.py</span><span>прогрев — одна строка перед серией</span></div>
+<pre><code>WARMUP_SIZE = 32
+
+def series(func, registry, incoming, repeats):
+    <mark>func(registry[:32], incoming[:32])</mark>    <span>прогрев</span>
+    samples = []
+    for _ in range(repeats):
+        ...</code></pre>
+            <p class="code-card__out">Прогрев идёт на срезах в 32 элемента, а не на полных данных: разовые расходы он оплачивает те же, а времени тратит в тридцать раз меньше. Значение прогрева нигде не сохраняется — оно не входит в серию.</p>
           </div>
         </div>
         <span class="pair-number">IV · СЕРИЯ</span>
       </section>
 
-      <!-- 18 · память: прибор и четыре величины -->
-      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="2">
-        <div class="slide-inner">
-          <p class="eyebrow">Раздел V · чем измеряют память</p>
-          <h2><code>tracemalloc</code> считает то, что выделил Python внутри участка</h2>
-          <p class="lead">Время и память меряют разными приборами и в разные заходы: трассировка выделений сама замедляет программу в несколько раз, поэтому секунды при включённом <code>tracemalloc</code> смысла не имеют. Прибор различает четыре величины, и для лимита нужна одна из них.</p>
-          <div class="cards4">
-            <article><b>вход</b><strong>Что пришло</strong><p>Список, который решение получило в аргументах. Он существовал до вызова, поэтому в <code>S(n)</code> не входит и в замер не попадает.</p><small>создаётся до старта трассировки</small></article>
-            <article class="is-pick"><b>дополнительная</b><strong>Что создало решение</strong><p>Множество, словарь, копия списка, кадры стека у рекурсии. Ровно эта величина и называется <code>S(n)</code>.</p><small>её мы измеряем</small></article>
-            <article><b>текущая</b><strong>Сколько занято сейчас</strong><p>Снимок на момент замера. Зависит от того, что уже успел освободить сборщик мусора, поэтому как характеристика решения ненадёжна.</p><small>первое число <code>get_traced_memory</code></small></article>
-            <article class="is-pick"><b>пиковая</b><strong>Максимум за участок</strong><p>Наибольшее значение, которого достигала дополнительная память внутри границы. По ней и подбирают лимит контейнера.</p><small>второе число <code>get_traced_memory</code></small></article>
+      <!-- 17 · серия -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="3">
+        <div class="slide-inner split split--cost">
+          <div>
+            <p class="eyebrow">Раздел IV · определение и разбор функции</p>
+            <h2>Серия — повторы одного замера на одних данных</h2>
+            <p class="lead"><b>Серия</b> — несколько измерений одного и того же участка без изменения кода и входа. Она нужна, потому что одно значение включает случайные помехи: планировщик отдаёт процессор другим программам, срабатывает сборщик мусора, вытесняются кэши.</p>
+            <div class="micro">
+              <p class="micro__label">Разбор по строкам</p>
+              <p class="micro__out"><b>1</b> прогрев на коротком входе, его значение не сохраняется.</p>
+              <p class="micro__out"><b>3</b> <code>gc.collect()</code> до отсчёта: сборщик отработает сейчас, а не внутри границы.</p>
+              <p class="micro__out"><b>4–6</b> отсчёт, единственный вызов решения, второй отсчёт.</p>
+              <p class="micro__out"><b>7</b> в список идёт <b>сырое значение</b> повтора, а не готовое среднее.</p>
+            </div>
           </div>
-          <p class="note">Число из <code>tracemalloc</code> меньше, чем показывает диспетчер задач, и это нормально: приборы считают разные величины. Здесь — блоки, запрошенные аллокатором Python внутри трассируемого участка; там — вся память процесса вместе с интерпретатором и расширениями на C. В отчёте поэтому называют и прибор, и границу.</p>
+          <div class="code-card">
+            <div class="code-card__head"><span>benchmarks/lab.py · функция series целиком</span><span>7 строк</span></div>
+<pre><code>def series(func, registry, incoming, repeats):
+    func(registry[:32], incoming[:32])
+    samples = []
+    for _ in range(repeats):
+        gc.collect()
+        start = time.perf_counter()
+        func(registry, incoming)
+        samples.append(
+            (time.perf_counter() - start) * 1e6)
+    return samples</code></pre>
+            <p class="code-card__out">Функция возвращает список из <code>repeats</code> чисел. Сворачивать его в одно — работа отдельной функции, и это следующий экран.</p>
+          </div>
+        </div>
+        <span class="pair-number">IV · СЕРИЯ</span>
+      </section>
+
+      <!-- 18 · агрегаты -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="2">
+        <div class="slide-inner split split--shot">
+          <div>
+            <p class="eyebrow">Раздел IV · определение</p>
+            <h2>Агрегат сворачивает серию в одно число, разброс говорит, верить ли ему</h2>
+            <p class="lead"><b>Разброс</b> — отношение максимума серии к минимуму. Значение около 1,1 означает спокойную машину, 2 и больше — что замер надо повторить: на таком фоне разница между близкими решениями не видна.</p>
+            <div class="code-card">
+              <div class="code-card__head"><span>benchmarks/lab.py · функция summarize</span><span>четыре агрегата и разброс</span></div>
+<pre><code>def summarize(samples):
+    return {
+        "min": min(samples),
+        "median": statistics.median(samples),
+        "mean": statistics.mean(samples),
+        "max": max(samples),
+        "spread": max(samples) / min(samples),
+    }</code></pre>
+            </div>
+            <p class="note">В таблицу занятия идёт <b>минимум</b>: помехи умеют только замедлять, поэтому самый быстрый повтор ближе всех к стоимости кода без помех. Рядом всегда печатается разброс — без него минимум ничем не подтверждён.</p>
+          </div>
+          <figure class="shot-frame shot-frame--terminal">
+            <img src="shots/06-raw-series.png" alt="Вывод lab.py --raw 2000: пятнадцать сырых значений серии и четыре агрегата">
+            <figcaption>Пятнадцать повторов одного вызова при n = 2000: от <b>16 524,7</b> до <b>16 886,1</b> мкс. Код и вход не менялись, разброс — <b>1,02</b>.</figcaption>
+          </figure>
+        </div>
+        <span class="pair-number">IV · СЕРИЯ</span>
+      </section>
+
+      <!-- 19 · память: прибор -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="3">
+        <div class="slide-inner split split--cost">
+          <div>
+            <p class="eyebrow">Раздел V · определения</p>
+            <h2>Пиковая дополнительная память — максимум за время участка</h2>
+            <p class="lead"><b>Дополнительная память</b> — то, что решение создало само: множество, копия списка, кадры стека у рекурсии. Вход в неё не входит, он существовал до вызова. <b>Пиковая</b> — наибольшее значение дополнительной памяти внутри границы. По ней подбирают лимит контейнера.</p>
+            <div class="def-parts def-parts--four">
+              <div><b>start</b><p>включает трассировку выделений Python</p></div>
+              <div><b>reset_peak</b><p>обнуляет пик, чтобы в него не попало прошлое</p></div>
+              <div><b>get_traced_memory</b><p>возвращает пару «текущая, пиковая» в байтах</p></div>
+            </div>
+            <p class="note"><code>tracemalloc</code> замедляет программу в несколько раз, поэтому время и память измеряются <b>разными запусками</b>. Считает он только выделения Python внутри участка: память интерпретатора и расширений на C в число не входят, и оно меньше, чем показывает диспетчер задач.</p>
+          </div>
+          <div class="code-card">
+            <div class="code-card__head"><span>benchmarks/memory_probe.py</span><span>замер пиковой памяти одного вызова</span></div>
+<pre><code>def peak_of(func, registry, incoming):
+    tracemalloc.start()
+    tracemalloc.reset_peak()
+
+    <mark>func(registry, incoming)</mark>
+
+    current, peak = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+    return current, peak</code></pre>
+            <p class="code-card__out">Данные созданы до <code>start</code>, поэтому вход в число не попадает. Граница здесь такая же, как у времени: внутри только вызов решения.</p>
+          </div>
         </div>
         <span class="pair-number">V · ПАМЯТЬ</span>
       </section>
 
-      <!-- 19 · ступени памяти -->
+      <!-- 20 · результат замера памяти -->
       <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="2">
-        <div class="slide-inner split split--top split--shot">
+        <div class="slide-inner split split--shot">
           <div>
-            <p class="eyebrow">Раздел V · результат замера памяти</p>
-            <h2>Список растёт ровно, множество — ступенями</h2>
-            <p class="lead">У копии списка на элемент уходит 8 байт указателя плюс заголовок, и байты на элемент почти не меняются: 9,0 &rarr; 8,1. У множества картина другая, и её стоит разобрать отдельно.</p>
-            <div class="mem-steps">
-              <div class="mem-steps__head"><span>n</span><span>копия списка</span><span>байт</span><span>множество</span><span>байт</span></div>
-              <div class="mem-steps__row"><b>500</b><div class="mem-steps__bar" style="--w:7%"></div><i>4 512</i><div class="mem-steps__bar mem-steps__bar--set" style="--w:6%"></div><i>41 264</i></div>
-              <div class="mem-steps__row"><b>1000</b><div class="mem-steps__bar" style="--w:13%"></div><i>8 512</i><div class="mem-steps__bar mem-steps__bar--set" style="--w:6%"></div><i>41 264</i></div>
-              <div class="mem-steps__row mem-steps__row--jump"><b>2000</b><div class="mem-steps__bar" style="--w:26%"></div><i>16 512</i><div class="mem-steps__bar mem-steps__bar--set" style="--w:25%"></div><i>164 144</i></div>
-              <div class="mem-steps__row"><b>4000</b><div class="mem-steps__bar" style="--w:50%"></div><i>32 512</i><div class="mem-steps__bar mem-steps__bar--set" style="--w:25%"></div><i>164 144</i></div>
-              <div class="mem-steps__row mem-steps__row--jump"><b>8000</b><div class="mem-steps__bar" style="--w:100%"></div><i>64 512</i><div class="mem-steps__bar mem-steps__bar--set" style="--w:100%"></div><i>655 664</i></div>
-            </div>
-            <p class="note">Ступени берутся из устройства хеш-таблицы: когда заполнение доходит до порога, таблица перестраивается сразу на вчетверо больший размер, а до следующего порога пик не меняется вообще. Поэтому <strong>при n = 500 и n = 1000 множество занимает одинаковые 41 264 байта</strong>, а отношение к списку гуляет от <b>4,85&times;</b> до <b>10,16&times;</b>. Асимптотически это по-прежнему <code>O(n)</code>, но «в среднем по ступеньке».</p>
+            <p class="eyebrow">Раздел V · результат запуска</p>
+            <h2>Список: 8 байт на элемент, множество: от 41 до 82</h2>
+            <p class="lead">Копия списка хранит указатели по 8 байт плюс заголовок, поэтому байты на элемент почти не меняются: 9,0 → 8,1. У множества то же число скачет между 41 и 82 — при одинаковом устройстве данных.</p>
+            <table class="unit-table unit-table--qa">
+              <thead><tr><th>n</th><th>список</th><th>множество</th><th>байт на элемент</th></tr></thead>
+              <tbody>
+                <tr><td>500</td><td class="unit-table__one">4 512</td><td class="unit-table__n">41 264</td><td>9,0 и 82,5</td></tr>
+                <tr><td>1000</td><td class="unit-table__one">8 512</td><td class="unit-table__n">41 264</td><td>8,5 и 41,3</td></tr>
+                <tr><td>2000</td><td class="unit-table__one">16 512</td><td class="unit-table__n">164 144</td><td>8,3 и 82,1</td></tr>
+                <tr><td>4000</td><td class="unit-table__one">32 512</td><td class="unit-table__n">164 144</td><td>8,1 и 41,0</td></tr>
+                <tr><td>8000</td><td class="unit-table__one">64 512</td><td class="unit-table__n">655 664</td><td>8,1 и 82,0</td></tr>
+              </tbody>
+            </table>
           </div>
           <figure class="shot-frame shot-frame--terminal">
             <img src="shots/09-memory.png" alt="Вывод memory_probe.py: пиковая память двух решений на пяти размерах входа">
-            <figcaption>Запуск <code>python benchmarks/memory_probe.py</code>. Байты здесь не плавают от запуска к запуску, как микросекунды: <code>tracemalloc</code> считает выделения, а не время.</figcaption>
+            <figcaption>Запуск <code>python benchmarks/memory_probe.py</code>. Байты, в отличие от микросекунд, от запуска к запуску не плавают: <code>tracemalloc</code> считает выделения, а не время.</figcaption>
           </figure>
         </div>
         <span class="pair-number">V · ПАМЯТЬ</span>
       </section>
 
-      <!-- 20 · за клавиатуру 3 · своя серия -->
+      <!-- 21 · ступени -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="2">
+        <div class="slide-inner">
+          <p class="eyebrow">Раздел V · почему множество растёт ступенями</p>
+          <h2>Хеш-таблица перестраивается вчетверо и стоит на месте до следующего порога</h2>
+          <p class="lead">Множество держит значения в таблице ячеек. Пока заполнено меньше двух третей, новые значения кладутся в свободные ячейки, и памяти нужно столько же. Как только порог пройден, создаётся таблица вчетверо большего размера, и всё переносится в неё.</p>
+          <div class="examples examples--tall">
+            <article>
+              <b>n = 500 и n = 1000 — одна ступень</b>
+<pre><code>&gt;&gt;&gt; peak_of(match_set, *make_data(500))[1]
+41264
+&gt;&gt;&gt; peak_of(match_set, *make_data(1000))[1]
+41264</code></pre>
+              <p>Вход вырос вдвое, пиковая память не изменилась: обе тысячи значений помещаются в уже выделенную таблицу. Байты на элемент падают с 82,5 до 41,3 — не потому, что решение стало экономнее.</p>
+              <small>ступень держится до порога заполнения</small>
+            </article>
+            <article>
+              <b>n = 2000 — перестройка</b>
+<pre><code>&gt;&gt;&gt; peak_of(match_set, *make_data(2000))[1]
+164144</code></pre>
+              <p>Порог пройден: 164 144 / 41 264 = <b>3,98</b> — таблица выросла ровно вчетверо. Пик включает и старую таблицу, и новую: во время переноса они существуют одновременно.</p>
+              <small>скачок не зависит от того, сколько значений добавлено</small>
+            </article>
+            <article>
+              <b>Что из этого следует для отчёта</b>
+<pre><code># отношение множество / список
+# 500  → 9,15   2000 → 9,94
+# 1000 → 4,85   4000 → 5,05
+# 8000 → 10,16</code></pre>
+              <p>Отношение гуляет вдвое в зависимости от того, где между ступенями оказался ваш n. Асимптотически это по-прежнему <code>S(n) = O(n)</code>, но переносить измеренные байты на другой размер входа линейно нельзя.</p>
+              <small>для нового диапазона — отдельный замер</small>
+            </article>
+          </div>
+        </div>
+        <span class="pair-number">V · ПАМЯТЬ</span>
+      </section>
+
+      <!-- 22 · за клавиатуру 3 -->
       <section class="slide slide--practice" data-kind="practice" data-accent="lime" data-time="6">
         <div class="slide-inner">
           <p class="eyebrow">За клавиатуру · своя серия · 6 минут</p>
@@ -557,60 +664,55 @@ test_lesson_04.py -q</code></pre>
             <div class="lab__col">
               <p class="lab__label">Что сделать</p>
               <pre class="lab__cmd"><code>python benchmarks/lab.py
-python benchmarks/lab.py --raw 2000
 python benchmarks/memory_probe.py</code></pre>
               <ol class="task-list">
                 <li>Дождитесь конца серии: n = 8000 считается ощутимо дольше остальных.</li>
-                <li>В нижней таблице сравните свои множители роста с ожидаемыми 4,00 и 2,00.</li>
-                <li>Найдите размер входа, на котором ваш разброс оказался наибольшим.</li>
+                <li>В нижней таблице сравните свои множители роста с 4,00 и 2,00.</li>
+                <li>Найдите размер входа, на котором ваш разброс оказался наибольшим, и объясните, почему именно он.</li>
               </ol>
-              <p class="lab__check">Ваши микросекунды будут другими, и это нормально. Проверяем форму роста и разброс, а не совпадение с экраном.</p>
-              <div class="timer-card"><span class="timer-card__value" data-timer="6">06:00</span><p>Результат — свой <code>results_time.csv</code> и один вопрос к нему.</p></div>
+              <p class="lab__check">Ваши микросекунды будут другими. Сходиться должны форма роста и порядок величин, а не значения.</p>
+              <div class="timer-card"><span class="timer-card__value" data-timer="6">06:00</span><p>Результат — свой <code>results_time.csv</code>.</p></div>
             </div>
-            <div class="lab__col lab__col--shots">
-              <figure class="shot-frame shot-frame--practice">
-                <img src="shots/07-series.png" alt="Вывод lab.py: таблица времени на шести размерах входа и множители роста при удвоении n">
-                <figcaption>Первая команда. Верхняя таблица — время двух решений, нижняя — во сколько раз оно выросло при удвоении входа.</figcaption>
-              </figure>
-              <figure class="shot-frame shot-frame--practice">
-                <img src="shots/06-raw-series.png" alt="Вывод lab.py --raw 2000: пятнадцать сырых значений серии и четыре агрегата">
-                <figcaption>Вторая команда показывает серию целиком: пятнадцать повторов, четыре агрегата и разброс.</figcaption>
-              </figure>
-            </div>
+            <figure class="shot-frame shot-frame--practice">
+              <img src="shots/07-series.png" alt="Вывод lab.py: таблица времени на шести размерах входа и множители роста при удвоении n">
+              <figcaption>Верхняя таблица — минимум серии для двух решений и отношение между ними. Нижняя — во сколько раз выросло время при удвоении входа.</figcaption>
+            </figure>
           </div>
         </div>
         <span class="pair-number">ЗА КЛАВИАТУРУ</span>
       </section>
 
-      <!-- 21 · CSV -->
+      <!-- 23 · CSV -->
       <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="2">
-        <div class="slide-inner split split--top split--shot">
+        <div class="slide-inner split split--cost">
           <div>
-            <p class="eyebrow">Раздел VI · что сохранилось на диск</p>
-            <h2>В CSV уходит не вывод, а всё, что нужно для проверки</h2>
-            <p class="lead">Таблица в терминале живёт до закрытия окна. В репозиторий идёт файл, по которому чужой человек сможет повторить ваши рассуждения — поэтому в нём одиннадцать столбцов, а не два.</p>
-            <table class="flat">
-              <tr><th>Столбец</th><th>Что в нём</th><th>Зачем он нужен</th></tr>
-              <tr><td><code>n</code>, <code>repeats</code></td><td>размер входа и число повторов</td><td>без них число нельзя ни повторить, ни ограничить</td></tr>
-              <tr class="flat__pick"><td><code>*_min_us</code></td><td>минимум серии</td><td>оценка чистой стоимости решения</td></tr>
-              <tr><td><code>*_median_us</code></td><td>медиана серии</td><td>типичный вызов; расхождение с минимумом видно сразу</td></tr>
-              <tr class="flat__pick"><td><code>*_spread</code></td><td>разброс <code>max / min</code></td><td>показывает, стоит ли верить строке</td></tr>
-              <tr><td><code>*_growth</code></td><td>рост при удвоении n</td><td>то, что сравнивают с ожиданием ×4 и ×2</td></tr>
+            <p class="eyebrow">Раздел VI · что сохраняется на диск</p>
+            <h2>В CSV идут одиннадцать столбцов, а не итоговый коэффициент</h2>
+            <p class="lead">Таблица в терминале живёт до закрытия окна. В репозиторий кладётся файл, по которому чужой человек может проверить ваши рассуждения.</p>
+            <table class="unit-table unit-table--text">
+              <thead><tr><th>Столбец</th><th>Что в нём</th><th>Зачем</th></tr></thead>
+              <tbody>
+                <tr><td><code>n</code>, <code>repeats</code></td><td>размер входа, число повторов</td><td>без них вывод нельзя ни повторить, ни ограничить</td></tr>
+                <tr><td><code>*_min_us</code></td><td>минимум серии</td><td>оценка стоимости решения без помех</td></tr>
+                <tr><td><code>*_median_us</code></td><td>медиана серии</td><td>расхождение с минимумом видно сразу</td></tr>
+                <tr><td><code>*_spread</code></td><td>максимум / минимум</td><td>показывает, верить ли строке</td></tr>
+                <tr><td><code>*_growth</code></td><td>рост при удвоении n</td><td>сравнивается с ожиданием 4,00 и 2,00</td></tr>
+              </tbody>
             </table>
           </div>
           <figure class="shot-frame shot-frame--terminal">
             <img src="shots/08-results-csv.png" alt="Содержимое results_time.csv: шесть строк по числу размеров входа">
-            <figcaption>Шесть строк — шесть размеров входа. Пустые поля <code>growth</code> в первой строке не ошибка: удваивать нечего, предыдущего размера ещё нет.</figcaption>
+            <figcaption>Шесть строк — шесть размеров входа. Пустые поля <code>growth</code> в первой строке не ошибка: предыдущего размера ещё нет, удваивать нечего.</figcaption>
           </figure>
         </div>
         <span class="pair-number">VI · СВОИ ДАННЫЕ</span>
       </section>
 
-      <!-- 22 · полная серия -->
+      <!-- 24 · таблица серии -->
       <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="2">
         <div class="slide-inner">
           <p class="eyebrow">Раздел VI · серия целиком</p>
-          <h2>Шесть размеров входа, минимум и медиана рядом</h2>
+          <h2>Шесть размеров входа: от 58 до 1115 раз разницы</h2>
           <table class="series">
             <tr><th>n</th><th>список, мкс</th><th></th><th>медиана</th><th>множество, мкс</th><th>разброс</th><th>во сколько раз</th></tr>
             <tr><td>250</td><td>300,3</td><td class="series__bar"><i style="--w:1%"></i></td><td>300,7</td><td>5,2</td><td>1,04</td><td>58</td></tr>
@@ -620,142 +722,110 @@ python benchmarks/memory_probe.py</code></pre>
             <tr class="series__noisy"><td>4000</td><td>67 885,0</td><td class="series__bar"><i style="--w:25%"></i></td><td>69 273,9</td><td>122,7</td><td>1,05</td><td>553</td></tr>
             <tr><td>8000</td><td>266 624,1</td><td class="series__bar"><i style="--w:100%"></i></td><td>270 594,6</td><td>239,1</td><td>1,06</td><td>1115</td></tr>
           </table>
-          <p class="note">Столбец разброса стоит здесь не для красоты. У списка он держится около <b>1,0</b> — серия ровная. А вот у множества на малых входах он доходит до <b>1,85</b>: работа занимает единицы микросекунд, и любая помеха на их фоне заметна. Отсюда практическое следствие: чем меньше измеряемый участок, тем больше повторов ему нужно.</p>
+          <p class="note">Разброс у списка держится около <b>1,0</b>: участок длинный, помеха на его фоне незаметна. У множества при n = 250 он доходит до <b>1,85</b> — работа занимает 5 микросекунд, и любая задержка видна целиком. Отсюда правило: чем короче измеряемый участок, тем больше повторов ему нужно.</p>
         </div>
         <span class="pair-number">VI · СВОИ ДАННЫЕ</span>
       </section>
 
-      <!-- 23 · график -->
+      <!-- 25 · график и объяснение множителей -->
       <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="2">
         <div class="slide-inner split split--top">
           <div>
-            <p class="eyebrow">Раздел VI · те же числа на графике</p>
-            <h2>На логарифмических осях степень видна как наклон</h2>
-            <p class="lead">Обе оси логарифмические, поэтому степенная зависимость рисуется прямой линией, а показатель степени превращается в её наклон. Читать такой график проще, чем таблицу: наклон 2 — квадратичный рост, наклон 1 — линейный.</p>
+            <p class="eyebrow">Раздел VI · возврат к экрану 3</p>
+            <h2>Почему множители не совпали с ×4 и ×2</h2>
+            <p class="lead">На логарифмических осях степенная зависимость рисуется прямой, а показатель степени становится её наклоном. Наклон считается по крайним точкам: время выросло в 887,8 раза при росте входа в 32 раза, значит log₂887,8 / log₂32 = <b>1,96</b>.</p>
             <div class="micro">
-              <p class="micro__label">Что даёт наклон</p>
-              <p>Список: от 250 до 8000 время выросло в <b>887,8</b> раза при росте входа в 32 раза. Наклон = log&#8322;887,8 / log&#8322;32 = <b>1,96</b> — почти ровно 2.</p>
-              <p>Множество: <b>46,3</b> раза при тех же 32. Наклон = <b>1,11</b> — больше единицы, и это ровно та надбавка, которую видно в множителях роста.</p>
+              <p class="micro__label">Две причины расхождения</p>
+              <p class="micro__out"><b>3,60 вместо 4,00.</b> Кроме квадратичного цикла в решении есть копирование <code>list(registry)</code> и постоянные расходы на вызов. Их доля падает с ростом n, поэтому множитель подтягивается к четырём: 3,60 → 3,96 → 4,05.</p>
+              <p class="micro__out"><b>2,50 вместо 2,00.</b> <code>O(1) в среднем</code> не обещает одинаковое число наносекунд на проверку: таблица перестраивается ступенями, меняется работа кэша. Наклон вышел 1,11 вместо 1,00.</p>
+              <p class="micro__out micro__out--strong">Оценка описывает старшее слагаемое, замер — всё время целиком. Расхождение такого масштаба — не ошибка оценки.</p>
             </div>
           </div>
           <figure class="plot" data-plot>
             <div class="plot__head"><span>results_time.csv</span><span>минимум серии, мкс</span></div>
             <div class="plot__canvas"></div>
-            <figcaption>Точки — замеры, линии проведены по ним. Прямизна обеих линий говорит, что степенная модель эти данные описывает; наклон говорит, какая это степень. Обратите внимание: <b>вертикальная ось сжата логарифмом</b>, поэтому разрыв в 1115 раз выглядит на глаз скромно.</figcaption>
+            <figcaption>Точки — замеры, линии проведены по ним. Вертикальная ось сжата логарифмом, поэтому разрыв в 1115 раз выглядит на глаз скромно.</figcaption>
           </figure>
         </div>
         <span class="pair-number">VI · СВОИ ДАННЫЕ</span>
       </section>
 
-      <!-- 24 · размен -->
+      <!-- 26 · размен -->
       <section class="slide slide--answer" data-kind="answer" data-accent="blue" data-time="2">
         <div class="slide-inner split">
           <div>
-            <p class="eyebrow">Раздел VI · размен время / память</p>
-            <h2>При n = 8000 множество быстрее, но требует больше памяти</h2>
-            <p class="lead">В этой серии множество выиграло у списка <strong>1115 раз по времени</strong> и потребовало <strong>в 10,2 раза больше пиковой дополнительной памяти</strong>: 655 664 байта против 64 512. Оба числа получены разными приборами и в разных заходах — иначе трассировка исказила бы секунды.</p>
-            <p class="note">Переносить эти числа на вход в тысячу раз больше нельзя: хеш-таблица растёт ступенями, и следующая ступень может прийтись как угодно. Для нового диапазона проводят отдельную серию и отдельно проверяют лимит памяти.</p>
+            <p class="eyebrow">Раздел VI · время против памяти</p>
+            <h2>При n = 8000 множество быстрее в 1115 раз и дороже по памяти в 10,2</h2>
+            <p class="lead">655 664 байта против 64 512. Числа получены разными приборами и разными запусками: <code>perf_counter</code> для времени, <code>tracemalloc</code> для памяти.</p>
+            <p class="note">Переносить их на вход в тысячу раз больше нельзя — ни по времени, ни по памяти. Для нового диапазона проводится отдельная серия.</p>
           </div>
           <div class="side-card side-card--quote">
-            <p class="side-card__label">Как это звучит на секции</p>
-            <blockquote>Для этого диапазона беру множество: время растёт ближе к <b>O(n)</b>, замер на n = 8000 показал выигрыш 1115×. Цена — 655 664 байта пиковой дополнительной памяти против 64 512 у списка. Перед переносом на больший вход повторю замер.</blockquote>
-            <p class="side-card__foot">В ответе есть диапазон данных, измеренный выигрыш, цена по памяти и условие повторной проверки. Это и отличает результат от мнения.</p>
+            <p class="side-card__label">Как это формулируется на защите</p>
+            <blockquote>Для диапазона 250–8000 беру множество: замер на n = 8000 дал выигрыш 1115× по минимуму серии из семи повторов. Цена — 655 664 байта пиковой дополнительной памяти против 64 512 у списка. Перед переносом на больший вход повторю замер.</blockquote>
+            <p class="side-card__foot">Названы диапазон, метрика, способ замера, цена и условие проверки.</p>
           </div>
         </div>
         <span class="pair-number">VI · СВОИ ДАННЫЕ</span>
       </section>
 
-      <!-- 25 · журнал закрыт -->
-      <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="2">
+      <!-- 27 · за клавиатуру 4 · дефекты -->
+      <section class="slide slide--practice" data-kind="practice" data-accent="orange" data-time="6">
         <div class="slide-inner">
-          <p class="eyebrow">Раздел VI · лабораторный журнал · запись № 1 закрыта</p>
-          <h2>Методика проверена — теперь расхождение можно объяснить</h2>
-          <div class="journal">
-            <div class="journal__head"><b>ЛАБОРАТОРНЫЙ ЖУРНАЛ · ЗАПИСЬ № 1 · ЗАКРЫТА</b><span>6 размеров входа · наклон 1,96 и 1,11 · разброс от 1,00 до 1,85</span></div>
-            <div class="journal__grid">
-              <div class="journal__cell journal__cell--wait">
-                <span>ожидание</span>
-                <b class="journal__big">&times;4,00</b>
-                <p>Ожидание относится к <b>старшему слагаемому</b>, а не ко всему времени запуска.</p>
-              </div>
-              <div class="journal__cell journal__cell--miss">
-                <span>промах вниз: &times;3,60</span>
-                <p>Кроме квадратичного цикла в решении есть копирование <code>list(registry)</code> и постоянные расходы на вызов.</p>
-                <p>С ростом n их доля падает, поэтому множитель подтягивается к четырём: 3,60 &rarr; 3,96 &rarr; 4,05.</p>
-              </div>
-              <div class="journal__cell journal__cell--miss">
-                <span>промах вверх: &times;2,50</span>
-                <p><b>O(1) в среднем</b> не обещает одинаковое число наносекунд на проверку: таблица перестраивается ступенями, меняется работа кэша.</p>
-                <p>На измеренном диапазоне это дало наклон 1,11 вместо 1,00.</p>
-              </div>
-              <div class="journal__cell journal__cell--out">
-                <span>вывод</span>
-                <p>Оценка описывает <b>порядок роста</b>. Замер показывает <b>всё время целиком на выбранных n</b>.</p>
-                <p>Расхождение — повод проверить методику и построить гипотезу, а не объявлять оценку ошибочной.</p>
-              </div>
-            </div>
-          </div>
-          <p class="note">Обратите внимание на порядок работы: мы сначала закрыли вопросы к границе, прогреву, повторам и разбросу — и только потом стали объяснять расхождение свойствами кода. В обратном порядке легко объяснить свойствами кода то, что на самом деле сделал неверный замер.</p>
-        </div>
-        <span class="pair-number">VI · СВОИ ДАННЫЕ</span>
-      </section>
-
-      <!-- 26 · за клавиатуру 4 · дефекты -->
-      <section class="slide slide--practice" data-kind="practice" data-accent="orange" data-time="7">
-        <div class="slide-inner">
-          <p class="eyebrow">За клавиатуру · чужой замер · 7 минут</p>
+          <p class="eyebrow">За клавиатуру · чужой замер · 6 минут</p>
           <h2>Найдите пять дефектов рабочего замера</h2>
           <div class="lab lab--shot">
             <div class="lab__col">
               <p class="lab__label">Что сделать</p>
               <ol class="task-list">
-                <li>Запустите файл и зафиксируйте его вывод: он каждый раз разный.</li>
-                <li>Найдите нарушение по каждому элементу контура: данные, граница, прогрев, серия, агрегат. Плюс проверьте часы.</li>
-                <li>Объясните, почему <b>13,7&times;</b> нельзя сравнивать со <b>190&times;</b> из честного замера.</li>
+                <li>Запустите файл и зафиксируйте вывод: он каждый раз разный.</li>
+                <li>Пройдите по элементам контура — данные, граница, прогрев, серия, агрегат — и по часам. Каждый нарушен ровно одним местом в коде.</li>
+                <li>Скажите, почему <b>13,7×</b> нельзя сравнивать со <b>190×</b> из честного замера.</li>
               </ol>
-              <p class="lab__check">Подсказка: посмотрите на строки «совпадений». У решений они разные — <b>96</b> и <b>109</b> при n = 1000. Значит, решениям достались разные данные, и общего входа у сравнения уже нет.</p>
+              <p class="lab__check">Начните со строк «совпадений»: у решений они разные — <b>96</b> и <b>109</b> при n = 1000. Значит, решениям достались разные данные.</p>
               <div class="file-button-row">
                 <button class="file-button" type="button" data-file="broken_bench.py">Показать broken_bench.py</button>
               </div>
-              <div class="timer-card"><span class="timer-card__value" data-timer="7">07:00</span><p>Ответ — пять строк «дефект → искажение → исправление».</p></div>
+              <div class="timer-card"><span class="timer-card__value" data-timer="6">06:00</span><p>Ответ — пять строк «дефект → искажение → исправление».</p></div>
             </div>
             <figure class="shot-frame shot-frame--practice">
               <img src="shots/10-broken-bench.png" alt="Вывод broken_bench.py с выводом, что разница невелика и список можно оставить">
-              <figcaption>Опасность этого вывода в его правдоподобии: таблица заполнена, числа выглядят разумно, программа не выдала ни одной ошибки.</figcaption>
+              <figcaption>Программа отработала без ошибок, таблица заполнена, вывод сформулирован. Все три числа неверны.</figcaption>
             </figure>
           </div>
         </div>
         <span class="pair-number">ЗА КЛАВИАТУРУ</span>
       </section>
 
-      <!-- 27 · каталог дефектов + честный запуск -->
-      <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="2">
-        <div class="slide-inner split split--top">
+      <!-- 28 · разбор пяти дефектов -->
+      <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="3">
+        <div class="slide-inner split split--cost">
           <div>
-            <p class="eyebrow">Раздел VII · разбор · пять дефектов и их цена</p>
-            <h2>Тот же вход честным контуром даёт не 13,7, а 190 раз</h2>
-            <table class="flat">
-              <tr><th>Дефект</th><th>Что искажает</th></tr>
-              <tr class="flat__bad"><td>данные генерируются заново для каждого решения</td><td>решения сравниваются на разных входах: 96 совпадений против 109</td></tr>
-              <tr class="flat__bad"><td>генерация внутри границы</td><td>обоим решениям прибавляется одна и та же тысяча микросекунд</td></tr>
-              <tr class="flat__bad"><td>прогрева нет</td><td>первый вызов оплачивает разовые расходы, и это попадает в результат</td></tr>
-              <tr class="flat__bad"><td>повтор один</td><td>разброс неизвестен, стабильность оценить нечем</td></tr>
-              <tr class="flat__bad"><td>часы <code>time.time()</code></td><td>календарные, не монотонные: при синхронизации могут уйти назад</td></tr>
+            <p class="eyebrow">Раздел VII · разбор</p>
+            <h2>Пять дефектов и их цена</h2>
+            <table class="unit-table unit-table--text">
+              <thead><tr><th>Как в broken_bench.py</th><th>Как в контуре</th><th>Что искажает</th></tr></thead>
+              <tbody>
+                <tr><td><code>make_data(size)</code> без seed, отдельно для каждого решения</td><td><code>make_data(size, seed=42)</code>, один вход на оба</td><td>96 совпадений против 109 — входы разные</td></tr>
+                <tr><td><code>make_data</code> внутри отсчёта</td><td>данные готовы до <code>start</code></td><td>к обоим решениям добавлена тысяча микросекунд</td></tr>
+                <tr><td>прогрева нет</td><td><code>func(registry[:32], …)</code></td><td>разовые расходы попадают в результат</td></tr>
+                <tr><td>один запуск</td><td><code>for _ in range(repeats)</code></td><td>разброс неизвестен, стабильность оценить нечем</td></tr>
+                <tr><td><code>time.time()</code></td><td><code>time.perf_counter()</code></td><td>календарные часы не монотонны и грубее в 24 раза</td></tr>
+              </tbody>
             </table>
-            <p class="note">Пятый дефект на этих числах себя не проявил — и это важно проговорить: дефект методики опасен не тем, что портит каждый запуск, а тем, что может испортить любой, и заранее неизвестно какой.</p>
+            <p class="note">Пятый дефект на этих числах себя не проявил: часы назад не ушли. Дефект методики опасен не тем, что портит каждый запуск, а тем, что может испортить любой — и заранее неизвестно какой.</p>
           </div>
           <figure class="shot-frame shot-frame--terminal">
             <img src="shots/11-honest-bench.png" alt="Вывод lab.py на тех же размерах входа: разница в 58, 102 и 190 раз">
-            <figcaption>Те же n = 250, 500 и 1000, но контур собран правильно: <code>python benchmarks/lab.py --sizes 250 500 1000</code>. Вывод «список можно оставить» после такого замера уже не сделать.</figcaption>
+            <figcaption>Те же n = 250, 500 и 1000, контур собран правильно: <code>python benchmarks/lab.py --sizes 250 500 1000</code>. Вместо 3,9 · 7,3 · 13,7 получилось 58 · 102 · 190.</figcaption>
           </figure>
         </div>
         <span class="pair-number">VII · ДЕФЕКТЫ</span>
       </section>
 
-      <!-- 28 · приёмка -->
-      <section class="slide slide--practice" data-kind="practice" data-accent="blue" data-time="5">
+      <!-- 29 · приёмка -->
+      <section class="slide slide--practice" data-kind="practice" data-accent="blue" data-time="4">
         <div class="slide-inner">
-          <p class="eyebrow">Контроль · приёмка чужой методики · 5 минут</p>
+          <p class="eyebrow">Контроль · приёмка чужой методики · 4 минуты</p>
           <h2>Принять или вернуть отчёт другой группы</h2>
           <div class="lab lab--duo">
             <div class="lab__col">
@@ -779,39 +849,39 @@ python benchmarks/memory_probe.py</code></pre>
             <div class="lab__col">
               <p class="lab__label">Четыре пункта ответа</p>
               <ol class="task-list">
-                <li>Назвать дефекты контура и элемент, который нарушен каждым.</li>
-                <li>Сказать, какой из них исказил число сильнее прочих.</li>
+                <li>Назвать дефекты и элемент контура, нарушенный каждым.</li>
+                <li>Сказать, какой исказил число сильнее прочих.</li>
                 <li>Переписать вывод так, чтобы он следовал из имеющихся данных.</li>
                 <li>Назвать замер, которым исходный вывод можно проверить.</li>
               </ol>
-              <p class="lab__check">Приёмка засчитывается, если названо <b>не меньше пяти</b> дефектов и переписанный вывод не выходит за пределы n = 100.</p>
-              <div class="timer-card timer-card--control"><span class="timer-card__value" data-timer="5">05:00</span><p>Ответ даёт группа, которая отчёт не писала.</p></div>
+              <p class="lab__check">Принимается, если названо не меньше пяти дефектов и переписанный вывод не выходит за пределы n = 100.</p>
+              <div class="timer-card timer-card--control"><span class="timer-card__value" data-timer="4">04:00</span><p>Отвечает группа, которая отчёт не писала.</p></div>
             </div>
           </div>
         </div>
         <span class="pair-number">КОНТРОЛЬ</span>
       </section>
 
-      <!-- 29 · форма вывода -->
+      <!-- 30 · форма вывода -->
       <section class="slide slide--answer" data-kind="answer" data-accent="lime" data-time="2">
         <div class="slide-inner">
-          <p class="eyebrow">Итог · как звучит результат</p>
-          <h2>Хороший вывод можно повторить и проверить</h2>
+          <p class="eyebrow">Итог · требования к формулировке результата</p>
+          <h2>Вывод замера состоит из четырёх частей</h2>
           <div class="verdict">
             <div class="verdict__form">
-              <div><span>на чём измерено</span><p>Какие данные и какие размеры входа. Без этого вывод нельзя ни повторить, ни ограничить.</p></div>
-              <div><span>что получилось</span><p>Во сколько раз и по какой метрике. «Быстрее» без числа и без метрики — ещё не результат.</p></div>
-              <div><span>как измерено</span><p>Часы, граница, прогрев, повторы, агрегат. Одна строка, но без неё числу верить нельзя.</p></div>
-              <div><span>чего вывод не касается</span><p>Размеры входа, данные и машины, на которых не проверяли. Их называют прямо.</p></div>
+              <div><span>на чём измерено</span><p>Данные и размеры входа. Без них вывод нельзя ни повторить, ни ограничить.</p></div>
+              <div><span>что получилось</span><p>Во сколько раз и по какой метрике. «Быстрее» без числа и метрики — не результат.</p></div>
+              <div><span>как измерено</span><p>Часы, граница, прогрев, повторы, агрегат, разброс.</p></div>
+              <div><span>чего вывод не касается</span><p>Размеры входа, данные и машины, на которых не проверяли.</p></div>
             </div>
             <p class="verdict__sample">На пакетах из <b>250–8000</b> идентификаторов сверка через множество оказалась от <b>58 до 1115 раз</b> быстрее перебора по списку по минимуму серии из семи повторов; измерено <b>perf_counter</b> с прогревом, генерация данных вынесена за границу, разброс серий от 1,00 до 1,85; вывод не распространяется на пакеты меньше 250 элементов, на данные с другим распределением совпадений и на машины с другим объёмом кэша.</p>
           </div>
-          <p class="note">Сравните с формулировкой «множество работает быстрее». В ней нет ни диапазона входа, ни метрики, ни условий запуска, ни границы применимости — проверить её нельзя, а значит, и спорить с ней бессмысленно.</p>
+          <p class="note">В формулировке «множество работает быстрее» нет ни одной из четырёх частей: её нельзя ни проверить, ни опровергнуть.</p>
         </div>
         <span class="pair-number">ИТОГ</span>
       </section>
 
-      <!-- 30 · чек-лист -->
+      <!-- 31 · чек-лист -->
       <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="2">
         <div class="slide-inner">
           <p class="eyebrow">Справка · проходится по своему коду до первого числа</p>
@@ -828,26 +898,9 @@ python benchmarks/memory_probe.py</code></pre>
             <div><i></i><p>Память измерена отдельным запуском, не одновременно со временем</p></div>
             <div><i></i><p>Названы среда и размер входа, при котором вывод перестаёт действовать</p></div>
           </div>
-          <p class="note"><strong>Паспорт эксперимента</strong> добавляет к этому списку вопрос, гипотезу и ограничения вывода. Полный шаблон из одиннадцати полей остаётся в <code>METHOD.md</code>.</p>
+          <p class="note"><b>Паспорт эксперимента</b> добавляет к списку вопрос, гипотезу и ограничения вывода. Полный шаблон из одиннадцати полей — в <code>METHOD.md</code>.</p>
         </div>
         <span class="pair-number">СПРАВКА</span>
-      </section>
-
-      <!-- 31 · заблуждения -->
-      <section class="slide slide--answer" data-kind="answer" data-accent="pink" data-time="2">
-        <div class="slide-inner">
-          <p class="eyebrow">Итог · проверяем формулировки</p>
-          <h2>Шесть выводов, которые наш замер не подтверждает</h2>
-          <div class="myths">
-            <div><s>Замер доказывает сложность</s><p>Измерено шесть точек, а <b>O(n)</b> — утверждение обо всех n. Замер согласуется с оценкой или расходится с ней, но не доказывает её.</p></div>
-            <div><s>Одного запуска достаточно</s><p>Пятнадцать повторов при n = 2000 дали разброс <b>1,02</b>, а серия по множеству при n = 250 — <b>1,85</b>. По одному значению стабильность оценить нечем.</p></div>
-            <div><s>Один агрегат подходит для любого вопроса</s><p>Минимум удобен для сравнения реализаций, медиана — для типичного вызова, максимум — для поиска нестабильности. Разброс сохраняем всегда.</p></div>
-            <div><s>Раз входы одинаковые, замер честный</s><p>В <code>broken_bench.py</code> данные генерировались заново для каждого решения: <b>96</b> совпадений против <b>109</b> на якобы одинаковых входах.</p></div>
-            <div><s>Память растёт плавно</s><p>Пик множества стоит на месте от n = 500 до n = 1000 и прыгает вчетверо при перестройке таблицы: <b>41 264 &rarr; 164 144</b>.</p></div>
-            <div><s>Удвоение входа даёт ровно ×4 и ×2</s><p>Получилось <b>3,60</b> и <b>2,50</b>. Оценка описывает старшее слагаемое, а замер — всё время целиком, вместе с младшими слагаемыми.</p></div>
-          </div>
-        </div>
-        <span class="pair-number">ИТОГ</span>
       </section>
 
       <!-- 32 · вопрос на выход -->
@@ -855,7 +908,7 @@ python benchmarks/memory_probe.py</code></pre>
         <div class="slide-inner question-layout">
           <p class="eyebrow">Вопрос на выход</p>
           <h2>Коллега прислал число: «решение работает 40 миллисекунд».<br>Какие четыре вопроса вы зададите до того, как ему поверить?</h2>
-          <p class="question-hint">Ответ засчитывается, если названы граница участка, число повторов и агрегат, размер входа и среда. Пятым можно спросить про разброс — по нему сразу видно, стоит ли обсуждать остальное.</p>
+          <p class="question-hint">Ответ засчитывается, если названы граница участка, число повторов и агрегат, размер входа и среда. Пятым можно спросить разброс — по нему видно, стоит ли обсуждать остальное.</p>
         </div>
         <span class="pair-number">ИТОГ</span>
       </section>
@@ -866,7 +919,7 @@ python benchmarks/memory_probe.py</code></pre>
           <div>
             <p class="eyebrow">Фиксация · что уходит в репозиторий</p>
             <h2>В коммит идут сырые значения, а не один коэффициент</h2>
-            <p class="lead">Итоговое «в 184 раза быстрее» проверить нельзя: по нему не видно ни границы, ни повторов, ни разброса. Поэтому в репозиторий кладётся то, из чего это число получено.</p>
+            <p class="lead">По записи «в 184 раза быстрее» нельзя проверить ни границу, ни повторы, ни разброс. Поэтому в репозиторий кладётся то, из чего это число получено.</p>
             <div class="code-card">
               <div class="code-card__head"><span>benchmarks/</span><span>артефакт занятия</span></div>
 <pre><code>benchmarks/
@@ -881,7 +934,7 @@ python benchmarks/memory_probe.py</code></pre>
             <p><b>Issue</b> <code>measurement-baseline</code>: вопрос и гипотеза, записанные <strong>до</strong> первого запуска.</p>
             <p><b>Ветка</b> <code>lesson-04</code>, коммит с заполненным <code>contour.py</code> и своим CSV.</p>
             <p><b>Pull Request</b> с паспортом эксперимента в описании: одиннадцать полей, раздел «ограничения» обязателен.</p>
-            <p class="side-card__foot"><b>Review</b>: один комментарий по чужой методике по чек-листу контура. Не «согласен», а конкретный пункт, который в чужом отчёте не закрыт.</p>
+            <p class="side-card__foot"><b>Review</b>: один комментарий по чужой методике по чек-листу контура — конкретный пункт, который в чужом отчёте не закрыт.</p>
           </div>
         </div>
         <span class="pair-number">ФИКСАЦИЯ</span>
@@ -894,9 +947,9 @@ python benchmarks/memory_probe.py</code></pre>
             <p class="eyebrow">Домашнее задание № 4 · к следующему занятию</p>
             <h2>Максим Николаевич не хочет задавать домашнее задание. Но очень хочет</h2>
             <ol class="hw-cards">
-              <li><b>&#9312;</b><div><b>Проверить свою прикидку из ДЗ № 3</b><p>Вы считали, сколько сравнений сделает <code>two_sum</code> перебором при n = 100 000. Теперь измерьте своим контуром на четырёх размерах входа и скажите, сошлась прикидка или нет.</p></div></li>
-              <li><b>&#9313;</b><div><b>Собрать паспорт эксперимента</b><p>Одиннадцать полей по <code>METHOD.md</code>. Раздел «ограничения» — не формальность: назовите размер входа, дальше которого ваш вывод не действует.</p></div></li>
-              <li><b>&#9314;</b><div><b>Ответить на вопрос, который не разбирался</b><p>Замерьте <b>память</b> обеих версий <code>two_sum</code> и скажите, при каком лимите контейнера пришлось бы вернуться к перебору. Расчётом, без подбора.</p></div></li>
+              <li><b>&#9312;</b><div><b>Проверить свою прикидку из ДЗ № 3</b><p>Вы считали, сколько сравнений сделает <code>two_sum</code> перебором при n = 100 000. Измерьте своим контуром на четырёх размерах входа и скажите, сошлась прикидка или нет.</p></div></li>
+              <li><b>&#9313;</b><div><b>Собрать паспорт эксперимента</b><p>Одиннадцать полей по <code>METHOD.md</code>. В разделе «ограничения» назовите размер входа, дальше которого ваш вывод не действует.</p></div></li>
+              <li><b>&#9314;</b><div><b>Измерить память двух версий</b><p>Замерьте <code>tracemalloc</code> обе версии <code>two_sum</code> и скажите, при каком лимите контейнера пришлось бы вернуться к перебору. Расчётом от байтов на элемент, а не подбором.</p></div></li>
             </ol>
           </div>
           <figure class="meme-frame meme-frame--portrait tilt-right">
@@ -906,7 +959,7 @@ python benchmarks/memory_probe.py</code></pre>
         <span class="pair-number">ДЗ</span>
       </section>
 
-      <!-- 35 · ДЗ · порядок сдачи -->
+      <!-- 35 · порядок сдачи -->
       <section class="slide slide--answer" data-kind="answer" data-accent="orange" data-time="1">
         <div class="slide-inner">
           <p class="eyebrow">Домашнее задание № 4 · порядок сдачи</p>
@@ -939,17 +992,17 @@ python benchmarks/memory_probe.py</code></pre>
       <p class="eyebrow">Занятие 4 · раздел 1 · КТП ОП.04 · 2 академических часа</p>
       <h2 id="sourcesTitle">План занятия</h2>
       <ol class="plan-list">
-        <li><b>Вход · 7 мин</b><span>Экраны 1–4. Замер, не сошедшийся с ожиданием; три вопроса, на которые оценка не отвечает; четыре величины и пять элементов контура.</span></li>
-        <li><b>Часы · 10 мин</b><span>Экраны 5–8. Четыре часа <code>time</code>, разрешение прибора, прошедшее время против процессорного и первый запуск руками.</span></li>
-        <li><b>Граница · 21 мин</b><span>Экраны 9–14. Правило границы, интерактивная демонстрация, цена частей участка, три промаха, сборка <code>contour.py</code> под семь тестов и разбор падения.</span></li>
-        <li><b>Серия · 7 мин</b><span>Экраны 15–17. Пятнадцать повторов, выбор агрегата и разброс, прогрев.</span></li>
-        <li><b>Память · 10 мин</b><span>Экраны 18–20. Что считает <code>tracemalloc</code>, ступени хеш-таблицы и своя серия за клавиатурой.</span></li>
-        <li><b>Свои данные · 10 мин</b><span>Экраны 21–25. Столбцы CSV, полная таблица, логарифмический график, размен время/память и закрытие журнала.</span></li>
-        <li><b>Дефекты и приёмка · 14 мин</b><span>Экраны 26–28. Пять дефектов <code>broken_bench.py</code>, тот же вход честным контуром и приёмка чужого отчёта.</span></li>
-        <li><b>Итог · 8 мин</b><span>Экраны 29–33. Форма вывода, чек-лист, шесть заблуждений, вопрос на выход и Git.</span></li>
+        <li><b>Зачем измерять · 7 мин</b><span>Экраны 1–4. Два решения задачи, множители роста из запуска, определения: замер, T(n), S(n), t(n), m(n).</span></li>
+        <li><b>Часы · 12 мин</b><span>Экраны 5–9. Разрешение и монотонность, <code>get_clock_info</code>, прошедшее и процессорное время, <code>timeit</code> и первый запуск руками.</span></li>
+        <li><b>Граница · 20 мин</b><span>Экраны 10–15. Определение границы, цена каждой строки участка, три ошибки с листингами, сборка <code>contour.py</code>, разбор падения теста.</span></li>
+        <li><b>Серия · 7 мин</b><span>Экраны 16–18. Прогрев, функция <code>series</code> по строкам, агрегаты и разброс.</span></li>
+        <li><b>Память · 7 мин</b><span>Экраны 19–21. <code>tracemalloc</code> и функция <code>peak_of</code>, результат замера, ступени хеш-таблицы.</span></li>
+        <li><b>Свои данные · 14 мин</b><span>Экраны 22–26. Своя серия, столбцы CSV, таблица, логарифмический график с объяснением множителей, размен время / память.</span></li>
+        <li><b>Дефекты и приёмка · 13 мин</b><span>Экраны 27–29. Пять дефектов <code>broken_bench.py</code> построчно, честный замер на тех же n, приёмка чужого отчёта.</span></li>
+        <li><b>Итог · 7 мин</b><span>Экраны 30–33. Четыре части вывода, чек-лист, вопрос на выход, Git.</span></li>
         <li><b>Домашнее задание · 3 мин</b><span>Экраны 34–35.</span></li>
       </ol>
-      <p class="plan-foot">Полный прогон рассчитан ровно на 90 минут. Четыре участка за клавиатурой занимают 26 минут, приёмка чужой методики — ещё 5.</p>
+      <p class="plan-foot">Полный прогон рассчитан ровно на 90 минут. Четыре участка за клавиатурой занимают 24 минуты, приёмка чужой методики — ещё 4.</p>
     </div>
   </aside>
 

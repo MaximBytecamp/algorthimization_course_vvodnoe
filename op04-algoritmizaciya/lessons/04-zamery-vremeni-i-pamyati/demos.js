@@ -6,13 +6,15 @@
    к стоимости кода на Python отношения не имеют, и показывать их
    как замер было бы ровно тем дефектом, который разбирается на занятии.
 
-   Три демонстрации:
+   Две демонстрации:
 
      [data-boundary]  граница замера: строки листинга кликаются, число
                       складывается из реальной стоимости выбранных строк;
-     [data-samples]   пятнадцать сырых значений серии точками на шкале;
      [data-plot]      серия на логарифмических осях: точки — замеры,
-                      прямизна линии показывает степенную зависимость.   */
+                      прямизна линии показывает степенную зависимость.
+
+   Сырые значения серии и результаты запусков показываются кадрами
+   терминала: это настоящий вывод программы, а не его пересказ.        */
 (() => {
 
   /* ---------- граница замера ---------- */
@@ -103,58 +105,6 @@
     paint();
   }
 
-  /* ---------- сырые значения серии ---------- */
-
-  function setupSamples(figure) {
-    const values = figure.dataset.samples.split(',').map(Number);
-    const stage = figure.querySelector('.samples__stage');
-    const low = Math.min(...values);
-    const high = Math.max(...values);
-    const pad = (high - low) * 0.18;                 // поля сверху и снизу
-    const top = high + pad;
-    const bottom = low - pad;
-    const y = value => 100 - ((value - bottom) / (top - bottom)) * 100;
-
-    const sorted = [...values].sort((a, b) => a - b);
-    const middle = Math.floor(sorted.length / 2);
-    const median = sorted.length % 2
-      ? sorted[middle]
-      : (sorted[middle - 1] + sorted[middle]) / 2;
-    const mean = values.reduce((a, b) => a + b, 0) / values.length;
-
-    stage.innerHTML = '';
-    const marks = [
-      { value: low, color: '#2D7FC1', label: 'мин' },
-      { value: median, color: '#2E8B57', label: 'медиана' },
-      { value: mean, color: '#B8721F', label: 'среднее' },
-      { value: high, color: '#E8503A', label: 'макс' }
-    ];
-    marks.forEach(mark => {
-      const line = document.createElement('div');
-      line.className = 'samples__mark';
-      line.style.top = `${y(mark.value)}%`;
-      line.style.setProperty('--c', mark.color);
-      line.innerHTML = `<b>${mark.label}</b>`;
-      stage.appendChild(line);
-    });
-    values.forEach((value, i) => {
-      const dot = document.createElement('i');
-      dot.className = value === high ? 'samples__dot is-out' : 'samples__dot';
-      dot.style.left = `${(i / (values.length - 1)) * 100}%`;
-      dot.style.top = `${y(value)}%`;
-      stage.appendChild(dot);
-    });
-
-    figure.play = () => {
-      const dots = [...stage.querySelectorAll('.samples__dot')];
-      const lines = [...stage.querySelectorAll('.samples__mark')];
-      dots.forEach(dot => dot.classList.remove('is-in'));
-      lines.forEach(line => line.classList.remove('is-in'));
-      dots.forEach((dot, i) => window.setTimeout(() => dot.classList.add('is-in'), 220 + i * 90));
-      window.setTimeout(() => lines.forEach(line => line.classList.add('is-in')), 220 + dots.length * 90 + 200);
-    };
-  }
-
   /* ---------- график на логарифмических осях ---------- */
 
   const SERIES = [
@@ -201,12 +151,9 @@
   /* ---------- сборка ---------- */
 
   document.querySelectorAll('[data-boundary]').forEach(setupBoundary);
-  const samples = [...document.querySelectorAll('[data-samples]')];
-  samples.forEach(setupSamples);
   document.querySelectorAll('[data-plot]').forEach(drawPlot);
 
   function playSlide(slide) {
-    samples.forEach(figure => { if (figure.closest('.slide') === slide) figure.play(); });
     const plot = slide.querySelector('.plot');
     if (plot) { plot.classList.remove('is-drawn'); void plot.offsetWidth; plot.classList.add('is-drawn'); }
   }
