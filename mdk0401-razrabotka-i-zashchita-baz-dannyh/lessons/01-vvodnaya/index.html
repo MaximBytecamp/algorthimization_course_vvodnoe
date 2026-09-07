@@ -453,8 +453,8 @@
       <section class="slide" data-accent="amber">
         <div class="slide-inner">
           <p class="eyebrow">Реляционный контур курса</p>
-          <h2>Источник истины у нас — PostgreSQL</h2>
-          <p class="lead">Транзакционным источником истины в курсе служит PostgreSQL: транзакции, роли, построчный доступ, восстановление на момент времени. Его расширения открыты, поэтому на нём удобно разбирать устройство базы изнутри.</p>
+          <h2>Часть логики переносится внутрь базы</h2>
+          <p class="lead">Источник истины в курсе — PostgreSQL. В отличие от прошлых курсов, база здесь не только хранит данные: триггер, функция и расширение выполняются на её стороне. Ниже — механизм из занятия 16, записанный средствами PostgreSQL.</p>
           <div class="psql">
             <div class="psql__bar"><i></i><i></i><i></i>psql · platform=# <span>триггер, который сам заполняет outbox</span></div>
             <pre><span class="kw">CREATE FUNCTION</span> <span class="fn">orders_to_outbox</span>() <span class="kw">RETURNS</span> <span class="id">trigger</span> <span class="kw">AS</span> $$
@@ -468,7 +468,7 @@ $$ <span class="kw">LANGUAGE</span> plpgsql;
   <span class="kw">FOR EACH ROW WHEN</span> (<span class="id">OLD</span>.status <span class="kw">IS DISTINCT FROM</span> <span class="id">NEW</span>.status)
   <span class="kw">EXECUTE FUNCTION</span> <span class="fn">orders_to_outbox</span>();<span class="caret"></span></pre>
           </div>
-          <p class="note">Функция триггера возвращает специальный тип <code>trigger</code> и обращается к изменяемой строке через <code>NEW</code> и <code>OLD</code>. Событие и само изменение попадают в базу одной транзакцией: сохраняются либо оба, либо ни одного. Это та же граница, что разбирается на занятии 16, но здесь строку в outbox записывает сама база, а приложение о ней не знает.</p>
+          <p class="note">Функция триггера возвращает специальный тип <code>trigger</code> и обращается к изменяемой строке через <code>NEW</code> и <code>OLD</code>. Когда у заказа меняется статус, строку в outbox добавляет сама база — в той же транзакции, что и само изменение: сохраняются либо обе записи, либо ни одной. Приложение о таблице outbox не знает, и событие не потеряется, даже если приложение упадёт сразу после записи.</p>
         </div>
         <span class="pair-number">PG · 1</span>
       </section>
@@ -505,7 +505,7 @@ $$ <span class="kw">LANGUAGE</span> plpgsql;
               <div><b>Своё расширение</b><span>Набор функций, типов и операторов ставится одной командой <code>CREATE EXTENSION</code> и так же удаляется.</span></div>
             </div>
           </div>
-          <p class="note">Значение имеет не перечень модулей, а два свойства базы: систему типов можно дополнить собственными типами, а в определённых точках — триггере, функции, расширении — выполняется ваш код.</p>
+          <p class="note">Здесь важен не перечень модулей. Систему типов PostgreSQL можно дополнить своими типами и доменами, и тогда корректность значения проверяет сама база, а не каждый обработчик по отдельности. Расширение добавляет готовый набор функций, операторов и индексов одной командой.</p>
         </div>
         <span class="pair-number">PG · 2</span>
       </section>
