@@ -496,7 +496,24 @@
               <div class="g5"><b>1 байт · конец</b><span>Нулевой байт закрывает документ. По нему сервер понимает, что полей больше нет.</span></div>
             </div>
           </div>
-          <p class="note">Пересчитайте сами: 4 + 1 + 2 + 4 + 9 + 1 = 21. Ровно столько и вернул запрос <code>{ $bsonSize: "$$ROOT" }</code> на нашем стенде. А у документа <code>{ a: 1 }</code> получается 12 байт: тип другой — <code>0x10</code>, целое число, и значение занимает 4 байта вместо девяти.</p>
+          <div class="shot-split" style="margin-top:1.6vh">
+            <div class="psql">
+              <div class="psql__bar"><i></i><i></i><i></i><span>docker exec -it hh-mongo mongosh hh</span></div>
+<pre><span class="fn">hh&gt;</span> db.<span class="fn">aggregate</span>([
+     { <span class="id">$documents</span>: [ { n: <span class="str">"Пётр"</span> }, { a: <span class="id">1</span> } ] },
+     { <span class="id">$project</span>: { doc: <span class="str">"$$ROOT"</span>,
+                  size: { <span class="id">$bsonSize</span>: <span class="str">"$$ROOT"</span> } } }
+   ])
+
+[ { doc: { n: <span class="str">'Пётр'</span> }, size: <span class="id">21</span> },
+  { doc: { a: <span class="id">1</span> },      size: <span class="id">12</span> } ]<span class="caret"></span></pre>
+            </div>
+            <div>
+              <p class="note" style="margin-top:0">Пересчитайте сами: 4 + 1 + 2 + 4 + 9 + 1 = 21. Столько же вернул и сервер — вывод слева снят на нашем стенде, а не переписан из документации.</p>
+              <p class="note">У документа <code>{ a: 1 }</code> получается 12 байт: имя поля на байт короче, тип другой — <code>0x10</code>, целое число, и значение занимает 4 байта вместо девяти.</p>
+              <p class="note"><b>Оператор <code>$bsonSize</code></b> считает размер документа в байтах и работает в конвейере агрегации. <code>$$ROOT</code> — это весь документ целиком; <code>$documents</code> позволяет посчитать то, чего в базе ещё нет. Тем же запросом по коллекции получаются <b>183 байта</b> у резюме Беловой и <b>697</b> у Дроздовой — самое короткое и самое длинное из девяти.</p>
+            </div>
+          </div>
         </div>
         <span class="pair-number">08</span>
       </section>
@@ -552,7 +569,17 @@
             <p>«The 12-byte ObjectId consists of: <b>a 4-byte timestamp</b>, representing the ObjectId's creation, measured in seconds since the Unix epoch; <b>a 5-byte random value</b> generated once per client-side process; <b>a 3-byte incrementing counter</b>, initialized to a random value.»</p>
             <cite>MongoDB Manual · mongosh Methods · ObjectId()</cite>
           </div>
-          <p class="note">Отсюда полезное следствие: сортировка по <code>_id</code> почти совпадает с сортировкой по времени создания, а метод <code>getTimestamp()</code> достаёт дату из идентификатора. Но полагаться на это как на точное время не стоит — секунды ставит клиент, а не сервер.</p>
+          <div class="shot-split" style="margin-top:1.4vh">
+            <div class="psql">
+              <div class="psql__bar"><i></i><i></i><i></i><span>docker exec -it hh-mongo mongosh hh</span></div>
+<pre><span class="fn">hh&gt;</span> <span class="kw">const</span> d = db.resumes.<span class="fn">findOne</span>({ fio: <span class="str">"Анна Белова"</span> })
+<span class="fn">hh&gt;</span> d._id.<span class="fn">toString</span>()
+<span class="str">'6a9e467a4831d3c4cfa42092'</span>
+<span class="fn">hh&gt;</span> d._id.<span class="fn">getTimestamp</span>()
+<span class="id">ISODate</span>(<span class="str">'2026-09-07T05:07:06.000Z'</span>)<span class="caret"></span></pre>
+            </div>
+            <p class="note" style="margin-top:0">Первые четыре байта идентификатора и дата в выводе — одно и то же число, записанное двумя способами. Отсюда полезное следствие: сортировка по <code>_id</code> почти совпадает с сортировкой по времени создания. Но полагаться на это как на точное время не стоит — секунды ставит клиент, а не сервер, и часы на машине студента могут отставать.</p>
+          </div>
         </div>
         <span class="pair-number">10</span>
       </section>
