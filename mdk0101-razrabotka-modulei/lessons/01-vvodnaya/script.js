@@ -100,7 +100,7 @@
     deck.classList.toggle('is-inverse', active.matches('.slide--question, .slide--title'));
     prevButton.disabled = index === 0;
     nextButton.disabled = index === slides.length - 1 && !hiddenFragments().length;
-    document.title = `${pad(index + 1)} · Основы алгоритмизации`;
+    document.title = `${pad(index + 1)} · МДК.01.01`;
     history.replaceState(null, '', `#${pad(index + 1)}`);
     revealFragments(active);
     animateNumbers(active);
