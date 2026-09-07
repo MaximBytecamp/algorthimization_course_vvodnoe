@@ -1,0 +1,1243 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#EEF1F7">
+  <title>Занятие 1 · MongoDB: документ, BSON и первая коллекция</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Handjet:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../styles.css">
+  <style>
+  /* =========================================================
+     ЗАНЯТИЕ 1 · собственные компоненты колоды.
+     Ведущий приём — сборка резюме: шесть таблиц схлопываются
+     в один документ (.fold). Разовый приём — байтовая лента
+     BSON (.bytes). Практическая часть идёт настоящими кадрами
+     Compass (.shot) с указателями (.anno).
+     ========================================================= */
+
+  /* ---------- ведущий приём: сборка резюме ---------- */
+  .fold { display: grid; grid-template-columns: minmax(0,1fr) 64px minmax(0,1.05fr); gap: 12px; align-items: center; margin-top: 2vh; }
+  .fold__tables { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+  .tbl { border: 3px solid var(--line); background: var(--panel); box-shadow: 3px 3px 0 var(--hard); overflow: hidden; }
+  .tbl b { display: block; padding: 5px 9px; background: var(--line); color: #fff; font: 600 10px/1.3 var(--mono); letter-spacing: .03em; }
+  .tbl span { display: block; padding: 5px 9px; border-top: 1px dashed var(--hair); color: #333F5E; font: 500 10.5px/1.35 var(--mono); }
+  .tbl span i { color: var(--muted); font-style: normal; }
+  .fold__arrow { display: grid; place-items: center; gap: 6px; text-align: center; }
+  .fold__arrow em { font: 700 34px/1 var(--mono); font-style: normal; color: var(--accent); }
+  .fold__arrow span { color: var(--muted); font: 600 9px/1.3 var(--pixel); letter-spacing: .08em; text-transform: uppercase; }
+
+  /* ---------- документ на светлой бумаге ---------- */
+  .doc { border: 3px solid var(--line); background: var(--panel); box-shadow: 6px 6px 0 var(--hard); overflow: hidden; }
+  .doc__bar { display: flex; justify-content: space-between; gap: 10px; padding: 7px 13px; background: var(--accent); color: #fff; font: 600 10.5px/1.3 var(--mono); letter-spacing: .04em; }
+  .doc pre { margin: 0; padding: 14px 17px; font: 500 clamp(10.5px, .96vw, 15px)/1.65 var(--mono); color: #333F5E; overflow-x: auto; }
+  .doc .k   { color: #16203A; font-weight: 700; }
+  .doc .s   { color: #15803D; }
+  .doc .n   { color: #0E7490; }
+  .doc .b   { color: #6D28D9; }
+  .doc .oid { color: #BE123C; }
+  .doc .c   { color: #93A1BF; }
+  .doc--sm pre { padding: 11px 14px; font-size: clamp(10px, .88vw, 13.5px); line-height: 1.55; }
+
+  /* ---------- определение: что это · как устроено · зачем ---------- */
+  .defs { display: grid; gap: 10px; margin-top: 2vh; }
+  .defs--duo  { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .defs--trio { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .def { padding: 15px 17px; border: 3px solid var(--line); background: var(--panel); box-shadow: 5px 5px 0 var(--hard); }
+  .def > b { display: block; color: var(--accent); font: 700 13px/1.3 var(--mono); letter-spacing: -.01em; }
+  .def > strong { display: block; margin-top: 8px; font: 600 clamp(14px, 1.22vw, 20px)/1.35 var(--display); }
+  .def > p { margin: 8px 0 0; color: #333F5E; font-size: clamp(11.5px, .98vw, 15.5px); line-height: 1.5; }
+  .def > p code, .def > strong code { color: var(--amber); font-family: var(--mono); }
+  .def > em { display: block; margin-top: 9px; padding-top: 8px; border-top: 1px dashed var(--hair); color: var(--muted); font: 600 10px/1.4 var(--mono); font-style: normal; letter-spacing: .04em; }
+
+  /* ---------- цитата из документации ---------- */
+  .quote { margin: 10px 0 0; padding: 10px 14px; border-left: 6px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
+  .quote p { margin: 0; color: #26314F; font-size: clamp(11.5px, .98vw, 15.5px); line-height: 1.5; }
+  .quote p b { color: var(--ink); }
+  .quote cite { display: block; margin-top: 7px; color: var(--muted); font: 600 9.5px/1.3 var(--mono); font-style: normal; letter-spacing: .04em; }
+  .quote--wide { max-width: 1080px; }
+
+  /* ---------- байтовая лента BSON ---------- */
+  .bytes { margin-top: 2vh; }
+  .bytes__row { display: flex; flex-wrap: wrap; gap: 3px; }
+  .bytes__row i {
+    display: grid; place-items: center; min-width: 34px; height: 38px; padding: 0 5px;
+    border: 2px solid var(--line); background: var(--g, var(--panel)); color: var(--gc, var(--ink));
+    font: 700 12px/1 var(--mono); font-style: normal;
+  }
+  .bytes__legend { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 8px; margin-top: 12px; }
+  .bytes__legend > div { padding: 10px 12px; border-top: 6px solid var(--g); background: var(--panel); box-shadow: 3px 3px 0 rgba(22,32,58,.12); }
+  .bytes__legend b { display: block; color: var(--ink); font: 700 11px/1.3 var(--mono); }
+  .bytes__legend span { display: block; margin-top: 5px; color: #333F5E; font-size: clamp(10.5px, .9vw, 14px); line-height: 1.4; }
+  .g1 { --g: #FDE68A; } .g2 { --g: #BFDBFE; } .g3 { --g: #C7F9CC; } .g4 { --g: #FBCFE8; } .g5 { --g: #E5E7EB; }
+
+  /* ---------- кадр приложения ---------- */
+  .shot { position: relative; margin: 1.6vh 0 0; border: 3px solid var(--line); background: var(--panel); box-shadow: 7px 7px 0 var(--hard); }
+  .shot img { display: block; width: 100%; height: auto; max-height: 58vh; object-fit: contain; object-position: top left; background: #fff; }
+  .shot figcaption { padding: 8px 13px; border-top: 3px solid var(--line); color: var(--muted); font: 600 10px/1.4 var(--mono); letter-spacing: .04em; }
+  .shot-split { display: grid; grid-template-columns: minmax(0,1.35fr) minmax(0,.85fr); gap: clamp(16px, 2vw, 32px); align-items: start; margin-top: 1.6vh; }
+  .shot-split .shot { margin-top: 0; }
+  .shot-duo { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; margin-top: 1.6vh; }
+  .shot-duo .shot { margin-top: 0; }
+  .shot-duo .shot img { max-height: 37vh; }
+
+  /* ---------- указатели поверх кадра ---------- */
+  .shot__frame { position: relative; display: block; }
+  .shot--anno { width: min(100%, 94vh); margin-left: auto; margin-right: auto; }
+  .shot--mid  { width: min(100%, 70vh); margin-left: auto; margin-right: auto; }
+  .shot--mid img { max-height: none; }
+  .shot--anno img { max-height: none; }
+
+  .anno { position: absolute; z-index: 3; left: var(--x); top: var(--y); }
+  .anno i {
+    display: grid; place-items: center; width: 26px; height: 26px; border: 3px solid var(--line);
+    background: var(--coral); color: #fff; font: 700 12px/1 var(--mono); font-style: normal;
+    box-shadow: 2px 2px 0 var(--hard);
+  }
+  .zones { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+  .zones li { display: grid; grid-template-columns: 26px 1fr; gap: 11px; align-items: start; padding: 8px 11px; border-left: 5px solid var(--coral); background: var(--panel); box-shadow: 3px 3px 0 rgba(22,32,58,.12); }
+  .zones b { display: grid; place-items: center; width: 24px; height: 24px; border: 2px solid var(--line); background: var(--coral); color: #fff; font: 700 11px/1 var(--mono); }
+  .zones strong { display: block; font-size: clamp(12px, 1.02vw, 16px); }
+  .zones span { display: block; margin-top: 3px; color: #333F5E; font-size: clamp(11px, .92vw, 14.5px); line-height: 1.4; }
+
+  /* ---------- шаг захода ---------- */
+  .stepbar { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 1.4vh; }
+  .stepbar i {
+    padding: 6px 11px; border: 2px solid var(--hair); background: var(--panel); color: #93A1BF;
+    font: 600 10px/1 var(--mono); font-style: normal; letter-spacing: .04em;
+  }
+  .stepbar i.lit { border: 3px solid var(--line); background: var(--accent); color: #fff; box-shadow: 3px 3px 0 var(--hard); }
+  .stepbar i.done { color: var(--mint); border-color: var(--mint); }
+
+  /* ---------- карточка запроса ---------- */
+  .qcards { display: grid; gap: 9px; margin-top: 1.8vh; }
+  .qcard { display: grid; grid-template-columns: minmax(0,1.15fr) 96px minmax(0,1.3fr); gap: 14px; align-items: center; padding: 11px 14px; border: 3px solid var(--line); background: var(--panel); box-shadow: 4px 4px 0 var(--hard); }
+  .qcard code { color: var(--ink); font: 600 clamp(11px, .96vw, 15px)/1.5 var(--mono); }
+  .qcard code b { color: var(--amber); font-weight: 600; }
+  .qcard .hit { display: grid; place-items: center; padding: 7px 0; border: 3px solid var(--accent); color: var(--accent); font: 700 clamp(13px, 1.1vw, 17px)/1 var(--mono); }
+  .qcard p { margin: 0; color: #333F5E; font-size: clamp(11px, .94vw, 14.5px); line-height: 1.45; }
+  .qcard--bad { border-color: var(--coral); }
+  .qcard--bad .hit { border-color: var(--coral); color: var(--coral); }
+
+  /* ---------- таблица типов ---------- */
+  .types { width: 100%; border-collapse: collapse; margin-top: 1.8vh; border: 3px solid var(--line); background: var(--panel); box-shadow: 6px 6px 0 var(--hard); }
+  .types th, .types td { padding: 7px 12px; border-bottom: 2px solid var(--hair); text-align: left; font-size: clamp(11px, .95vw, 15px); vertical-align: top; }
+  .types th { background: var(--line); color: #fff; font: 600 10px/1.3 var(--pixel); letter-spacing: .08em; text-transform: uppercase; }
+  .types td:first-child { font: 600 clamp(11px, .95vw, 15px)/1.4 var(--mono); color: var(--accent); white-space: nowrap; }
+  .types td:nth-child(2) { font-family: var(--mono); color: var(--muted); white-space: nowrap; }
+  .types td:last-child { color: #333F5E; }
+  .types tr:last-child td { border-bottom: 0; }
+
+  /* ---------- чек-лист практики ---------- */
+  .check { display: grid; gap: 8px; margin: 2vh 0 0; padding: 0; list-style: none; max-width: 1080px; }
+  .check li { display: grid; grid-template-columns: 30px 1fr auto; gap: 14px; align-items: baseline; padding: 10px 14px; border-left: 6px solid var(--accent); background: var(--panel); box-shadow: 3px 3px 0 rgba(22,32,58,.12); color: #333F5E; font-size: clamp(12px, 1.02vw, 16px); }
+  .check b { color: var(--accent); font: 700 12px/1.3 var(--mono); }
+  .check em { color: var(--muted); font-style: normal; font: 600 10px/1.3 var(--mono); white-space: nowrap; }
+  .check code { color: var(--amber); }
+
+  /* ---------- домашнее задание ---------- */
+  .hw-cards { margin: 1.2vh 0 0; padding: 0; list-style: none; max-width: 900px; }
+  .hw-cards li { display: grid; grid-template-columns: 40px 1fr; gap: 14px; align-items: start; padding: 7px 0; border-bottom: 2px solid var(--hair); }
+  .hw-cards > li > b { display: grid; place-items: center; width: 36px; height: 36px; border: 3px solid var(--line); background: var(--accent); color: #fff; font: 700 15px/1 var(--mono); }
+  .hw-cards div b { display: block; margin-bottom: 5px; font: 600 clamp(14px, 1.2vw, 19px)/1.3 var(--display); }
+  .hw-cards p { margin: 0; color: #333F5E; font-size: clamp(12px, 1.02vw, 16px); line-height: 1.45; }
+  .hw-cards code { color: var(--amber); }
+  .hw-order { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 2.4vh; }
+  .hw-order > div { padding: 15px 17px; border: 3px solid var(--line); background: var(--panel); box-shadow: 5px 5px 0 var(--hard); }
+  .hw-order b { display: block; margin-bottom: 8px; color: var(--accent); font: 600 10px/1 var(--pixel); letter-spacing: 1px; text-transform: uppercase; }
+  .hw-order p { margin: 0; color: #333F5E; font-size: clamp(11.5px, .98vw, 15px); line-height: 1.45; }
+  .hw-order mark { background: #FDE68A; }
+
+  @media (max-width: 1180px) {
+    .fold { grid-template-columns: 1fr; }
+    .fold__arrow em { transform: rotate(90deg); }
+    .defs--trio, .bytes__legend { grid-template-columns: repeat(2, 1fr); }
+    .shot-split, .shot-duo, .hw-order { grid-template-columns: 1fr; }
+    .qcard { grid-template-columns: 1fr; gap: 8px; }
+    .qcard .hit { justify-self: start; padding: 6px 18px; }
+  }
+  @media (max-height: 860px) {
+    .shot img { max-height: 50vh; }
+    .doc pre { padding: 11px 14px; line-height: 1.5; }
+    .def { padding: 12px 14px; }
+  }
+
+  /* ---------- печатный лист домашнего задания ---------- */
+  .hw-sheet { display: none; }
+  @media print {
+    body > *:not(.hw-sheet) { display: none !important; }
+    .hw-sheet { display: block !important; color: #16203A; font: 10.5pt/1.5 "IBM Plex Sans", system-ui, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .hw-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-bottom: 10px; border-bottom: 3px solid #16203A; }
+    .hw-course { margin: 0; font: 700 8pt/1.3 "JetBrains Mono", monospace; letter-spacing: .06em; text-transform: uppercase; color: #0E7490; }
+    .hw-head h1 { margin: 6px 0 3px; font-size: 21pt; line-height: 1.05; }
+    .hw-sub { margin: 0; font-size: 9.5pt; color: #5A6683; }
+    .hw-mark { flex: 0 0 auto; padding: 7px 10px; border: 2.5px solid #16203A; background: #CFFAFE; font: 700 11pt/1 "JetBrains Mono", monospace; }
+    .hw-joke { margin: 11px 0 0; padding: 8px 12px; border-left: 5px solid #B45309; background: #FEF3C7; font-size: 11pt; font-style: italic; }
+    .hw-meme { margin: 9px 0 0; text-align: center; page-break-inside: avoid; }
+    .hw-meme img { max-width: 58mm; max-height: 44mm; border: 2.5px solid #16203A; }
+    .hw-sheet h2 { margin: 12px 0 6px; font-size: 12.5pt; }
+    .hw-list { margin: 0; padding-left: 18px; }
+    .hw-list li { margin-bottom: 5px; page-break-inside: avoid; }
+    .hw-note { margin: 7px 0 0; padding: 7px 10px; border: 1.5px solid #16203A; font-size: 9pt; }
+    .hw-table { width: 100%; border-collapse: collapse; page-break-inside: avoid; }
+    .hw-table th, .hw-table td { padding: 4.5px 8px; border: 1.5px solid #16203A; font-size: 9.5pt; text-align: left; vertical-align: top; }
+    .hw-table th { width: 30mm; background: #E3E9F3; }
+    .hw-gloss { margin: 0; display: grid; grid-template-columns: 32mm 1fr; gap: 2.5px 9px; font-size: 9pt; }
+    .hw-gloss dt { font-weight: 700; }
+    .hw-gloss dd { margin: 0; color: #333F5E; }
+    .hw-foot { margin-top: 10px; padding-top: 6px; border-top: 1.5px solid #C6D0E2; font-size: 8.5pt; color: #5A6683; }
+  }
+  </style>
+</head>
+<body>
+  <div class="boot" id="boot">
+    <div class="boot__grid" aria-hidden="true"></div>
+    <div class="boot-card">
+      <div class="boot-card__top"><span>МДК.04.01 · ЗАНЯТИЕ 1</span><span>2 АКАДЕМИЧЕСКИХ ЧАСА</span></div>
+      <p class="boot-card__title">MongoDB: документ,<br>BSON и первая <em>коллекция</em></p>
+      <dl class="boot-card__fields">
+        <div><dt>Стенд</dt><dd>MongoDB 7 в Docker Compose + MongoDB Compass 1.50</dd></div>
+        <div><dt>Данные</dt><dd>резюме соискателей: девять документов в коллекции <code>hh.resumes</code></dd></div>
+        <div><dt>Работа руками</dt><dd>поднять сервер, создать базу, вставить документ, собрать пять запросов</dd></div>
+        <div><dt>Сдать</dt><dd>скриншот коллекции, файл запросов и README запуска</dd></div>
+      </dl>
+    </div>
+    <p class="boot__hint">нажмите любую клавишу, чтобы начать <i>▸</i></p>
+  </div>
+
+  <div class="deck" id="deck" aria-live="polite">
+    <header class="chrome">
+      <button class="brand" type="button" data-go="0" aria-label="На первый слайд">
+        <span class="brand-mark">Б<span>/</span>Д</span>
+        <span class="brand-copy">Разработка и защита<br>баз данных</span>
+      </button>
+      <div class="chrome-right">
+        <button class="icon-button" id="sourcesButton" type="button" aria-label="Открыть источники">S</button>
+        <button class="icon-button" id="fullscreenButton" type="button" aria-label="Полноэкранный режим">⛶</button>
+        <span class="counter"><span id="currentNumber">01</span><i>/</i><span id="totalNumber">35</span></span>
+      </div>
+    </header>
+
+    <main class="slides">
+
+      <!-- 01 · Титул -->
+      <section class="slide slide--title is-active" data-accent="mint">
+        <div class="slide-inner">
+          <p class="eyebrow">Раздел 1 · MongoDB · занятие 1 из 5</p>
+          <h1>Документ, <code>BSON</code><br>и первая коллекция</h1>
+          <p class="lead">Сегодня мы поднимаем сервер MongoDB, подключаемся к нему из Compass, создаём базу и коллекцию, кладём туда первый документ и учимся его находить. Реляционные базы вы уже знаете — тем интереснее посмотреть, что меняется, когда запись перестаёт быть строкой в таблице.</p>
+          <div class="title-meta"><span>90 минут</span><span>лаборатория</span><span>9 документов</span><span>5 запросов</span></div>
+        </div>
+        <span class="pair-number">01</span>
+      </section>
+
+      <!-- 02 · Точка входа: одно резюме двумя способами -->
+      <section class="slide" data-accent="mint">
+        <div class="slide-inner">
+          <p class="eyebrow">С чего начинаем · одна анкета</p>
+          <h2>Одно резюме: слева — то, как вы его хранили, справа — то, как оно выглядит целиком</h2>
+          <div class="fold">
+            <div class="fold__tables">
+              <div class="tbl"><b>resume</b><span>id · fio · position<i> · city · salary</i></span></div>
+              <div class="tbl"><b>education</b><span>resume_id · level<i> · place · year</i></span></div>
+              <div class="tbl"><b>job</b><span>resume_id · company<i> · role · months</i></span></div>
+              <div class="tbl"><b>job_stack</b><span>job_id<i> · tech</i></span></div>
+              <div class="tbl"><b>skill</b><span>resume_id<i> · name</i></span></div>
+              <div class="tbl"><b>contact</b><span>resume_id<i> · kind · value</i></span></div>
+            </div>
+            <div class="fold__arrow"><em>→</em><span>то же самое</span></div>
+            <div class="doc doc--sm">
+              <div class="doc__bar"><span>hh.resumes · один документ</span><span>697 байт</span></div>
+<pre><span class="c">{</span>
+  <span class="k">fio</span>: <span class="s">"Алина Дроздова"</span>,
+  <span class="k">position</span>: <span class="s">"Аналитик данных"</span>,
+  <span class="k">city</span>: <span class="s">"Москва"</span>,  <span class="k">salary</span>: <span class="n">120000</span>,
+  <span class="k">skills</span>: [<span class="s">"SQL"</span>, <span class="s">"Python"</span>, <span class="s">"ClickHouse"</span>, <span class="s">"Power BI"</span>],
+  <span class="k">education</span>: { <span class="k">level</span>: <span class="s">"Высшее"</span>, <span class="k">year</span>: <span class="n">2024</span> },
+  <span class="k">experience</span>: [
+    { <span class="k">company</span>: <span class="s">"Ozon"</span>, <span class="k">months</span>: <span class="n">14</span>, <span class="k">stack</span>: [<span class="s">"ClickHouse"</span>] },
+    { <span class="k">company</span>: <span class="s">"Retail Lab"</span>, <span class="k">months</span>: <span class="n">5</span>, <span class="k">stack</span>: [<span class="s">"SQL"</span>] }
+  ],
+  <span class="k">contacts</span>: { <span class="k">email</span>: <span class="s">"a.drozdova@example.ru"</span> }
+<span class="c">}</span></pre>
+            </div>
+          </div>
+          <p class="note">Слева анкета разложена по шести таблицам — так её описывают в реляционной модели, и так вы делали на третьем курсе. Справа тот же человек лежит одним объектом. Ни один из вариантов не «правильный»: у каждого своя цена, и сегодня мы разберём, из чего эта цена складывается.</p>
+        </div>
+        <span class="pair-number">02</span>
+      </section>
+
+      <!-- 03 · Цена вопроса -->
+      <section class="slide" data-accent="mint">
+        <div class="slide-inner">
+          <p class="eyebrow">Зачем вообще нужна вторая модель</p>
+          <h2>Цена сборки карточки и цена её изменения</h2>
+          <div class="defs defs--duo">
+            <article class="def">
+              <b>шесть таблиц</b>
+              <strong>Открыть карточку — пять соединений</strong>
+              <p>Чтобы показать резюме на экране, приложение забирает строку из <code>resume</code> и подтягивает к ней навыки, места работы, стек каждого места, образование и контакты. Пять <code>JOIN</code> ради одной анкеты, и так на каждое открытие.</p>
+              <p>Зато поменять название компании во всей базе можно одной строкой: оно лежит в одном месте.</p>
+              <em>сильная сторона: связи и целостность</em>
+            </article>
+            <article class="def">
+              <b>один документ</b>
+              <strong>Открыть карточку — одно обращение</strong>
+              <p>Всё, что показывается вместе, лежит вместе. База отдаёт готовый объект, приложению не нужно склеивать его из шести кусков.</p>
+              <p>Зато цена изменения другая: если название компании продублировано в двухстах резюме, менять придётся все двести. Ведь копия здесь не ошибка, а осознанное решение.</p>
+              <em>сильная сторона: чтение целиком</em>
+            </article>
+          </div>
+          <div class="callout"><b>Правило, к которому мы будем возвращаться весь раздел:</b> документ — это то, что кладут и достают целиком. Не то, что удобно нарисовать на схеме, а то, что читается и меняется одной операцией.</div>
+        </div>
+        <span class="pair-number">03</span>
+      </section>
+
+      <!-- 04 · Что такое MongoDB -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Определение · инструмент</p>
+          <h2>Что такое MongoDB</h2>
+          <p class="lead"><b>MongoDB — документная система управления базами данных.</b> Она хранит записи не строками в таблицах с заранее объявленными столбцами, а документами: самостоятельными объектами из пар «поле — значение», у каждого из которых своя структура. Документы группируются в коллекции, коллекции — в базы данных. Обращения к данным идут не на SQL, а через методы драйвера или оболочки: <code>find</code>, <code>insertOne</code>, <code>updateOne</code>, <code>deleteOne</code>.</p>
+          <div class="quote quote--wide">
+            <p>«MongoDB is a document database designed for ease of application development and scaling. <b>MongoDB stores data records as BSON documents.</b> BSON is a binary representation of JSON documents, though it contains more data types than JSON.»</p>
+            <cite>MongoDB Manual · Documents / What is MongoDB</cite>
+          </div>
+          <div class="defs defs--trio">
+            <article class="def">
+              <b>чем не является</b>
+              <strong>Не замена реляционной базе</strong>
+              <p>В нашей платформе источником истины остаётся PostgreSQL. MongoDB берёт на себя тот участок, где данные читаются и меняются целым объектом.</p>
+            </article>
+            <article class="def">
+              <b>без схемы?</b>
+              <strong>Схема есть, просто она не в базе</strong>
+              <p>Сервер не требует объявлять поля заранее, поэтому в одной коллекции спокойно лежат документы разной формы. Схема при этом никуда не девается — она переезжает в код приложения. На занятии 3 мы вернём часть проверок в базу.</p>
+            </article>
+            <article class="def">
+              <b>чем управляем сегодня</b>
+              <strong>Сервер, оболочка и GUI</strong>
+              <p><code>mongod</code> — сам сервер, <code>mongosh</code> — консольная оболочка, Compass — графический клиент. Сегодня работаем через Compass, потому что в нём видно и данные, и типы, и результат запроса сразу.</p>
+            </article>
+          </div>
+        </div>
+        <span class="pair-number">04</span>
+      </section>
+
+      <!-- 05 · База, коллекция, документ -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Определения · три уровня хранения</p>
+          <h2>База данных, коллекция, документ</h2>
+          <div class="defs defs--trio">
+            <article class="def">
+              <b>database · база данных</b>
+              <strong>Именованный контейнер коллекций</strong>
+              <p>Верхний уровень. Один сервер держит несколько баз, у каждой своё имя и свой набор файлов на диске. Наша база сегодня — <code>hh</code>.</p>
+              <em>аналог в PostgreSQL: база данных</em>
+            </article>
+            <article class="def">
+              <b>collection · коллекция</b>
+              <strong>Именованная группа документов</strong>
+              <p>Средний уровень. Коллекция не описывает форму того, что в неё положат: она просто хранит документы под общим именем. Наша коллекция — <code>resumes</code>.</p>
+              <em>аналог в PostgreSQL: таблица</em>
+            </article>
+            <article class="def">
+              <b>document · документ</b>
+              <strong>Единица данных</strong>
+              <p>Нижний уровень. Набор пар «поле — значение», у каждого документа обязательно есть поле <code>_id</code>. Один документ — одно резюме.</p>
+              <em>аналог в PostgreSQL: строка</em>
+            </article>
+          </div>
+          <div class="quote quote--wide">
+            <p>«MongoDB stores documents in collections. <b>Collections are analogous to tables in relational databases.</b> If a collection does not exist, MongoDB creates the collection when you first store data for that collection.»</p>
+            <cite>MongoDB Manual · Databases and Collections</cite>
+          </div>
+          <p class="note">Последнее предложение цитаты пригодится нам буквально через десять минут: ни базу, ни коллекцию нельзя «создать пустой навсегда». Она возникает в момент первой записи, и Compass честно это показывает.</p>
+        </div>
+        <span class="pair-number">05</span>
+      </section>
+
+      <!-- 06 · Документ -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Определение · документ</p>
+          <h2>Документ: пары «поле — значение», где значением может быть другой документ</h2>
+          <div class="shot-split">
+            <div>
+              <div class="quote">
+                <p>«<b>A document is the basic unit of data in MongoDB.</b> MongoDB documents are composed of field-and-value pairs… The value of a field can be any of the BSON data types, <b>including other documents, arrays, and arrays of documents.</b>»</p>
+                <cite>MongoDB Manual · Documents · Document Structure</cite>
+              </div>
+              <div class="doc" style="margin-top:1.6vh">
+                <div class="doc__bar"><span>структура документа</span><span>из документации</span></div>
+<pre>{
+   <span class="k">field1</span>: value1,
+   <span class="k">field2</span>: value2,
+   ...
+   <span class="k">fieldN</span>: valueN
+}</pre>
+              </div>
+            </div>
+            <div>
+              <p class="note" style="margin-top:0"><b>Три следствия, которые видно уже на нашем резюме.</b></p>
+              <ul class="zones" style="margin-top:1.4vh">
+                <li><b>1</b><div><strong>Значение — объект</strong><span><code>education</code> хранит внутри себя <code>level</code>, <code>place</code> и <code>year</code>. Отдельная таблица для этого не нужна.</span></div></li>
+                <li><b>2</b><div><strong>Значение — массив</strong><span><code>skills</code> — это список строк прямо в документе, а не пять строк в таблице связи.</span></div></li>
+                <li><b>3</b><div><strong>Значение — массив объектов</strong><span><code>experience</code> — список мест работы, у каждого свои поля и свой вложенный <code>stack</code>. Вложенность в вложенности здесь обычное дело.</span></div></li>
+              </ul>
+              <p class="note">Имена полей — строки. Имя <code>_id</code> зарезервировано под первичный ключ: оно уникально в пределах коллекции и не меняется.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">06</span>
+      </section>
+
+      <!-- 07 · BSON -->
+      <section class="slide" data-accent="violet">
+        <div class="slide-inner">
+          <p class="eyebrow">Определение · формат хранения</p>
+          <h2>BSON: не текст, а двоичная запись документа</h2>
+          <p class="lead">На экране Compass документ выглядит как JSON, но на диске и в сети он лежит по-другому. <b>BSON (Binary JSON) — двоичный формат представления документов.</b> Каждое значение в нём записано с явным указанием типа и длины, поэтому серверу не нужно разбирать текст, чтобы понять, где заканчивается одно поле и начинается следующее.</p>
+          <div class="quote quote--wide">
+            <p>«BSON is a binary serialization format used to store documents and make remote procedure calls in MongoDB. <b>The BSON specification is located at bsonspec.org.</b> BSON is a binary representation of JSON documents, though it contains more data types than JSON.»</p>
+            <cite>MongoDB Manual · BSON Types</cite>
+          </div>
+          <div class="defs defs--trio">
+            <article class="def">
+              <b>зачем двоичный</b>
+              <strong>Читается без разбора текста</strong>
+              <p>Длина документа записана в первых четырёх байтах, длина каждой строки — перед самой строкой. Чтобы пропустить поле, достаточно прибавить число к смещению.</p>
+            </article>
+            <article class="def">
+              <b>зачем типы</b>
+              <strong>Числа остаются числами</strong>
+              <p>В JSON <code>65000</code> и <code>"65000"</code> различаются, а <code>2026-09-01</code> вообще не отличить от строки. В BSON есть отдельные типы для 32-битного целого, 64-битного целого, даты и двоичных данных.</p>
+            </article>
+            <article class="def">
+              <b>чем платим</b>
+              <strong>Размер больше, чем у текста</strong>
+              <p>Служебные байты длины и типа тоже занимают место. Наш первый документ — 183 байта, развёрнутое резюме Дроздовой — 697 байт. Числа получены запросом <code>$bsonSize</code> на нашем же стенде.</p>
+            </article>
+          </div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 08 · Байтовая лента -->
+      <section class="slide" data-accent="violet">
+        <div class="slide-inner">
+          <p class="eyebrow">Разовый приём · документ по байтам</p>
+          <h2>Один документ <code>{ n: "Пётр" }</code> — <span class="num">21</span> байт</h2>
+          <div class="bytes">
+            <div class="bytes__row">
+              <i class="g1">15</i><i class="g1">00</i><i class="g1">00</i><i class="g1">00</i>
+              <i class="g2">02</i>
+              <i class="g3">6E</i><i class="g3">00</i>
+              <i class="g4">09</i><i class="g4">00</i><i class="g4">00</i><i class="g4">00</i>
+              <i class="g4">D0</i><i class="g4">9F</i><i class="g4">D1</i><i class="g4">91</i><i class="g4">D1</i><i class="g4">82</i><i class="g4">D1</i><i class="g4">80</i><i class="g4">00</i>
+              <i class="g5">00</i>
+            </div>
+            <div class="bytes__legend">
+              <div class="g1"><b>4 байта · длина</b><span>Весь документ занимает <code>0x15</code> = 21 байт. Число записано младшим байтом вперёд.</span></div>
+              <div class="g2"><b>1 байт · тип</b><span><code>0x02</code> — строка. У каждого типа свой номер: 1 — double, 2 — string, 8 — bool, 9 — date, 16 — int32.</span></div>
+              <div class="g3"><b>2 байта · имя поля</b><span><code>6E</code> — латинская <code>n</code>, затем нулевой байт как признак конца имени.</span></div>
+              <div class="g4"><b>13 байт · значение</b><span>Сначала длина строки вместе с нулём — 9, затем «Пётр» в UTF-8: каждая кириллическая буква занимает два байта.</span></div>
+              <div class="g5"><b>1 байт · конец</b><span>Нулевой байт закрывает документ. По нему сервер понимает, что полей больше нет.</span></div>
+            </div>
+          </div>
+          <p class="note">Пересчитайте сами: 4 + 1 + 2 + 4 + 9 + 1 = 21. Ровно столько и вернул запрос <code>{ $bsonSize: "$$ROOT" }</code> на нашем стенде. А у документа <code>{ a: 1 }</code> получается 12 байт: тип другой — <code>0x10</code>, целое число, и значение занимает 4 байта вместо девяти.</p>
+        </div>
+        <span class="pair-number">08</span>
+      </section>
+
+      <!-- 09 · Типы BSON -->
+      <section class="slide" data-accent="violet">
+        <div class="slide-inner">
+          <p class="eyebrow">Справка · типы, которые встретятся сегодня</p>
+          <h2>Типы BSON: номер, псевдоним и где мы его увидим</h2>
+          <div class="shot-split">
+            <table class="types">
+              <thead><tr><th>Тип</th><th>№</th><th>Где в нашей коллекции</th></tr></thead>
+              <tbody>
+                <tr><td>String</td><td>2</td><td><code>fio</code>, <code>city</code>, <code>position</code> — текст в двойных кавычках</td></tr>
+                <tr><td>Object</td><td>3</td><td><code>education</code>, <code>contacts</code> — вложенный документ</td></tr>
+                <tr><td>Array</td><td>4</td><td><code>skills</code>, <code>experience</code> — список значений или объектов</td></tr>
+                <tr><td>ObjectId</td><td>7</td><td><code>_id</code> — идентификатор, который база ставит сама</td></tr>
+                <tr><td>Boolean</td><td>8</td><td><code>ready_to_move</code> — <code>true</code> или <code>false</code></td></tr>
+                <tr><td>Date</td><td>9</td><td><code>updated</code> — момент времени, а не строка с датой</td></tr>
+                <tr><td>Null</td><td>10</td><td>поле есть, но значения нет — это не то же, что поля нет вовсе</td></tr>
+                <tr><td>32-bit integer</td><td>16</td><td><code>salary</code>, <code>year</code>, <code>months</code> — целые числа</td></tr>
+              </tbody>
+            </table>
+            <figure class="shot">
+              <img src="shots/31-bson-types.png" alt="Таблица типов BSON в документации MongoDB">
+              <figcaption>mongodb.com/docs · Reference · BSON Types — полный список из 19 типов</figcaption>
+            </figure>
+          </div>
+          <p class="note">Тип важен не сам по себе, а потому что от него зависит сравнение. Запрос <code>{ salary: { $gt: 100000 } }</code> найдёт числа и пропустит строку <code>"120000"</code>, даже если она выглядит как число. Это самая частая причина «запрос ничего не вернул, хотя данные есть».</p>
+        </div>
+        <span class="pair-number">09</span>
+      </section>
+
+      <!-- 10 · _id и ObjectId -->
+      <section class="slide" data-accent="violet">
+        <div class="slide-inner">
+          <p class="eyebrow">Определение · первичный ключ</p>
+          <h2>Поле <code>_id</code> и 12 байт ObjectId</h2>
+          <p class="lead">Мы не писали <code>_id</code>, когда вставляли первый документ, а он появился. Так и задумано: если поле не передали, драйвер или сервер подставляет значение типа ObjectId. Это 12 байт, у которых есть внутренняя структура — и по ним можно узнать, когда документ создан.</p>
+          <div class="bytes">
+            <div class="bytes__row">
+              <i class="g1">6a</i><i class="g1">9e</i><i class="g1">46</i><i class="g1">7a</i>
+              <i class="g2">48</i><i class="g2">31</i><i class="g2">d3</i><i class="g2">c4</i><i class="g2">cf</i>
+              <i class="g3">a4</i><i class="g3">20</i><i class="g3">92</i>
+            </div>
+            <div class="bytes__legend" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+              <div class="g1"><b>4 байта · время</b><span>Секунды с 1 января 1970 года. <code>0x6a9e467a</code> = 1&nbsp;788&nbsp;757&nbsp;626, то есть 7 сентября 2026 года, 05:07:06 UTC — момент, когда мы вставили резюме Беловой.</span></div>
+              <div class="g2"><b>5 байт · процесс</b><span>Случайное значение, одно на процесс клиента. Оно разное на разных машинах, поэтому два клиента не столкнутся идентификаторами.</span></div>
+              <div class="g3"><b>3 байта · счётчик</b><span>Увеличивается на каждый новый ObjectId внутри процесса. Он и разводит документы, созданные в одну и ту же секунду.</span></div>
+            </div>
+          </div>
+          <div class="quote quote--wide">
+            <p>«The 12-byte ObjectId consists of: <b>a 4-byte timestamp</b>, representing the ObjectId's creation, measured in seconds since the Unix epoch; <b>a 5-byte random value</b> generated once per client-side process; <b>a 3-byte incrementing counter</b>, initialized to a random value.»</p>
+            <cite>MongoDB Manual · mongosh Methods · ObjectId()</cite>
+          </div>
+          <p class="note">Отсюда полезное следствие: сортировка по <code>_id</code> почти совпадает с сортировкой по времени создания, а метод <code>getTimestamp()</code> достаёт дату из идентификатора. Но полагаться на это как на точное время не стоит — секунды ставит клиент, а не сервер.</p>
+        </div>
+        <span class="pair-number">10</span>
+      </section>
+
+      <!-- 11 · Два приложения -->
+      <section class="slide" data-accent="amber">
+        <div class="slide-inner">
+          <p class="eyebrow">Заход · что именно мы ставим</p>
+          <h2>Сервер и клиент — это две разные программы</h2>
+          <p class="lead">Здесь чаще всего и путаются: «скачал MongoDB» может означать и то, и другое. Сервер хранит данные и отвечает на запросы, клиент — рисует окно и эти запросы отправляет. Без сервера клиенту не к чему подключаться, а сервер прекрасно работает и без всякого окна.</p>
+          <div class="defs defs--duo">
+            <article class="def">
+              <b>сервер · mongod</b>
+              <strong>Держит данные и слушает порт 27017</strong>
+              <p>Мы поднимаем его образом <code>mongo:7</code> в Docker Compose. Так у всей группы одна и та же версия, а полный сброс делается одной командой — это пригодится, когда мы будем ломать стенд намеренно.</p>
+              <em>ставится один раз на весь раздел</em>
+            </article>
+            <article class="def">
+              <b>клиент · MongoDB Compass</b>
+              <strong>Показывает данные, типы и результат запроса</strong>
+              <p>Отдельное приложение с сайта mongodb.com. Оно ничего не хранит: закроете Compass — данные останутся на сервере. Кроме него есть консольная оболочка <code>mongosh</code>, к ней мы придём на занятии 2.</p>
+              <em>ставится на свою машину</em>
+            </article>
+          </div>
+          <div class="stepbar">
+            <i class="lit">1 · скачать Compass</i><i>2 · поднять сервер</i><i>3 · подключиться</i><i>4 · создать базу</i><i>5 · вставить документ</i><i>6 · найти документ</i>
+          </div>
+        </div>
+        <span class="pair-number">11</span>
+      </section>
+
+      <!-- 12 · Шаг 1 · скачать Compass -->
+      <section class="slide" data-accent="amber">
+        <div class="slide-inner">
+          <p class="eyebrow">Шаг 1 из 6 · скачивание</p>
+          <h2>Скачиваем MongoDB Compass</h2>
+          <div class="shot-split">
+            <figure class="shot">
+              <img src="shots/30-download-compass.png" alt="Страница загрузки MongoDB Compass на сайте mongodb.com">
+              <figcaption>mongodb.com/try/download/compass · выбираем версию, платформу и тип пакета</figcaption>
+            </figure>
+            <div>
+              <ul class="zones">
+                <li><b>1</b><div><strong>Version</strong><span>Берём верхнюю, она же последняя стабильная. У нас на кадрах — 1.50.0.</span></div></li>
+                <li><b>2</b><div><strong>Platform</strong><span>macOS с процессором Apple выбирает <code>macOS arm64</code>, обычный ноутбук на Windows — <code>Windows 64-bit</code>.</span></div></li>
+                <li><b>3</b><div><strong>Package</strong><span>Три варианта: <b>Compass</b> — полная версия, <b>Readonly</b> — только чтение, <b>Isolated</b> — без сетевых запросов наружу. Нам нужна полная.</span></div></li>
+              </ul>
+              <div class="callout"><b>Регистрация не нужна.</b> Если страница просит завести аккаунт — это раздел Atlas, облачного сервиса. Нам он сегодня не нужен: сервер мы поднимаем у себя.</div>
+            </div>
+          </div>
+          <div class="stepbar"><i class="done">1 · скачан</i><i class="lit">2 · поднять сервер</i><i>3 · подключиться</i><i>4 · создать базу</i><i>5 · вставить документ</i><i>6 · найти документ</i></div>
+        </div>
+        <span class="pair-number">12</span>
+      </section>
+
+      <!-- 13 · Шаг 2 · поднять сервер -->
+      <section class="slide" data-accent="amber">
+        <div class="slide-inner">
+          <p class="eyebrow">Шаг 2 из 6 · сервер</p>
+          <h2>Поднимаем MongoDB в Docker Compose</h2>
+          <div class="shot-split">
+            <div class="psql">
+              <div class="psql__bar"><i></i><i></i><i></i><span>stend/docker-compose.yml</span></div>
+<pre><span class="kw">services</span>:
+  <span class="id">mongo</span>:
+    <span class="kw">image</span>: <span class="str">mongo:7</span>          <span class="cm"># одна версия у всей группы</span>
+    <span class="kw">container_name</span>: <span class="str">hh-mongo</span>
+    <span class="kw">ports</span>:
+      - <span class="str">"27017:27017"</span>    <span class="cm"># порт наружу = порт внутри</span>
+    <span class="kw">volumes</span>:
+      - <span class="str">mongo-data:/data/db</span>  <span class="cm"># данные переживают перезапуск</span>
+    <span class="kw">healthcheck</span>:
+      <span class="kw">test</span>: [<span class="str">"CMD"</span>, <span class="str">"mongosh"</span>, <span class="str">"--quiet"</span>, <span class="str">"--eval"</span>,
+              <span class="str">"db.adminCommand('ping').ok"</span>]
+
+<span class="kw">volumes</span>:
+  <span class="id">mongo-data</span>:</pre>
+            </div>
+            <div>
+              <div class="psql">
+                <div class="psql__bar"><i></i><i></i><i></i><span>терминал</span></div>
+<pre><span class="fn">$</span> docker compose up -d
+ Container hh-mongo  <span class="str">Started</span>
+<span class="fn">$</span> docker compose ps
+NAME       STATUS
+hh-mongo   <span class="str">Up 6 seconds (healthy)</span>
+0.0.0.0:<span class="id">27017</span>-&gt;27017/tcp<span class="caret"></span></pre>
+              </div>
+              <p class="note"><b>Что здесь важно прочитать.</b> Слово <code>healthy</code> означает, что проверка <code>healthcheck</code> прошла: сервер запустился и ответил на <code>ping</code>. Строка <code>0.0.0.0:27017-&gt;27017</code> говорит, что порт проброшен наружу — именно к нему сейчас постучится Compass.</p>
+              <p class="note"><b>Полный сброс:</b> <code>docker compose down -v</code>. Ключ <code>-v</code> удаляет том вместе с данными, и стенд возвращается к состоянию «пустой сервер». Мы будем пользоваться этим весь раздел.</p>
+            </div>
+          </div>
+          <div class="stepbar"><i class="done">1 · скачан</i><i class="done">2 · сервер поднят</i><i class="lit">3 · подключиться</i><i>4 · создать базу</i><i>5 · вставить документ</i><i>6 · найти документ</i></div>
+        </div>
+        <span class="pair-number">13</span>
+      </section>
+
+      <!-- 14 · Шаг 3 · подключение -->
+      <section class="slide" data-accent="amber">
+        <div class="slide-inner">
+          <p class="eyebrow">Шаг 3 из 6 · подключение</p>
+          <h2>Открываем Compass и подключаемся строкой <code>mongodb://localhost:27017</code></h2>
+          <div class="shot-split">
+            <figure class="shot">
+              <img src="shots/02-new-connection.png" alt="Окно New Connection в MongoDB Compass со строкой подключения">
+              <figcaption>Compass 1.50 · New Connection — поле URI уже заполнено значением по умолчанию</figcaption>
+            </figure>
+            <div>
+              <p class="note" style="margin-top:0">Строка подключения разбирается на четыре части, и каждая отвечает за своё.</p>
+              <ul class="zones" style="margin-top:1.2vh">
+                <li><b>1</b><div><strong><code>mongodb://</code></strong><span>Схема: по ней клиент понимает, каким протоколом говорить. У облачного Atlas схема другая — <code>mongodb+srv://</code>.</span></div></li>
+                <li><b>2</b><div><strong><code>localhost</code></strong><span>Адрес сервера. Контейнер пробросил порт на нашу же машину, поэтому адрес локальный.</span></div></li>
+                <li><b>3</b><div><strong><code>27017</code></strong><span>Порт MongoDB по умолчанию. Если он занят другим стендом, в <code>docker-compose.yml</code> меняется левое число, и здесь пишется оно же.</span></div></li>
+                <li><b>4</b><div><strong>Name</strong><span>Имя соединения — только для нас, на сервер оно не уходит. Пишем «Стенд занятия», чтобы через месяц не гадать, что это за адрес.</span></div></li>
+              </ul>
+              <p class="note">Логина и пароля в строке нет: сервер поднят без проверки подлинности. Для учебного стенда на своей машине это допустимо, и мы к этому вернёмся в разделе о защите — там пустой пароль станет отдельной темой разговора.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">14</span>
+      </section>
+
+      <!-- 15 · Когда не подключается -->
+      <section class="slide" data-accent="coral">
+        <div class="slide-inner">
+          <p class="eyebrow">Отказ · читаем сообщение целиком</p>
+          <h2>Compass пишет <code>ECONNREFUSED</code> — и это хорошая новость</h2>
+          <div class="shot-split">
+            <figure class="shot">
+              <img src="shots/90-error-econnrefused.png" alt="Ошибка подключения в Compass: connect ECONNREFUSED 127.0.0.1:27017">
+              <figcaption>Настоящий кадр: сервер был остановлен, Compass честно сообщает причину</figcaption>
+            </figure>
+            <div>
+              <div class="defs">
+                <article class="def">
+                  <b>что означает</b>
+                  <strong>Адрес есть, слушать некому</strong>
+                  <p>Соединение отклонено на уровне операционной системы: по адресу <code>127.0.0.1:27017</code> никто не отвечает. То есть Compass дошёл до нужной машины, но программы на порту нет.</p>
+                </article>
+                <article class="def">
+                  <b>что делать</b>
+                  <strong>Проверить сервер, а не строку</strong>
+                  <p>Смотрим <code>docker compose ps</code>: если контейнера нет или он <code>Exited</code> — поднимаем заново. У нас на паре так и вышло: контейнер остановился, пока мы читали теорию.</p>
+                </article>
+                <article class="def">
+                  <b>чем отличается от других</b>
+                  <strong>Три сообщения — три разные причины</strong>
+                  <p><code>ECONNREFUSED</code> — сервер не запущен. <code>Server selection timed out</code> — адрес недоступен, чаще всего опечатка в имени хоста. <code>Authentication failed</code> — сервер есть, но не пускает: неверные логин или пароль.</p>
+                </article>
+              </div>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">15</span>
+      </section>
+
+      <!-- 16 · Шаг 4 · что видно после подключения -->
+      <section class="slide" data-accent="mint">
+        <div class="slide-inner">
+          <p class="eyebrow">Шаг 4 из 6 · подключились</p>
+          <h2>Три базы, которых мы не создавали</h2>
+          <div class="shot-split">
+            <figure class="shot">
+              <img src="shots/03-connected.png" alt="Compass после подключения: в дереве видны базы admin, config и local">
+              <figcaption>Compass · соединение установлено, слева — список баз сервера</figcaption>
+            </figure>
+            <div>
+              <ul class="zones">
+                <li><b>1</b><div><strong><code>admin</code></strong><span>Служебная база сервера: пользователи, роли, административные команды. Своих данных мы туда не кладём.</span></div></li>
+                <li><b>2</b><div><strong><code>config</code></strong><span>Настройки самого сервера. Нужна, когда база разложена по нескольким узлам.</span></div></li>
+                <li><b>3</b><div><strong><code>local</code></strong><span>Данные, которые не уезжают на другие узлы: журнал операций и внутренние отметки.</span></div></li>
+              </ul>
+              <div class="callout"><b>Правило простое:</b> эти три базы — хозяйство сервера. Учебные данные складываем в собственную базу, и создаём её сами на следующем шаге.</div>
+            </div>
+          </div>
+          <div class="stepbar"><i class="done">1 · скачан</i><i class="done">2 · сервер поднят</i><i class="done">3 · подключились</i><i class="lit">4 · создать базу</i><i>5 · вставить документ</i><i>6 · найти документ</i></div>
+        </div>
+        <span class="pair-number">16</span>
+      </section>
+
+      <!-- 17 · Шаг 5 · создать базу и коллекцию -->
+      <section class="slide" data-accent="mint">
+        <div class="slide-inner">
+          <p class="eyebrow">Шаг 5 из 6 · база и коллекция</p>
+          <h2>База <code>hh</code> и коллекция <code>resumes</code> создаются одним окном</h2>
+          <div class="shot-split">
+            <figure class="shot">
+              <img src="shots/04-create-database.png" alt="Окно Create Database в Compass: имя базы hh и имя коллекции resumes">
+              <figcaption>Compass · Create Database — имя коллекции здесь обязательно</figcaption>
+            </figure>
+            <div>
+              <p class="note" style="margin-top:0">Compass не даёт создать базу без коллекции — и это не каприз интерфейса, а свойство сервера.</p>
+              <div class="quote">
+                <p>«<b>If a collection does not exist, MongoDB creates the collection when you first store data</b> for that collection.»</p>
+                <cite>MongoDB Manual · Databases and Collections</cite>
+              </div>
+              <p class="note">То есть база живёт ровно до тех пор, пока в ней что-то лежит. Пустая база, из которой удалили последнюю коллекцию, исчезает из списка сама.</p>
+              <p class="note"><b>Как называем.</b> Имя базы — по системе, а не по студенту: <code>hh</code>, а не <code>test2</code>. Имя коллекции — во множественном числе и латиницей: <code>resumes</code>. Это соглашение, а не требование сервера, но именно оно потом бережёт время на review.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">17</span>
+      </section>
+
+      <!-- 18 · Окно коллекции по зонам -->
+      <section class="slide" data-accent="mint">
+        <div class="slide-inner">
+          <p class="eyebrow">Разбор интерфейса · пустая коллекция</p>
+          <h2>Пять мест в окне, которыми мы будем пользоваться весь раздел</h2>
+          <figure class="shot shot--anno">
+            <div class="shot__frame">
+              <img src="shots/05-collection-empty.png" alt="Окно коллекции resumes в Compass до вставки документов">
+              <span class="anno" style="--x:21%;--y:5.5%"><i>1</i></span>
+              <span class="anno" style="--x:21%;--y:11.5%"><i>2</i></span>
+              <span class="anno" style="--x:21%;--y:19.5%"><i>3</i></span>
+              <span class="anno" style="--x:20.5%;--y:26.5%"><i>4</i></span>
+              <span class="anno" style="--x:82%;--y:24%"><i>5</i></span>
+            </div>
+            <figcaption>Compass · коллекция создана, документов пока ноль</figcaption>
+          </figure>
+          <ul class="zones" style="grid-template-columns:repeat(5,minmax(0,1fr));display:grid;gap:8px;margin-top:1.4vh">
+            <li><b>1</b><div><strong>Путь</strong><span>соединение → база → коллекция: всегда видно, где вы находитесь</span></div></li>
+            <li><b>2</b><div><strong>Вкладки</strong><span>Documents, Schema, Indexes, Validation — четыре разных взгляда на одну коллекцию</span></div></li>
+            <li><b>3</b><div><strong>Строка запроса</strong><span>сюда пишется фильтр; кнопка Options открывает сортировку и проекцию</span></div></li>
+            <li><b>4</b><div><strong>ADD DATA</strong><span>вставить документ руками или загрузить файл JSON</span></div></li>
+            <li><b>5</b><div><strong>Счётчик и вид</strong><span>сколько документов нашлось и как их показать: список, JSON или таблица</span></div></li>
+          </ul>
+        </div>
+        <span class="pair-number">18</span>
+      </section>
+
+      <!-- 19 · Шаг 6 · первый документ -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Шаг 6 из 6 · первый документ</p>
+          <h2>Пишем документ руками: ADD DATA → Insert document</h2>
+          <div class="shot-split">
+            <figure class="shot">
+              <img src="shots/07-insert-document.png" alt="Окно Insert Document в Compass с JSON первого резюме">
+              <figcaption>Compass · Insert Document, режим <code>{}</code> — редактор JSON</figcaption>
+            </figure>
+            <div>
+              <p class="note" style="margin-top:0">Начинаем с маленького документа: пять полей, ни одного вложенного объекта. Так проще увидеть, что происходит после вставки.</p>
+              <div class="doc" style="margin-top:1.4vh">
+                <div class="doc__bar"><span>что набираем</span><span>183 байта</span></div>
+<pre>{
+  <span class="k">"fio"</span>: <span class="s">"Анна Белова"</span>,
+  <span class="k">"position"</span>: <span class="s">"Junior Python-разработчик"</span>,
+  <span class="k">"city"</span>: <span class="s">"Ярославль"</span>,
+  <span class="k">"salary"</span>: <span class="n">65000</span>,
+  <span class="k">"skills"</span>: [<span class="s">"Python"</span>, <span class="s">"Git"</span>]
+}</pre>
+              </div>
+              <p class="note">Обратите внимание на <code>65000</code> без кавычек: мы кладём число, а не строку. Через десять минут именно от этого будет зависеть, найдёт ли резюме запрос со сравнением.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">19</span>
+      </section>
+
+      <!-- 20 · Что получилось -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Результат · документ в коллекции</p>
+          <h2>Полей стало шесть: <code>_id</code> база поставила сама</h2>
+          <div class="shot-split">
+            <figure class="shot">
+              <img src="shots/08-first-document.png" alt="Первый документ в коллекции resumes: видно поле _id типа ObjectId">
+              <figcaption>Compass · один документ, счётчик показывает 1 – 1 of 1</figcaption>
+            </figure>
+            <div>
+              <ul class="zones">
+                <li><b>1</b><div><strong><code>_id: ObjectId('6a9e467a…')</code></strong><span>Мы его не писали. Раз поле не передали — сервер подставил ObjectId, и по нему теперь можно узнать время вставки.</span></div></li>
+                <li><b>2</b><div><strong><code>skills: Array (2)</code></strong><span>Compass не разворачивает массив сразу, а показывает тип и длину. Треугольник слева раскрывает содержимое.</span></div></li>
+                <li><b>3</b><div><strong>Цвет значения</strong><span>Строки зелёные, числа синие, ObjectId красный. Это подсказка о типе, а не оформление: увидев <code>65000</code> зелёным, вы сразу поймёте, что число сохранилось строкой.</span></div></li>
+              </ul>
+              <div class="callout"><b>Проверьте на своей коллекции:</b> раскройте <code>skills</code> и убедитесь, что элементы нумеруются с нуля — <code>0: "Python"</code>, <code>1: "Git"</code>. Индекс элемента понадобится нам в запросах.</div>
+            </div>
+          </div>
+          <div class="stepbar"><i class="done">1 · скачан</i><i class="done">2 · сервер поднят</i><i class="done">3 · подключились</i><i class="done">4 · база создана</i><i class="done">5 · документ вставлен</i><i class="lit">6 · найти документ</i></div>
+        </div>
+        <span class="pair-number">20</span>
+      </section>
+
+      <!-- 21 · Ещё восемь резюме -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Готовые данные · загрузка файла</p>
+          <h2>Восемь резюме одним файлом: ADD DATA → Import JSON or CSV file</h2>
+          <div class="shot-split">
+            <figure class="shot">
+              <img src="shots/06-add-data-menu.png" alt="Меню ADD DATA в Compass с пунктами импорта файла и вставки документа">
+              <figcaption>Compass · у кнопки ADD DATA два пункта: файл и один документ</figcaption>
+            </figure>
+            <div>
+              <ul class="zones">
+                <li><b>1</b><div><strong>Выбираем файл</strong><span><code>stend/seed/resumes.json</code> из репозитория занятия. Внутри — массив из восьми документов.</span></div></li>
+                <li><b>2</b><div><strong>Формат — JSON</strong><span>Compass определяет его сам. Даты записаны в расширенном виде <code>{"$date": "2026-09-03T14:40:00Z"}</code>, поэтому они попадут в базу типом Date, а не строкой.</span></div></li>
+                <li><b>3</b><div><strong>Жмём Import</strong><span>Счётчик становится <code>1 – 9 of 9</code>: наш документ плюс восемь загруженных.</span></div></li>
+              </ul>
+              <p class="note">Файл лежит в репозитории неспроста: у всей группы одинаковые данные, поэтому и результаты запросов у всех совпадут. Если счётчик показал не девять — импорт прошёл дважды, и коллекцию нужно очистить и повторить.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">21</span>
+      </section>
+
+      <!-- 22 · Разная форма -->
+      <section class="slide" data-accent="amber">
+        <div class="slide-inner">
+          <p class="eyebrow">Что видно на девяти документах</p>
+          <h2>Одна коллекция — документы разной формы</h2>
+          <figure class="shot shot--mid">
+            <img src="shots/18-table-view.png" alt="Табличный вид коллекции resumes в Compass: девять документов и типы в шапке">
+            <figcaption>Compass · табличный вид: в шапке столбца стоит тип — <code>_id ObjectId</code>, <code>fio String</code>, <code>salary Int32</code></figcaption>
+          </figure>
+          <div class="defs defs--trio">
+            <article class="def">
+              <b>у Беловой</b>
+              <strong>Нет полей <code>education</code> и <code>updated</code></strong>
+              <p>Мы вставили её первой, с пятью полями. Сервер не возразил: коллекция ничего не требует.</p>
+            </article>
+            <article class="def">
+              <b>у Дроздовой</b>
+              <strong>Есть <code>portfolio</code>, которого нет у остальных</strong>
+              <p>Поле появилось только там, где оно осмысленно. В таблице для этого понадобился бы столбец со значением <code>NULL</code> у всех прочих.</p>
+            </article>
+            <article class="def">
+              <b>у Нечаевой</b>
+              <strong><code>experience</code> — пустой массив, зато есть <code>courses</code></strong>
+              <p>Опыта нет, но есть курсы. Форма документа отражает жизнь человека, а не общий шаблон.</p>
+            </article>
+          </div>
+          <p class="note">У этой свободы есть обратная сторона: пока форму никто не проверяет, в коллекцию так же спокойно ляжет резюме с полем <code>salaryy</code> или зарплатой строкой. Проверки мы включим на занятии 3, когда разберём schema validation.</p>
+        </div>
+        <span class="pair-number">22</span>
+      </section>
+
+      <!-- 23 · Документ целиком -->
+      <section class="slide" data-accent="amber">
+        <div class="slide-inner">
+          <p class="eyebrow">Граница агрегата · один документ целиком</p>
+          <h2>Резюме, развёрнутое до последнего уровня</h2>
+          <div class="shot-split">
+            <figure class="shot">
+              <img src="shots/19-document-expanded.png" alt="Развёрнутый документ резюме в Compass со всеми вложенными полями">
+              <figcaption>Compass · кнопка Expand all раскрывает вложенные объекты и массивы</figcaption>
+            </figure>
+            <div>
+              <p class="note" style="margin-top:0">Здесь видно, ради чего всё затевалось. Одним обращением база отдала то, что в реляционной схеме лежало в шести таблицах.</p>
+              <ul class="zones" style="margin-top:1.2vh">
+                <li><b>1</b><div><strong><code>education</code> — объект</strong><span>Уровень, учебное заведение и год лежат внутри резюме. Отдельно от человека они не нужны.</span></div></li>
+                <li><b>2</b><div><strong><code>experience</code> — массив объектов</strong><span>Два места работы, у каждого свой <code>stack</code> — массив внутри объекта внутри массива.</span></div></li>
+                <li><b>3</b><div><strong><code>updated</code> — <code>ISODate</code></strong><span>Compass показывает и машинное значение, и человеческое: «September 3, 2026 at 2:40:00 PM UTC».</span></div></li>
+              </ul>
+              <div class="callout"><b>Вопрос, на который отвечает занятие 2:</b> а если у человека сто мест работы — держать их все внутри резюме? Там мы будем выбирать между вложением и ссылкой и оформлять решение как ADR.</div>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">23</span>
+      </section>
+
+      <!-- 24 · Как устроен find -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Определение · запрос</p>
+          <h2>Фильтр — это тоже документ</h2>
+          <p class="lead">В SQL запрос написан на отдельном языке: <code>SELECT … WHERE city = 'Ярославль'</code>. В MongoDB запрос — это такой же объект из пар «поле — значение», что и данные. Мы описываем документом, каким должен быть искомый документ, и сервер возвращает все, которые под описание подходят.</p>
+          <div class="defs defs--trio">
+            <article class="def">
+              <b>форма</b>
+              <strong><code>{ поле: значение }</code></strong>
+              <p>Простейший фильтр: найти всё, где поле равно значению. Пустой фильтр <code>{}</code> означает «без условий» — вернутся все документы коллекции.</p>
+            </article>
+            <article class="def">
+              <b>оператор</b>
+              <strong><code>{ поле: { $оператор: значение } }</code></strong>
+              <p>Когда нужно не равенство, значение заменяется вложенным документом с оператором: <code>$gt</code> — больше, <code>$lt</code> — меньше, <code>$in</code> — входит в список, <code>$exists</code> — поле есть.</p>
+            </article>
+            <article class="def">
+              <b>несколько условий</b>
+              <strong><code>{ поле1: …, поле2: … }</code></strong>
+              <p>Два поля в одном фильтре соединяются по «и». Отдельный <code>$and</code> для этого не нужен — он пригодится только там, где условия относятся к одному и тому же полю.</p>
+            </article>
+          </div>
+          <div class="callout"><b>Где это набирать:</b> строка запроса на вкладке Documents. Кнопка <b>Find</b> выполняет фильтр, <b>Reset</b> очищает, <b>Options</b> открывает сортировку, проекцию и ограничение количества.</div>
+        </div>
+        <span class="pair-number">24</span>
+      </section>
+
+      <!-- 25 · Запрос 1 -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Запрос 1 из 5 · точное совпадение</p>
+          <h2><code>{ city: "Ярославль" }</code> — <span class="num">5</span> документов из <span class="num">9</span></h2>
+          <div class="shot-split">
+            <figure class="shot">
+              <img src="shots/10-filter-city.png" alt="Результат запроса по городу в Compass: пять документов">
+              <figcaption>Compass · счётчик показывает 1 – 5 of 5</figcaption>
+            </figure>
+            <div>
+              <p class="note" style="margin-top:0">Самая частая форма запроса и самая частая причина пустого результата.</p>
+              <ul class="zones" style="margin-top:1.2vh">
+                <li><b>1</b><div><strong>Значение сравнивается целиком</strong><span>«Ярославль» не найдёт «г. Ярославль» и не найдёт «ярославль». Поиск по части строки — это отдельный оператор <code>$regex</code>, и он работает медленнее.</span></div></li>
+                <li><b>2</b><div><strong>Тип тоже сравнивается</strong><span><code>{ salary: 65000 }</code> не найдёт документ, где зарплата сохранена строкой <code>"65000"</code>. Число и строка — разные значения.</span></div></li>
+                <li><b>3</b><div><strong>Кавычки обязательны</strong><span>Строка пишется в кавычках, число — без. Через два экрана мы посмотрим, что будет, если про это забыть.</span></div></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">25</span>
+      </section>
+
+      <!-- 26 · Запросы 2 и 3 -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Запросы 2 и 3 из 5 · вглубь документа</p>
+          <h2>Точка идёт внутрь объекта, а массив ищется по элементу</h2>
+          <div class="shot-duo">
+            <figure class="shot">
+              <img src="shots/11-filter-nested.png" alt="Запрос по вложенному полю education.level в Compass">
+              <figcaption><code>{ "education.level": "СПО" }</code> → 4 документа</figcaption>
+            </figure>
+            <figure class="shot">
+              <img src="shots/12-filter-array.png" alt="Запрос по элементу массива skills в Compass">
+              <figcaption><code>{ skills: "MongoDB" }</code> → 2 документа</figcaption>
+            </figure>
+          </div>
+          <div class="defs defs--duo">
+            <article class="def">
+              <b>вложенное поле</b>
+              <strong>Путь через точку, всё вместе в кавычках</strong>
+              <p>Запись <code>"education.level"</code> означает «поле <code>level</code> внутри объекта <code>education</code>». Кавычки нужны, потому что точка внутри имени иначе читается как обращение к свойству. Глубина не ограничена: <code>"experience.0.stack"</code> добирается до стека первого места работы.</p>
+            </article>
+            <article class="def">
+              <b>массив</b>
+              <strong>Условие проверяется для каждого элемента</strong>
+              <p><code>{ skills: "MongoDB" }</code> читается не как «массив равен строке», а как «среди элементов массива есть такой». Ни <code>$in</code>, ни индекс элемента для этого не нужны — и это, пожалуй, самое неожиданное правило для того, кто пришёл из SQL.</p>
+            </article>
+          </div>
+        </div>
+        <span class="pair-number">26</span>
+      </section>
+
+      <!-- 27 · Запрос 4 -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Запрос 4 из 5 · сравнение, сортировка, проекция</p>
+          <h2>Кто просит больше 100 000 — по убыванию и только два поля</h2>
+          <div class="shot-split">
+            <figure class="shot">
+              <img src="shots/13-projection-sort.png" alt="Запрос с оператором сравнения, сортировкой и проекцией в Compass">
+              <figcaption>Compass · панель Options: Project, Sort, Limit — всё, что в SQL пишется в одном запросе</figcaption>
+            </figure>
+            <div>
+              <ul class="zones">
+                <li><b>1</b><div><strong>Filter: <code>{ salary: { $gt: 100000 } }</code></strong><span>Оператор <code>$gt</code> — строго больше. Есть и <code>$gte</code>, <code>$lt</code>, <code>$lte</code>, <code>$ne</code>.</span></div></li>
+                <li><b>2</b><div><strong>Project: <code>{ fio: 1, salary: 1, _id: 0 }</code></strong><span>Единица — «показать поле», ноль — «убрать». Поле <code>_id</code> возвращается всегда, если его не выключить явно.</span></div></li>
+                <li><b>3</b><div><strong>Sort: <code>{ salary: -1 }</code></strong><span>Минус единица — по убыванию, единица — по возрастанию. Самойлов со 150 000 оказывается первым.</span></div></li>
+              </ul>
+              <p class="note">Проекция — это не украшение. Она уменьшает то, что сервер собирает и передаёт по сети, и на больших документах разница заметна. Когда мы дойдём до производительности, это будет первым, что мы проверяем в медленном запросе.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">27</span>
+      </section>
+
+      <!-- 28 · Запрос 5 -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Запрос 5 из 5 · есть ли поле</p>
+          <h2><code>{ portfolio: { $exists: true } }</code> — вопрос, которого нет в SQL</h2>
+          <div class="shot-split">
+            <figure class="shot">
+              <img src="shots/14-filter-exists.png" alt="Запрос с оператором $exists в Compass: два документа с полем portfolio">
+              <figcaption>Compass · два резюме из девяти содержат поле <code>portfolio</code></figcaption>
+            </figure>
+            <div>
+              <p class="note" style="margin-top:0">В таблице столбец есть у всех строк, вопрос стоит иначе: пустое значение или нет. В коллекции поле может просто отсутствовать, и это третье состояние.</p>
+              <div class="defs" style="margin-top:1.4vh">
+                <article class="def">
+                  <b>поля нет</b>
+                  <strong><code>{ portfolio: { $exists: false } }</code></strong>
+                  <p>Семь резюме, где ссылки на портфолио никто не заполнял.</p>
+                </article>
+                <article class="def">
+                  <b>поле есть, значение пустое</b>
+                  <strong><code>{ portfolio: null }</code></strong>
+                  <p>Осторожно: этот фильтр находит и документы, где поля нет вовсе. Чтобы разделить два случая, условия придётся соединить.</p>
+                </article>
+              </div>
+              <p class="note"><code>$exists</code> — рабочий инструмент, когда коллекция копилась годами и форма документов менялась. Он же первым показывает, что схема в коде и схема в базе разошлись.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">28</span>
+      </section>
+
+      <!-- 29 · Когда фильтр не принимается -->
+      <section class="slide" data-accent="coral">
+        <div class="slide-inner">
+          <p class="eyebrow">Отказ · разбор ошибки</p>
+          <h2>Строка без кавычек: кнопка Find гаснет</h2>
+          <div class="shot-split">
+            <figure class="shot">
+              <img src="shots/15-filter-error.png" alt="Compass подсвечивает красным неправильный фильтр без кавычек">
+              <figcaption>Настоящий кадр: <code>{ city: Ярославль }</code> — рамка красная, Find недоступна</figcaption>
+            </figure>
+            <div>
+              <div class="defs">
+                <article class="def">
+                  <b>что произошло</b>
+                  <strong>Запрос даже не ушёл на сервер</strong>
+                  <p>Compass разбирает фильтр у себя, и <code>Ярославль</code> без кавычек для него — имя переменной, а не строка. Разбор не удался, поэтому кнопка отключилась, а список документов остался прежним.</p>
+                </article>
+                <article class="def">
+                  <b>чем это отличается от пустого результата</b>
+                  <strong>Ноль документов — тоже ответ</strong>
+                  <p>Если фильтр разобрался, но ничего не нашёл, счётчик покажет <code>0 – 0 of 0</code>, а рамка останется обычной. Красная рамка означает ошибку записи, пустой список — ошибку в данных или в условии.</p>
+                </article>
+                <article class="def">
+                  <b>привычка</b>
+                  <strong>Смотреть на счётчик, а не на экран</strong>
+                  <p>Строка <code>1 – 5 of 5</code> — единственное честное подтверждение, что запрос выполнен и вернул именно столько. Скриншот со счётчиком мы и просим приложить к работе.</p>
+                </article>
+              </div>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">29</span>
+      </section>
+
+      <!-- 30 · Свод запросов -->
+      <section class="slide" data-accent="mint">
+        <div class="slide-inner">
+          <p class="eyebrow">Справка · пять фильтров на одном экране</p>
+          <h2>Что писать и сколько должно найтись</h2>
+          <div class="qcards">
+            <div class="qcard"><code>{ <b>city</b>: "Ярославль" }</code><span class="hit">5 из 9</span><p>Точное совпадение строки. Регистр и лишние пробелы значение меняют.</p></div>
+            <div class="qcard"><code>{ <b>"education.level"</b>: "СПО" }</code><span class="hit">4 из 9</span><p>Путь внутрь вложенного объекта через точку. Всё имя — в кавычках.</p></div>
+            <div class="qcard"><code>{ <b>skills</b>: "MongoDB" }</code><span class="hit">2 из 9</span><p>Условие проверяется для каждого элемента массива. Индекс указывать не нужно.</p></div>
+            <div class="qcard"><code>{ <b>salary</b>: { $gt: 100000 } }</code><span class="hit">4 из 9</span><p>Оператор сравнения. Работает только с числами — строка <code>"120000"</code> не найдётся.</p></div>
+            <div class="qcard"><code>{ <b>portfolio</b>: { $exists: true } }</code><span class="hit">2 из 9</span><p>Наличие поля. Отличается и от <code>null</code>, и от пустой строки.</p></div>
+            <div class="qcard qcard--bad"><code>{ <b>city</b>: Ярославль }</code><span class="hit">ошибка</span><p>Строка без кавычек. Фильтр не разобрался, запрос на сервер не ушёл.</p></div>
+          </div>
+          <p class="note">Числа в средней колонке — результат прогона на нашем стенде. Если у вас получилось другое, расходятся не запросы, а данные: проверьте, что импорт прошёл ровно один раз и в коллекции девять документов.</p>
+        </div>
+        <span class="pair-number">30</span>
+      </section>
+
+      <!-- 31 · Schema и Indexes -->
+      <section class="slide" data-accent="violet">
+        <div class="slide-inner">
+          <p class="eyebrow">Две вкладки, которые пригодятся дальше</p>
+          <h2>Что Compass знает о коллекции без нашего описания</h2>
+          <div class="shot-duo">
+            <figure class="shot">
+              <img src="shots/16-schema-tab.png" alt="Вкладка Schema в Compass: типы полей и распределение значений">
+              <figcaption>Schema · кнопка Analyze строит отчёт по выборке документов</figcaption>
+            </figure>
+            <figure class="shot">
+              <img src="shots/17-indexes-tab.png" alt="Вкладка Indexes в Compass: единственный индекс _id_">
+              <figcaption>Indexes · в коллекции один индекс — <code>_id_</code>, его создал сервер</figcaption>
+            </figure>
+          </div>
+          <div class="defs defs--duo">
+            <article class="def">
+              <b>Schema</b>
+              <strong>Схема, восстановленная по данным</strong>
+              <p>Compass берёт выборку документов и показывает, какие поля встречаются, каких типов и как распределены значения. У <code>city</code> сразу видно, что Ярославль занимает большую часть, а у <code>courses</code> — что поле есть далеко не везде. Это отчёт по факту, а не описание схемы: сервер такой схемы не хранит.</p>
+            </article>
+            <article class="def">
+              <b>Indexes</b>
+              <strong>Единственный индекс создан не нами</strong>
+              <p>Индекс <code>_id_</code> сервер создаёт вместе с коллекцией, и удалить его нельзя. Все наши сегодняшние запросы шли без индексов — на девяти документах это незаметно. На занятии 4 мы посмотрим тот же запрос на выборке побольше и научимся читать план его выполнения.</p>
+            </article>
+          </div>
+        </div>
+        <span class="pair-number">31</span>
+      </section>
+
+      <!-- 32 · Практика -->
+      <section class="slide" data-accent="mint">
+        <div class="slide-inner">
+          <p class="eyebrow">Работа руками · 25 минут</p>
+          <h2>Что нужно сделать до конца пары</h2>
+          <ol class="check">
+            <li><b>1</b><span>Поднять стенд: <code>docker compose up -d</code>, дождаться статуса <code>healthy</code> и подключиться из Compass.</span><em>кадр со списком баз</em></li>
+            <li><b>2</b><span>Создать базу <code>hh</code> и коллекцию <code>resumes</code>, вставить <b>своё</b> резюме вручную: не меньше пяти полей, из них один массив.</span><em>кадр документа</em></li>
+            <li><b>3</b><span>Загрузить <code>stend/seed/resumes.json</code> и убедиться, что счётчик показывает <code>1 – 10 of 10</code>: девять наших плюс ваше.</span><em>кадр счётчика</em></li>
+            <li><b>4</b><span>Собрать пять запросов из свода и записать в файл <code>queries.md</code> фильтр и число найденных документов.</span><em>queries.md</em></li>
+            <li><b>5</b><span>Сломать один запрос намеренно и записать, чем отличается ошибка разбора от пустого результата.</span><em>абзац в queries.md</em></li>
+            <li><b>6</b><span>Написать <code>README.md</code>: как поднять стенд, как загрузить данные и как всё удалить.</span><em>README.md</em></li>
+          </ol>
+          <div class="callout"><b>Приёмка:</b> вы показываете коллекцию на своём экране и объясняете любой из пяти запросов — что он ищет и почему нашёл именно столько. Скриншот без работающего стенда не принимается: со следующего занятия мы дописываем в эту же коллекцию.</div>
+        </div>
+        <span class="pair-number">32</span>
+      </section>
+
+      <!-- 33 · Итог -->
+      <section class="slide slide--final" data-accent="amber">
+        <div class="slide-inner">
+          <div class="final-layout">
+            <div>
+              <p class="eyebrow">Итог занятия</p>
+              <h2>Коллекция, которую вы можете поднять заново</h2>
+              <p class="lead">За 90 минут мы прошли путь от пустой машины до коллекции с данными и запросами: поставили клиент, подняли сервер, создали базу, положили документ, нашли его пятью способами и посмотрели, что бывает, когда фильтр записан неверно.</p>
+              <div class="final-metrics">
+                <span><strong>9</strong>документов в коллекции</span>
+                <span><strong>5</strong>рабочих запросов</span>
+                <span><strong>21</strong>байт в разобранном документе</span>
+                <span><strong>1</strong>индекс, созданный сервером</span>
+              </div>
+              <p class="note"><b>Дальше по разделу:</b> занятие 2 — вложение против ссылки и первое ADR; занятие 3 — проверка формы документа средствами базы; занятие 4 — индексы и план запроса; занятие 5 — агрегация и повторяемая миграция документов.</p>
+              <button class="source-link" id="finalSourcesButton" type="button">Источники и документация →</button>
+            </div>
+            <figure class="meme-frame tilt-right">
+              <img src="../../../shared/memes/meme-office-documents.jpg" alt="Мем: котёнок у двух мониторов, «ало офис, да да документы»">
+            </figure>
+          </div>
+        </div>
+        <span class="pair-number">33</span>
+      </section>
+
+      <!-- 34 · ДЗ -->
+      <section class="slide has-pin" data-accent="coral">
+        <div class="slide-inner">
+          <p class="eyebrow">Домашнее задание · к следующему занятию</p>
+          <h2>Максим Николаевич не хочет задавать домашнее задание. Но очень хочет</h2>
+          <ol class="hw-cards">
+            <li><b>1</b><div><b>Своя коллекция на своей предметной области</b><p>Возьмите не резюме, а что-то из своего проекта: карточку заказа, тикет, объявление. Спроектируйте документ и положите в новую коллекцию <b>пять</b> таких документов. Хотя бы у двух форма должна отличаться — лишнее поле или отсутствующее.</p></div></li>
+            <li><b>2</b><div><b>Пять запросов и один сломанный</b><p>К своей коллекции соберите те же пять видов фильтров: точное совпадение, вложенное поле, элемент массива, сравнение и <code>$exists</code>. Шестым запишите намеренно неверный и объясните, ошибка это разбора или пустой результат.</p></div></li>
+            <li><b>3</b><div><b>Абзац о цене</b><p>Опишите, что в вашем документе продублировано и во что обойдётся изменение этого значения. Без формулировок из документации: своими словами и на своих данных.</p></div></li>
+          </ol>
+          <figure class="meme-pin">
+            <img src="../../../shared/memes/meme-office-documents.jpg" alt="Мем: котёнок у двух мониторов, «ало офис, да да документы»">
+            <figcaption>да да документы</figcaption>
+          </figure>
+        </div>
+        <span class="pair-number">ДЗ</span>
+      </section>
+
+      <!-- 35 · Порядок сдачи -->
+      <section class="slide" data-accent="coral">
+        <div class="slide-inner">
+          <p class="eyebrow">Домашнее задание · порядок сдачи</p>
+          <h2>Как сдаём</h2>
+          <div class="hw-order">
+            <div><b>Что сдаём</b><p>Папка <code>lesson-01/</code>: <code>README.md</code>, <code>queries.md</code>, файл данных <code>seed.json</code> и скриншот коллекции со счётчиком.</p></div>
+            <div><b>Ветка и PR</b><p>Ветка <code>hw-01</code>, коммит с содержательным сообщением, Pull Request в собственную <code>main</code>. Merge делаете сами после проверки.</p></div>
+            <div><b>Срок</b><p>До начала занятия 2. После срока работа принимается, но разбирается уже не на паре, а в чате.</p></div>
+            <div><b>Про ИИ</b><p>Модель можно просить <mark>причесать формулировки и оформить <code>.md</code></mark> — я сам так делаю всегда, поэтому и вам запрещать не буду. А вот запросы должны быть выполнены на вашем стенде: числа в <code>queries.md</code> сверяются с вашей коллекцией.</p></div>
+          </div>
+          <div class="callout"><b>Критерий приёмки:</b> стенд поднимается по вашему же README на чужой машине, коллекция заполняется из вашего файла, а все шесть запросов возвращают ровно те числа, которые записаны.</div>
+          <button class="source-link" id="hwDownload" type="button">Скачать задание в PDF →</button>
+          <p class="note">В диалоге печати снимите галочку «Колонтитулы», иначе браузер допишет дату и адрес страницы.</p>
+        </div>
+        <span class="pair-number">ДЗ</span>
+      </section>
+
+    </main>
+
+    <footer class="controls">
+      <button class="nav-button" id="prevButton" type="button" aria-label="Предыдущий слайд">←</button>
+      <div class="progress" id="progress" aria-hidden="true"></div>
+      <button class="nav-button" id="nextButton" type="button" aria-label="Следующий слайд">→</button>
+      <span class="key-hint">← → / пробел · F — во весь экран · S — источники</span>
+    </footer>
+  </div>
+
+  <aside class="sources-panel" id="sourcesPanel" aria-hidden="true">
+    <div class="sources-backdrop" data-close-sources></div>
+    <div class="sources-sheet" role="dialog" aria-modal="true" aria-labelledby="sourcesTitle">
+      <button class="sources-close" type="button" data-close-sources aria-label="Закрыть">×</button>
+      <p class="eyebrow">Проверяемая основа презентации</p>
+      <h2 id="sourcesTitle">Источники</h2>
+      <ol>
+        <li><a href="https://www.mongodb.com/docs/manual/core/document/" target="_blank" rel="noreferrer"><strong>MongoDB Manual</strong><span>Documents: строение документа, ограничения на имена полей, роль <code>_id</code></span></a></li>
+        <li><a href="https://www.mongodb.com/docs/manual/core/databases-and-collections/" target="_blank" rel="noreferrer"><strong>MongoDB Manual</strong><span>Databases and Collections: коллекция создаётся в момент первой записи</span></a></li>
+        <li><a href="https://www.mongodb.com/docs/manual/reference/bson-types/" target="_blank" rel="noreferrer"><strong>MongoDB Manual</strong><span>BSON Types: полный список из 19 типов с номерами и псевдонимами</span></a></li>
+        <li><a href="https://bsonspec.org/spec.html" target="_blank" rel="noreferrer"><strong>bsonspec.org</strong><span>Спецификация BSON: порядок байтов, длина документа и признак конца</span></a></li>
+        <li><a href="https://www.mongodb.com/docs/manual/reference/method/ObjectId/" target="_blank" rel="noreferrer"><strong>MongoDB Manual</strong><span>ObjectId(): 12 байт — время, значение процесса и счётчик</span></a></li>
+        <li><a href="https://www.mongodb.com/docs/manual/reference/operator/query/" target="_blank" rel="noreferrer"><strong>MongoDB Manual</strong><span>Операторы запроса: <code>$gt</code>, <code>$in</code>, <code>$exists</code> и сравнение по элементам массива</span></a></li>
+        <li><a href="https://www.mongodb.com/docs/manual/tutorial/query-arrays/" target="_blank" rel="noreferrer"><strong>MongoDB Manual</strong><span>Query an Array: почему условие проверяется для каждого элемента</span></a></li>
+        <li><a href="https://www.mongodb.com/try/download/compass" target="_blank" rel="noreferrer"><strong>mongodb.com</strong><span>Загрузка MongoDB Compass: версии Compass, Readonly и Isolated</span></a></li>
+        <li><a href="https://hub.docker.com/_/mongo" target="_blank" rel="noreferrer"><strong>Docker Hub</strong><span>Официальный образ <code>mongo</code>: теги версий, том <code>/data/db</code>, порт 27017</span></a></li>
+      </ol>
+      <p class="sources-note">Все кадры Compass сняты на стенде занятия: MongoDB 7.0.40 в Docker Compose, MongoDB Compass 1.50.0. Числа в запросах, размеры документов в байтах и разбор ObjectId получены прогоном на этих же данных, а не взяты из документации. Имена и данные в резюме вымышлены.</p>
+    </div>
+  </aside>
+
+  <!-- печатный лист домашнего задания -->
+  <div class="hw-sheet">
+    <header class="hw-head">
+      <div>
+        <p class="hw-course">МДК.04.01 · Технология разработки и защиты баз данных · 4 курс</p>
+        <h1>Домашнее задание № 1</h1>
+        <p class="hw-sub">Занятие 1 — MongoDB: документ, BSON и первая коллекция</p>
+      </div>
+      <div class="hw-mark">hw-01</div>
+    </header>
+    <p class="hw-joke">Максим Николаевич не хочет задавать вам домашнее задание. Но очень хочет.</p>
+    <figure class="hw-meme">
+      <img src="../../../shared/memes/meme-office-documents.jpg" alt="Мем: ало офис, да да документы">
+    </figure>
+
+    <h2>Что сделать</h2>
+    <ol class="hw-list">
+      <li><b>Своя коллекция.</b> Возьмите предметную область из своего проекта — карточку заказа, тикет, объявление. Спроектируйте документ и положите в новую коллекцию пять таких документов. Минимум у двух форма должна отличаться: лишнее поле или отсутствующее.</li>
+      <li><b>Пять запросов.</b> Соберите к своей коллекции пять видов фильтров: точное совпадение, вложенное поле через точку, элемент массива, оператор сравнения и <code>$exists</code>. Для каждого запишите сам фильтр и число найденных документов.</li>
+      <li><b>Один сломанный запрос.</b> Шестым запишите намеренно неверный фильтр и объясните, что произошло: ошибка разбора (красная рамка, запрос не ушёл на сервер) или пустой результат (счётчик 0 – 0 of 0).</li>
+      <li><b>Абзац о цене.</b> Опишите своими словами, что в вашем документе продублировано и во что обойдётся изменение этого значения, если документов станет двести.</li>
+    </ol>
+    <p class="hw-note">Числа в <code>queries.md</code> сверяются с вашей коллекцией на приёмке. Скриншот без работающего стенда не принимается: со следующего занятия мы дописываем в эту же базу.</p>
+
+    <h2>Порядок сдачи</h2>
+    <table class="hw-table">
+      <tr><th>Что сдаём</th><td>Папка <code>lesson-01/</code>: README.md, queries.md, файл данных seed.json и скриншот коллекции со счётчиком найденных документов.</td></tr>
+      <tr><th>Ветка и PR</th><td>Ветка <code>hw-01</code>, коммит с содержательным сообщением, затем Pull Request в свою main с коротким описанием: какая предметная область и чем отличаются формы документов. Merge делаете сами после проверки.</td></tr>
+      <tr><th>Срок</th><td>До начала занятия 2. После срока работа принимается, но разбирается в чате, а не на паре.</td></tr>
+      <tr><th>Про ИИ</th><td>Модель можно просить причесать формулировки и оформить .md — я сам так делаю всегда, поэтому и вам запрещать не буду. Запросы при этом должны быть выполнены на вашем стенде.</td></tr>
+    </table>
+
+    <h2>Что должно получиться</h2>
+    <dl class="hw-gloss">
+      <dt>README.md</dt><dd>как поднять стенд, как загрузить данные, как удалить всё вместе с томом</dd>
+      <dt>queries.md</dt><dd>шесть фильтров, число найденных документов и абзац про сломанный запрос</dd>
+      <dt>seed.json</dt><dd>массив из пяти документов, который загружается через ADD DATA → Import JSON</dd>
+      <dt>скриншот</dt><dd>коллекция с видимым счётчиком и одним выполненным запросом</dd>
+    </dl>
+    <p class="hw-foot">Стенд занятия — в папке <code>lessons/02-mongodb-pervyy-dokument/stend/</code>. Разбор запросов — в презентации занятия, экран 30. Вопросы по заданию — на паре или в чате группы.</p>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
