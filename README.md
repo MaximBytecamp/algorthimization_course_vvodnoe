@@ -7,6 +7,7 @@
 | `op03-informacionnye-tehnologii/` | ОП.03 «Информационные технологии», 2 курс: вводная презентация, КТП и рабочий репозиторий студента (`funnel-starter/`) для сквозного проекта «Цифровая воронка и автоматизация заявок» |
 | `op04-algoritmizaciya/` | ОП.04 «Основы алгоритмизации и программирования», 3 курс: вводная презентация, КТП, стартовый репозиторий студента и материалы преподавателя |
 | `mdk0101-razrabotka-modulei/` | МДК.01.01 «Разработка программных модулей», 2 курс: вводная презентация и КТП |
+| `mdk0401-razrabotka-i-zashchita-baz-dannyh/` | МДК.04.01 «Технология разработки и защиты баз данных», 4 курс: вводная презентация, занятия, КТП и стартовый репозиторий студента (`data-platform-starter/`, шаблон [`data-platform-template`](https://github.com/MaximBytecamp/data-platform-template)) со стендом платформы данных |
 | `shared/` | правила текста (`VOICE.md`, `TEXT_REVIEW.md`, `EDITORIAL_REWRITE.md`), правило непохожести колод ([`DECK_VARIETY.md`](shared/DECK_VARIETY.md) и реестр [`DECK_REGISTRY.md`](shared/DECK_REGISTRY.md)), общая папка мемов, фотографии и [разбор git со скриншотами](shared/git-guide/README.md) |
 
 ## Как устроена дисциплина внутри
