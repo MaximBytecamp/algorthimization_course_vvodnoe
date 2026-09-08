@@ -1,0 +1,1175 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#EEF1F7">
+  <title>Занятие 2 · Embedding и referencing: проектирование от операций</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Handjet:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../styles.css">
+  <style>
+  /* =========================================================
+     ЗАНЯТИЕ 2 · собственные компоненты колоды.
+     Ведущий приём — счёт за операцию (.bill): одна операция,
+     две формы модели рядом, под каждой позиции счёта с числами
+     со стенда и итог. На экране 03 счёт пересчитывается прогоном
+     (.bill__run). Разовый приём — стена 16 МБ (.wall): рост
+     встроенного массива столбиками до предела документа.
+     Справка идёт решающей картой (.decide): признак связи —
+     и стрелка, в какую сторону он тянет.
+     ========================================================= */
+
+  /* ---------- ведущий приём: счёт за операцию ---------- */
+  .bill { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; margin-top: 1.8vh; }
+  .bill__card { display: flex; flex-direction: column; border: 3px solid var(--line); background: var(--panel); box-shadow: 6px 6px 0 var(--hard); }
+  .bill__top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 8px 13px; background: var(--line); color: #fff; font: 600 11px/1.3 var(--mono); letter-spacing: .04em; }
+  .bill__top em { font-style: normal; opacity: .7; }
+  .bill__card--a .bill__top { background: var(--cyan); }
+  .bill__card--b .bill__top { background: var(--violet); }
+  .bill__rows { display: grid; gap: 0; padding: 4px 13px 0; }
+  .bill__rows > div { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: baseline; padding: 7px 0; border-bottom: 1px dashed var(--hair); }
+  .bill__rows span { color: #333F5E; font-size: clamp(11px, .94vw, 14.5px); line-height: 1.35; }
+  .bill__rows b { color: var(--ink); font: 700 clamp(12px, 1.02vw, 16px)/1 var(--mono); white-space: nowrap; }
+  .bill__rows .hot b { color: var(--coral); }
+  .bill__total { margin-top: auto; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: baseline; padding: 10px 13px; background: color-mix(in srgb, var(--accent) 10%, var(--panel)); border-top: 3px solid var(--line); }
+  .bill__total span { color: var(--muted); font: 600 10px/1.2 var(--pixel); letter-spacing: .1em; text-transform: uppercase; }
+  .bill__total b { color: var(--accent); font: 700 clamp(14px, 1.3vw, 20px)/1 var(--mono); }
+  .bill__code { margin: 0; padding: 10px 13px; border-bottom: 2px solid var(--hair); color: #333F5E; font: 500 clamp(10.5px, .9vw, 14px)/1.5 var(--mono); overflow-x: auto; }
+  .bill__code b { color: var(--amber); font-weight: 600; }
+
+  /* прогон внутри счёта: счётчики копий пересчитываются кнопкой */
+  .bill__run { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-top: 1.8vh; }
+  .runcard { padding: 14px 16px; border: 3px solid var(--line); background: var(--panel); box-shadow: 5px 5px 0 var(--hard); }
+  .runcard > b { display: block; color: var(--accent); font: 700 12px/1.3 var(--mono); }
+  .runcard > strong { display: block; margin-top: 6px; font: 700 clamp(30px, 3.4vw, 52px)/1 var(--mono); color: var(--ink); }
+  .runcard > span { display: block; margin-top: 5px; color: #333F5E; font-size: clamp(11px, .94vw, 14.5px); line-height: 1.4; }
+  .runcard.is-fixed > strong { color: var(--mint); }
+  .runcard.is-stale { border-color: var(--coral); }
+  .runcard.is-stale > strong { color: var(--coral); }
+  .runbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 1.4vh; }
+  .runbar button {
+    padding: 9px 16px; border: 3px solid var(--line); background: var(--accent); color: #fff;
+    font: 600 12px/1 var(--mono); letter-spacing: .04em; box-shadow: 4px 4px 0 var(--hard); cursor: pointer;
+  }
+  .runbar button:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--hard); }
+  .runbar button[disabled] { background: var(--panel-2); color: var(--muted); cursor: default; box-shadow: none; }
+  .runbar p { margin: 0; color: var(--muted); font-size: clamp(11px, .94vw, 14.5px); }
+  .runbar p b { color: var(--coral); }
+
+  /* ---------- разовый приём: стена 16 МБ ---------- */
+  .wall { display: grid; grid-template-columns: minmax(0,1fr) 250px; gap: 18px; align-items: end; margin-top: 2vh; }
+  .wall__plot { position: relative; display: flex; align-items: stretch; gap: clamp(8px, 1.4vw, 22px); height: clamp(180px, 34vh, 320px); padding: 0 0 26px; border-bottom: 3px solid var(--line); }
+  .wall__bar { position: relative; flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; }
+  .wall__bar i { display: block; height: var(--h); background: var(--cyan); border: 2px solid var(--line); transition: height .6s ease; }
+  .wall__bar.is-over i { background: var(--coral); }
+  .wall__bar b { display: block; margin-bottom: 5px; color: var(--ink); font: 700 clamp(9.5px, .82vw, 12.5px)/1.2 var(--mono); text-align: center; }
+  .wall__bar span { position: absolute; left: 0; right: 0; bottom: -22px; color: var(--muted); font: 600 clamp(9px, .78vw, 11.5px)/1.2 var(--mono); text-align: center; }
+  .wall__line { position: absolute; left: 0; right: 0; bottom: calc(26px + var(--limit)); border-top: 3px dashed var(--coral); }
+  .wall__line em { position: absolute; right: 0; top: -20px; color: var(--coral); font: 700 11px/1 var(--mono); font-style: normal; }
+  .wall__side { display: grid; gap: 10px; }
+  .wall__side > div { padding: 11px 13px; border-left: 6px solid var(--accent); background: var(--panel); box-shadow: 3px 3px 0 rgba(22,32,58,.12); }
+  .wall__side b { display: block; color: var(--ink); font: 700 12px/1.3 var(--mono); }
+  .wall__side span { display: block; margin-top: 5px; color: #333F5E; font-size: clamp(11px, .92vw, 14px); line-height: 1.4; }
+
+  /* ---------- справка: решающая карта ---------- */
+  .decide { display: grid; gap: 8px; margin-top: 1.8vh; }
+  .decide__row { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(0,1.5fr) 120px; gap: 14px; align-items: center; padding: 9px 14px; border: 3px solid var(--line); background: var(--panel); box-shadow: 4px 4px 0 var(--hard); }
+  .decide__row > b { color: var(--ink); font: 700 clamp(12px, 1.02vw, 16px)/1.3 var(--display); }
+  .decide__row > span { color: #333F5E; font-size: clamp(11px, .94vw, 14.5px); line-height: 1.4; }
+  .decide__row > em {
+    display: grid; place-items: center; padding: 7px 0; border: 3px solid var(--cyan); color: var(--cyan);
+    font: 700 11px/1 var(--mono); font-style: normal; letter-spacing: .04em;
+  }
+  .decide__row.to-ref > em { border-color: var(--violet); color: var(--violet); }
+  .decide__head { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(0,1.5fr) 120px; gap: 14px; padding: 0 14px; color: var(--muted); font: 600 9.5px/1.2 var(--pixel); letter-spacing: .1em; text-transform: uppercase; }
+
+  /* ---------- документ на светлой бумаге (перенесено из занятия 1) ---------- */
+  .doc { border: 3px solid var(--line); background: var(--panel); box-shadow: 6px 6px 0 var(--hard); overflow: hidden; }
+  .doc__bar { display: flex; justify-content: space-between; gap: 10px; padding: 7px 13px; background: var(--accent); color: #fff; font: 600 10.5px/1.3 var(--mono); letter-spacing: .04em; }
+  .doc pre { margin: 0; padding: 13px 16px; font: 500 clamp(10px, .92vw, 14.5px)/1.6 var(--mono); color: #333F5E; overflow-x: auto; }
+  .doc .k { color: #16203A; font-weight: 700; }
+  .doc .s { color: #15803D; }
+  .doc .n { color: #0E7490; }
+  .doc .r { color: #BE123C; font-weight: 700; }
+  .doc .c { color: #93A1BF; }
+  .doc--ref .doc__bar { background: var(--violet); }
+  .doc-duo { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; margin-top: 1.8vh; align-items: start; }
+  .doc-duo .doc + .doc { margin-top: 10px; }
+
+  /* ---------- определение (перенесено из занятия 1) ---------- */
+  .defs { display: grid; gap: 10px; margin-top: 1.8vh; }
+  .defs--duo  { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .defs--trio { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .def { padding: 14px 16px; border: 3px solid var(--line); background: var(--panel); box-shadow: 5px 5px 0 var(--hard); }
+  .def > b { display: block; color: var(--accent); font: 700 12.5px/1.3 var(--mono); }
+  .def > strong { display: block; margin-top: 7px; font: 600 clamp(13.5px, 1.18vw, 19px)/1.35 var(--display); }
+  .def > p { margin: 7px 0 0; color: #333F5E; font-size: clamp(11.5px, .96vw, 15px); line-height: 1.48; }
+  .def > p code { color: var(--amber); }
+  .def > em { display: block; margin-top: 8px; padding-top: 7px; border-top: 1px dashed var(--hair); color: var(--muted); font: 600 10px/1.4 var(--mono); font-style: normal; }
+
+  /* ---------- цитата из документации ---------- */
+  .quote { margin: 10px 0 0; padding: 10px 14px; border-left: 6px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
+  .quote p { margin: 0; color: #26314F; font-size: clamp(11.5px, .98vw, 15px); line-height: 1.5; }
+  .quote p b { color: var(--ink); }
+  .quote--wide { max-width: 1080px; }
+  .quote cite { display: block; margin-top: 6px; color: var(--muted); font: 600 9.5px/1.3 var(--mono); font-style: normal; }
+
+  /* ---------- кадр приложения ---------- */
+  .shot { position: relative; margin: 1.5vh 0 0; border: 3px solid var(--line); background: var(--panel); box-shadow: 7px 7px 0 var(--hard); }
+  .shot img { display: block; width: 100%; height: auto; max-height: 56vh; object-fit: contain; object-position: top left; background: #fff; }
+  .shot figcaption { padding: 7px 12px; border-top: 3px solid var(--line); color: var(--muted); font: 600 10px/1.4 var(--mono); }
+  .shot-split { display: grid; grid-template-columns: minmax(0,1.35fr) minmax(0,.85fr); gap: clamp(16px, 2vw, 30px); align-items: start; margin-top: 1.5vh; }
+  .shot-split .shot { margin-top: 0; }
+  .shot-duo { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; margin-top: 1.5vh; }
+  .shot-duo .shot { margin-top: 0; }
+  .shot-duo .shot img { max-height: 36vh; }
+
+  /* ---------- карточка выбора и ошибки ---------- */
+  .picks { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-top: 1.6vh; }
+  .pick { padding: 12px 15px; border: 3px solid var(--line); background: var(--panel); box-shadow: 4px 4px 0 var(--hard); }
+  .pick b { display: block; color: var(--ink); font: 700 clamp(12.5px, 1.06vw, 16px)/1.3 var(--display); }
+  .pick p { margin: 6px 0 0; color: #333F5E; font-size: clamp(11px, .94vw, 14.5px); line-height: 1.45; }
+  .pick em { display: inline-block; margin-top: 8px; padding: 4px 9px; border: 2px solid var(--cyan); color: var(--cyan); font: 700 10px/1.2 var(--mono); font-style: normal; }
+  .pick--ref em { border-color: var(--violet); color: var(--violet); }
+  .pick--mix em { border-color: var(--amber); color: var(--amber); }
+
+  .check { display: grid; gap: 8px; margin: 1.8vh 0 0; padding: 0; list-style: none; max-width: 1080px; }
+  .check li { display: grid; grid-template-columns: 30px 1fr auto; gap: 14px; align-items: baseline; padding: 10px 14px; border-left: 6px solid var(--accent); background: var(--panel); box-shadow: 3px 3px 0 rgba(22,32,58,.12); color: #333F5E; font-size: clamp(12px, 1.02vw, 16px); }
+  .check b { color: var(--accent); font: 700 12px/1.3 var(--mono); }
+  .check em { color: var(--muted); font-style: normal; font: 600 10px/1.3 var(--mono); white-space: nowrap; }
+  .check code { color: var(--amber); }
+
+  .adr { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-top: 1.8vh; }
+  .adr > div { padding: 13px 15px; border: 3px solid var(--line); background: var(--panel); box-shadow: 5px 5px 0 var(--hard); }
+  .adr b { display: block; color: var(--accent); font: 600 10px/1 var(--pixel); letter-spacing: 1px; text-transform: uppercase; }
+  .adr strong { display: block; margin-top: 7px; font: 600 clamp(12.5px, 1.06vw, 16px)/1.3 var(--display); }
+  .adr p { margin: 6px 0 0; color: #333F5E; font-size: clamp(11px, .92vw, 14px); line-height: 1.45; }
+  .adr code { color: var(--amber); }
+
+  /* ---------- домашнее задание ---------- */
+  .hw-cards { margin: 1.2vh 0 0; padding: 0; list-style: none; max-width: 900px; }
+  .hw-cards li { display: grid; grid-template-columns: 40px 1fr; gap: 14px; align-items: start; padding: 7px 0; border-bottom: 2px solid var(--hair); }
+  .hw-cards > li > b { display: grid; place-items: center; width: 36px; height: 36px; border: 3px solid var(--line); background: var(--accent); color: #fff; font: 700 15px/1 var(--mono); }
+  .hw-cards div b { display: block; margin-bottom: 5px; font: 600 clamp(14px, 1.2vw, 19px)/1.3 var(--display); }
+  .hw-cards p { margin: 0; color: #333F5E; font-size: clamp(12px, 1.02vw, 16px); line-height: 1.45; }
+  .hw-cards code { color: var(--amber); }
+  .hw-order { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 2.2vh; }
+  .hw-order > div { padding: 15px 17px; border: 3px solid var(--line); background: var(--panel); box-shadow: 5px 5px 0 var(--hard); }
+  .hw-order b { display: block; margin-bottom: 8px; color: var(--accent); font: 600 10px/1 var(--pixel); letter-spacing: 1px; text-transform: uppercase; }
+  .hw-order p { margin: 0; color: #333F5E; font-size: clamp(11.5px, .98vw, 15px); line-height: 1.45; }
+  .hw-order mark { background: #FDE68A; }
+
+  @media (max-width: 1180px) {
+    .bill, .doc-duo, .picks, .shot-duo, .shot-split, .hw-order { grid-template-columns: 1fr; }
+    .defs--trio, .adr, .bill__run { grid-template-columns: repeat(2, 1fr); }
+    .wall { grid-template-columns: 1fr; }
+    .decide__row, .decide__head { grid-template-columns: 1fr; }
+    .decide__head { display: none; }
+  }
+  @media (max-height: 860px) {
+    .shot img { max-height: 48vh; }
+    .def, .runcard { padding: 11px 13px; }
+    .doc pre { padding: 10px 12px; line-height: 1.5; }
+  }
+
+  /* ---------- печатный лист домашнего задания ---------- */
+  .hw-sheet { display: none; }
+  @media print {
+    body > *:not(.hw-sheet) { display: none !important; }
+    .hw-sheet { display: block !important; color: #16203A; font: 10.5pt/1.5 "IBM Plex Sans", system-ui, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .hw-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-bottom: 10px; border-bottom: 3px solid #16203A; }
+    .hw-course { margin: 0; font: 700 8pt/1.3 "JetBrains Mono", monospace; letter-spacing: .06em; text-transform: uppercase; color: #6D28D9; }
+    .hw-head h1 { margin: 6px 0 3px; font-size: 21pt; line-height: 1.05; }
+    .hw-sub { margin: 0; font-size: 9.5pt; color: #5A6683; }
+    .hw-mark { flex: 0 0 auto; padding: 7px 10px; border: 2.5px solid #16203A; background: #EDE9FE; font: 700 11pt/1 "JetBrains Mono", monospace; }
+    .hw-joke { margin: 11px 0 0; padding: 8px 12px; border-left: 5px solid #B45309; background: #FEF3C7; font-size: 11pt; font-style: italic; }
+    .hw-meme { margin: 9px 0 0; text-align: center; page-break-inside: avoid; }
+    .hw-meme img { max-width: 58mm; max-height: 44mm; border: 2.5px solid #16203A; }
+    .hw-sheet h2 { margin: 12px 0 6px; font-size: 12.5pt; }
+    .hw-list { margin: 0; padding-left: 18px; }
+    .hw-list li { margin-bottom: 5px; page-break-inside: avoid; }
+    .hw-note { margin: 7px 0 0; padding: 7px 10px; border: 1.5px solid #16203A; font-size: 9pt; }
+    .hw-table { width: 100%; border-collapse: collapse; page-break-inside: avoid; }
+    .hw-table th, .hw-table td { padding: 4.5px 8px; border: 1.5px solid #16203A; font-size: 9.5pt; text-align: left; vertical-align: top; }
+    .hw-table th { width: 30mm; background: #E3E9F3; }
+    .hw-gloss { margin: 0; display: grid; grid-template-columns: 32mm 1fr; gap: 2.5px 9px; font-size: 9pt; }
+    .hw-gloss dt { font-weight: 700; }
+    .hw-gloss dd { margin: 0; color: #333F5E; }
+    .hw-foot { margin-top: 10px; padding-top: 6px; border-top: 1.5px solid #C6D0E2; font-size: 8.5pt; color: #5A6683; }
+  }
+  </style>
+</head>
+<body>
+  <div class="boot" id="boot">
+    <div class="boot__grid" aria-hidden="true"></div>
+    <div class="boot-card">
+      <div class="boot-card__top"><span>МДК.04.01 · ЗАНЯТИЕ 2</span><span>2 АКАДЕМИЧЕСКИХ ЧАСА</span></div>
+      <p class="boot-card__title">Embedding и referencing:<br>что кладём <em>внутрь</em>, а что выносим</p>
+      <dl class="boot-card__fields">
+        <div><dt>Стенд</dt><dd>тот же MongoDB 7, база <code>hh</code>: 150 резюме в двух формах и 8 компаний</dd></div>
+        <div><dt>Change request</dt><dd>компания сменила название — посчитать цену правки в каждой форме</dd></div>
+        <div><dt>Работа руками</dt><dd>прогнать обе формы, замерить, выбрать форму для трёх своих связей</dd></div>
+        <div><dt>Сдать</dt><dd>ADR-002, обновлённую модель и запросы, которые доказывают выбор</dd></div>
+      </dl>
+    </div>
+    <p class="boot__hint">нажмите любую клавишу, чтобы начать <i>▸</i></p>
+  </div>
+
+  <div class="deck" id="deck" aria-live="polite">
+    <header class="chrome">
+      <button class="brand" type="button" data-go="0" aria-label="На первый слайд">
+        <span class="brand-mark">Б<span>/</span>Д</span>
+        <span class="brand-copy">Разработка и защита<br>баз данных</span>
+      </button>
+      <div class="chrome-right">
+        <button class="icon-button" id="sourcesButton" type="button" aria-label="Открыть источники">S</button>
+        <button class="icon-button" id="fullscreenButton" type="button" aria-label="Полноэкранный режим">⛶</button>
+        <span class="counter"><span id="currentNumber">01</span><i>/</i><span id="totalNumber">33</span></span>
+      </div>
+    </header>
+
+    <main class="slides">
+
+      <!-- 01 · Титул -->
+      <section class="slide slide--title is-active" data-accent="violet">
+        <div class="slide-inner">
+          <p class="eyebrow">Раздел 1 · MongoDB · занятие 2 из 5</p>
+          <h1>Embedding и referencing:<br>проектирование от <code>операций</code></h1>
+          <p class="lead">На прошлой паре мы положили резюме одним документом и не спрашивали, почему именно так. Сегодня спрашиваем. Одна и та же связь собирается двумя способами, обе формы лежат на стенде, и за каждую операцию — чтение, отчёт, правку, рост — мы выставляем счёт в документах, байтах и миллисекундах.</p>
+          <div class="title-meta"><span>90 минут</span><span>моделирующий практикум</span><span>2 формы модели</span><span>4 счёта</span></div>
+        </div>
+        <span class="pair-number">01</span>
+      </section>
+
+      <!-- 02 · Точка входа: change request -->
+      <section class="slide" data-accent="violet">
+        <div class="slide-inner">
+          <p class="eyebrow">С чего начинаем · заявка на изменение</p>
+          <h2>Заказчик пишет одну строку. Сколько стоит её выполнить — зависит от того, как мы спроектировали документ</h2>
+          <div class="shot-split">
+            <div class="psql">
+              <div class="psql__bar"><i></i><i></i><i></i><span>change request · CR-014</span></div>
+<pre><span class="cm">от:</span>      отдел партнёрских программ
+<span class="cm">кому:</span>    команда data platform
+<span class="cm">тема:</span>    смена названия компании
+
+Компания <span class="str">«Ozon Tech»</span> с 1 сентября
+называется <span class="str">«Ozon Технологии»</span>.
+
+Поправьте, пожалуйста, везде, где
+это название показывается кандидатам.
+Когда будет готово?<span class="caret"></span></pre>
+            </div>
+            <div>
+              <p class="note" style="margin-top:0">Заявка честная и короткая, а ответ на неё — от «полминуты» до «полдня и потом ещё неделю ловим хвосты». Разница не в аккуратности исполнителя: она была заложена в тот момент, когда кто-то решил, где будет жить название компании.</p>
+              <p class="note"><b>Два возможных ответа.</b> Если название компании лежит отдельным документом, а резюме на него ссылается, — правим один документ. Если название вписано внутрь каждого резюме, — правим столько документов, во скольких оно встретилось. Плюс те места, про которые мы забыли.</p>
+              <p class="note">Сегодня мы не выбираем «правильный» вариант. Мы учимся считать цену каждого до того, как заявка придёт.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">02</span>
+      </section>
+
+      <!-- 03 · Демонстрация: где в базе лежит это название -->
+      <section class="slide" data-accent="violet">
+        <div class="slide-inner">
+          <p class="eyebrow">Прогон на стенде · экран-демонстрация</p>
+          <h2>Считаем, в скольких документах базы <code>hh</code> сейчас написано «Ozon Tech»</h2>
+          <div class="bill__run">
+            <div class="runcard" id="rcEmbed">
+              <b>resumes_embed · 150 резюме</b>
+              <strong data-from="49" data-to="0">49</strong>
+              <span>копия названия лежит внутри каждого резюме, в массиве <code>experience</code></span>
+            </div>
+            <div class="runcard" id="rcInterviews">
+              <b>interviews · 60 приглашений</b>
+              <strong data-from="5" data-to="5">5</strong>
+              <span>здесь та же компания продублирована второй раз — приглашение показывает её название</span>
+            </div>
+            <div class="runcard" id="rcCompanies">
+              <b>companies · 8 компаний</b>
+              <strong data-from="1" data-to="0">1</strong>
+              <span>один документ на компанию; резюме из <code>resumes_ref</code> ссылаются на него по <code>_id</code></span>
+            </div>
+          </div>
+          <div class="runbar">
+            <button type="button" id="crRun">Выполнить правку в resumes_embed и companies →</button>
+            <p id="crNote">Числа получены на стенде: <code>countDocuments</code> по трём коллекциям.</p>
+          </div>
+          <p class="note"><b>Что произойдёт по нажатию.</b> Мы сделаем ровно то, что просит заявка: <code>updateMany</code> по резюме и <code>updateOne</code> по справочнику компаний. Оба запроса отработают за пару миллисекунд. Обратите внимание не на скорость, а на то, какое число не изменится.</p>
+        </div>
+        <span class="pair-number">03</span>
+      </section>
+
+      <!-- 04 · Две формы связи -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Механизм · два способа связать данные</p>
+          <h2>Связь между сущностями в MongoDB выражается двумя способами, и третьего нет</h2>
+          <div class="defs defs--duo">
+            <article class="def">
+              <b>embedding · вложение</b>
+              <strong>Связанные данные лежат внутри того же документа</strong>
+              <p>Компания записана прямо в резюме: <code>experience[0].company.name</code>. Читается вместе с резюме, меняется вместе с резюме, живёт ровно столько, сколько живёт резюме. Отдельной коллекции для компаний нет.</p>
+              <em>читается одним обращением · дублируется в каждом документе</em>
+            </article>
+            <article class="def">
+              <b>referencing · ссылка</b>
+              <strong>Связанные данные лежат отдельно, документ хранит только идентификатор</strong>
+              <p>В резюме записано <code>experience[0].company_id: "c-ozon"</code>, а сама компания — документ коллекции <code>companies</code>. Чтобы показать название, нужно сходить за ним вторым запросом или собрать данные этапом <code>$lookup</code>.</p>
+              <em>хранится в одном месте · требует второго обращения</em>
+            </article>
+          </div>
+          <div class="quote quote--wide">
+            <p>«To link related data, you can either: <b>embed related data within a single document</b> or <b>reference related data stored in a separate collection</b>.»</p>
+            <cite>MongoDB Manual · Data Modeling · Best Practices</cite>
+          </div>
+          <p class="note">Обратите внимание: в этом списке нет слова «правильно». Документация даёт два инструмента и таблицу сценариев — её мы разберём на экране 23, когда соберём собственную карту решения.</p>
+        </div>
+        <span class="pair-number">04</span>
+      </section>
+
+      <!-- 05 · Один человек в двух формах -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Одни и те же данные · две формы</p>
+          <h2>Резюме <code>r-001</code> в обеих формах: слева всё внутри, справа ссылка плюс справочник</h2>
+          <div class="doc-duo">
+            <div class="doc">
+              <div class="doc__bar"><span>hh.resumes_embed · r-001</span><span>вложение</span></div>
+<pre><span class="c">{</span> <span class="k">_id</span>: <span class="s">"r-001"</span>, <span class="k">fio</span>: <span class="s">"Елена Белова"</span>,
+  <span class="k">position</span>: <span class="s">"Аналитик данных"</span>, <span class="k">salary</span>: <span class="n">150000</span>,
+  <span class="k">experience</span>: [
+    { <span class="k">role</span>: <span class="s">"стажёр"</span>, <span class="k">months</span>: <span class="n">37</span>,
+      <span class="k">company</span>: { <span class="k">name</span>: <span class="s">"ИП Сорокин"</span>,
+                 <span class="k">site</span>: <span class="s">"sorokin-dev.ru"</span>,
+                 <span class="k">industry</span>: <span class="s">"веб-студия"</span>,
+                 <span class="k">city</span>: <span class="s">"Ярославль"</span> } }
+  ]<span class="c"> }</span></pre>
+            </div>
+            <div>
+              <div class="doc doc--ref">
+                <div class="doc__bar"><span>hh.resumes_ref · r-001</span><span>ссылка</span></div>
+<pre><span class="c">{</span> <span class="k">_id</span>: <span class="s">"r-001"</span>, <span class="k">fio</span>: <span class="s">"Елена Белова"</span>,
+  <span class="k">position</span>: <span class="s">"Аналитик данных"</span>, <span class="k">salary</span>: <span class="n">150000</span>,
+  <span class="k">experience</span>: [
+    { <span class="k">role</span>: <span class="s">"стажёр"</span>, <span class="k">months</span>: <span class="n">37</span>,
+      <span class="k">company_id</span>: <span class="r">"c-ipsor"</span> }
+  ]<span class="c"> }</span></pre>
+              </div>
+              <div class="doc doc--ref">
+                <div class="doc__bar"><span>hh.companies · c-ipsor</span><span>справочник</span></div>
+<pre><span class="c">{</span> <span class="k">_id</span>: <span class="r">"c-ipsor"</span>, <span class="k">name</span>: <span class="s">"ИП Сорокин"</span>,
+  <span class="k">site</span>: <span class="s">"sorokin-dev.ru"</span>, <span class="k">industry</span>: <span class="s">"веб-студия"</span>,
+  <span class="k">city</span>: <span class="s">"Ярославль"</span>, <span class="k">employees</span>: <span class="n">6</span> <span class="c">}</span></pre>
+              </div>
+            </div>
+          </div>
+          <p class="note">Данные одинаковые, форма разная. Слева документ самодостаточен: всё, что нужно показать в карточке, лежит в нём. Справа резюме короче, зато название компании существует в базе ровно в одном экземпляре — и это разные виды удобства, за которые мы дальше выставим счёт.</p>
+        </div>
+        <span class="pair-number">05</span>
+      </section>
+
+      <!-- 06 · Кадр Compass: вложенная форма -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Тот же документ в Compass · вложение</p>
+          <h2>Как вложенная компания выглядит в клиенте: ветка <code>experience → company</code> раскрывается внутри резюме</h2>
+          <div class="shot-split">
+            <figure class="shot">
+              <img src="shots/02-doc-embed.png" alt="Compass: документ resumes_embed с раскрытым массивом experience и вложенным объектом company">
+              <figcaption>Compass 1.50 · hh.resumes_embed · фильтр <code>{ _id: "r-001" }</code>, вид JSON, все ветки раскрыты</figcaption>
+            </figure>
+            <div>
+              <p class="note" style="margin-top:0">Обратите внимание на отступы: <code>company</code> — не соседнее поле резюме, а объект внутри элемента массива <code>experience</code>. Путь к названию читается через точки: <code>experience.company.name</code>, и именно так он пишется в фильтре.</p>
+              <p class="note">Индексов в этой коллекции по-прежнему один — тот, что создал сервер под <code>_id</code>. Ни один из фильтров занятия его не использует, и это станет темой отдельного занятия.</p>
+              <p class="note"><b>Полезная привычка.</b> Кнопка раскрытия всех веток стоит слева от документа. Пока документ маленький, раскрывать удобно; на резюме с сотней мест работы вы этой кнопкой уже не пользуетесь — и это первый сигнал, что форма выбрана неудачно.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">06</span>
+      </section>
+
+      <!-- 07 · Кадр Compass: ссылочная форма -->
+      <section class="slide" data-accent="violet">
+        <div class="slide-inner">
+          <p class="eyebrow">Тот же документ в Compass · ссылка</p>
+          <h2>В ссылочной форме на месте компании стоит строка-идентификатор, а сама компания — в соседней коллекции</h2>
+          <div class="shot-duo">
+            <figure class="shot">
+              <img src="shots/03-doc-ref.png" alt="Compass: документ resumes_ref, внутри experience только company_id">
+              <figcaption>hh.resumes_ref · <code>company_id: "c-ipsor"</code> вместо объекта</figcaption>
+            </figure>
+            <figure class="shot">
+              <img src="shots/04-companies.png" alt="Compass: коллекция companies из восьми документов">
+              <figcaption>hh.companies · восемь компаний, ключ <code>_id</code> задан руками</figcaption>
+            </figure>
+          </div>
+          <p class="note"><b>Про идентификатор.</b> Мы записали компаниям осмысленные <code>_id</code> — <code>"c-ozon"</code>, <code>"c-tensor"</code>. MongoDB это разрешает: <code>_id</code> обязателен, но не обязан быть <code>ObjectId</code>. В учебной базе так нагляднее, а в рабочей чаще оставляют <code>ObjectId</code>, потому что осмысленный ключ рано или поздно приходится менять — и тогда меняются все ссылки на него.</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 08 · Счёт 1: прочитать карточку -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Счёт № 1 · ведущий приём занятия</p>
+          <h2>Операция «показать карточку резюме с названиями компаний», 1000 повторов на стенде</h2>
+          <div class="bill">
+            <div class="bill__card bill__card--a">
+              <div class="bill__top"><span>ВЛОЖЕНИЕ</span><em>resumes_embed</em></div>
+              <p class="bill__code">db.resumes_embed.<b>findOne</b>({ _id: id })</p>
+              <div class="bill__rows">
+                <div><span>обращений к базе на карточку</span><b>1</b></div>
+                <div><span>документов прочитано</span><b>1</b></div>
+                <div><span>1000 карточек заняли</span><b>183 мс</b></div>
+                <div><span>кода в приложении</span><b>одна строка</b></div>
+              </div>
+              <div class="bill__total"><span>на одну карточку</span><b>0,18 мс</b></div>
+            </div>
+            <div class="bill__card bill__card--b">
+              <div class="bill__top"><span>ССЫЛКА</span><em>resumes_ref + companies</em></div>
+              <p class="bill__code">db.resumes_ref.<b>findOne</b>({ _id: id })<br>db.companies.<b>find</b>({ _id: { <b>$in</b>: ids } })</p>
+              <div class="bill__rows">
+                <div class="hot"><span>обращений к базе на карточку</span><b>2</b></div>
+                <div><span>документов прочитано</span><b>1 + 2…4</b></div>
+                <div class="hot"><span>1000 карточек заняли</span><b>306 мс</b></div>
+                <div><span>кода в приложении</span><b>сборка результата</b></div>
+              </div>
+              <div class="bill__total"><span>на одну карточку</span><b>0,31 мс</b></div>
+            </div>
+          </div>
+          <p class="note"><b>Как читать этот счёт.</b> Разница в 0,13 мс сама по себе ничего не значит: на нашей учебной базе обе формы мгновенны. Значение имеет строка «обращений к базе». Одно обращение остаётся одним и на миллионе документов, а два обращения превращаются в два сетевых похода на каждую карточку списка — и вот их уже видно.</p>
+        </div>
+        <span class="pair-number">08</span>
+      </section>
+
+      <!-- 09 · $lookup -->
+      <section class="slide" data-accent="violet">
+        <div class="slide-inner">
+          <p class="eyebrow">Механизм · как собрать ссылку на стороне сервера</p>
+          <h2><code>$lookup</code> — этап конвейера, который подставляет документы из другой коллекции</h2>
+          <div class="shot-split">
+            <figure class="shot">
+              <img src="shots/08-lookup.png" alt="Compass: конвейер агрегации с этапами $match, $lookup, $project и предпросмотром результата">
+              <figcaption>Compass · вкладка Aggregations, текстовый режим и предпросмотр справа</figcaption>
+            </figure>
+            <div>
+              <p class="note" style="margin-top:0"><b>Четыре поля этапа.</b> <code>from</code> — коллекция, откуда берём; <code>localField</code> — поле нашего документа со ссылкой; <code>foreignField</code> — поле чужого документа, с которым сравниваем; <code>as</code> — имя нового поля-массива, куда сложить найденное.</p>
+              <p class="note">Результат виден в предпросмотре: у каждого резюме появился массив <code>companies</code> — от одной до четырёх компаний, по числу мест работы. Это и есть «сборка» ссылочной формы: приложение получает готовую карточку одним запросом, а не двумя.</p>
+              <p class="note"><b>Чего <code>$lookup</code> не делает.</b> Он не связывает документы навсегда и не проверяет, что ссылка ведёт в существующий документ. Если компанию удалили, <code>$lookup</code> молча вернёт пустой массив — целостность ссылок в MongoDB на стороне приложения, а не сервера.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">09</span>
+      </section>
+
+      <!-- 10 · Цена join на масштабе -->
+      <section class="slide" data-accent="violet">
+        <div class="slide-inner">
+          <p class="eyebrow">Счёт № 1 · продолжение на большой коллекции</p>
+          <h2>Те же 500 карточек, но в базе 20 000 резюме и 5 000 компаний</h2>
+          <div class="bill">
+            <div class="bill__card bill__card--a">
+              <div class="bill__top"><span>ВЛОЖЕНИЕ</span><em>big_embed · 20 000 документов</em></div>
+              <p class="bill__code">find({ city: <b>"Ярославль"</b> }).limit(500)</p>
+              <div class="bill__rows">
+                <div><span>этапов конвейера</span><b>нет</b></div>
+                <div><span>коллекций затронуто</span><b>1</b></div>
+                <div><span>объём коллекции на диске</span><b>12,34 МБ</b></div>
+              </div>
+              <div class="bill__total"><span>500 карточек</span><b>5 мс</b></div>
+            </div>
+            <div class="bill__card bill__card--b">
+              <div class="bill__top"><span>ССЫЛКА</span><em>big_ref + big_companies</em></div>
+              <p class="bill__code">$match → <b>$lookup</b> по <b>_id</b> → результат</p>
+              <div class="bill__rows">
+                <div><span>этапов конвейера</span><b>2</b></div>
+                <div><span>коллекций затронуто</span><b>2</b></div>
+                <div><span>объём обеих коллекций</span><b>7,37 МБ</b></div>
+              </div>
+              <div class="bill__total"><span>500 карточек</span><b>15 мс</b></div>
+            </div>
+          </div>
+          <div class="callout"><b>Третий замер, ради которого стоило заводить большую базу:</b> тот же <code>$lookup</code>, но соединяющий по полю <code>site</code>, у которого индекса нет, — <b>415 мс</b> вместо 15. Разница не в <code>$lookup</code>, а в том, есть ли индекс на поле, по которому идёт соединение. Соединяйте по <code>_id</code> — по нему индекс есть всегда.</div>
+          <p class="note">Итог по чтению: вложение выигрывает всегда, ссылка проигрывает немного при соединении по ключу и катастрофически — при соединении по неиндексированному полю. Запомните этот множитель ×27: на занятии 4 мы разберём, откуда он берётся, по плану запроса.</p>
+        </div>
+        <span class="pair-number">10</span>
+      </section>
+
+      <!-- 11 · Счёт 2: отчёт -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Счёт № 2 · другая операция — другой победитель?</p>
+          <h2>Операция «сколько соискателей работало в компаниях из отрасли „медицина“»</h2>
+          <div class="bill">
+            <div class="bill__card bill__card--a">
+              <div class="bill__top"><span>ВЛОЖЕНИЕ</span><em>один фильтр</em></div>
+              <p class="bill__code">countDocuments({ <b>"experience.company.industry"</b>: "медицина" })</p>
+              <div class="bill__rows">
+                <div><span>шагов</span><b>1</b></div>
+                <div><span>найдено резюме</span><b>15 000</b></div>
+                <div><span>что будет, если отрасль поменяют</span><b>отчёт соврёт</b></div>
+              </div>
+              <div class="bill__total"><span>время</span><b>9 мс</b></div>
+            </div>
+            <div class="bill__card bill__card--b">
+              <div class="bill__top"><span>ССЫЛКА</span><em>два шага</em></div>
+              <p class="bill__code">companies.find({ industry: "медицина" }) → ids<br>resumes.count({ <b>"experience.company_id"</b>: { $in: ids } })</p>
+              <div class="bill__rows">
+                <div><span>шагов</span><b>2</b></div>
+                <div><span>найдено компаний → резюме</span><b>1 250 → 15 000</b></div>
+                <div><span>что будет, если отрасль поменяют</span><b>отчёт верен</b></div>
+              </div>
+              <div class="bill__total"><span>время</span><b>19 мс</b></div>
+            </div>
+          </div>
+          <p class="note"><b>Здесь начинается интересное.</b> По времени снова выигрывает вложение — вдвое. Но посмотрите на последнюю строку счёта. Отрасль компании — это свойство компании, а не резюме. Во вложенной форме мы храним отрасль, какой она была в момент, когда резюме положили в базу. Компания сменила отрасль — старые резюме продолжают отвечать по-старому, и отчёт по отрасли начинает расходиться с реальностью.</p>
+        </div>
+        <span class="pair-number">11</span>
+      </section>
+
+      <!-- 12 · Счёт 3: правка -->
+      <section class="slide" data-accent="coral">
+        <div class="slide-inner">
+          <p class="eyebrow">Счёт № 3 · та самая заявка CR-014</p>
+          <h2>Операция «компания сменила название»: считаем не миллисекунды, а число тронутых документов</h2>
+          <div class="bill">
+            <div class="bill__card bill__card--a">
+              <div class="bill__top"><span>ВЛОЖЕНИЕ</span><em>updateMany + arrayFilters</em></div>
+              <p class="bill__code">updateMany({ "experience.company.name": "Ozon Tech" },<br>&nbsp;&nbsp;{ $set: { <b>"experience.$[e].company.name"</b>: "Ozon Технологии" } },<br>&nbsp;&nbsp;{ arrayFilters: [ { "e.company.name": "Ozon Tech" } ] })</p>
+              <div class="bill__rows">
+                <div class="hot"><span>изменено документов</span><b>49</b></div>
+                <div class="hot"><span>мест, где ещё лежит копия</span><b>+5</b></div>
+                <div><span>нужно помнить</span><b>синтаксис arrayFilters</b></div>
+              </div>
+              <div class="bill__total"><span>цена ошибки</span><b>две версии имени</b></div>
+            </div>
+            <div class="bill__card bill__card--b">
+              <div class="bill__top"><span>ССЫЛКА</span><em>updateOne</em></div>
+              <p class="bill__code">companies.updateOne({ _id: "c-ozon" },<br>&nbsp;&nbsp;{ $set: { <b>name</b>: "Ozon Технологии" } })</p>
+              <div class="bill__rows">
+                <div><span>изменено документов</span><b>1</b></div>
+                <div><span>мест, где ещё лежит копия</span><b>нет</b></div>
+                <div><span>нужно помнить</span><b>ничего</b></div>
+              </div>
+              <div class="bill__total"><span>цена ошибки</span><b>—</b></div>
+            </div>
+          </div>
+          <div class="psql" style="margin-top:1.4vh">
+            <div class="psql__bar"><i></i><i></i><i></i><span>docker exec -i hh-mongo mongosh hh</span></div>
+<pre><span class="fn">hh&gt;</span> db.resumes_embed.<span class="fn">updateMany</span>(…)
+{ acknowledged: <span class="id">true</span>, matchedCount: <span class="id">49</span>, modifiedCount: <span class="id">49</span> }
+
+<span class="fn">hh&gt;</span> db.companies.<span class="fn">updateOne</span>({ _id: <span class="str">"c-ozon"</span> }, …)
+{ acknowledged: <span class="id">true</span>, matchedCount: <span class="id">1</span>, modifiedCount: <span class="id">1</span> }<span class="caret"></span></pre>
+          </div>
+        </div>
+        <span class="pair-number">12</span>
+      </section>
+
+      <!-- 13 · Забытая копия -->
+      <section class="slide" data-accent="coral">
+        <div class="slide-inner">
+          <p class="eyebrow">Цена дубликата · через неделю после правки</p>
+          <h2>Заявку закрыли, 49 резюме поправили. А в приглашениях на собеседование компания по-прежнему старая</h2>
+          <div class="shot-split">
+            <figure class="shot">
+              <img src="shots/06-interviews-stale.png" alt="Compass: коллекция interviews, фильтр по старому названию компании, счётчик 5 документов">
+              <figcaption>hh.interviews · фильтр <code>{ "company.name": "Ozon Tech" }</code> · счётчик <code>1 – 5 of 5</code> уже после правки резюме</figcaption>
+            </figure>
+            <div>
+              <p class="note" style="margin-top:0"><b>Что произошло.</b> Название компании во вложенной форме — не одна копия, а столько копий, во сколько документов мы его вписали. Резюме мы вспомнили, потому что заявка пришла от отдела, который работает с резюме. Про приглашения не вспомнил никто: их пишет другая часть системы.</p>
+              <p class="note">В базе теперь два имени одной компании: 49 документов знают её как «Ozon Технологии», 5 — как «Ozon Tech». Формально ошибки нет, ни один запрос не упал. Кандидат просто видит разные названия в резюме и в приглашении.</p>
+              <p class="note"><b>Правило, которое отсюда следует.</b> Дублировать можно, но каждую копию нужно уметь назвать. Если на вопрос «где ещё лежит это значение» вы отвечаете «сейчас поищу» — вы уже не управляете дубликатом, а ловите его.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">13</span>
+      </section>
+
+      <!-- 14 · Промежуточный итог -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Три счёта закрыты · что видно</p>
+          <h2>Ни одна форма не выиграла всё: они выигрывают разные операции</h2>
+          <div class="defs defs--trio">
+            <article class="def">
+              <b>чтение</b>
+              <strong>Выигрывает вложение</strong>
+              <p>0,18 мс против 0,31 мс на карточку и 5 мс против 15 мс на списке из 500. Одно обращение вместо двух, и это преимущество не исчезает с ростом базы, а растёт вместе с ним.</p>
+              <em>чем чаще читаем вместе — тем сильнее довод за вложение</em>
+            </article>
+            <article class="def">
+              <b>изменение</b>
+              <strong>Выигрывает ссылка</strong>
+              <p>1 документ против 49 — и это на 150 резюме. На 20 000 та же правка задела бы сотни документов, а забытая копия нашлась бы не в одной соседней коллекции, а в трёх.</p>
+              <em>чем чаще меняется — тем сильнее довод за ссылку</em>
+            </article>
+            <article class="def">
+              <b>место</b>
+              <strong>Выигрывает ссылка</strong>
+              <p>129,9 КБ против 95,2 КБ на 150 резюме; 12,34 МБ против 7,37 МБ на 20 000. Разница — те самые повторяющиеся названия, сайты и отрасли, помноженные на число документов.</p>
+              <em>разница ×1,4 — и это на четырёх полях компании</em>
+            </article>
+          </div>
+          <div class="callout"><b>Значит, вопрос поставлен неправильно.</b> «Что лучше, embedding или referencing» — вопрос без ответа. Отвечать можно только на вопрос «какие операции с этими данными мы выполняем чаще и что для нас дороже»: лишнее обращение к базе или лишняя копия значения.</div>
+        </div>
+        <span class="pair-number">14</span>
+      </section>
+
+      <!-- 15 · Цена дублирования в Compass -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Кадр без единого запроса · список коллекций</p>
+          <h2>Compass показывает средний размер документа — цену дублирования видно прямо в списке коллекций</h2>
+          <div class="shot-split">
+            <figure class="shot">
+              <img src="shots/01-collections-hh.png" alt="Compass: список коллекций базы hh со столбцами Documents, Avg. document size и Data size">
+              <figcaption>Compass · база <code>hh</code> · столбцы <code>Documents</code>, <code>Avg. document size</code>, <code>Data size</code></figcaption>
+            </figure>
+            <div>
+              <p class="note" style="margin-top:0"><b>Средний документ:</b> 866 байт во вложенной форме против 626 в ссылочной. Разница — 240 байт на резюме: название, сайт, отрасль и город, переписанные в каждое место работы.</p>
+              <p class="note"><b>На масштабе то же самое:</b> <code>big_embed</code> — 12,34 МБ при среднем документе 617 байт, <code>big_ref</code> — 6,68 МБ при 334 байтах плюс 684 КБ справочника. Полтора раза — не катастрофа, но это данные, которые едут по сети на каждой выборке.</p>
+              <p class="note">Столбец <code>Indexes</code> у всех коллекций показывает единицу: кроме обязательного индекса по <code>_id</code>, мы так и не создали ни одного. Это тема занятия 4 — там же выяснится, откуда взялись 415 мс с экрана 10.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">15</span>
+      </section>
+
+      <!-- 16 · Стена 16 МБ -->
+      <section class="slide" data-accent="coral">
+        <div class="slide-inner">
+          <p class="eyebrow">Разовый приём · рост встроенного массива</p>
+          <h2>Другая предметная область: вакансия и отклики на неё. Каждый отклик — 192 байта внутри документа вакансии</h2>
+          <div class="wall">
+            <div class="wall__plot" style="--limit: 98.5%">
+              <div class="wall__line"><em>16 777 216 байт — предел документа</em></div>
+              <div class="wall__bar"><b>351 Б</b><i style="--h: 7%"></i><span>1 отклик</span></div>
+              <div class="wall__bar"><b>2 068 Б</b><i style="--h: 22%"></i><span>10</span></div>
+              <div class="wall__bar"><b>19 279 Б</b><i style="--h: 41%"></i><span>100</span></div>
+              <div class="wall__bar"><b>192 312 Б</b><i style="--h: 60%"></i><span>1 000</span></div>
+              <div class="wall__bar"><b>1,93 МБ</b><i style="--h: 80%"></i><span>10 000</span></div>
+              <div class="wall__bar"><b>9,70 МБ</b><i style="--h: 94%"></i><span>50 000</span></div>
+              <div class="wall__bar is-over"><b>16,69 МБ</b><i style="--h: 98%"></i><span>86 000 — стоп</span></div>
+            </div>
+            <div class="wall__side">
+              <div><b>Шкала логарифмическая</b><span>иначе первые четыре столбика были бы неразличимы: между 351 байтом и 16 мегабайтами разница в 47 тысяч раз.</span></div>
+              <div><b>192 байта на отклик</b><span>размер получен делением: документ с 1 000 откликов весит 192 312 байт, пустая вакансия — 171. Дальше рост строго линейный.</span></div>
+              <div><b>Потолок — около 87 000 откликов</b><span>16 777 216 ÷ 192 ≈ 87 тысяч. Для вакансии дворника в Москве это не фантастика, а два сезона.</span></div>
+            </div>
+          </div>
+          <p class="note">Числа сняты оператором <code>$bsonSize</code> на нашем стенде: документ вакансии собирался прямо в конвейере, в базу он при этом не попадал.</p>
+        </div>
+        <span class="pair-number">16</span>
+      </section>
+
+      <!-- 17 · Настоящий отказ -->
+      <section class="slide" data-accent="coral">
+        <div class="slide-inner">
+          <p class="eyebrow">Ошибки · что говорит сервер на границе</p>
+          <h2>Документ за пределом не «медленно вставляется». Он не вставляется совсем</h2>
+          <div class="shot-split">
+            <div class="psql">
+              <div class="psql__bar"><i></i><i></i><i></i><span>docker exec -i hh-mongo mongosh hh</span></div>
+<pre><span class="fn">hh&gt;</span> db.<span class="fn">hello</span>().maxBsonObjectSize
+<span class="id">16777216</span>
+
+<span class="fn">hh&gt;</span> db.vacancies.<span class="fn">insertOne</span>( vac(<span class="id">87000</span>) )
+<span class="kw">BSONObjectTooLarge</span>: BSONObj size: <span class="id">16889293</span>
+(0x101B5CD) is invalid. Size must be between
+0 and <span class="id">16809984</span>(16MB)
+First element: insert: <span class="str">"vacancies"</span>
+
+<span class="fn">hh&gt;</span> db.vacancies.<span class="fn">countDocuments</span>()
+<span class="id">0</span><span class="caret"></span></pre>
+            </div>
+            <div>
+              <p class="note" style="margin-top:0"><b>Читаем сообщение по частям.</b> <code>BSONObjectTooLarge</code> — имя ошибки; <code>16889293</code> — сколько байт мы пытались отправить; <code>16809984</code> — предел, который назвал сервер. Последняя строка — самое важное: в коллекции ноль документов. Вставка не прошла частично, она не прошла вообще.</p>
+              <p class="note">Предел лежит и в самом сервере: <code>maxBsonObjectSize</code> он сообщает клиенту при подключении. Это не настройка стенда и не особенность Docker — так устроен протокол.</p>
+              <p class="note"><b>Почему числа немного разные.</b> 16 777 216 — предел на документ, 16 809 984 — предел на команду вставки целиком: в неё, кроме документа, входит имя коллекции и служебные поля. Разница как раз на этот «конверт».</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">17</span>
+      </section>
+
+      <!-- 18 · Дописывание по одному -->
+      <section class="slide" data-accent="coral">
+        <div class="slide-inner">
+          <p class="eyebrow">Ошибки · как это выглядит в бою</p>
+          <h2>Никто не вставляет 87 тысяч откликов разом. Их дописывают по одному — и предел приходит однажды в среду</h2>
+          <div class="psql">
+            <div class="psql__bar"><i></i><i></i><i></i><span>docker exec -i hh-mongo mongosh hh · дописываем по 1000 откликов</span></div>
+<pre><span class="fn">hh&gt;</span> <span class="kw">for</span> (<span class="kw">let</span> i = <span class="id">0</span>; i &lt; <span class="id">100</span>; i++)
+       db.vacancies.<span class="fn">updateOne</span>({ _id: <span class="str">"v-0"</span> },
+         { <span class="id">$push</span>: { responses: { <span class="id">$each</span>: batch(i) } } })
+
+<span class="kw">MongoServerError</span> <span class="id">10334</span>: BSONObj size: <span class="id">16889185</span> is invalid.
+Size must be between 0 and <span class="id">16793600</span>(16MB)
+First element: _id: <span class="str">"v-0"</span>
+
+<span class="fn">hh&gt;</span> db.vacancies.<span class="fn">aggregate</span>([{ <span class="id">$project</span>: { n: { <span class="id">$size</span>: <span class="str">"$responses"</span> },
+                                    s: { <span class="id">$bsonSize</span>: <span class="str">"$$ROOT"</span> } } }])
+[ { n: <span class="id">86000</span>, s: <span class="id">16694927</span> } ]<span class="caret"></span></pre>
+          </div>
+          <p class="note"><b>Что здесь произошло.</b> Восемьдесят шесть тысяч откликов легли в документ штатно, восемьдесят седьмая тысяча — нет. Вакансия осталась рабочей, читается, ищется; сломалась ровно одна операция — добавление нового отклика. И сломалась она не в момент проектирования, а спустя два сезона, у одной конкретной вакансии, в проде.</p>
+          <p class="note">Отсюда правило, которое стоит записать дословно: <b>встроенный массив должен иметь известную верхнюю границу.</b> Мест работы в резюме — десятки, это граница. Откликов на вакансию — сколько угодно, границы нет. Первое вкладываем, второе выносим в отдельную коллекцию со ссылкой на вакансию.</p>
+        </div>
+        <span class="pair-number">18</span>
+      </section>
+
+      <!-- 19 · Официально -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Справка · что об этом написано в документации</p>
+          <h2>Предел документа — не наша находка, он записан в разделе Limits and Thresholds</h2>
+          <div class="shot-split">
+            <figure class="shot">
+              <img src="shots/31-docs-limits.png" alt="MongoDB Manual, раздел BSON Documents: максимальный размер документа 16 мебибайт">
+              <figcaption>mongodb.com/docs · MongoDB Limits and Thresholds → BSON Documents</figcaption>
+            </figure>
+            <div>
+              <div class="quote" style="margin-top:0">
+                <p>«The maximum BSON document size is <b>16 mebibytes</b>. The maximum document size helps ensure that a single document cannot use an excessive amount of RAM or, during transmission, an excessive amount of bandwidth.»</p>
+                <cite>MongoDB Manual · Limits and Thresholds</cite>
+              </div>
+              <p class="note"><b>Заодно обратите внимание на соседний пункт:</b> вложенность — не больше 100 уровней. До неё вы почти наверняка не доберётесь, но она объясняет логику предела: документ читается и передаётся целиком, поэтому у него должен быть потолок.</p>
+              <p class="note">Мебибайт — это 1024 × 1024 = 1 048 576 байт, поэтому 16 МиБ и есть те самые 16 777 216, которые сервер назвал в <code>maxBsonObjectSize</code>. Ровно то же число мы получили прогоном, не открывая документацию.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">19</span>
+      </section>
+
+      <!-- 20 · Кардинальность -->
+      <section class="slide" data-accent="violet">
+        <div class="slide-inner">
+          <p class="eyebrow">Механизм · сколько «многих» в «один ко многим»</p>
+          <h2>Связь «один ко многим» бывает трёх размеров, и решение у каждого своё</h2>
+          <div class="defs defs--trio">
+            <article class="def">
+              <b>единицы · one-to-few</b>
+              <strong>Вкладываем целиком</strong>
+              <p>Места работы в резюме, контакты человека, позиции в чеке. В нашей базе среднее число мест работы — <code>2,43</code>, максимум четыре. Такой массив не вырастет: он ограничен самой предметной областью.</p>
+              <em>резюме → experience: массив из 1–4 объектов</em>
+            </article>
+            <article class="def">
+              <b>десятки и сотни · one-to-many</b>
+              <strong>Выносим и ссылаемся</strong>
+              <p>Резюме, ссылающиеся на компанию: в нашей базе на одну компанию их от 42 до 53. Хранить в компании массив из полусотни идентификаторов можно, но список растёт и меняется чаще, чем сама компания.</p>
+              <em>резюме → company_id, компания о резюме не знает</em>
+            </article>
+            <article class="def">
+              <b>тысячи и больше · one-to-squillions</b>
+              <strong>Ссылка только со стороны «многих»</strong>
+              <p>Отклики на вакансию, события устройства, строки лога. Массив внутри родителя запрещён пределом документа: мы это видели на 86 000. Ссылка живёт в дочернем документе и указывает вверх.</p>
+              <em>отклик → vacancy_id, вакансия остаётся маленькой</em>
+            </article>
+          </div>
+          <p class="note"><b>Как определить размер, не гадая.</b> Задайте один вопрос: «сколько таких элементов будет у самого большого экземпляра через два года работы системы». Если ответ — число, которое вы можете назвать, это единицы или десятки. Если ответ «зависит от того, насколько популярна вакансия» — границы нет, и вкладывать нельзя.</p>
+        </div>
+        <span class="pair-number">20</span>
+      </section>
+
+      <!-- 21 · Главное правило -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Главная мысль занятия</p>
+          <h2>Форму документа выбирает не схема данных, а список операций над ними</h2>
+          <div class="picks">
+            <div class="pick">
+              <b>Вопрос 1 · читаем вместе или порознь?</b>
+              <p>Если данные почти всегда показываются вместе — карточка резюме с компаниями, чек с позициями, — вкладывайте. Каждое разделение здесь превращается в лишнее обращение на каждый показ.</p>
+              <em>читаем вместе → вложение</em>
+            </div>
+            <div class="pick pick--ref">
+              <b>Вопрос 2 · меняются вместе или отдельно?</b>
+              <p>Если у данных разный ритм изменения — резюме правит соискатель раз в полгода, а название компании меняет отдел партнёрств, — выносите. Иначе одна правка размажется по сотням документов.</p>
+              <em>меняются порознь → ссылка</em>
+            </div>
+            <div class="pick pick--ref">
+              <b>Вопрос 3 · есть ли у роста граница?</b>
+              <p>Если число вложенных элементов не ограничено предметной областью, вкладывать нельзя вообще, независимо от ответов на первые два вопроса. Предел документа не обсуждается.</p>
+              <em>роста без границы → только ссылка</em>
+            </div>
+            <div class="pick pick--mix">
+              <b>Что делать, когда ответы противоречат</b>
+              <p>Читаем вместе, но меняется порознь — самый частый случай, и он честно решается гибридом: ссылка плюс маленькая копия тех полей, которые нужны для показа. Разберём на экране 25.</p>
+              <em>противоречие → вырезка</em>
+            </div>
+          </div>
+          <p class="note">Эти три вопроса задаются <b>про каждую связь отдельно</b>, а не про модель целиком. В одном документе резюме опыт работы вложен, компания вынесена, а отклики этого соискателя вообще лежат в третьей коллекции — и это нормальная, а не противоречивая модель.</p>
+        </div>
+        <span class="pair-number">21</span>
+      </section>
+
+      <!-- 22 · Решающая карта -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Справка · остаётся у вас после занятия</p>
+          <h2>Решающая карта: признак связи — и сторона, в которую он тянет</h2>
+          <div class="decide__head"><span>признак</span><span>как проверить на своих данных</span><span>тянет к</span></div>
+          <div class="decide">
+            <div class="decide__row"><b>Читаются вместе</b><span>откройте макет экрана: если оба набора данных попадают в один экран, они читаются вместе</span><em>ВЛОЖЕНИЕ</em></div>
+            <div class="decide__row"><b>Меняются одной операцией</b><span>правка затрагивает и родителя, и вложенное — значит, это одна запись, и она должна быть атомарной</span><em>ВЛОЖЕНИЕ</em></div>
+            <div class="decide__row"><b>Часть не существует без целого</b><span>удалите родителя мысленно: если дочерние данные теряют смысл, они принадлежат ему</span><em>ВЛОЖЕНИЕ</em></div>
+            <div class="decide__row to-ref"><b>Значение меняется у себя</b><span>у данных есть собственный владелец и свой ритм правок — как у названия компании</span><em>ССЫЛКА</em></div>
+            <div class="decide__row to-ref"><b>Одно значение на многих</b><span>посчитайте, во скольких документах повторяется: 49 из 150 — это уже справочник</span><em>ССЫЛКА</em></div>
+            <div class="decide__row to-ref"><b>Рост без верхней границы</b><span>назовите максимум за два года: не получается — вкладывать нельзя</span><em>ССЫЛКА</em></div>
+          </div>
+          <p class="note">Карта не голосует большинством. Шестой признак — запрещающий: одна «ссылка» в нём перевешивает три «вложения» сверху, потому что предел документа не обходится аккуратностью.</p>
+        </div>
+        <span class="pair-number">22</span>
+      </section>
+
+      <!-- 23 · Сверка с документацией -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Справка · сверяем свою карту с официальной</p>
+          <h2>MongoDB печатает ту же таблицу, только строками сценариев</h2>
+          <div class="shot-split">
+            <figure class="shot">
+              <img src="shots/30-docs-embedding-vs-references.png" alt="MongoDB Manual: таблица Scenario / Linking Method с рекомендациями embedding и referencing">
+              <figcaption>mongodb.com/docs · Data Modeling → Best Practices → Link Related Data</figcaption>
+            </figure>
+            <div>
+              <p class="note" style="margin-top:0"><b>Строки за вложение:</b> данные читаются приложением вместе, меняются вместе, архивируются вместе, отношение «состоит из». Ровно первые три признака нашей карты, только другими словами.</p>
+              <p class="note"><b>Строки за ссылку:</b> высокая кардинальность у дочерней стороны, дублирование дорого поддерживать, суммарный объём давит на память и канал, <b>embedded data grows without bounds</b>, запись идёт часто и по разным местам, дочерняя часть существует сама по себе.</p>
+              <p class="note">Полезно проверить себя: закройте правую колонку рукой и предскажите ответ по каждому сценарию. Если предсказываете все двенадцать — карта уложилась в голову, и на приёмке вы объясните свой выбор без подсказки.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">23</span>
+      </section>
+
+      <!-- 24 · Атомарность -->
+      <section class="slide" data-accent="violet">
+        <div class="slide-inner">
+          <p class="eyebrow">Механизм · довод, который не про скорость</p>
+          <h2>Операция над одним документом атомарна. Над двумя коллекциями — уже нет</h2>
+          <div class="shot-split">
+            <div class="psql">
+              <div class="psql__bar"><i></i><i></i><i></i><span>docker exec -i hh-mongo mongosh hh · пробуем транзакцию</span></div>
+<pre><span class="fn">hh&gt;</span> <span class="kw">const</span> s = db.<span class="fn">getMongo</span>().<span class="fn">startSession</span>()
+<span class="fn">hh&gt;</span> s.<span class="fn">startTransaction</span>()
+<span class="fn">hh&gt;</span> s.<span class="fn">getDatabase</span>(<span class="str">"hh"</span>).companies.<span class="fn">updateOne</span>(…)
+
+<span class="kw">MongoServerError</span>: This MongoDB deployment does not
+support retryable writes. Please add retryWrites=false
+to your connection string.<span class="caret"></span></pre>
+            </div>
+            <div>
+              <p class="note" style="margin-top:0"><b>Что показал стенд.</b> Транзакции в MongoDB есть, но требуют набора реплик; наш одиночный сервер их не поддерживает — и сказал об этом прямо. Так что на этом занятии согласованность между двумя коллекциями мы обеспечить не можем ничем, кроме порядка операций в приложении.</p>
+              <p class="note">А вот внутри одного документа согласованность бесплатна: <code>updateOne</code> либо применится целиком, либо не применится вовсе. Резюме не окажется в состоянии «зарплату поменяли, а должность ещё нет».</p>
+              <p class="note"><b>Как это влияет на выбор формы.</b> Если два набора данных обязаны меняться вместе или не меняться вообще — это сильный довод вложить их в один документ. Не ради скорости, а ради того, что промежуточного состояния не бывает.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">24</span>
+      </section>
+
+      <!-- 25 · Гибрид -->
+      <section class="slide" data-accent="amber">
+        <div class="slide-inner">
+          <p class="eyebrow">Третий вариант · когда ответы противоречат</p>
+          <h2>Вырезка: ссылка остаётся, но рядом лежит копия одного-двух полей — тех, что нужны для показа</h2>
+          <div class="doc-duo">
+            <div class="doc">
+              <div class="doc__bar"><span>hh.resumes · гибридная форма</span><span>ссылка + вырезка</span></div>
+<pre><span class="c">{</span> <span class="k">_id</span>: <span class="s">"r-001"</span>, <span class="k">fio</span>: <span class="s">"Елена Белова"</span>,
+  <span class="k">experience</span>: [
+    { <span class="k">role</span>: <span class="s">"стажёр"</span>, <span class="k">months</span>: <span class="n">37</span>,
+      <span class="k">company_id</span>: <span class="r">"c-ipsor"</span>,      <span class="c">// ссылка — источник истины</span>
+      <span class="k">company_name</span>: <span class="s">"ИП Сорокин"</span> <span class="c">// вырезка — чтобы показать список</span>
+    }
+  ]<span class="c"> }</span></pre>
+            </div>
+            <div>
+              <p class="note" style="margin-top:0"><b>Что мы купили.</b> Список резюме рисуется одним запросом: название компании уже в документе. Карточка, где нужны сайт, отрасль и число сотрудников, по-прежнему идёт за ними в <code>companies</code> по <code>company_id</code>.</p>
+              <p class="note"><b>Чем заплатили.</b> Копия названия вернулась, а с ней и заявка CR-014: при переименовании нужно пройти по резюме. Но теперь это <b>осознанный</b> дубликат: он назван, он один, и правится он одной операцией по известному фильтру <code>{ "experience.company_id": "c-ozon" }</code>.</p>
+              <p class="note"><b>Правило вырезки.</b> Дублируем только то, что либо почти не меняется, либо должно остаться историческим. Название компании на момент подачи резюме — как раз второй случай: во многих системах его специально не обновляют, потому что человек работал в компании с тем названием.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">25</span>
+      </section>
+
+      <!-- 26 · Разбор четырёх связей -->
+      <section class="slide" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">За клавиатуру · разбор четырёх связей</p>
+          <h2>Четыре связи из разных областей. Задайте три вопроса и назовите форму — вслух, до того как откроете следующий экран</h2>
+          <div class="picks">
+            <div class="pick">
+              <b>Заказ и его позиции</b>
+              <p>Интернет-магазин. Позиции показываются только вместе с заказом, меняются вместе с ним, после оформления не меняются вообще. Больше сорока позиций в заказе не бывает.</p>
+              <em>ответ: вложение — все три вопроса за него</em>
+            </div>
+            <div class="pick pick--ref">
+              <b>Товар и отзывы на него</b>
+              <p>Тот же магазин. Отзывы пишут годами, у популярного товара их тысячи, читаются они отдельной страницей с постраничной выдачей, а карточка товара — без них.</p>
+              <em>ответ: ссылка — граница роста отсутствует</em>
+            </div>
+            <div class="pick pick--mix">
+              <b>Тикет поддержки и его автор</b>
+              <p>Служба поддержки. В списке тикетов нужно имя автора, в карточке — его телефон и договор. Сотрудники увольняются, имена меняются при смене фамилии.</p>
+              <em>ответ: ссылка плюс вырезка имени</em>
+            </div>
+            <div class="pick pick--ref">
+              <b>Показания счётчика и квартира</b>
+              <p>ЖКХ. Показания приходят ежемесячно и не удаляются никогда, квартира одна и та же двадцать лет, отчёты строятся по показаниям за период, а не по квартире.</p>
+              <em>ответ: ссылка со стороны показаний, one-to-squillions</em>
+            </div>
+          </div>
+          <p class="note">Если по какой-то из четырёх связей ваш ответ разошёлся с подписью — это хороший разговор на паре, а не ошибка. Назовите операцию, из-за которой вы решили иначе: спор о форме документа всегда решается операцией, а не вкусом.</p>
+        </div>
+        <span class="pair-number">26</span>
+      </section>
+
+      <!-- 27 · Практика -->
+      <section class="slide" data-accent="mint">
+        <div class="slide-inner">
+          <p class="eyebrow">Практика · 45 минут на своём стенде</p>
+          <h2>Что делаем руками до конца пары</h2>
+          <ol class="check">
+            <li><b>01</b><div>Поднять стенд занятия и загрузить <code>seed/</code>: <code>companies</code>, <code>resumes_embed</code>, <code>resumes_ref</code>, <code>interviews</code>. Проверить счётчики: <b>8 · 150 · 150 · 60</b>.</div><em>10 мин</em></li>
+            <li><b>02</b><div>Прогнать <code>queries.mongodb.js</code> и получить свои числа по обеим формам. Сверить с экранами 8, 11 и 12: расхождение в миллисекундах нормально, расхождение в числе документов — нет.</div><em>10 мин</em></li>
+            <li><b>03</b><div>Выполнить заявку CR-014 в обеих формах и после этого найти забытую копию в <code>interviews</code> — тем же фильтром, что на экране 13.</div><em>5 мин</em></li>
+            <li><b>04</b><div>Довести встроенный массив до предела: скрипт <code>grow.mongodb.js</code> дописывает отклики по тысяче, пока сервер не откажет. Записать, на каком числе остановилось у вас.</div><em>5 мин</em></li>
+            <li><b>05</b><div>Взять <b>три связи своей</b> предметной области, задать по каждой три вопроса с экрана 21 и записать выбор в <code>ADR-002.md</code>.</div><em>10 мин</em></li>
+            <li><b>06</b><div>Собрать под выбранную форму <code>seed.json</code> и два запроса, которые доказывают, что она работает: один на чтение, один на изменение.</div><em>5 мин</em></li>
+          </ol>
+          <p class="note">Пункт 4 — намеренная поломка, она обязательна: на приёмке спрашивается текст ошибки и число, на котором остановился рост. Пересказ «там был предел 16 мегабайт» не принимается.</p>
+        </div>
+        <span class="pair-number">27</span>
+      </section>
+
+      <!-- 28 · Ошибки -->
+      <section class="slide" data-accent="coral">
+        <div class="slide-inner">
+          <p class="eyebrow">Ошибки · что чаще всего ломается в этой теме</p>
+          <h2>Пять ошибок проектирования, каждая со своим симптомом</h2>
+          <div class="defs defs--trio">
+            <article class="def">
+              <b>ошибка 1</b>
+              <strong>Схема нарисована до списка операций</strong>
+              <p>Модель собрана «как в учебнике по нормализации», а потом выясняется, что главный экран приложения требует четырёх обращений к базе.</p>
+              <em>симптом: на каждый экран — свой join</em>
+            </article>
+            <article class="def">
+              <b>ошибка 2</b>
+              <strong>Вложен массив без верхней границы</strong>
+              <p>Отклики, комментарии, события — всё внутри родителя. Работает год, потом одна запись перестаёт обновляться.</p>
+              <em>симптом: <code>BSONObjectTooLarge</code> на одном документе из миллиона</em>
+            </article>
+            <article class="def">
+              <b>ошибка 3</b>
+              <strong>Копия есть, а списка копий нет</strong>
+              <p>Значение продублировано осознанно, но нигде не записано, где ещё оно лежит. Правку делают в одном месте из трёх.</p>
+              <em>симптом: одна сущность под двумя именами</em>
+            </article>
+            <article class="def">
+              <b>ошибка 4</b>
+              <strong>Соединение по неиндексированному полю</strong>
+              <p><code>$lookup</code> по <code>site</code> вместо <code>_id</code>: 415 мс вместо 15 на пятистах карточках. На тысяче пользователей это уже отказ.</p>
+              <em>симптом: медленный отчёт при быстрых запросах</em>
+            </article>
+            <article class="def">
+              <b>ошибка 5</b>
+              <strong>Правка массива без <code>arrayFilters</code></strong>
+              <p>Позиционный оператор <code>$</code> меняет только первый подходящий элемент массива. Если компания в резюме встречается дважды, вторая останется старой.</p>
+              <em>симптом: <code>modifiedCount</code> совпал, а данные нет</em>
+            </article>
+            <article class="def">
+              <b>и одна не ошибка</b>
+              <strong>Разные формы у соседних связей</strong>
+              <p>Опыт вложен, компания вынесена, отклики в третьей коллекции — это не мешанина, а результат трёх отдельных решений. Мешанина — когда решений не было.</p>
+              <em>проверка: у каждой связи есть строка в ADR</em>
+            </article>
+          </div>
+        </div>
+        <span class="pair-number">28</span>
+      </section>
+
+      <!-- 29 · ADR-002 -->
+      <section class="slide" data-accent="mint">
+        <div class="slide-inner">
+          <p class="eyebrow">Форма сдачи · архитектурное решение</p>
+          <h2>ADR-002: одна страница, на которой видно не только выбор, но и его цену</h2>
+          <div class="adr">
+            <div><b>Контекст</b><strong>Какая связь и какие операции</strong><p>Две сущности, объём каждой, и три-четыре операции, которые с ними выполняются чаще всего. Без операций весь документ превращается в пересказ занятия.</p></div>
+            <div><b>Решение</b><strong>Форма и её границы</strong><p>«Опыт работы вкладываем, компанию выносим по <code>company_id</code>, название дублируем вырезкой». Одна фраза, из которой понятно, что где лежит.</p></div>
+            <div><b>Цена</b><strong>Чем платим и сколько это в числах</strong><p>Ваш собственный замер: сколько документов трогает правка, сколько обращений нужно на чтение, на сколько выросла коллекция. Числа со своего стенда.</p></div>
+            <div><b>Альтернатива</b><strong>Что рассматривали и почему отклонили</strong><p>Вторая форма и конкретная причина отказа: «полный embedding отклонён — массив откликов не имеет верхней границы».</p></div>
+            <div><b>Остаточный риск</b><strong>Что останется больным</strong><p>«Копия названия в резюме требует правки при переименовании; фильтр правки — вот такой». Риск, названный заранее, перестаёт быть аварией.</p></div>
+            <div><b>Проверка</b><strong>Чем доказываем</strong><p>Два запроса из <code>queries.mongodb.js</code> с числами и один намеренный отказ. Приёмка идёт по ним, а не по формулировкам.</p></div>
+          </div>
+          <p class="note">Бланк лежит в стенде занятия: <code>ADR-002.md</code>. Заполняется на паре, дописывается дома — но пустых полей на приёмке быть не должно, включая «остаточный риск»: модели без остаточного риска не бывает.</p>
+        </div>
+        <span class="pair-number">29</span>
+      </section>
+
+      <!-- 30 · Границы темы -->
+      <section class="slide" data-accent="violet">
+        <div class="slide-inner">
+          <p class="eyebrow">Границы темы · что мы сегодня не решали</p>
+          <h2>Три вопроса, которые честно откладываются на следующие занятия</h2>
+          <div class="defs defs--trio">
+            <article class="def">
+              <b>занятие 3</b>
+              <strong>Кто помешает положить кривой документ</strong>
+              <p>Сегодня мы выбрали форму, но ничто не мешает записать резюме без <code>company_id</code> или с числом в поле названия. Проверку формы включает schema validation.</p>
+              <em>вопрос с экрана 25 — что если вырезка разойдётся со справочником</em>
+            </article>
+            <article class="def">
+              <b>занятие 4</b>
+              <strong>Откуда взялись 415 мс</strong>
+              <p>Мы увидели, что соединение по неиндексированному полю в 27 раз дороже, но не смотрели, что именно делает сервер. Это план запроса и индексы.</p>
+              <em>кадр плана запроса лежит в <code>shots/</code> — читать его будем на том занятии</em>
+            </article>
+            <article class="def">
+              <b>занятие 5</b>
+              <strong>Как переехать из одной формы в другую</strong>
+              <p>Модель, выбранная сегодня, через полгода окажется неудачной — это нормально. Повторяемая миграция документов v1 → v2 и есть тема пятого занятия.</p>
+              <em>заодно там же — <code>$unwind</code>, <code>$group</code> и отчёты по обеим формам</em>
+            </article>
+          </div>
+          <p class="note">Сквозной артефакт дисциплины на конец занятия: <b>MongoDB model v0.2</b> — модель занятия 1, у которой теперь есть обоснование по каждой связи и записанная цена. К зачёту она станет документным контуром DATA PLATFORM v1.0.</p>
+        </div>
+        <span class="pair-number">30</span>
+      </section>
+
+      <!-- 31 · Итог -->
+      <section class="slide slide--final" data-accent="cyan">
+        <div class="slide-inner">
+          <p class="eyebrow">Итог занятия</p>
+          <h2>Что теперь считается, а не выбирается на глаз</h2>
+          <div class="final-metrics">
+            <span><strong>3</strong>вопроса вместо спора о вкусах</span>
+            <span><strong>49</strong>документов правит одна заявка во вложенной форме</span>
+            <span><strong>1</strong>документ — в ссылочной</span>
+            <span><strong>86000</strong>откликов до стены</span>
+            <span><strong>16777216</strong>байт — предел, который не обходится</span>
+            <span><strong>2</strong>формы и одна вырезка между ними</span>
+          </div>
+          <div class="callout"><b>Вопрос на выход.</b> В вашей модели есть связь, где данные читаются всегда вместе, но меняются по отдельности. Какую форму вы выберете и какую именно строку добавите в раздел «остаточный риск» своего ADR-002? Ответ — одной фразой, вслух или в чат группы.</div>
+          <p class="note">Разбор всех чисел этого занятия — в <code>LESSON_PLAN.md</code> рядом с колодой: там же указано, каким запросом получено каждое из них. Кнопка <b>S</b> открывает источники.</p>
+        </div>
+        <span class="pair-number">31</span>
+      </section>
+
+      <!-- 32 · ДЗ -->
+      <section class="slide has-pin" data-accent="coral">
+        <div class="slide-inner">
+          <p class="eyebrow">Домашнее задание · к следующему занятию</p>
+          <h2>Максим Николаевич не хочет задавать домашнее задание. Но очень хочет</h2>
+          <ol class="hw-cards">
+            <li><b>1</b><div><b>Три связи и ADR-002</b><p>В своей предметной области выберите <b>три</b> связи между сущностями. По каждой ответьте на три вопроса с экрана 21 и запишите решение в <code>ADR-002.md</code>: форма, цена, отклонённая альтернатива, остаточный риск.</p></div></li>
+            <li><b>2</b><div><b>Обе формы на стенде и замер</b><p>Одну из трёх связей соберите <b>двумя</b> способами — вложением и ссылкой — в двух коллекциях. Замерьте на своих данных: чтение карточки, правку общего значения и объём коллекций. Числа — в <code>queries.md</code>.</p></div></li>
+            <li><b>3</b><div><b>Своя стена</b><p>Найдите в своей модели связь без верхней границы и доведите её до отказа: дописывайте элементы, пока сервер не ответит. Приложите текст ошибки и число, на котором остановились.</p></div></li>
+          </ol>
+          <figure class="meme-pin">
+            <img src="../../../shared/memes/meme-money-leaves.jpg" alt="Мем: котёнок у ноутбука, «деньги приходят и уходят и уходят и уходят»">
+            <figcaption>счёт за каждую копию</figcaption>
+          </figure>
+        </div>
+        <span class="pair-number">ДЗ</span>
+      </section>
+
+      <!-- 33 · Порядок сдачи -->
+      <section class="slide" data-accent="coral">
+        <div class="slide-inner">
+          <p class="eyebrow">Домашнее задание · порядок сдачи</p>
+          <h2>Как сдаём</h2>
+          <div class="hw-order">
+            <div><b>Что сдаём</b><p>Папка <code>lesson_02/</code>: <code>ADR-002.md</code>, <code>queries.md</code> с замерами, два файла данных под обе формы и вывод отказа из задания 3.</p></div>
+            <div><b>Ветка и PR</b><p>Ветка <code>hw-02</code>, коммит с содержательным сообщением, Pull Request в собственную <code>main</code>. В описании — одна фраза про самую спорную из трёх связей.</p></div>
+            <div><b>Срок</b><p>До начала занятия 3. Работы после срока принимаются, но разбираются в чате, а не на паре.</p></div>
+            <div><b>Про ИИ</b><p>Модель можно просить <mark>причесать формулировки ADR</mark> — я сам так делаю. А вот числа в <code>queries.md</code> должны быть получены на вашем стенде: на приёмке вы повторяете любой замер и объясняете, почему выбрана эта форма.</p></div>
+          </div>
+          <div class="callout"><b>Критерий приёмки:</b> по каждой из трёх связей вы называете операцию, которая решила выбор, показываете число со своего стенда и говорите, что останется больным. Три ответа «так удобнее» — работа возвращается.</div>
+          <button class="source-link" id="hwDownload" type="button">Скачать задание в PDF →</button>
+          <p class="note">В диалоге печати снимите галочку «Колонтитулы», иначе браузер допишет дату и адрес страницы.</p>
+        </div>
+        <span class="pair-number">ДЗ</span>
+      </section>
+
+    </main>
+
+    <footer class="controls">
+      <button class="nav-button" id="prevButton" type="button" aria-label="Предыдущий слайд">←</button>
+      <div class="progress" id="progress" aria-hidden="true"></div>
+      <button class="nav-button" id="nextButton" type="button" aria-label="Следующий слайд">→</button>
+      <span class="key-hint">← → / пробел · F — во весь экран · S — источники</span>
+    </footer>
+  </div>
+
+  <aside class="sources-panel" id="sourcesPanel" aria-hidden="true">
+    <div class="sources-backdrop" data-close-sources></div>
+    <div class="sources-sheet" role="dialog" aria-modal="true" aria-labelledby="sourcesTitle">
+      <button class="sources-close" type="button" data-close-sources aria-label="Закрыть">×</button>
+      <p class="eyebrow">Проверяемая основа презентации</p>
+      <h2 id="sourcesTitle">Источники</h2>
+      <ol>
+        <li><a href="https://www.mongodb.com/docs/manual/data-modeling/concepts/embedding-vs-references/" target="_blank" rel="noreferrer"><strong>MongoDB Manual</strong><span>Best Practices for Data Modeling: таблица сценариев «Scenario → Linking Method»</span></a></li>
+        <li><a href="https://www.mongodb.com/docs/manual/data-modeling/design-patterns/embedded-data/" target="_blank" rel="noreferrer"><strong>MongoDB Manual</strong><span>Embedded Data: когда вложение упрощает модель и код</span></a></li>
+        <li><a href="https://www.mongodb.com/docs/manual/reference/limits/" target="_blank" rel="noreferrer"><strong>MongoDB Manual</strong><span>Limits and Thresholds: 16 мебибайт на документ и 100 уровней вложенности</span></a></li>
+        <li><a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/lookup/" target="_blank" rel="noreferrer"><strong>MongoDB Manual</strong><span>$lookup: поля <code>from</code>, <code>localField</code>, <code>foreignField</code>, <code>as</code></span></a></li>
+        <li><a href="https://www.mongodb.com/docs/manual/reference/operator/update/positional-filtered/" target="_blank" rel="noreferrer"><strong>MongoDB Manual</strong><span><code>$[&lt;identifier&gt;]</code> и <code>arrayFilters</code>: правка всех подходящих элементов массива</span></a></li>
+        <li><a href="https://www.mongodb.com/docs/manual/core/transactions/" target="_blank" rel="noreferrer"><strong>MongoDB Manual</strong><span>Transactions: требуют набора реплик; операция над одним документом атомарна всегда</span></a></li>
+        <li><a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/bsonSize/" target="_blank" rel="noreferrer"><strong>MongoDB Manual</strong><span>$bsonSize: размер документа в байтах прямо в конвейере</span></a></li>
+        <li><a href="https://www.mongodb.com/docs/manual/data-modeling/design-antipatterns/unbounded-arrays/" target="_blank" rel="noreferrer"><strong>MongoDB Manual</strong><span>Unbounded Arrays: антипаттерн массива без верхней границы</span></a></li>
+      </ol>
+      <p class="sources-note">Все числа занятия получены прогоном на стенде: MongoDB 7.0.40 в Docker Compose, MongoDB Compass 1.50.0, база <code>hh</code> — 150 резюме в двух формах, 8 компаний, 60 приглашений; большая база — 20 000 резюме и 5 000 компаний, собрана скриптом <code>stend/scale.mongodb.js</code>. Замеры времени сделаны на одной машине подряд и годятся для сравнения форм между собой, а не как абсолютная производительность MongoDB. Имена, компании и данные вымышлены.</p>
+    </div>
+  </aside>
+
+  <!-- печатный лист домашнего задания -->
+  <div class="hw-sheet">
+    <header class="hw-head">
+      <div>
+        <p class="hw-course">МДК.04.01 · Технология разработки и защиты баз данных · 4 курс</p>
+        <h1>Домашнее задание № 2</h1>
+        <p class="hw-sub">Занятие 2 — Embedding и referencing: проектирование от операций чтения и изменения</p>
+      </div>
+      <div class="hw-mark">hw-02</div>
+    </header>
+    <p class="hw-joke">Максим Николаевич не хочет задавать вам домашнее задание. Но очень хочет.</p>
+    <figure class="hw-meme">
+      <img src="../../../shared/memes/meme-money-leaves.jpg" alt="Мем: деньги приходят и уходят">
+    </figure>
+
+    <h2>Что сделать</h2>
+    <ol class="hw-list">
+      <li><b>Три связи и ADR-002.</b> Выберите в своей предметной области три связи между сущностями. По каждой ответьте на три вопроса: читаются вместе или порознь; меняются вместе или отдельно; есть ли у роста верхняя граница. Решение запишите в <code>ADR-002.md</code> по бланку из стенда: контекст, решение, цена, отклонённая альтернатива, остаточный риск, проверка.</li>
+      <li><b>Обе формы и замер.</b> Одну связь соберите двумя способами — вложением и ссылкой. Замерьте на своих данных: сколько обращений нужно на чтение карточки, сколько документов трогает правка общего значения, сколько места занимает каждая форма. Числа и сами запросы — в <code>queries.md</code>.</li>
+      <li><b>Своя стена.</b> Найдите связь без верхней границы, соберите документ с растущим массивом и дописывайте элементы, пока сервер не откажет. Приложите точный текст ошибки, число элементов и размер документа в байтах.</li>
+      <li><b>Абзац о вырезке.</b> Опишите, какое поле вы продублировали сознательно, зачем и каким фильтром это дублирование правится при изменении источника.</li>
+    </ol>
+    <p class="hw-note">Числа в <code>queries.md</code> сверяются на приёмке: любой замер повторяется при вас. Скриншот без работающего стенда не принимается — со следующего занятия мы дописываем в эту же базу.</p>
+
+    <h2>Порядок сдачи</h2>
+    <table class="hw-table">
+      <tr><th>Что сдаём</th><td>Папка <code>lesson_02/</code>: ADR-002.md, queries.md с замерами, файлы данных под обе формы, вывод отказа из задания 3.</td></tr>
+      <tr><th>Ветка и PR</th><td>Ветка <code>hw-02</code>, коммит с содержательным сообщением, затем Pull Request в свою main. В описании — одна фраза про самую спорную из трёх связей и почему выбрана именно эта форма.</td></tr>
+      <tr><th>Срок</th><td>До начала занятия 3. После срока работа принимается, но разбирается в чате, а не на паре.</td></tr>
+      <tr><th>Про ИИ</th><td>Модель можно просить причесать формулировки ADR. Замеры при этом должны быть выполнены на вашем стенде: на приёмке любой из них повторяется.</td></tr>
+    </table>
+
+    <h2>Что должно получиться</h2>
+    <dl class="hw-gloss">
+      <dt>ADR-002.md</dt><dd>три связи, по каждой форма, цена в числах, отклонённая альтернатива и остаточный риск</dd>
+      <dt>queries.md</dt><dd>замеры по обеим формам: обращения, документы, миллисекунды, объём коллекций</dd>
+      <dt>данные</dt><dd>два файла seed под вложенную и ссылочную форму одной и той же связи</dd>
+      <dt>отказ</dt><dd>текст ошибки предела документа, число элементов и размер в байтах</dd>
+    </dl>
+    <p class="hw-foot">Стенд занятия — в папке <code>lessons/03-embedding-referencing/stend/</code>. Разбор счетов — экраны 8, 11 и 12, решающая карта — экран 22. Вопросы по заданию — на паре или в чате группы.</p>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
