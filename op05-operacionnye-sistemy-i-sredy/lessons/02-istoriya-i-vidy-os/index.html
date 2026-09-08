@@ -1,0 +1,789 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#F5F1EA">
+  <title>История, назначение и виды операционных систем</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&family=Unbounded:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../styles.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="deck" id="deck">
+  <header class="chrome">
+    <button class="brand" type="button" data-go="0"><span class="brand-mark">ОС</span><span class="brand-copy">Операционные системы<br>и среды</span></button>
+    <div class="chrome-right"><button class="icon-button" id="sourcesButton" type="button" title="План занятия и источники">S</button><button class="icon-button" id="fullscreenButton" type="button" title="Полный экран">⛶</button><span class="counter"><span id="currentNumber">01</span><i>/</i><span id="totalNumber">44</span></span></div>
+  </header>
+  <main class="slides">
+
+    <!-- 01 · титул -->
+    <section class="slide slide--title is-active" data-accent="orange"><div class="slide-inner">
+      <p class="eyebrow">Занятие 2 · 2 академических часа</p>
+      <h1>История, назначение<br>и функции <code>ОС</code>.<br>Виды операционных систем</h1>
+      <p class="lead">Разбираем операционную систему как программу, которая распоряжается процессором, памятью и устройствами. Каждая её функция появилась как ответ на конкретную неудобную ситуацию — поэтому идём за ними по хронологии, от машинного зала до телефона в кармане.</p>
+      <div class="title-meta"><span>от ENIAC до Android</span><span>функции ядра</span><span>шесть признаков классификации</span><span>живая демонстрация планировщика</span></div>
+    </div><span class="pair-number">02</span></section>
+
+    <!-- 02 · точка входа: простой машинного зала -->
+    <section class="slide slide--dark" data-accent="amber"><div class="slide-inner">
+      <p class="eyebrow">Машинный зал · конец 1950-х</p>
+      <h2>Расчёт занял три минуты. Машина простояла сорок</h2>
+      <div class="era">
+        <div class="era__beats">
+          <div class="era__beat era__beat--problem"><b>КАК ЭТО ВЫГЛЯДЕЛО</b><p>Инженер приносит колоду перфокарт, оператор вручную заряжает ленту с компилятором, ставит колоду, ждёт печати, снимает результат и готовит следующую задачу. Между двумя расчётами машина не считает ничего.</p></div>
+          <div class="era__beat era__beat--price"><b>ЧТО ЭТО СТОИЛО</b><p>Час работы такой машины стоил как месяц зарплаты инженера, а полезной работы в этом часе набиралось на несколько минут. Платили за простой.</p></div>
+          <div class="era__beat era__beat--answer"><b>ВОПРОС, С КОТОРОГО НАЧАЛАСЬ ТЕМА</b><p>Кто должен снимать одну задачу и ставить следующую, пока человек идёт по коридору? Ответом стала программа, которая постоянно находится в памяти и распоряжается машиной. Так появилась операционная система.</p></div>
+        </div>
+        <figure class="era__shot"><img src="assets/ibm-704.gif" alt="IBM 704 — машина конца 1950-х годов"><figcaption>IBM 704, 1957 · Wikimedia Commons</figcaption></figure>
+      </div>
+    </div></section>
+
+    <!-- 03 · карта занятия -->
+    <section class="slide" data-accent="aubergine"><div class="slide-inner">
+      <p class="eyebrow">Карта занятия · четыре вопроса</p>
+      <h2>Тема закрывается, когда вы отвечаете на четыре вопроса без подсказки</h2>
+      <div class="agenda">
+        <div><span>01</span><b>ЗАЧЕМ</b><strong>Что делает ОС и что было бы без неё</strong><p>Модель слоёв, два режима работы процессора, системный вызов.</p></div>
+        <div><span>02</span><b>ОТКУДА</b><strong>Как появилась каждая функция</strong><p>Шесть шагов хроники: пакетная обработка, мультипрограммирование, разделение времени, UNIX, персональные машины, мобильные системы.</p></div>
+        <div><span>03</span><b>ЧТО ИМЕННО</b><strong>Шесть функций и как их увидеть</strong><p>Процессы, память, файлы, устройства, доступ, интерфейс — с демонстрацией планировщика.</p></div>
+        <div><span>04</span><b>КАКИЕ БЫВАЮТ</b><strong>Шесть признаков классификации</strong><p>Собираем паспорт своей системы и разбираем семейства: Windows, Linux, macOS, BSD, мобильные.</p></div>
+      </div>
+      <div class="callout">Практическая работа № 1 уже дала вам живой материал: Ubuntu в VirtualBox — это гостевая ОС, а Windows или macOS на вашем ноутбуке — хостовая. Сегодня мы объясняем, что именно там работает.</div>
+    </div></section>
+
+    <!-- 04 · определение -->
+    <section class="slide" data-accent="orange"><div class="slide-inner">
+      <p class="eyebrow">Определение · три части</p>
+      <h2>Операционная система — комплекс программ, который управляет ресурсами компьютера и предоставляет их прикладным программам</h2>
+      <div class="grid grid--3">
+        <div class="card"><b>ЧТО ЭТО</b><strong>Программа, а не железо</strong><p>Набор исполняемого кода и данных, который загружается в память при включении и остаётся там до выключения.</p></div>
+        <div class="card"><b>КАК РАБОТАЕТ</b><strong>Стоит между программой и устройством</strong><p>Прикладная программа не обращается к диску напрямую: она просит ОС, а ОС решает, когда и как выполнить запрос.</p></div>
+        <div class="card"><b>ЗАЧЕМ НУЖНА</b><strong>Делит ресурсы и защищает</strong><p>Процессор, память, диск и сеть достаются десяткам программ одновременно, и ошибка одной из них не должна ломать остальные.</p></div>
+      </div>
+      <div class="callout"><b>Ресурс</b> — это то, чего на всех не хватает и что приходится делить: процессорное время, оперативная память, место на диске, полоса сети, доступ к принтеру. Управление ресурсами и есть основная работа ОС.</div>
+    </div></section>
+
+    <!-- 05 · слоёная модель -->
+    <section class="slide" data-accent="blue"><div class="slide-inner">
+      <p class="eyebrow">Модель · слои одной машины</p>
+      <h2>Между вашим кодом и железом лежат три слоя, и каждый из них можно назвать</h2>
+      <div class="stack">
+        <div class="stack__layer"><b>СЛОЙ 4 · ПОЛЬЗОВАТЕЛЬ</b><strong>Человек и его задачи</strong><p>Нажатия, окна, файлы, команды в терминале.</p><span class="stack__mark">видит результат</span></div>
+        <div class="stack__layer"><b>СЛОЙ 3 · ПРИЛОЖЕНИЯ</b><strong>Браузер, редактор, ваш скрипт на Python</strong><p>Работают в пользовательском режиме и не имеют прямого доступа к устройствам.</p><span class="stack__mark">просит ресурсы</span></div>
+        <div class="stack__layer stack__layer--os"><b>СЛОЙ 2 · ОПЕРАЦИОННАЯ СИСТЕМА</b><strong>Ядро, драйверы, системные библиотеки и утилиты</strong><p>Принимает запросы, ставит их в очередь, распределяет процессор и память, обращается к устройствам.</p><span class="stack__mark">распоряжается</span></div>
+        <div class="stack__layer stack__layer--hw"><b>СЛОЙ 1 · ЖЕЛЕЗО</b><strong>Процессор, память, диск, клавиатура, сетевая карта</strong><p>Выполняет инструкции и не знает ничего о файлах, окнах и пользователях.</p><span class="stack__mark">исполняет</span></div>
+      </div>
+      <div class="callout">К этой схеме мы вернёмся ещё дважды: на ней видно, где проходит граница режимов процессора и где живёт каждая из шести функций ОС.</div>
+    </div></section>
+
+    <!-- 06 · две роли -->
+    <section class="slide" data-accent="aubergine"><div class="slide-inner">
+      <p class="eyebrow">Назначение · две роли одной программы</p>
+      <h2>ОС решает две разные задачи, и путать их не стоит</h2>
+      <div class="choice">
+        <div><b>РОЛЬ 1 · ВЗГЛЯД СВЕРХУ</b><strong>Удобная машина для программиста</strong><p>Вместо того чтобы двигать головку диска и считать секторы, вы пишете <code>open("data.txt")</code>. ОС прячет устройство за понятием файла, а сетевую карту — за понятием сокета.</p></div>
+        <div><b>РОЛЬ 2 · ВЗГЛЯД СНИЗУ</b><strong>Распорядитель ограниченных ресурсов</strong><p>Процессор один, программ — десятки. ОС решает, кто считает сейчас, кто ждёт, сколько памяти достанется каждому и чей запрос к диску выполнится первым.</p></div>
+      </div>
+      <div class="alarm">Эти роли иногда спорят между собой. Удобство требует прятать детали, а честное распределение — ограничивать программу в правах. Ведь если дать процессу всё, что он просит, соседние процессы останутся без памяти. Цена удобства — потеря прямого контроля над железом, и в системном программировании за неё иногда приходится доплачивать.</div>
+    </div></section>
+
+    <!-- 07 · счёт без ОС -->
+    <section class="slide" data-accent="red"><div class="slide-inner">
+      <p class="eyebrow">Мысленный эксперимент · машина без ОС</p>
+      <h2>Что придётся написать самому, чтобы вывести на экран строку «Привет»</h2>
+      <div class="ledger">
+        <div class="ledger__row">Код инициализации процессора и контроллера памяти после включения<span>~ сотни строк</span></div>
+        <div class="ledger__row">Драйвер видеоадаптера: режим экрана, кадровый буфер, адреса регистров<span>своя версия под каждую модель</span></div>
+        <div class="ledger__row">Растровый шрифт и код отрисовки символов по точкам<span>таблица глифов вручную</span></div>
+        <div class="ledger__row">Драйвер клавиатуры и обработка прерываний контроллера<span>таблица скан-кодов</span></div>
+        <div class="ledger__row">Чтение файла с диска: контроллер, секторы, разбор структуры файловой системы<span>отдельно под NTFS и ext4</span></div>
+        <div class="ledger__sum"><b>Итог: программа, которая печатает одну строку, весит десятки тысяч строк — и работает ровно на одной модели компьютера</b><span>перенос = переписать</span></div>
+      </div>
+      <div class="callout">Как раз этим и занимались до появления операционных систем: код писали под конкретную машину. ОС забирает эту работу себе один раз, а прикладная программа получает <code>print("Привет")</code>.</div>
+    </div></section>
+
+    <!-- 08 · ресурсы -->
+    <section class="slide" data-accent="green"><div class="slide-inner">
+      <p class="eyebrow">Ресурсы · что именно делится</p>
+      <h2>Пять ресурсов, за которые программы конкурируют прямо сейчас</h2>
+      <div class="grid grid--3">
+        <div class="card"><b>ПРОЦЕССОРНОЕ ВРЕМЯ</b><strong>Ядер единицы, процессов сотни</strong><p>Одно ядро в один момент выполняет одну последовательность инструкций. Остальные ждут своей очереди.</p></div>
+        <div class="card"><b>ОПЕРАТИВНАЯ ПАМЯТЬ</b><strong>Объём фиксирован</strong><p>Память выдаётся страницами, и ни один процесс не должен прочитать чужую страницу.</p></div>
+        <div class="card"><b>ДИСКОВОЕ ПРОСТРАНСТВО</b><strong>Один накопитель на всех</strong><p>Файлы, права доступа, квоты и очередь запросов к устройству.</p></div>
+        <div class="card"><b>УСТРОЙСТВА ВВОДА-ВЫВОДА</b><strong>Клавиатура, экран, принтер, камера</strong><p>Устройство обслуживает одного клиента за раз, а желающих больше.</p></div>
+        <div class="card"><b>СЕТЬ</b><strong>Один канал и много соединений</strong><p>Порты, сокеты, полоса пропускания, правила фильтрации.</p></div>
+        <div class="card card--accent"><b>ПРОВЕРКА НА СВОЁМ ПК</b><strong>Откройте диспетчер задач</strong><p>Список процессов и загрузка — это отчёт ОС о том, как она поделила первые два ресурса из этого списка.</p></div>
+      </div>
+    </div></section>
+
+    <!-- 09 · режимы и системный вызов -->
+    <section class="slide slide--dark" data-accent="orange"><div class="slide-inner">
+      <p class="eyebrow">Демонстрация · граница режимов</p>
+      <h2>Как программа просит записать файл: путь одного системного вызова</h2>
+      <p class="lead">Процессор работает в двух режимах. В пользовательском доступна только часть инструкций, в привилегированном — все. Прикладной код всегда выполняется в первом, ядро — во втором, и точка перехода между ними одна.</p>
+      <div class="syscall">
+        <div class="syscall__stop syscall__stop--user"><b>1 · ПОЛЬЗОВАТЕЛЬСКИЙ РЕЖИМ</b><strong>Программа вызывает write()</strong><p>Код готовит аргументы: дескриптор файла, адрес буфера, число байтов.</p></div>
+        <div class="syscall__stop syscall__stop--user"><b>2 · ПЕРЕХОД</b><strong>Специальная инструкция процессора</strong><p>Управление передаётся по фиксированному адресу, режим переключается на привилегированный.</p></div>
+        <div class="syscall__stop syscall__stop--kernel"><b>3 · ЯДРО</b><strong>Проверка прав и постановка в очередь</strong><p>Ядро проверяет, открыт ли файл на запись, копирует данные и обращается к драйверу.</p></div>
+        <div class="syscall__stop syscall__stop--kernel"><b>4 · УСТРОЙСТВО И ВОЗВРАТ</b><strong>Драйвер пишет, ядро возвращает число байтов</strong><p>Режим переключается обратно, программа продолжает со следующей строки.</p></div>
+        <div class="syscall__rail"><div class="syscall__border"><span>ГРАНИЦА РЕЖИМОВ</span></div><div class="syscall__dot"></div></div>
+      </div>
+      <div class="callout">Прикладная программа не может записать на диск сама — она может только попросить. Эта граница и есть причина, по которой ошибка в браузере не стирает системные файлы.</div>
+    </div></section>
+
+    <!-- 10 · разделитель истории -->
+    <section class="slide slide--orange" data-accent="amber"><div class="slide-inner">
+      <p class="eyebrow">Часть 2 · история</p>
+      <h1>Каждая функция ОС —<br>ответ на конкретную<br>неудобную ситуацию</h1>
+      <p class="lead">Дальше шесть экранов хроники. Каждый устроен одинаково: сначала проблема, которую нельзя было терпеть, затем решение, затем цена этого решения. Так видно, что список функций в учебнике — это не перечень, а история накопленных ответов.</p>
+      <div class="title-meta"><span>1945 · нет ОС</span><span>1956 · пакет</span><span>1964 · мультипрограммирование</span><span>1969 · UNIX</span><span>1981 · персональные</span><span>1991 · Linux</span></div>
+    </div></section>
+
+    <!-- 11 · 1940-е -->
+    <section class="slide" data-accent="red"><div class="slide-inner">
+      <p class="eyebrow">Поколение нулевое</p>
+      <span class="era__year">1945–1955</span>
+      <h2>Машину программировали проводами, и никакого посредника между человеком и железом не было</h2>
+      <div class="era">
+        <div class="era__beats">
+          <div class="era__beat era__beat--problem"><b>ЗАДАЧА</b><p>Посчитать баллистические таблицы. Программа задавалась переключателями и коммутационными панелями: инженер физически соединял блоки машины проводами.</p></div>
+          <div class="era__beat era__beat--answer"><b>ЧТО БЫЛО ВМЕСТО ОС</b><p>Ничего. Одна программа занимала всю машину целиком: и процессор, и память, и устройства. Она же содержала весь код работы с оборудованием.</p></div>
+          <div class="era__beat era__beat--price"><b>ЦЕНА</b><p>Смена задачи занимала часы или дни. Программа была неотделима от конкретной машины, и перенести её было нельзя.</p></div>
+        </div>
+        <figure class="era__shot"><img src="assets/eniac.jpg" alt="Операторы за настройкой ENIAC"><figcaption>ENIAC, Лаборатория баллистических исследований · Wikimedia Commons</figcaption></figure>
+      </div>
+    </div></section>
+
+    <!-- 12 · пакетная обработка -->
+    <section class="slide" data-accent="amber"><div class="slide-inner">
+      <p class="eyebrow">Первое поколение · пакетная обработка</p>
+      <span class="era__year">1956</span>
+      <h2>Первая ОС появилась, чтобы человек не подходил к машине между задачами</h2>
+      <div class="era">
+        <div class="era__beats">
+          <div class="era__beat era__beat--problem"><b>ПРОБЛЕМА</b><p>Между двумя расчётами машина стояла: оператор менял ленты, готовил колоды, снимал распечатки.</p></div>
+          <div class="era__beat era__beat--answer"><b>РЕШЕНИЕ</b><p>Система GM-NAA I/O, написанная в General Motors и North American Aviation для IBM 704, постоянно оставалась в памяти и сама запускала следующую задачу из пакета, как только заканчивалась предыдущая. Задачи заранее собирали в один пакет — отсюда и название пакетной обработки.</p></div>
+          <div class="era__beat era__beat--price"><b>ЦЕНА</b><p>Обратной связи нет. Ошибку в программе вы видели через несколько часов, а иногда на следующий день: пакет уже был поставлен в очередь.</p></div>
+        </div>
+        <figure class="era__shot"><img src="assets/punch-card.png" alt="Перфокарта — носитель одной строки программы"><figcaption>Перфокарта: одна строка программы · Wikimedia Commons</figcaption></figure>
+      </div>
+      <div class="callout">Отсюда в ОС остались две вещи, которые вы используете и сегодня: <b>очередь заданий</b> и <b>резидентная часть системы</b> — код, который постоянно находится в памяти. В Linux эта часть называется ядром.</div>
+    </div></section>
+
+    <!-- 13 · мультипрограммирование -->
+    <section class="slide slide--blue" data-accent="blue"><div class="slide-inner">
+      <p class="eyebrow">Второе поколение · процессор простаивает</p>
+      <span class="era__year">1960-е</span>
+      <h2>Пока программа ждёт диск, процессор не занят ничем — и это заметили</h2>
+      <div class="grid grid--2">
+        <div class="card"><b>СЧЁТ ВРЕМЕНИ</b><strong>Одна программа в памяти</strong><p>Программа читает данные с ленты, потом считает, потом печатает. Во время чтения и печати процессор ждёт: устройства медленнее его в тысячи раз.</p></div>
+        <div class="card card--good"><b>ЧТО ПРИДУМАЛИ</b><strong>Несколько программ в памяти сразу</strong><p>Как только первая программа уходит в ожидание ввода-вывода, ОС передаёт процессор второй. Это <b>мультипрограммирование</b>.</p></div>
+      </div>
+      <div class="grid grid--3">
+        <div class="card"><b>ЧТО ПОТРЕБОВАЛОСЬ 1</b><strong>Защита памяти</strong><p>Раз программ в памяти несколько, одна не должна писать в область другой. Появились аппаратные границы областей.</p></div>
+        <div class="card"><b>ЧТО ПОТРЕБОВАЛОСЬ 2</b><strong>Привилегированный режим</strong><p>Часть инструкций стала доступна только ядру, иначе программа отключила бы защиту сама.</p></div>
+        <div class="card"><b>ЧТО ПОТРЕБОВАЛОСЬ 3</b><strong>Планирование</strong><p>Понадобилось правило, какую из готовых программ запускать следующей.</p></div>
+      </div>
+      <div class="callout">Три вещи, которые мы сегодня считаем обязательными в любой ОС, появились разом — как техническая необходимость, а не как удобство.</div>
+    </div></section>
+
+    <!-- 14 · System/360 -->
+    <section class="slide" data-accent="aubergine"><div class="slide-inner">
+      <p class="eyebrow">Третье поколение · семейство машин</p>
+      <span class="era__year">1964–1966</span>
+      <h2>IBM System/360 и OS/360: одна система на целую линейку машин</h2>
+      <div class="era">
+        <div class="era__beats">
+          <div class="era__beat era__beat--problem"><b>ПРОБЛЕМА</b><p>У производителя было несколько несовместимых линий машин. Программу, написанную для одной модели, приходилось переписывать для другой, а вместе с ней — и всю системную обвязку.</p></div>
+          <div class="era__beat era__beat--answer"><b>РЕШЕНИЕ</b><p>Линейка совместимых машин разной мощности с общим набором команд и общей операционной системой OS/360. Код, написанный для младшей модели, выполнялся на старшей.</p></div>
+          <div class="era__beat era__beat--price"><b>ЦЕНА</b><p>Система, которая обязана работать на машинах разного размера и в разных сценариях, выросла до миллионов строк. Её разработка стала отдельной инженерной проблемой, о чём Фредерик Брукс потом написал книгу «Мифический человеко-месяц».</p></div>
+        </div>
+        <figure class="era__shot"><img src="assets/system-360.jpg" alt="Мейнфрейм IBM System/360"><figcaption>IBM System/360 · Wikimedia Commons</figcaption></figure>
+      </div>
+    </div></section>
+
+    <!-- 15 · разделение времени -->
+    <section class="slide" data-accent="green"><div class="slide-inner">
+      <p class="eyebrow">Разделение времени · терминал у каждого</p>
+      <span class="era__year">1961–1969</span>
+      <h2>CTSS и Multics: машина отвечает человеку, пока он сидит за терминалом</h2>
+      <div class="era">
+        <div class="era__beats">
+          <div class="era__beat era__beat--problem"><b>ПРОБЛЕМА</b><p>Пакетная обработка загружала машину, но убивала работу человека: чтобы исправить опечатку, приходилось ждать следующего прогона.</p></div>
+          <div class="era__beat era__beat--answer"><b>РЕШЕНИЕ</b><p>Разделение времени: процессор выдаётся каждому пользователю короткими отрезками по очереди. Переключение происходит настолько часто, что за терминалом кажется, будто машина занята только вами. CTSS запущена в MIT в 1961 году, следом начался проект Multics.</p></div>
+          <div class="era__beat era__beat--price"><b>ЦЕНА</b><p>Multics задумывался как система, обслуживающая целый город, и получился очень сложным. Часть участников проекта ушла делать что-то поменьше — из этого вырос UNIX.</p></div>
+        </div>
+        <figure class="era__shot"><img src="assets/multics-login.png" alt="Экран входа в систему Multics"><figcaption>Сеанс Multics в эмуляторе · Wikimedia Commons</figcaption></figure>
+      </div>
+      <div class="callout">Здесь появились <b>многопользовательский режим</b>, учётные записи, пароли и права на файлы: раз за машиной работают разные люди, их данные нужно разделить.</div>
+    </div></section>
+
+    <!-- 16 · UNIX -->
+    <section class="slide slide--dark" data-accent="orange"><div class="slide-inner">
+      <p class="eyebrow">UNIX · система, которую можно перенести</p>
+      <span class="era__year">1969–1973</span>
+      <h2>Кен Томпсон и Деннис Ритчи переписали ядро на C — и система перестала быть привязанной к железу</h2>
+      <div class="era">
+        <div class="era__beats">
+          <div class="era__beat era__beat--problem"><b>ПРОБЛЕМА</b><p>Системы писали на языке ассемблера конкретной машины. Перенести такую ОС на другую архитектуру означало написать её заново.</p></div>
+          <div class="era__beat era__beat--answer"><b>РЕШЕНИЕ</b><p>UNIX начался в Bell Labs в 1969 году, а в 1973 году его ядро переписали на языке C. Машинно-зависимым остался небольшой участок, остальное компилировалось под новую архитектуру.</p></div>
+          <div class="era__beat era__beat--price"><b>ЧТО ЕЩЁ ОТТУДА</b><p>Правило «всё есть файл», маленькие утилиты вместо одной большой программы, конвейер и права доступа на файлы. Всё это вы будете использовать в Ubuntu на следующих занятиях.</p></div>
+        </div>
+        <figure class="era__shot"><img src="assets/thompson-ritchie.jpg" alt="Кен Томпсон и Деннис Ритчи"><figcaption>Кен Томпсон и Деннис Ритчи, 1973 · Wikimedia Commons</figcaption></figure>
+      </div>
+    </div></section>
+
+    <!-- 17 · IBM PC и MS-DOS -->
+    <section class="slide" data-accent="amber"><div class="slide-inner">
+      <p class="eyebrow">Четвёртое поколение · компьютер на столе</p>
+      <span class="era__year">1981</span>
+      <h2>MS-DOS: одна задача, один пользователь и никакой защиты</h2>
+      <div class="era">
+        <div class="era__beats">
+          <div class="era__beat era__beat--problem"><b>СИТУАЦИЯ</b><p>Компьютер стал персональным: одна машина — один человек. Делить процессор между пользователями стало не с кем.</p></div>
+          <div class="era__beat era__beat--answer"><b>ЧТО СДЕЛАЛИ</b><p>Простая система с командной строкой и файловой системой FAT. Программа получала машину целиком и могла обращаться к оборудованию напрямую.</p></div>
+          <div class="era__beat era__beat--price"><b>ЦЕНА</b><p>Ни защиты памяти, ни разделения прав: зависшая программа роняла всю машину, а любая программа могла испортить любой файл. Возвращать защиту пришлось следующему поколению систем.</p></div>
+        </div>
+        <div class="era__stack"><figure class="era__shot"><img src="assets/ibm-pc.jpg" alt="Персональный компьютер IBM PC 5150"><figcaption>IBM PC 5150, 1981 · Wikimedia Commons</figcaption></figure><figure class="era__shot"><img src="assets/ms-dos.png" alt="Экран MS-DOS с выводом команды dir"><figcaption>Сеанс MS-DOS: команда dir · Wikimedia Commons</figcaption></figure></div>
+      </div>
+      <div class="callout"><b>Что осталось до сегодня:</b> буквы дисков <code>C:\</code>, разделение пути обратной косой чертой и привычка называть тип файла расширением. Команды <code>dir</code>, <code>copy</code> и <code>cd</code> разбирала оболочка — отдельная программа, а не ядро.</div>
+    </div></section>
+
+    <!-- 18 · Macintosh -->
+    <section class="slide" data-accent="blue"><div class="slide-inner">
+      <p class="eyebrow">Графический интерфейс</p>
+      <span class="era__year">1984</span>
+      <h2>Macintosh принёс мышь и окна тем, кто не собирался учить команды</h2>
+      <div class="era">
+        <div class="era__beats">
+          <div class="era__beat era__beat--problem"><b>ПРОБЛЕМА</b><p>Командная строка требует помнить имена команд и их параметры. Для человека, который просто хочет напечатать документ, это отдельная профессия.</p></div>
+          <div class="era__beat era__beat--answer"><b>РЕШЕНИЕ</b><p>Графический интерфейс: окна, значки, меню и указатель мыши. Идеи выросли из исследований Xerox PARC 1970-х; Apple Lisa вышла в 1983 году, Macintosh — в 1984-м и оказался массовым.</p></div>
+          <div class="era__beat era__beat--price"><b>ЦЕНА</b><p>Графическая оболочка потребовала памяти и процессора, а действия стало труднее повторить: команду можно записать в скрипт, движение мыши — нет. Поэтому командная строка никуда не делась.</p></div>
+        </div>
+        <figure class="era__shot"><img src="assets/macintosh.png" alt="Компьютер Apple Macintosh 128K"><figcaption>Apple Macintosh 128K, 1984 · Wikimedia Commons</figcaption></figure>
+      </div>
+    </div></section>
+
+    <!-- 19 · Linux -->
+    <section class="slide" data-accent="orange"><div class="slide-inner">
+      <p class="eyebrow">Открытый исходный код · 1991</p>
+      <h2>Ядро Linux начиналось как учебный проект студента из Хельсинки</h2>
+      <div class="quote">
+        <div>
+          <blockquote>I'm doing a (free) operating system (just a hobby, won't be big and professional like gnu) for 386(486) AT clones.<cite>Линус Торвальдс, письмо в конференцию comp.os.minix, 25 августа 1991</cite></blockquote>
+          <div class="quote__ru"><p>«Я делаю (бесплатную) операционную систему — просто хобби, ничего большого и профессионального вроде gnu — для клонов AT на 386 и 486».</p><p><b>Что вышло дальше:</b> исходный код был открыт, и правки начали присылать другие. С версии 0.12 ядро распространяется по лицензии GPL. Сегодня оно работает в серверах, телефонах на Android, роутерах и большей части суперкомпьютеров.</p></div>
+        </div>
+        <figure class="era__shot"><img src="assets/linus.jpg" alt="Линус Торвальдс"><figcaption>Линус Торвальдс · Wikimedia Commons</figcaption></figure>
+      </div>
+      <div class="callout"><b>Точность термина.</b> Linux — это ядро, а не готовая система. Операционную систему собирают вокруг него: ядро плюс программы проекта GNU, графическая среда и менеджер пакетов. Такая сборка называется дистрибутивом, и на вашей виртуальной машине команда <code>uname -r</code> покажет версию ядра, а <code>lsb_release -a</code> — версию дистрибутива Ubuntu. Это два разных номера.</div>
+    </div></section>
+
+    <!-- 20 · хронолента -->
+    <section class="slide slide--dark" data-accent="orange"><div class="slide-inner">
+      <p class="eyebrow">Итог хроники · восемь засечек</p>
+      <h2>Восемьдесят лет одной линией</h2>
+      <div class="timeline">
+        <div class="timeline__rail"><div class="timeline__fill"></div></div>
+        <div class="timeline__marks">
+          <div><b>1945</b><span>Нет ОС. Программа занимает машину целиком</span></div>
+          <div><b>1956</b><span>Пакетная обработка, резидентная система</span></div>
+          <div><b>1964</b><span>Мультипрограммирование и защита памяти</span></div>
+          <div><b>1969</b><span>UNIX, разделение времени, права на файлы</span></div>
+          <div><b>1981</b><span>MS-DOS, персональные компьютеры</span></div>
+          <div><b>1984</b><span>Графический интерфейс становится массовым</span></div>
+          <div><b>1991</b><span>Ядро Linux, открытая разработка</span></div>
+          <div><b>2007+</b><span>iOS и Android: ОС в кармане</span></div>
+        </div>
+      </div>
+      <div class="grid grid--3">
+        <div class="card"><b>ЧТО ВИДНО НА ЛЕНТЕ 1</b><strong>Функции не исчезают</strong><p>Очередь заданий 1956 года и планировщик в Ubuntu 24.04 решают одну задачу разными способами.</p></div>
+        <div class="card"><b>ЧТО ВИДНО НА ЛЕНТЕ 2</b><strong>Защита возвращалась дважды</strong><p>Мейнфреймы получили её в 1960-х, персональные компьютеры потеряли и вернули к середине 1990-х.</p></div>
+        <div class="card"><b>ЧТО ВИДНО НА ЛЕНТЕ 3</b><strong>Одно ядро живёт десятилетиями</strong><p>macOS выросла из BSD и Mach, Android работает на ядре Linux, Windows — на ядре линии NT 1993 года.</p></div>
+      </div>
+    </div></section>
+
+    <!-- 21 · разделитель функций -->
+    <section class="slide" data-accent="green"><div class="slide-inner">
+      <p class="eyebrow">Часть 3 · функции</p>
+      <h2>Та же схема слоёв, теперь с подписями: где живёт каждая функция</h2>
+      <div class="stack">
+        <div class="stack__layer"><b>ПРИЛОЖЕНИЯ</b><strong>Просят ресурсы через системные вызовы</strong><p>Браузер, редактор, ваш скрипт.</p><span class="stack__mark">пользовательский режим</span></div>
+        <div class="stack__layer stack__layer--os"><b>ЯДРО · ШЕСТЬ ЗАДАЧ</b><strong>Процессы · память · файлы · устройства · доступ · учёт</strong><p>Дальше разбираем каждую отдельно: что именно она делает и как её увидеть на своей машине.</p><span class="stack__mark">привилегированный режим</span></div>
+        <div class="stack__layer"><b>ОБОЛОЧКА И СЛУЖБЫ</b><strong>Интерфейс пользователя</strong><p>Терминал <code>bash</code>, графическая среда GNOME, системные службы. Это тоже часть ОС, но работает она в пользовательском режиме.</p><span class="stack__mark">пользовательский режим</span></div>
+        <div class="stack__layer stack__layer--hw"><b>ЖЕЛЕЗО</b><strong>Процессор, память, накопители, контроллеры</strong><p>Драйверы ядра — единственный код, который обращается к ним напрямую.</p><span class="stack__mark">исполняет</span></div>
+      </div>
+      <div class="callout">Обратите внимание: <b>оболочка не входит в ядро</b>. Терминал — это обычная программа, которая просит ядро запустить другие программы. Поэтому оболочку можно заменить, не трогая систему.</div>
+    </div></section>
+
+    <!-- 22 · состояния процесса -->
+    <section class="slide" data-accent="blue"><div class="slide-inner">
+      <p class="eyebrow">Функция 1 · управление процессами</p>
+      <h2>Процесс — это запущенная программа со своей памятью, и в каждый момент он находится в одном из трёх состояний</h2>
+      <div class="states">
+        <div class="states__node"><b>СОСТОЯНИЕ 1</b><strong>Готов</strong><p>Всё для работы есть, не хватает только процессора. Процесс стоит в очереди планировщика.</p></div>
+        <div class="states__node"><b>СОСТОЯНИЕ 2</b><strong>Выполняется</strong><p>Процессор выполняет инструкции именно этого процесса. На одно ядро — один такой процесс.</p></div>
+        <div class="states__node"><b>СОСТОЯНИЕ 3</b><strong>Ожидает</strong><p>Процесс попросил данные с диска или из сети. Пока ответа нет, процессор ему не нужен.</p></div>
+      </div>
+      <div class="states__edges">
+        <div>готов → выполняется: планировщик выбрал</div>
+        <div>выполняется → готов: время вышло, переключение контекста</div>
+        <div>ожидает → готов: данные пришли</div>
+      </div>
+      <div class="callout">В Ubuntu состояние каждого процесса видно в колонке <code>S</code> команды <code>ps aux</code>: <code>R</code> — выполняется или готов, <code>S</code> — ожидает события, <code>D</code> — ждёт ответа устройства. Разбираем это подробно на занятии про процессы.</div>
+    </div></section>
+
+    <!-- 23 · демонстрация планировщика -->
+    <section class="slide slide--dark" data-accent="orange"><div class="slide-inner">
+      <p class="eyebrow">Демонстрация · одно ядро, три процесса</p>
+      <h2>Нажмите «Запустить»: так планировщик раздаёт процессорное время</h2>
+      <div class="sched">
+        <div class="sched__head"><span>ЗАПИСЬ ПРОГОНА · 30 ОТРЕЗКОВ ВРЕМЕНИ · ОДНО ЯДРО</span><button type="button" data-sched-run>Запустить ▶</button><button type="button" data-sched-reset>Сброс</button></div>
+        <div class="sched__body">
+          <div class="sched__lane"><div class="sched__name">РЕДАКТОР<span>ждёт нажатий</span></div><div class="sched__track" data-process="a"></div><div class="sched__num" data-process="a">0%</div></div>
+          <div class="sched__lane"><div class="sched__name">БРАУЗЕР<span>рисует страницу</span></div><div class="sched__track" data-process="b"></div><div class="sched__num" data-process="b">0%</div></div>
+          <div class="sched__lane"><div class="sched__name">ОБНОВЛЕНИЕ ПАКЕТОВ<span>считает и качает</span></div><div class="sched__track" data-process="c"></div><div class="sched__num" data-process="c">0%</div></div>
+        </div>
+        <div class="sched__foot">
+          <div><b data-sched-slots>0</b>отрезков выдано планировщиком</div>
+          <div><b data-sched-switches>0</b>переключений контекста: сохранить регистры одного процесса и восстановить регистры другого</div>
+          <div><b>1</b>процесс выполняется в каждый момент; заштрихованная клетка означает, что процесс готов, но ждёт очереди</div>
+        </div>
+      </div>
+      <div class="callout">Одновременности здесь нет — есть быстрое чередование. Переключения происходят настолько часто, что человек за экраном воспринимает работу как параллельную. Плата за это — время на само переключение: чем чаще меняются процессы, тем больше процессора уходит на служебную работу.</div>
+    </div></section>
+
+    <!-- 24 · память -->
+    <section class="slide" data-accent="aubergine"><div class="slide-inner">
+      <p class="eyebrow">Функция 2 · управление памятью</p>
+      <h2>Каждый процесс видит свою память с нулевого адреса, хотя на самом деле лежит вперемешку с чужой</h2>
+      <div class="memory">
+        <div class="memory__label"><span>ФИЗИЧЕСКАЯ ПАМЯТЬ · ОДИН БЛОК = ОДНА СТРАНИЦА</span><span>схема: 16 страниц вместо миллионов</span></div>
+        <div class="memory__bar">
+          <div class="memory__page" data-owner="k"></div><div class="memory__page" data-owner="k"></div>
+          <div class="memory__page" data-owner="a"></div><div class="memory__page" data-owner="b"></div>
+          <div class="memory__page" data-owner="a"></div><div class="memory__page"></div>
+          <div class="memory__page" data-owner="c"></div><div class="memory__page" data-owner="a"></div>
+          <div class="memory__page" data-owner="b"></div><div class="memory__page"></div>
+          <div class="memory__page" data-owner="c"></div><div class="memory__page" data-owner="b"></div>
+          <div class="memory__page" data-owner="a"></div><div class="memory__page"></div>
+          <div class="memory__page" data-owner="c"></div><div class="memory__page" data-owner="k"></div>
+        </div>
+        <div class="memory__legend"><span><i style="background:#241F2F"></i>ядро</span><span><i style="background:#E95420"></i>редактор</span><span><i style="background:#0B78C4"></i>браузер</span><span><i style="background:#268A5B"></i>обновление пакетов</span><span><i style="background:#D8D0D9"></i>свободно</span></div>
+      </div>
+      <div class="grid grid--3">
+        <div class="card"><b>ВИРТУАЛЬНЫЙ АДРЕС</b><strong>Адрес внутри процесса</strong><p>Программа обращается к адресу, который для неё начинается с нуля. Ни один процесс не знает, где его данные лежат физически.</p></div>
+        <div class="card"><b>ТАБЛИЦА СТРАНИЦ</b><strong>Перевод адреса</strong><p>Ядро хранит соответствие «виртуальная страница → физическая», перевод выполняет отдельный блок процессора. На x86-64 страница обычно занимает 4 КБ.</p></div>
+        <div class="card card--good"><b>ЧТО ЭТО ДАЁТ</b><strong>Изоляция и подкачка</strong><p>Чужую страницу процесс прочитать не может, а редко используемые страницы система вытесняет на диск, освобождая память.</p></div>
+      </div>
+    </div></section>
+
+    <!-- 25 · файловая система -->
+    <section class="slide" data-accent="green"><div class="slide-inner">
+      <p class="eyebrow">Функция 3 · файловая система</p>
+      <h2>Диск хранит нумерованные блоки. Каталоги, имена и права придумывает ОС</h2>
+      <div class="trees">
+        <div><h3>LINUX · ОДНО ДЕРЕВО ОТ КОРНЯ /</h3><pre>/
+├── bin    исполняемые программы
+├── etc    файлы настроек
+├── home
+│   └── student   личные файлы
+├── var
+│   └── log       журналы системы
+└── dev    устройства как файлы</pre></div>
+        <div><h3>WINDOWS · ОТДЕЛЬНОЕ ДЕРЕВО НА КАЖДОМ ТОМЕ</h3><pre>C:\
+├── Windows        системные файлы
+├── Program Files  программы
+└── Users
+    └── student    личные файлы
+
+D:\   второй том — свой корень</pre></div>
+      </div>
+      <div class="grid grid--3">
+        <div class="card"><b>ЧТО ХРАНИТ ФАЙЛОВАЯ СИСТЕМА</b><strong>Имя, размер, время, права, номера блоков</strong><p>В ext4 эти сведения лежат в структуре inode, отдельно от содержимого файла.</p></div>
+        <div class="card"><b>ЗАЧЕМ РАЗНЫЕ ФС</b><strong>ext4, NTFS, APFS, FAT32</strong><p>Отличаются размером тома и файла, журналированием и правами. FAT32 не умеет хранить права доступа, поэтому и используется на флешках.</p></div>
+        <div class="card card--accent"><b>ПРОВЕРКА НА ВАШЕЙ VM</b><strong><code>ls /</code> и <code>df -h</code></strong><p>Первая команда покажет корневые каталоги, вторая — на каких разделах и с какой файловой системой они лежат.</p></div>
+      </div>
+    </div></section>
+
+    <!-- 26 · устройства -->
+    <section class="slide slide--blue" data-accent="blue"><div class="slide-inner">
+      <p class="eyebrow">Функция 4 · устройства и драйверы</p>
+      <h2>Мышей и принтеров тысячи моделей, а интерфейс для программы — один</h2>
+      <div class="grid grid--3">
+        <div class="card"><b>ДРАЙВЕР</b><strong>Код, знающий конкретную железку</strong><p>Работает в ядре и переводит общие команды системы в команды регистров устройства.</p></div>
+        <div class="card"><b>ЕДИНЫЙ ИНТЕРФЕЙС</b><strong>Программа пишет в файл устройства</strong><p>В Linux устройства представлены файлами в <code>/dev</code>: запись в такой файл превращается в обращение к оборудованию.</p></div>
+        <div class="card"><b>ПРЕРЫВАНИЕ</b><strong>Сигнал «данные готовы»</strong><p>Устройство не заставляет процессор ждать: оно само сообщает о готовности, и ядро возвращает процесс из состояния ожидания.</p></div>
+      </div>
+      <div class="grid grid--2">
+        <div class="card card--good"><b>ЧТО ВЫ УЖЕ ВИДЕЛИ</b><strong>VirtualBox показывает гостю виртуальные устройства</strong><p>Ubuntu не знает, что диска нет: она видит обычный контроллер, а гипервизор переводит обращения в файл <code>.vdi</code> на хосте.</p></div>
+        <div class="card card--warn"><b>ЦЕНА ЕДИНОГО ИНТЕРФЕЙСА</b><strong>Ошибка драйвера роняет систему целиком</strong><p>Драйвер работает в привилегированном режиме, поэтому его сбой — это сбой ядра, а не одной программы.</p></div>
+      </div>
+    </div></section>
+
+    <!-- 27 · доступ -->
+    <section class="slide" data-accent="red"><div class="slide-inner">
+      <p class="eyebrow">Функция 5 · пользователи, права и защита</p>
+      <h2>Права проверяет ядро при каждом обращении, а не программа при запуске</h2>
+      <table class="matrix">
+        <thead><tr><th>Механизм</th><th>Что ограничивает</th><th>Где увидеть в Ubuntu</th></tr></thead>
+        <tbody>
+          <tr><td>Учётная запись</td><td>От чьего имени работает процесс: у каждого пользователя свой числовой идентификатор</td><td><code>id</code>, <code>whoami</code></td></tr>
+          <tr><td>Права на файл</td><td>Чтение, запись и запуск отдельно для владельца, группы и остальных</td><td><code>ls -l</code> — строка вида <code>-rw-r--r--</code></td></tr>
+          <tr><td>Суперпользователь</td><td>Учётная запись <code>root</code> обходит проверки прав; повседневная работа под ней запрещена не правилом вежливости, а расчётом на ошибку</td><td><code>sudo команда</code></td></tr>
+          <tr><td>Изоляция процессов</td><td>Процесс не читает память соседнего процесса и не отправляет ему что угодно</td><td>Ошибка «Segmentation fault» при попытке выйти за свою память</td></tr>
+        </tbody>
+      </table>
+      <div class="alarm">Отсюда правило, которое пригодится на практике: команду с <code>sudo</code> выполняют осознанно. Ядро проверит права и, если их хватает, выполнит запрошенное — включая удаление того, что удалять не следовало.</div>
+    </div></section>
+
+    <!-- 28 · интерфейс -->
+    <section class="slide" data-accent="amber"><div class="slide-inner">
+      <p class="eyebrow">Функция 6 · интерфейс пользователя</p>
+      <h2>Командная строка и графическая среда решают одну задачу с разной ценой</h2>
+      <div class="shot-layout">
+        <figure class="shot"><img src="assets/ubuntu-desktop.png" alt="Рабочий стол Ubuntu 24.04"><figcaption>Ubuntu 24.04 LTS, среда GNOME · Wikimedia Commons</figcaption></figure>
+        <ul class="notes">
+          <li><b>ГРАФИЧЕСКИЙ ИНТЕРФЕЙС</b>Показывает доступные действия сам: их видно на экране, и учить наизусть ничего не нужно. Зато последовательность из двадцати щелчков нельзя сохранить и повторить завтра.</li>
+          <li><b>КОМАНДНАЯ СТРОКА</b>Требует знать имя команды, но каждая команда — это текст. Строка <code>mkdir -p проект/отчёты &amp;&amp; cp *.md проект/отчёты/</code> записывается в скрипт, попадает в репозиторий и повторяется на другой машине без изменений.</li>
+          <li><b>ЧТО ВЫБИРАЮТ НА СЕРВЕРАХ</b>Систему часто ставят без графической среды: она занимает память и процессор ради интерфейса, к которому никто не подходит.</li>
+          <li><b>ОБОЛОЧКА — ЭТО ПРОГРАММА</b>И терминал, и рабочий стол работают в пользовательском режиме и обращаются к ядру теми же системными вызовами, что и любое приложение.</li>
+        </ul>
+      </div>
+    </div></section>
+
+    <!-- 29 · загрузка и учёт -->
+    <section class="slide" data-accent="aubergine"><div class="slide-inner">
+      <p class="eyebrow">Что остаётся за кадром сегодня</p>
+      <h2>Откуда ОС берётся в памяти и что она записывает о своей работе</h2>
+      <div class="grid grid--4">
+        <div class="card"><b>ШАГ 1</b><strong>Прошивка UEFI</strong><p>Проверяет оборудование и находит загрузчик на диске.</p></div>
+        <div class="card"><b>ШАГ 2</b><strong>Загрузчик</strong><p>GRUB в Ubuntu: показывает меню и загружает образ ядра в память.</p></div>
+        <div class="card"><b>ШАГ 3</b><strong>Ядро</strong><p>Инициализирует память и устройства, монтирует корневую файловую систему.</p></div>
+        <div class="card"><b>ШАГ 4</b><strong>Первый процесс</strong><p>systemd запускает службы и доводит систему до экрана входа.</p></div>
+      </div>
+      <div class="grid grid--2">
+        <div class="card card--accent"><b>УЧЁТ И ЖУРНАЛЫ</b><strong>Система записывает, что происходило</strong><p>Кто вошёл, какая служба не запустилась, когда ядро отключило устройство. В Ubuntu это читается командой <code>journalctl</code>.</p></div>
+        <div class="card"><b>СЛЕДУЮЩИЕ ЗАНЯТИЯ</b><strong>Структура ОС и загрузка — тема 3</strong><p>Разберём последовательность подробно и посмотрим на неё в своей виртуальной машине. Модель процесса — тема 4.</p></div>
+      </div>
+    </div></section>
+
+    <!-- 30 · разделитель видов -->
+    <section class="slide slide--orange" data-accent="amber"><div class="slide-inner">
+      <p class="eyebrow">Часть 4 · виды</p>
+      <h1>Одна система попадает<br>сразу в шесть<br>классификаций</h1>
+      <p class="lead">«Какая у вас ОС» — вопрос без одного ответа. Windows 11 одновременно многозадачная, многопользовательская по возможностям, настольная, с комбинированным интерфейсом, не реального времени и проприетарная. Дальше разбираем каждый признак, а в конце вы соберёте такую же строку про свою систему.</p>
+      <div class="title-meta"><span>число задач</span><span>число пользователей</span><span>назначение</span><span>интерфейс</span><span>время реакции</span><span>лицензия</span></div>
+    </div></section>
+
+    <!-- 31 · задачи и пользователи -->
+    <section class="slide" data-accent="blue"><div class="slide-inner">
+      <p class="eyebrow">Признаки 1 и 2 · задачи и пользователи</p>
+      <h2>Эти два признака независимы, и их часто путают между собой</h2>
+      <table class="matrix">
+        <thead><tr><th>Признак</th><th>Значения</th><th>Как проверить на своей машине</th><th>Пример</th></tr></thead>
+        <tbody>
+          <tr><td>Число задач</td><td>Однозадачная — в памяти одна программа. Многозадачная — процессор чередует несколько процессов</td><td>Диспетчер задач или <code>ps aux</code>: если процессов больше одного, система многозадачная</td><td>MS-DOS однозадачная, Windows и Linux многозадачные</td></tr>
+          <tr><td>Число пользователей</td><td>Однопользовательская — учётная запись одна. Многопользовательская — несколько учётных записей с разделением прав и файлов</td><td><code>cat /etc/passwd</code> в Linux, «Учётные записи» в параметрах Windows</td><td>MS-DOS однопользовательская, UNIX многопользовательская с самого начала</td></tr>
+        </tbody>
+      </table>
+      <div class="grid grid--2">
+        <div class="card card--warn"><b>ЧАСТАЯ ОШИБКА</b><strong>«Многозадачная — значит многопользовательская»</strong><p>Это разные вещи. Windows 95 была многозадачной, но одного пользователя от другого не защищала.</p></div>
+        <div class="card"><b>ВИДЫ МНОГОЗАДАЧНОСТИ</b><strong>Кооперативная и вытесняющая</strong><p>В первой программа сама отдаёт управление и может не отдать никогда. Во второй процессор забирает ОС по таймеру — именно так работают современные системы.</p></div>
+      </div>
+    </div></section>
+
+    <!-- 32 · назначение -->
+    <section class="slide" data-accent="green"><div class="slide-inner">
+      <p class="eyebrow">Признак 3 · назначение</p>
+      <h2>Пять сред, под которые системы собирают по-разному</h2>
+      <div class="grid grid--3">
+        <div class="card"><b>НАСТОЛЬНАЯ</b><strong>Windows 11, Ubuntu Desktop, macOS</strong><p>Приоритет — отклик на действия человека. Графическая среда, звук, драйверы принтеров и камер.</p></div>
+        <div class="card"><b>СЕРВЕРНАЯ</b><strong>Ubuntu Server, Windows Server</strong><p>Приоритет — непрерывная работа служб и пропускная способность. Часто без графической среды, обновления планируются заранее.</p></div>
+        <div class="card"><b>МОБИЛЬНАЯ</b><strong>Android, iOS</strong><p>Экономия батареи, ограничение фоновой работы, изоляция приложений и разрешения на камеру, геопозицию, файлы.</p></div>
+        <div class="card"><b>ВСТРАИВАЕМАЯ</b><strong>Роутер, телевизор, счётчик, автомагнитола</strong><p>Мало памяти, часто нет экрана и клавиатуры, обновления редкие. Обычно урезанный Linux или специализированная система.</p></div>
+        <div class="card"><b>РЕАЛЬНОГО ВРЕМЕНИ</b><strong>FreeRTOS, QNX, VxWorks</strong><p>Приоритет — гарантированное время реакции. Разбираем на следующем экране.</p></div>
+        <div class="card card--accent"><b>ПОГРАНИЧНЫЙ СЛУЧАЙ</b><strong>Raspberry Pi</strong><p>Плата размером с ладонь, а система — обычный Linux. Одно и то же ядро работает и в сервере, и в устройстве за несколько тысяч рублей.</p></div>
+      </div>
+    </div></section>
+
+    <!-- 33 · реальное время -->
+    <section class="slide slide--dark" data-accent="red"><div class="slide-inner">
+      <p class="eyebrow">Признак 3 · отдельный случай</p>
+      <h2>Система реального времени отвечает не быстро, а в назначенный срок</h2>
+      <div class="choice">
+        <div><b>ЖЁСТКОЕ РЕАЛЬНОЕ ВРЕМЯ</b><strong>Опоздание = отказ</strong><p>Блок управления двигателем должен подать искру в конкретный момент. Ответ через 12 миллисекунд вместо 10 — это не медленная работа, а неправильная.</p></div>
+        <div><b>МЯГКОЕ РЕАЛЬНОЕ ВРЕМЯ</b><strong>Опоздание = потеря качества</strong><p>Видеозвонок с задержкой пакета продолжает работать: картинка дёрнется, разговор не прервётся.</p></div>
+      </div>
+      <div class="grid grid--3">
+        <div class="card"><b>ЧЕМ ОТЛИЧАЕТСЯ УСТРОЙСТВО</b><strong>Предсказуемый планировщик</strong><p>Важна не средняя скорость, а верхняя граница времени реакции, которую можно доказать.</p></div>
+        <div class="card"><b>ЧТО ПРИНОСИТСЯ В ЖЕРТВУ</b><strong>Пропускная способность</strong><p>Ради гарантии система выполняет за секунду меньше работы, чем обычная. Это осознанный размен.</p></div>
+        <div class="card card--bad"><b>ПОЧЕМУ НЕ WINDOWS И НЕ LINUX</b><strong>Нет гарантии верхней границы</strong><p>Обычная система оптимизирует средний отклик. Обновление антивируса может задержать процесс на сотни миллисекунд, и запретить это нечем.</p></div>
+      </div>
+    </div></section>
+
+    <!-- 34 · остальные признаки -->
+    <section class="slide" data-accent="aubergine"><div class="slide-inner">
+      <p class="eyebrow">Признаки 4, 5 и 6</p>
+      <h2>Интерфейс, разрядность и лицензия</h2>
+      <div class="grid grid--3">
+        <div class="card"><b>ПРИЗНАК 4 · ИНТЕРФЕЙС</b><strong>Командный, графический, комбинированный</strong><p>Почти все современные системы комбинированные: в Ubuntu есть и GNOME, и терминал, в Windows — рабочий стол и PowerShell.</p></div>
+        <div class="card"><b>ПРИЗНАК 5 · РАЗРЯДНОСТЬ</b><strong>32 или 64 бита</strong><p>Определяет предельный объём адресуемой памяти и требует своей сборки программ. Разрядность системы должна совпадать с архитектурой процессора — с этим вы столкнулись при выборе ISO для VirtualBox.</p></div>
+        <div class="card"><b>ПРИЗНАК 6 · ЛИЦЕНЗИЯ</b><strong>Открытая или проприетарная</strong><p>У открытой системы доступен исходный код и разрешено его изменять и распространять; у проприетарной — нет. Windows и macOS проприетарные, Ubuntu и Debian открытые.</p></div>
+      </div>
+      <div class="callout"><b>Открытая не означает бесплатная.</b> Red Hat Enterprise Linux распространяется с открытым кодом и продаётся с платной поддержкой. Условия обычной покупки описывает лицензия, а не наличие кода.</div>
+    </div></section>
+
+    <!-- 35 · ядра -->
+    <section class="slide" data-accent="blue"><div class="slide-inner">
+      <p class="eyebrow">Устройство · три подхода к ядру</p>
+      <h2>Спор о том, что должно работать в привилегированном режиме, идёт с 1980-х</h2>
+      <div class="kernels">
+        <div><h3>ПОДХОД 1</h3><strong>Монолитное ядро</strong><div class="kernels__box">ЯДРО<i>процессы · память · файлы · сеть · драйверы</i></div><div class="kernels__out">снаружи: только приложения</div><p>Вызов внутри ядра — обычный вызов функции, поэтому работает быстро. Ошибка драйвера роняет систему. Так устроен Linux.</p></div>
+        <div><h3>ПОДХОД 2</h3><strong>Микроядро</strong><div class="kernels__box">ЯДРО<i>только процессы, память и обмен сообщениями</i></div><div class="kernels__out">снаружи: драйверы, файловая система, сеть</div><p>Отказавшую службу можно перезапустить, не перезагружая машину. Плата — обмен сообщениями вместо прямых вызовов. Так устроены QNX и MINIX 3.</p></div>
+        <div><h3>ПОДХОД 3</h3><strong>Гибридное ядро</strong><div class="kernels__box">ЯДРО<i>процессы, память, часть служб и драйверов</i></div><div class="kernels__out">снаружи: остальные подсистемы</div><p>Компромисс между скоростью и устойчивостью. К этому подходу относят ядро Windows NT и ядро XNU в macOS.</p></div>
+      </div>
+      <div class="callout">Единственно правильного варианта здесь нет: монолит выигрывает по скорости обращений, микроядро — по восстановлению после сбоя. Что выбрать, зависит от того, что дороже в конкретной системе — потерянные микросекунды или потерянная работа.</div>
+    </div></section>
+
+    <!-- 36 · семейства -->
+    <section class="slide" data-accent="orange"><div class="slide-inner">
+      <p class="eyebrow">Семейства · что работает сегодня</p>
+      <h2>Пять линий систем и общее происхождение половины из них</h2>
+      <div class="logos logos--5">
+        <div class="logo-card"><img src="assets/logo-windows.png" alt="Логотип Windows"><b>Windows</b><span>ЯДРО NT · 1993</span><p>Настольные и серверные версии одной линии. Гибридное ядро, файловая система NTFS, проприетарная лицензия.</p></div>
+        <div class="logo-card"><img src="assets/logo-tux.png" alt="Тукс — талисман Linux"><b>Linux</b><span>ЯДРО · 1991</span><p>Ядро, вокруг которого собирают дистрибутивы: от сервера и рабочей станции до роутера и телефона.</p></div>
+        <div class="logo-card"><img src="assets/logo-apple.png" alt="Логотип Apple"><b>macOS</b><span>ЯДРО XNU · 2001</span><p>Выросла из наработок BSD и Mach. Отсюда в macOS настоящий UNIX-терминал рядом с графической средой.</p></div>
+        <div class="logo-card"><img src="assets/logo-freebsd.png" alt="Талисман BSD"><b>BSD</b><span>ОТ UNIX · 1977</span><p>FreeBSD, OpenBSD, NetBSD. Отдельная ветвь UNIX; часть кода BSD попала в macOS и в сетевые стеки других систем.</p></div>
+        <div class="logo-card"><img src="assets/logo-android.png" alt="Робот Android"><b>Android и iOS</b><span>МОБИЛЬНЫЕ · 2007–2008</span><p>Android построен на ядре Linux, iOS — на том же ядре XNU, что и macOS. Разными их делает окружение, а не ядро.</p></div>
+      </div>
+      <div class="callout">Обратите внимание, сколько систем в этом ряду восходят к UNIX 1969 года: macOS, iOS, все BSD и, через повторение интерфейсов, Linux с Android. Это и есть практический результат переноса ядра на язык C.</div>
+    </div></section>
+
+    <!-- 37 · дистрибутивы -->
+    <section class="slide" data-accent="orange"><div class="slide-inner">
+      <p class="eyebrow">Внутри Linux · дистрибутивы</p>
+      <h2>Ядро одно, а собранных вокруг него систем — сотни</h2>
+      <div class="logos logos--4">
+        <div class="logo-card"><img src="assets/logo-ubuntu.png" alt="Логотип Ubuntu"><b>Ubuntu</b><span>ОСНОВАН НА DEBIAN</span><p>Предсказуемый график выпусков, версии LTS с длительной поддержкой. Наш учебный дистрибутив.</p></div>
+        <div class="logo-card"><img src="assets/logo-debian.png" alt="Логотип Debian"><b>Debian</b><span>С 1993 ГОДА</span><p>Ставка на стабильность: пакет попадает в стабильный выпуск после долгой проверки. Основа для многих других сборок.</p></div>
+        <div class="logo-card"><img src="assets/logo-fedora.png" alt="Логотип Fedora"><b>Fedora</b><span>БЛИЗКА К RED HAT</span><p>Новые версии компонентов появляются раньше, чем в других дистрибутивах. Площадка для того, что позже попадёт в корпоративные системы.</p></div>
+        <div class="logo-card"><img src="assets/logo-arch.png" alt="Логотип Arch Linux"><b>Arch Linux</b><span>НЕПРЕРЫВНЫЕ ОБНОВЛЕНИЯ</span><p>Система собирается пользователем из минимального набора. Свежие версии сразу, настройка — полностью ручная.</p></div>
+      </div>
+      <div class="grid grid--3">
+        <div class="card"><b>ЧЕМ ОТЛИЧАЮТСЯ 1</b><strong>Менеджер пакетов</strong><p><code>apt</code> в Ubuntu и Debian, <code>dnf</code> в Fedora, <code>pacman</code> в Arch. Команды разные, задача одна.</p></div>
+        <div class="card"><b>ЧЕМ ОТЛИЧАЮТСЯ 2</b><strong>Политика обновлений</strong><p>Фиксированные выпуски раз в полгода или непрерывное обновление. Это выбор между свежестью и предсказуемостью.</p></div>
+        <div class="card"><b>ЧЕМ НЕ ОТЛИЧАЮТСЯ</b><strong>Ядро и базовые команды</strong><p><code>ls</code>, <code>cd</code>, права доступа и структура каталогов работают одинаково. Навык переносится между дистрибутивами.</p></div>
+      </div>
+    </div></section>
+
+    <!-- 38 · сравнение -->
+    <section class="slide" data-accent="green"><div class="slide-inner">
+      <p class="eyebrow">Сравнение · три настольные системы</p>
+      <h2>Одни и те же задачи решаются по-разному, и у каждого решения своя цена</h2>
+      <table class="matrix">
+        <thead><tr><th>Что сравниваем</th><th>Windows 11</th><th>Ubuntu Desktop</th><th>macOS</th></tr></thead>
+        <tbody>
+          <tr><td>Ядро</td><td>Гибридное, линия NT</td><td>Монолитное, Linux</td><td>Гибридное, XNU на основе Mach и BSD</td></tr>
+          <tr><td>Файловая система по умолчанию</td><td>NTFS</td><td>ext4</td><td>APFS</td></tr>
+          <tr><td>Установка программ</td><td>Установщики и Microsoft Store</td><td>Менеджер пакетов <code>apt</code> и репозитории</td><td>App Store и перенос приложения в Applications</td></tr>
+          <tr><td>Оболочка командной строки</td><td>PowerShell и cmd</td><td>bash или zsh</td><td>zsh</td></tr>
+          <tr><td>Лицензия</td><td>Проприетарная, оплачивается</td><td>Открытая, свободно распространяется</td><td>Проприетарная, поставляется с устройством</td></tr>
+          <tr><td>Работа на чужом железе</td><td>Широкая совместимость</td><td>Широкая совместимость</td><td>Официально — только на компьютерах Apple</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">Такая таблица отвечает не на вопрос «что лучше», а на вопрос «чем придётся заплатить». Для учебной лаборатории мы выбрали Ubuntu: её можно свободно ставить, ломать и восстанавливать из снимка, и точно такие же команды работают на сервере.</div>
+    </div></section>
+
+    <!-- 39 · конструктор -->
+    <section class="slide slide--top" data-accent="blue"><div class="slide-inner">
+      <p class="eyebrow">За клавиатуру · 8 минут</p>
+      <h2>Соберите паспорт своей системы по шести признакам</h2>
+      <p class="lead">Выбирайте значение в каждом столбце — строка внизу соберётся сама. К каждому значению нужно наблюдение с вашего компьютера: «многозадачная, потому что в диспетчере задач 214 процессов» — это ответ, «потому что так написано в справке» — нет.</p>
+      <div class="builder">
+        <div class="builder__grid">
+          <div class="builder__axis" data-axis="tasks"><b>ЧИСЛО ЗАДАЧ</b>
+            <button type="button" data-value="многозадачная">многозадачная</button>
+            <button type="button" data-value="однозадачная">однозадачная</button>
+          </div>
+          <div class="builder__axis" data-axis="users"><b>ПОЛЬЗОВАТЕЛИ</b>
+            <button type="button" data-value="многопользовательская">многопользовательская</button>
+            <button type="button" data-value="однопользовательская">однопользовательская</button>
+          </div>
+          <div class="builder__axis" data-axis="purpose"><b>НАЗНАЧЕНИЕ</b>
+            <button type="button" data-value="настольная">настольная</button>
+            <button type="button" data-value="серверная">серверная</button>
+            <button type="button" data-value="мобильная">мобильная</button>
+            <button type="button" data-value="встраиваемая">встраиваемая</button>
+          </div>
+          <div class="builder__axis" data-axis="interface"><b>ИНТЕРФЕЙС</b>
+            <button type="button" data-value="с комбинированным интерфейсом">комбинированный</button>
+            <button type="button" data-value="с графическим интерфейсом">только графический</button>
+            <button type="button" data-value="с командным интерфейсом">только командный</button>
+          </div>
+          <div class="builder__axis" data-axis="time"><b>ВРЕМЯ РЕАКЦИИ</b>
+            <button type="button" data-value="не реального времени">не реального времени</button>
+            <button type="button" data-value="реального времени">реального времени</button>
+          </div>
+          <div class="builder__axis" data-axis="source"><b>ЛИЦЕНЗИЯ</b>
+            <button type="button" data-value="проприетарная">проприетарная</button>
+            <button type="button" data-value="открытая">открытая</button>
+          </div>
+        </div>
+        <div class="builder__out"><em>Выберите значение в каждом столбце — строка соберётся здесь.</em></div>
+      </div>
+    </div></section>
+
+    <!-- 40 · мифы -->
+    <section class="slide" data-accent="red"><div class="slide-inner">
+      <p class="eyebrow">Разбор · четыре формулировки, которые приходят на приёмку</p>
+      <h2>Что здесь неточно и как сказать правильно</h2>
+      <div class="myths">
+        <div><div class="myths__wrong">«Linux — это операционная система»</div><div class="myths__arrow">→</div><div class="myths__right">Linux — это ядро. Операционная система — дистрибутив: ядро плюс системные программы, оболочка и менеджер пакетов. Ubuntu и Fedora — разные ОС на одном ядре.</div></div>
+        <div><div class="myths__wrong">«Ядро и операционная система — одно и то же»</div><div class="myths__arrow">→</div><div class="myths__right">Ядро работает в привилегированном режиме и управляет ресурсами. В состав ОС входят ещё драйверы, системные библиотеки, службы и оболочка — они работают в пользовательском режиме.</div></div>
+        <div><div class="myths__wrong">«Терминал — это и есть Linux»</div><div class="myths__arrow">→</div><div class="myths__right">Терминал показывает работу оболочки — обычной программы, которая просит ядро запускать другие программы. Оболочку можно заменить с <code>bash</code> на <code>zsh</code>, и система останется прежней.</div></div>
+        <div><div class="myths__wrong">«Windows однопользовательская: за компьютером сижу только я»</div><div class="myths__arrow">→</div><div class="myths__right">Признак определяется возможностями системы, а не числом людей за столом. Windows поддерживает несколько учётных записей с раздельными файлами и правами, значит многопользовательская.</div></div>
+      </div>
+    </div></section>
+
+    <!-- 41 · вопрос на выход -->
+    <section class="slide slide--dark" data-accent="amber"><div class="slide-inner">
+      <p class="eyebrow">Вопрос на выход</p>
+      <h2>Программа записала файл на диск, хотя прямого доступа к диску у неё нет.<br>Опишите путь этого запроса и назовите, где меняется режим процессора</h2>
+      <div class="exit-q">
+        <p>Ответ засчитывается, если названы четыре шага: вызов в пользовательском режиме, переход через специальную инструкцию, проверка прав и работа драйвера в ядре, возврат результата и обратное переключение режима.</p>
+        <p>Дополнительный вопрос для тех, кто ответил быстро: почему такой путь дороже прямой записи в устройство и почему от него всё равно не отказываются.</p>
+      </div>
+    </div></section>
+
+    <!-- 42 · итог -->
+    <section class="slide" data-accent="green"><div class="slide-inner">
+      <p class="eyebrow">Итог занятия · чек-лист готовности</p>
+      <h2>Тема закрыта, если вы можете сделать это без конспекта</h2>
+      <ul class="checklist">
+        <li><b>Назвать три слоя между вашим кодом и железом и сказать, что делает каждый</b><span>ЭКРАНЫ 05, 21</span></li>
+        <li><b>Объяснить, зачем нужны два режима процессора, на примере системного вызова</b><span>ЭКРАН 09</span></li>
+        <li><b>Связать три события хроники с тремя функциями современной ОС</b><span>ЭКРАНЫ 12–20</span></li>
+        <li><b>Показать разницу между процессом, потоком выполнения и программой на диске</b><span>ЭКРАНЫ 22, 23</span></li>
+        <li><b>Классифицировать свою систему по шести признакам с наблюдением к каждому</b><span>ЭКРАН 39</span></li>
+        <li><b>Объяснить разницу между ядром, дистрибутивом и оболочкой</b><span>ЭКРАН 40</span></li>
+      </ul>
+      <div class="callout">Следующая тема — <b>структура ОС и загрузка</b>. Разберём по шагам, что происходит от нажатия кнопки питания до экрана входа, и посмотрим на этот путь в своей виртуальной машине с Ubuntu.</div>
+    </div></section>
+
+    <!-- 43 · ДЗ -->
+    <section class="slide" data-accent="orange"><div class="slide-inner">
+      <p class="eyebrow">Домашнее задание № 2 · к следующему занятию</p>
+      <h2>Максим Николаевич не хочет задавать домашнее задание. Но очень хочет</h2>
+      <div class="hw-split">
+        <ol class="hw-cards">
+          <li><b>1</b><div><b>Составить паспорт своей системы по шести признакам</b><p>Файл <code>reports/os-types.md</code>. Для каждого признака: значение, почему вы так считаете и какое наблюдение на вашем компьютере это подтверждает. Скриншот к трём признакам из шести.</p></div></li>
+          <li><b>2</b><div><b>Сравнить свою систему с Ubuntu на виртуальной машине</b><p>Таблица из пяти строк: ядро, файловая система, установка программ, оболочка, лицензия. Значения для Ubuntu возьмите из своей VM командами <code>uname -r</code>, <code>lsb_release -a</code> и <code>df -hT</code>, а не из интернета.</p></div></li>
+          <li><b>3</b><div><b>Выбрать одно событие хроники и объяснить его последствие</b><p>Короткая записка на 8–12 строк: что было до, что придумали, какая функция современной ОС из этого выросла и чем за неё заплатили. Событие — на выбор из восьми засечек ленты.</p></div></li>
+        </ol>
+        <figure class="meme-frame"><img src="../../../shared/memes/meme-can-turn-on-pc.jpg" alt="Мем про уверенного пользователя компьютера"></figure>
+      </div>
+    </div></section>
+
+    <!-- 44 · порядок сдачи -->
+    <section class="slide" data-accent="orange"><div class="slide-inner">
+      <p class="eyebrow">Домашнее задание № 2 · порядок сдачи</p>
+      <h2>Куда положить и как сдать</h2>
+      <div class="hw-order">
+        <div><b>ФАЙЛЫ</b><p>В репозитории <code>os-linux-course</code>: <code>reports/os-types.md</code>, <code>reports/compare-ubuntu.md</code> и скриншоты в <code>assets/screenshots/</code>.</p></div>
+        <div><b>ВЕТКА И PR</b><p>Ветка <code>hw-02</code>, коммиты с понятными сообщениями, Pull Request в свою <code>main</code>. Merge делаете сами после проверки.</p></div>
+        <div><b>СРОК</b><p>До начала занятия 3. Паспорт без наблюдений и таблица без вывода команд не принимаются.</p></div>
+        <div><b>КРИТЕРИИ</b><p>Шесть признаков с наблюдениями, пять строк сравнения со своими значениями, записка про одно событие хроники, три скриншота.</p></div>
+      </div>
+      <p class="note">Про ИИ: значения, наблюдения и вывод команд собираете сами — в этом и состоит задание, и характеристики своего компьютера модель не знает. Оформление <code>.md</code> и причёсывание формулировок можно поручить модели. <mark>Я сам так делаю всегда, поэтому и вам запрещать не буду.</mark> Содержание должно остаться вашим: паспорт вы будете объяснять на приёмке.</p>
+      <button class="print-button" id="hwDownload" type="button">Скачать задание в PDF →</button>
+    </div></section>
+
+  </main>
+
+  <div class="nav">
+    <button class="nav-button" id="prevButton" type="button" aria-label="Предыдущий экран">←</button>
+    <button class="nav-button" id="nextButton" type="button" aria-label="Следующий экран">→</button>
+  </div>
+  <div class="progress" id="progress" aria-hidden="true"></div>
+</div>
+
+<aside class="sources" id="sourcesPanel" aria-hidden="true">
+  <div class="sources-card">
+    <button class="icon-button sources-close" type="button" data-close-sources aria-label="Закрыть">×</button>
+    <p class="eyebrow">Занятие 2 · ОП.05 · 2 академических часа</p>
+    <h2>План занятия и источники</h2>
+    <ol class="plan-list">
+      <li><b>Вход и модель · 18 мин</b> — экраны 1–9. Простой машинного зала, определение, слои, две роли, счёт «без ОС», ресурсы, системный вызов.</li>
+      <li><b>Хроника · 24 мин</b> — экраны 10–20. Шесть шагов «проблема → решение → цена» и сводная лента.</li>
+      <li><b>Функции · 26 мин</b> — экраны 21–29. Процессы и демонстрация планировщика, память, файлы, устройства, права, интерфейс, загрузка.</li>
+      <li><b>Виды · 22 мин</b> — экраны 30–38. Шесть признаков, реальное время, виды ядер, семейства и дистрибутивы, сравнение.</li>
+      <li><b>Работа руками и приёмка · 14 мин</b> — экраны 39–42. Конструктор паспорта, разбор четырёх неточных формулировок, вопрос на выход, чек-лист.</li>
+      <li><b>Домашнее задание · 6 мин</b> — экраны 43–44.</li>
+    </ol>
+    <h2 style="font-size:22px;margin-top:22px">Источники</h2>
+    <ul>
+      <li>Э. Таненбаум, Х. Бос. Современные операционные системы — главы 1 и 10 (история, структура, классификация).</li>
+      <li><a href="https://www.kernel.org/doc/html/latest/admin-guide/index.html" target="_blank" rel="noopener">Документация ядра Linux · kernel.org</a></li>
+      <li><a href="https://ubuntu.com/desktop/docs" target="_blank" rel="noopener">Документация Ubuntu Desktop · ubuntu.com</a></li>
+      <li><a href="https://learn.microsoft.com/windows/win32/sysinfo/kernel-objects" target="_blank" rel="noopener">Windows kernel objects · Microsoft Learn</a></li>
+      <li><a href="https://www.multicians.org/" target="_blank" rel="noopener">История Multics · multicians.org</a></li>
+      <li><a href="https://www.bell-labs.com/usr/dmr/www/hist.html" target="_blank" rel="noopener">Д. Ритчи. The Evolution of the Unix Time-sharing System</a></li>
+      <li>Изображения — Wikimedia Commons; полный перечень файлов с авторами и лицензиями в <code>assets/SOURCES.md</code>.</li>
+    </ul>
+  </div>
+</aside>
+
+<div class="image-lightbox" id="imageLightbox" aria-hidden="true">
+  <button class="image-lightbox__close" type="button" aria-label="Закрыть">×</button>
+  <img id="lightboxImage" alt="">
+  <p id="lightboxCaption"></p>
+</div>
+
+<div class="hw-sheet">
+  <header class="hw-head">
+    <div>
+      <p class="hw-course">ОП.05 · Операционные системы и среды · 2 курс</p>
+      <h1>Домашнее задание № 2</h1>
+      <p class="hw-sub">Занятие 2 — история, назначение, функции и виды операционных систем</p>
+    </div>
+    <div class="hw-mark">ОС/02</div>
+  </header>
+
+  <p class="hw-joke">Максим Николаевич не хочет задавать вам домашнее задание. Но очень хочет.</p>
+
+  <figure class="hw-meme"><img src="../../../shared/memes/meme-can-turn-on-pc.jpg" alt=""></figure>
+
+  <h2>Что нужно сделать</h2>
+  <ol class="hw-list">
+    <li><b>Паспорт своей системы.</b> Файл reports/os-types.md. Классифицируйте установленную на вашем компьютере ОС по шести признакам: число задач, число пользователей, назначение, интерфейс, время реакции, лицензия. Для каждого признака напишите три вещи: значение, почему вы так считаете и какое наблюдение на вашем компьютере это подтверждает. К трём признакам из шести приложите скриншот с этим наблюдением.</li>
+    <li><b>Сравнение с Ubuntu.</b> Файл reports/compare-ubuntu.md. Таблица из пяти строк: ядро, файловая система, установка программ, оболочка командной строки, лицензия. Столбец про вашу систему заполняете по своему компьютеру, столбец про Ubuntu — по своей виртуальной машине из практической работы № 1. Значения берите из вывода команд uname -r, lsb_release -a и df -hT, вывод вставляйте в файл.</li>
+    <li><b>Одно событие хроники.</b> Записка на 8–12 строк в конце файла os-types.md. Выберите одно событие из ленты занятия (1945, 1956, 1964, 1969, 1981, 1984, 1991, 2007) и объясните: что было до него, что придумали, какая функция современной ОС из этого выросла и чем за неё заплатили.</li>
+  </ol>
+  <p class="hw-note">Ответ «многозадачная, потому что так написано в справке» не принимается. Признак подтверждается наблюдением: числом процессов в диспетчере задач, списком учётных записей, выводом команды.</p>
+
+  <h2>Как сдавать</h2>
+  <table class="hw-table">
+    <tr><th>Файлы</th><td>Репозиторий os-linux-course: reports/os-types.md, reports/compare-ubuntu.md, скриншоты в assets/screenshots/. Скриншоты должны открываться прямо на странице Markdown в GitHub.</td></tr>
+    <tr><th>Ветка и PR</th><td>Ветка hw-02, коммиты с понятными сообщениями, затем Pull Request в свою main. Merge делаете сами после проверки.</td></tr>
+    <tr><th>Срок</th><td>До начала занятия 3.</td></tr>
+    <tr><th>Проверяем</th><td>Шесть признаков с наблюдениями, три скриншота, пять строк сравнения со своими значениями и вставленным выводом команд, записка про одно событие хроники.</td></tr>
+    <tr><th>ИИ</th><td>Значения, наблюдения и вывод команд собираете сами — характеристики вашего компьютера модель не знает и придумает. Дальше можно попросить её причесать текст и оформить .md файл. <mark>Я сам так делаю всегда, поэтому и вам запрещать не буду.</mark> Содержание должно остаться вашим: паспорт вы будете объяснять на приёмке.</td></tr>
+  </table>
+
+  <h2>Словарь занятия</h2>
+  <dl class="hw-gloss">
+    <dt>Операционная система</dt><dd>Комплекс программ, который управляет ресурсами компьютера — процессором, памятью, устройствами — и предоставляет их прикладным программам через единый интерфейс.</dd>
+    <dt>Ядро</dt><dd>Часть ОС, работающая в привилегированном режиме процессора. Управляет процессами, памятью, файловой системой и устройствами.</dd>
+    <dt>Системный вызов</dt><dd>Обращение программы к ядру за действием, которое ей самой недоступно: чтение файла, запуск процесса, отправка данных в сеть. В этот момент процессор переключается в привилегированный режим.</dd>
+    <dt>Процесс</dt><dd>Запущенная программа со своей областью памяти и состоянием. Находится в одном из состояний: готов, выполняется, ожидает.</dd>
+    <dt>Переключение контекста</dt><dd>Сохранение состояния одного процесса и восстановление состояния другого при передаче процессора. Занимает время, поэтому слишком частые переключения снижают полезную работу.</dd>
+    <dt>Дистрибутив</dt><dd>Собранный комплект: ядро Linux, системные программы, оболочка, менеджер пакетов и настройки. Ubuntu, Debian, Fedora — разные дистрибутивы на одном ядре.</dd>
+    <dt>Реальное время</dt><dd>Свойство системы отвечать в гарантированный срок. При жёстком реальном времени опоздание считается отказом, при мягком — потерей качества.</dd>
+  </dl>
+
+  <p class="hw-foot">ОП.05 «Операционные системы и среды» · занятие 2 · материалы колоды доступны в веб-презентации занятия.</p>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
