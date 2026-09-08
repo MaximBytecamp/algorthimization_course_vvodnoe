@@ -46,3 +46,20 @@ docker compose up -d      # поднять заново, база пустая
 docker exec hh-mongo mongosh hh --quiet --eval 'db.resumes.countDocuments()'
 docker exec hh-mongo mongosh hh --quiet --eval 'db.resumes.find({ city: "Ярославль" }).count()'
 ```
+
+## Если Docker не встаёт
+
+Compass — только клиент, ему нужен адрес сервера, а откуда сервер взялся,
+он не проверяет. Docker здесь — курсовой способ, но не единственный: та же
+база поднимается локальной установкой MongoDB Community или бесплатным
+кластером в Atlas. Три способа с командами, загрузкой данных и разбором
+ошибок подключения — в [SETUP.md](SETUP.md).
+
+## Запросы файлом
+
+`queries.mongodb.js` — фильтры занятия в исполняемом виде, с ожидаемыми
+числами в комментариях:
+
+```bash
+docker exec -i hh-mongo mongosh hh --quiet --file /dev/stdin < queries.mongodb.js
+```
