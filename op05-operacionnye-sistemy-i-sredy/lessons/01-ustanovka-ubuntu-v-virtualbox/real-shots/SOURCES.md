@@ -12,6 +12,7 @@
 
 - `03-boot.png` — меню GNU GRUB с пунктом `Try or Install Ubuntu`.
 - `04-installer-loaded.png` — реальный симптом белого окна графического установщика.
+- `05-unattended-setup-vbox-7-2.png` — раздел настройки автоматической установки в мастере создания VM; окно снято непосредственно в VirtualBox 7.2.16 на macOS и обрезано без изменения содержимого интерфейса.
 - `clean/06-keyboard-tui.png` — выбор раскладки в штатном текстовом клиенте Subiquity.
 - `clean/07-installation-type.png` — выбор полного Ubuntu Desktop.
 - `clean/08-network-dhcp.png` — получение адреса `10.0.2.15/24` по DHCP в режиме NAT.
