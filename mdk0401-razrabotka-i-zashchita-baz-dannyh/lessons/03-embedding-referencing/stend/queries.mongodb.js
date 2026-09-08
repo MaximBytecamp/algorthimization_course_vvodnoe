@@ -31,7 +31,8 @@ const [tl] = ms(() => { for (let i = 0; i < N; i++)
     { $lookup: { from: "companies", localField: "experience.company_id", foreignField: "_id", as: "c" } }]).toArray(); });
 print(`${N} карточек: вложение ${te} мс | ссылка двумя запросами ${tr} мс | ссылка через $lookup ${tl} мс`);
 print(`на карточку:  вложение ${(te/N).toFixed(2)} мс | два запроса ${(tr/N).toFixed(2)} мс | $lookup ${(tl/N).toFixed(2)} мс`);
-// ожидается примерно 0,18 | 0,31 | 0,19 мс
+// на преподавательском стенде из контейнера вышло примерно 0,18 | 0,31 | 0,19 мс,
+// из консоли Compass — 0,50 | 0,78 | 0,52: важна не величина, а отношение около ×1,6
 
 line("счёт № 2 · отчёт по отрасли компании");
 const [t1, v1] = ms(() => db.resumes_embed.countDocuments({ "experience.company.industry": "e-commerce" }));

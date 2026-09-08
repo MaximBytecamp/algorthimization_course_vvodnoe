@@ -31,7 +31,7 @@
     '.def', '.tbl', '.zones li', '.qcard', '.check > li', '.hw-cards > li',
     '.hw-order > div', '.stepbar i', '.bytes__legend > div', '.types tbody tr',
     '.final-metrics > span', '.title-meta span', '.shot-duo .shot',
-    '.bill__card', '.runcard', '.pick', '.decide__row', '.adr > div', '.wall__bar'
+    '.bill__card', '.pick', '.decide__row', '.adr > div', '.wall__bar', '.part__list li'
   ].join(',');
 
   document.querySelectorAll(staggerSelector).forEach(element => element.classList.add('fragment'));
@@ -153,41 +153,6 @@
   sourcesButton.addEventListener('click', openSources);
   if (finalSourcesButton) finalSourcesButton.addEventListener('click', openSources);
   document.querySelectorAll('[data-close-sources]').forEach(element => element.addEventListener('click', closeSources));
-
-  /* ---------------------------------------------------------
-     Экран 03 · прогон заявки CR-014. Числа — со стенда:
-     49 резюме и 5 приглашений хранят копию названия, справочник
-     компаний хранит его один раз. Кнопка выполняет то же, что
-     updateMany + updateOne: две коллекции обновляются, третья
-     остаётся со старым значением, потому что про неё забыли.
-     --------------------------------------------------------- */
-  const crRun = document.getElementById('crRun');
-  if (crRun) {
-    const cards = ['rcEmbed', 'rcInterviews', 'rcCompanies'].map(id => document.getElementById(id));
-    const note = document.getElementById('crNote');
-    crRun.addEventListener('click', () => {
-      crRun.disabled = true;
-      cards.forEach((card, cardIndex) => {
-        const value = card.querySelector('strong');
-        const from = Number(value.dataset.from);
-        const to = Number(value.dataset.to);
-        window.setTimeout(() => {
-          const start = performance.now();
-          const step = now => {
-            const raw = Math.min(1, (now - start) / 700);
-            value.textContent = Math.round(from + (to - from) * raw);
-            if (raw < 1) requestAnimationFrame(step);
-            else card.classList.add(to === from ? 'is-stale' : 'is-fixed');
-          };
-          requestAnimationFrame(step);
-        }, 200 + cardIndex * 500);
-      });
-      window.setTimeout(() => {
-        note.innerHTML = 'Правка выполнена за 4 мс. <b>Пять приглашений остались со старым названием:</b> ' +
-          'их никто не просил менять, и никто про них не вспомнил.';
-      }, 1900);
-    });
-  }
 
   // Печатный лист задания: на печать уходит только .hw-sheet — см. @media print.
   function printSheet() {
