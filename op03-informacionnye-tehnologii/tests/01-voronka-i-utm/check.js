@@ -1,3 +1,53 @@
+/* ---------------------------------------------------------------
+   Замок.
+
+   Пароль в исходнике не лежит: сравнивается SHA-256 от строки
+   "СОЛЬ|check|пароль". Соль отличает его от голого хеша «123456»,
+   который узнаётся по первым символам через любой поисковик.
+
+   Это барьер от того, чтобы студент открыл страницу по ссылке, —
+   не защита. Кто откроет консоль, снимет замок за минуту: страница
+   статическая, проверять пароль негде, кроме самого браузера.
+   Разбор ответов при этом всё равно лежит в quiz-data.js, который
+   грузит и сам тест, — замок этого не меняет.
+   --------------------------------------------------------------- */
+
+const PW_HASH = '9d9d93467fde12247a0b3225d4551ed8ca9804fbe873bf48c9fbc772984a7d1e';
+const PW_FLAG = QUIZ.id + ':checker-open';
+
+async function sha256(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function unlock() {
+  document.getElementById('gate').classList.add('hidden');
+  document.getElementById('tool').classList.remove('hidden');
+}
+
+async function tryPassword() {
+  const input = document.getElementById('pw');
+  const err = document.getElementById('pw-err');
+  const hash = await sha256(QUIZ.salt + '|check|' + input.value);
+  if (hash !== PW_HASH) {
+    err.textContent = 'Неверный пароль.';
+    input.select();
+    return;
+  }
+  err.textContent = '';
+  try { sessionStorage.setItem(PW_FLAG, '1'); } catch (e) {}
+  unlock();
+  document.getElementById('in').focus();
+}
+
+document.getElementById('pw-btn').addEventListener('click', tryPassword);
+document.getElementById('pw').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); tryPassword(); }
+});
+
+/* Разблокировка держится до закрытия вкладки, а не навсегда. */
+try { if (sessionStorage.getItem(PW_FLAG) === '1') unlock(); } catch (e) {}
+
 /* Проверка кодов результата. Для каждого кода:
    1) сверяем контрольную сумму — правка кода вручную её ломает;
    2) заново считаем баллы по ответам, зашитым в код, и сравниваем
