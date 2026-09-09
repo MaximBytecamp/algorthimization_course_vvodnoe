@@ -13,7 +13,21 @@ const vote = (question, choices, discussion) => `<div class="choice"><p class="q
 const sourceLink = (href, title) => `<a href="${href}" target="_blank" rel="noopener noreferrer">${title} ↗</a>`;
 const mockCode = text => `<pre>${codeLines(text)}</pre>`;
 // Для постоянного реального кадра: 3: {file:'shots/03-bad-project.png', caption:'VS Code · дата'}.
-const screenshotFiles = {};
+const screenshotFiles = {
+  3: {file: 'shots/03-bad-project.png', caption: 'VS Code · учебный проект booking-service без документации · снимок 9 сентября 2026'},
+  6: {file: 'shots/06-good-project.png', caption: 'VS Code · тот же проект с README, CHANGELOG, .env.example и docs/ · снимок 9 сентября 2026'},
+  7: {file: 'shots/07-customer-task.png', caption: 'Markdown Preview · обезличенная задача от заказчика · снимок 9 сентября 2026'},
+  14: {file: 'shots/14-verification-table.png', caption: 'Markdown Preview · таблица «Требование / Метод проверки / Результат» · снимок 9 сентября 2026'},
+  19: {file: 'shots/19-openapi-specification.png', caption: 'spec.openapis.org · OpenAPI Specification v3.1.1, опубликована 24 октября 2024 · снимок 9 сентября 2026'},
+  20: {file: 'shots/20-readme.png', caption: 'VS Code · README учебного проекта: Installation, Configuration, Usage, API, Tests · снимок 9 сентября 2026'},
+  21: {file: 'shots/21-readme-doc-links.png', caption: 'Markdown Preview · тот же README со ссылками на docs/ · снимок 9 сентября 2026'},
+  22: {file: 'shots/22-github-repository.png', caption: 'GitHub · открытый репозиторий encode/httpx: docs/, README.md, CHANGELOG.md и история коммитов · снимок 9 сентября 2026'},
+  23: {file: 'shots/23-outdated-readme.png', caption: 'VS Code · pyproject.toml требует Python 3.13, README обещает 3.10 и PostgreSQL 14 · снимок 9 сентября 2026'},
+  27: {file: 'shots/27-iso-25010.png', caption: 'iso.org · ISO/IEC 25010:2023, Product quality model, издание 2 · снимок 9 сентября 2026'},
+  30: {file: 'shots/30-booking-service.png', caption: 'VS Code · booking-service, который аудируем на этой паре · снимок 9 сентября 2026'},
+  32: {file: 'shots/32-audit-template.png', caption: 'VS Code · шаблон docs/handoff_audit.md с пятью разделами · снимок 9 сентября 2026'},
+  34: {file: 'shots/34-audit-result.png', caption: 'Markdown Preview · заполненный аудит: раздел «Итог», статус NOT READY · снимок 9 сентября 2026'}
+};
 const shot = (number, title, body, light = false, link = '') => `<figure class="shot" data-shot="${number}"><div class="shot-bar"><b>${title}</b><span>УЧЕБНЫЙ МАКЕТ</span></div><button class="shot-view" data-zoom aria-label="Увеличить: ${title}"><div class="mock${light ? ' light' : ''}">${body}</div></button><figcaption>Место для реального скриншота · слайд ${number}. Нажмите на макет, чтобы увеличить.</figcaption><div class="shot-actions"><button data-upload>Подставить скриншот</button><button data-restore hidden>Вернуть макет</button>${link}</div><input type="file" accept="image/png,image/jpeg,image/webp" aria-label="Скриншот для слайда ${number}" hidden></figure>`;
 const badTree = 'booking-service/\n├── src/\n│   └── main.py\n├── .env\n└── database.sql\n\nREADME.md       — отсутствует\ndocs/           — отсутствует\n.env.example    — отсутствует';
 const goodTree = 'booking-service/\n├── src/\n├── tests/\n├── README.md\n├── CHANGELOG.md\n├── .env.example\n└── docs/\n    ├── requirements.md\n    ├── architecture.md\n    ├── deployment.md\n    ├── api.md\n    └── user-guide.md';

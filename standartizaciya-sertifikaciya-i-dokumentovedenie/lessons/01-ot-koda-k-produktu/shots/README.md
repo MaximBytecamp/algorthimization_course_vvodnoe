@@ -1,44 +1,44 @@
-# Места для реальных скриншотов
+# Скриншоты первой пары
 
-В уроке 13 мест, пока заполненных учебными HTML-макетами с явной подписью.
-Ни один макет не выдаётся за снимок официального сайта, VS Code или GitHub.
+Все 13 мест заполнены настоящими кадрами. Учебные HTML-макеты остались в коде и
+возвращаются кнопкой «Вернуть макет», если под рукой нет изображений.
 
-Для временного показа нажмите «Подставить скриншот» под нужным макетом.
-PNG, JPEG или WebP до 20 МБ будет показан локально до перезагрузки. «Вернуть макет»
-восстанавливает исходный вид. Клик по изображению открывает увеличение.
+## Что и откуда снято
 
-| Слайд | Рекомендуемое имя | Содержание реального кадра |
-|---|---|---|
-| 3 | 03-bad-project.png | VS Code: src/, main.py, .env, база; отсутствуют README, docs/, .env.example и инструкции |
-| 6 | 06-good-project.png | VS Code: README.md, CHANGELOG.md, .env.example, docs/requirements.md, architecture.md, deployment.md, api.md, user-guide.md |
-| 7 | 07-customer-task.png | Задача или обезличенная переписка: «удобно», «быстро», «хорошая безопасность» |
-| 14 | 14-verification-table.png | Markdown Preview: Требование / Метод проверки / Результат |
-| 19 | 19-openapi-specification.png | Официальный экран https://spec.openapis.org/oas/v3.1.1.html с названием и редакцией |
-| 20 | 20-readme.png | README проекта: Installation, Configuration, Usage, API, Tests |
-| 21 | 21-readme-doc-links.png | README с теми же разделами и ссылками на подробную документацию |
-| 22 | 22-github-repository.png | GitHub: docs/, README.md, CHANGELOG.md и история коммитов |
-| 23 | 23-outdated-readme.png | VS Code: Python 3.13 в конфигурации против Python 3.10 в README; PostgreSQL 17 против 14 |
-| 27 | 27-iso-25010.png | Официальный экран https://www.iso.org/standard/78176.html: ISO/IEC 25010:2023, название модели качества |
-| 30 | 30-booking-service.png | VS Code: проект booking-service для аудита |
-| 32 | 32-audit-template.png | VS Code: открытый docs/handoff_audit.md с пятью разделами |
-| 34 | 34-audit-result.png | Markdown Preview: итоговый аудит со статусом READY или NOT READY и обоснованием |
+| Слайд | Файл | Что на кадре | Источник |
+|---|---|---|---|
+| 3 | 03-bad-project.png | `src/main.py`, `.env`, `database.sql`; нет README, docs/, `.env.example` | VS Code, учебный проект |
+| 6 | 06-good-project.png | README, CHANGELOG, `.env.example`, docs/ из пяти документов | VS Code, учебный проект |
+| 7 | 07-customer-task.png | Задача заказчика: «удобно», «быстро», «хорошая безопасность» | Markdown Preview, учебный текст |
+| 14 | 14-verification-table.png | Таблица «Требование / Метод проверки / Результат» | Markdown Preview, учебный документ |
+| 19 | 19-openapi-specification.png | OpenAPI Specification v3.1.1, опубликована 24.10.2024 | spec.openapis.org |
+| 20 | 20-readme.png | README: Installation, Configuration, Usage, API, Tests | VS Code, учебный проект |
+| 21 | 21-readme-doc-links.png | Тот же README в предпросмотре, разделы и ссылки на docs/ | Markdown Preview |
+| 22 | 22-github-repository.png | docs/, README.md, CHANGELOG.md, 1 523 коммита | GitHub, открытый репозиторий encode/httpx |
+| 23 | 23-outdated-readme.png | `pyproject.toml` требует Python 3.13, README обещает 3.10 и PostgreSQL 14 | VS Code, учебный проект |
+| 27 | 27-iso-25010.png | ISO/IEC 25010:2023, Product quality model, издание 2 | iso.org |
+| 30 | 30-booking-service.png | booking-service, который аудируют на паре | VS Code, учебный проект |
+| 32 | 32-audit-template.png | Шаблон `docs/handoff_audit.md` с пятью разделами | VS Code |
+| 34 | 34-audit-result.png | Раздел «Итог», статус NOT READY с обоснованием | Markdown Preview |
 
-Слайды 20–21 используют два независимых места. Итого: 13 файлов / 13 мест
-(номера: 3, 6, 7, 14, 19, 20, 21, 22, 23, 27, 30, 32, 34).
+Кадры сняты 9 сентября 2026 года. Кадры VS Code сделаны в веб-версии редактора
+(`code serve-web`) на настоящих файлах учебного проекта; баннер режима ограниченного
+доверия обрезан сверху. Кадры iso.org и spec.openapis.org — снимки официальных страниц.
+Кадр GitHub — чужой открытый репозиторий encode/httpx, а не проект курса: он взят потому,
+что в нём действительно есть docs/, README.md, CHANGELOG.md и длинная история коммитов.
+Значения из `.env` на кадрах не показаны, переписка заказчика обезличена.
 
-## Постоянная замена
+## Заменить кадр своим
 
-Сохраните кадр в этой папке. В начале `content.js` заполните объект `screenshotFiles`:
+Нажмите «Подставить скриншот» под изображением: PNG, JPEG или WebP до 20 МБ покажется
+локально до перезагрузки страницы. «Вернуть макет» возвращает исходный кадр.
+Клик по изображению открывает увеличение.
+
+Для постоянной замены положите файл в эту папку и поправьте объект `screenshotFiles`
+в начале `content.js`:
 
 ```javascript
 const screenshotFiles = {
-  3: {file: 'shots/03-bad-project.png', caption: 'VS Code · учебный проект · дата снимка'},
-  19: {file: 'shots/19-openapi-specification.png', caption: 'OpenAPI 3.1.1 · дата снимка'}
+  3: {file: 'shots/03-bad-project.png', caption: 'VS Code · учебный проект · дата снимка'}
 };
 ```
-
-Скрипт автоматически заменит макет изображением и обновит подпись. Увеличение,
-временная загрузка и восстановление исходного кадра продолжают работать.
-
-Не показывайте значения из .env. Для переписки используйте обезличенный пример.
-Снимайте отдельное читаемое окно; не уменьшайте весь рабочий стол до мелкого текста.
