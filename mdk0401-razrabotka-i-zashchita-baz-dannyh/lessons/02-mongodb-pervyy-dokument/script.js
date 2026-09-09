@@ -146,6 +146,54 @@
     sourcesButton.focus();
   }
 
+  /* ---------------------------------------------------------
+     Увеличение кадра: клик по картинке слайда открывает её
+     во весь экран, Esc или клик по фону закрывают.
+     --------------------------------------------------------- */
+  const lightbox = document.getElementById('lightbox');
+  const lightboxImage = document.getElementById('lightboxImage');
+  const lightboxCaption = document.getElementById('lightboxCaption');
+  const lightboxClose = document.getElementById('lightboxClose');
+  let lightboxOpener = null;
+
+  function lightboxOpen(image) {
+    lightboxOpener = image;
+    lightboxImage.src = image.currentSrc || image.src;
+    lightboxImage.alt = image.alt || '';
+    const caption = image.closest('figure')?.querySelector('figcaption');
+    lightboxCaption.textContent = caption ? caption.textContent.trim() : (image.alt || '');
+    lightboxCaption.hidden = !lightboxCaption.textContent;
+    lightbox.classList.add('is-open');
+    lightbox.setAttribute('aria-hidden', 'false');
+    lightboxClose.focus();
+  }
+
+  function lightboxHide() {
+    if (!lightbox.classList.contains('is-open')) return false;
+    lightbox.classList.remove('is-open');
+    lightbox.setAttribute('aria-hidden', 'true');
+    lightboxImage.removeAttribute('src');
+    if (lightboxOpener) lightboxOpener.focus?.();
+    lightboxOpener = null;
+    return true;
+  }
+
+  document.querySelectorAll('.slide .shot img, .slide .meme-frame img').forEach(image => {
+    image.tabIndex = 0;
+    image.addEventListener('click', event => {
+      event.stopPropagation();
+      lightboxOpen(image);
+    });
+    image.addEventListener('keydown', event => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      event.stopPropagation();
+      lightboxOpen(image);
+    });
+  });
+
+  lightbox.addEventListener('click', lightboxHide);
+
   prevButton.addEventListener('click', previous);
   nextButton.addEventListener('click', next);
   document.querySelectorAll('[data-go]').forEach(button => button.addEventListener('click', () => render(Number(button.dataset.go), -1)));
@@ -168,6 +216,11 @@
   });
 
   document.addEventListener('keydown', event => {
+    if (lightbox.classList.contains('is-open')) {
+      event.preventDefault();
+      lightboxHide();
+      return;
+    }
     if (sourcesPanel.classList.contains('is-open')) {
       if (event.key === 'Escape') closeSources();
       return;
@@ -184,6 +237,7 @@
   document.addEventListener('touchstart', event => { touchStartX = event.changedTouches[0].clientX; }, { passive: true });
   document.addEventListener('touchend', event => {
     if (touchStartX === null) return;
+    if (lightbox.classList.contains('is-open')) { touchStartX = null; return; }
     const delta = event.changedTouches[0].clientX - touchStartX;
     if (Math.abs(delta) > 55) delta < 0 ? next() : previous();
     touchStartX = null;
