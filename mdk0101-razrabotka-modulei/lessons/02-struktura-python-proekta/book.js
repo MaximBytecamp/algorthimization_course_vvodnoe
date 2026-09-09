@@ -142,3 +142,44 @@
     code.innerHTML = result + escape(source.slice(start));
   });
 })();
+
+// An optional teaching view: preserve the chapter order and direct section links.
+(() => {
+  const toggle = document.getElementById('lesson-mode');
+  if (!toggle) return;
+  const sections = [...document.querySelectorAll('article > section')];
+  const controls = document.getElementById('step-controls');
+  const previous = document.getElementById('step-prev');
+  const next = document.getElementById('step-next');
+  const status = document.getElementById('step-status');
+  let active = false, index = 0;
+  function show(scroll = false) {
+    sections.forEach((section, i) => section.hidden = active && i !== index);
+    document.body.classList.toggle('lecture-mode', active);
+    controls.hidden = !active;
+    toggle.setAttribute('aria-pressed', String(active));
+    toggle.textContent = active ? 'Показать главу целиком' : 'Показывать по одному шагу';
+    status.textContent = `Шаг ${index + 1} из ${sections.length}`;
+    previous.disabled = index === 0;
+    next.disabled = index === sections.length - 1;
+    document.querySelectorAll('.local-toc a').forEach((a, i) => {
+      if (active && i === index) a.setAttribute('aria-current','step');
+      else a.removeAttribute('aria-current');
+    });
+    if (scroll) controls.scrollIntoView({block:'start',behavior:'instant'});
+  }
+  toggle.addEventListener('click', () => {
+    active = !active;
+    const fromHash = sections.findIndex(s => `#${s.id}` === location.hash);
+    if (fromHash >= 0) index = fromHash;
+    show(active);
+  });
+  previous.addEventListener('click', () => { if (index > 0) {index--;show(true);} });
+  next.addEventListener('click', () => { if (index < sections.length - 1) {index++;show(true);} });
+  document.querySelectorAll('.local-toc a').forEach((link,i) => link.addEventListener('click', () => {index=i;show();}));
+  window.addEventListener('hashchange', () => {
+    const found = sections.findIndex(s => `#${s.id}` === location.hash);
+    if (found >= 0) {index=found;show();}
+  });
+  show();
+})();
