@@ -1,5 +1,5 @@
 import re, html, json, pathlib
-LOG = pathlib.Path('/tmp/python-book-evidence/log.txt').read_text()
+LOG = ''.join(pathlib.Path(f'/tmp/python-book-evidence/{n}').read_text() for n in ('log.txt','log2.txt','log3.txt'))
 blocks = {}
 for m in re.finditer(r'##### (\S+)\n\$prompt ([^\n]*)\n\$cmd ([^\n]*)\n(.*?)##### end\n', LOG, re.S):
     bid, prompt, cmd, out = m.groups()
@@ -60,6 +60,33 @@ SHOTS = [
  ('12-clean-start', 'Проверка с чистого листа: только исходники', 'macOS · Python 3.12 · реальный вывод',
   term(('p6-clean-tree','ls -a   (папка без .venv)'), ('p6-clean-install','python -m pip install -r requirements.txt'),
        ('p6-clean-run','python -m app.main   +   python -m unittest discover -s tests -v'))),
+]
+
+
+SHOTS += [
+ ('16-name-demo', 'Что такое __name__ и откуда берётся __main__', 'macOS · Python 3.12 · реальный вывод',
+  term(('t1-run','python main.py   — прямой запуск'), ('t2-import','python -c "import main"   — импорт того же файла'))),
+ ('17-import-side-effect', 'Тот же файл без защиты: импорт запускает программу', 'main_noguard.py — копия main.py, где main() вызван без условия',
+  term(('t3-noguard','python -c "import main_noguard"'))),
+ ('18-import-once', 'Модуль выполняется один раз, сколько бы раз его ни импортировали', 'macOS · Python 3.12 · реальный вывод',
+  term(('t4-twice','python twice.py   — внутри три импорта calculator'))),
+ ('19-init-order', 'Порядок выполнения __init__.py при одном импорте', 'в каждый __init__.py временно добавлен print',
+  term(('t5-init-order','python -c "from app.services.calculator import calculate_average"'))),
+ ('20-package-vs-namespace', 'Одна и та же папка: с __init__.py и без него', 'слева обычный пакет, ниже namespace package',
+  term(('--','ПАПКА app С ФАЙЛОМ __init__.py'), ('t6-withinit','python -c "import app; print(app); print(app.__file__); print(list(app.__path__))"'),
+       ('--','ТА ЖЕ ПАПКА БЕЗ __init__.py'), ('t7-noinit','python -c "import app; print(app); print(app.__file__); print(list(app.__path__))"'))),
+]
+
+
+SHOTS += [
+ ('21-float-compare', 'Почему дробные числа сравнивают приблизительно', 'macOS · Python 3.12 · реальный вывод',
+  term(('q1-float','python -c "print(0.1 + 0.2); print(0.1 + 0.2 == 0.3); print(sum([5,4,5,3,5]) / 5)"'))),
+ ('22-test-fail', 'Тест упал: FAIL — код посчитал не то', 'в формулу расчёта намеренно внесена ошибка',
+  term(('q2-fail','python -m unittest discover -s tests -v'))),
+ ('23-test-error', 'Тест упал: ERROR — код не доработал до проверки', 'в тесте намеренно неверно вызвана функция',
+  term(('q3-error','python -m unittest discover -s tests -v'))),
+ ('24-no-tests', 'Ноль тестов — это не успех', 'файл переименован в calculator_test.py',
+  term(('q4-none','python -m unittest discover -s tests -v'))),
 ]
 
 # shorten the very long pip show inside the isolation shot

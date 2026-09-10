@@ -96,6 +96,28 @@ Requires: markdown-it-py, pygments
 Required-by: rich-toolkit, typer
 
 ====================================================================
+ГЛАВА 2.4 · демонстрации теории
+====================================================================
+
+student-tools $ python main.py   (в файлах есть временный print с __name__)
+Модуль calculator загружается. __name__ = calculator
+Модуль main загружается. __name__ = __main__
+Средний результат: 4.4
+
+student-tools $ python -c "import main"
+Модуль calculator загружается. __name__ = calculator
+Модуль main загружается. __name__ = main
+
+student-tools $ python -c "import main_noguard"   (копия main.py без условия)
+Модуль calculator загружается. __name__ = calculator
+Модуль main загружается. __name__ = main_noguard
+Средний результат: 4.4
+
+student-tools $ python twice.py   (три импорта одного модуля)
+Модуль calculator загружается. __name__ = calculator
+calculator в кэше загруженных модулей: True
+
+====================================================================
 ГЛАВА 2.5
 ====================================================================
 
@@ -110,6 +132,26 @@ ModuleNotFoundError: No module named 'app'
 
 (.venv) student-tools $ python -c "import app.main"
 (команда завершилась без вывода)
+
+====================================================================
+ГЛАВА 2.5 · демонстрации теории
+====================================================================
+
+student-tools $ python -c "from app.services.calculator import calculate_average"   (в каждом __init__.py временный print)
+выполняется app/__init__.py
+выполняется app/services/__init__.py
+выполняется app/services/calculator.py
+импорт закончен, среднее: 4.4
+
+student-tools $ python -c "import app; ..."   (папка с __init__.py)
+<module 'app' from '/tmp/python-book-evidence/theory/two/withinit/app/__init__.py'>
+__file__: /tmp/python-book-evidence/theory/two/withinit/app/__init__.py
+__path__: ['/tmp/python-book-evidence/theory/two/withinit/app']
+
+student-tools $ python -c "import app; ..."   (та же папка без __init__.py)
+<module 'app' (namespace) from ['/tmp/python-book-evidence/theory/two/noinit/app']>
+__file__: None
+__path__: ['/tmp/python-book-evidence/theory/two/noinit/app']
 
 ====================================================================
 ГЛАВА 2.6
@@ -136,6 +178,63 @@ test_format (test_calculator.AverageTests.test_format) ... ok
 Ran 3 tests in 0.000s
 
 OK
+
+====================================================================
+ГЛАВА 2.6 · демонстрации теории
+====================================================================
+
+student-tools $ python -c "print(0.1 + 0.2); print(0.1 + 0.2 == 0.3); print(sum([5,4,5,3,5]) / 5)"
+0.30000000000000004
+False
+4.4
+
+(.venv) student-tools $ тесты при ошибке в формуле расчёта
+test_average (test_calculator.AverageTests.test_average) ... FAIL
+test_empty (test_calculator.AverageTests.test_empty) ... ok
+test_format (test_calculator.AverageTests.test_format) ... ok
+
+======================================================================
+FAIL: test_average (test_calculator.AverageTests.test_average)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/python-book-evidence/tests-demo/tests/test_calculator.py", line 8, in test_average
+    self.assertAlmostEqual(calculate_average([5, 4, 5, 3, 5]), 4.4)
+AssertionError: 5.5 != 4.4 within 7 places (1.0999999999999996 difference)
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.000s
+
+FAILED (failures=1)
+
+(.venv) student-tools $ тесты при неверном вызове функции в самом тесте
+test_average (test_calculator.AverageTests.test_average) ... ERROR
+test_empty (test_calculator.AverageTests.test_empty) ... ok
+test_format (test_calculator.AverageTests.test_format) ... ok
+
+======================================================================
+ERROR: test_average (test_calculator.AverageTests.test_average)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/python-book-evidence/tests-demo/tests/test_calculator.py", line 8, in test_average
+    self.assertAlmostEqual(calculate_average(5, 4, 5, 3, 5), 4.4)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: calculate_average() takes 1 positional argument but 5 were given
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.000s
+
+FAILED (errors=1)
+
+(.venv) student-tools $ тесты, когда файл назван не с test_
+
+----------------------------------------------------------------------
+Ran 0 tests in 0.000s
+
+NO TESTS RAN
+
+====================================================================
+ГЛАВА 2.6
+====================================================================
 
 student-tools $ чистая папка: ls -a
 .
