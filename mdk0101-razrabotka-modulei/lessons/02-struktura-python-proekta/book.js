@@ -228,6 +228,59 @@
     runMap.querySelector('.rm-line[data-level=root]').setAttribute('data-start','');
   }
 
+  const nameMap = document.getElementById('name-map');
+  if (nameMap) {
+    const state = {
+      run: {value: '"__main__"', cond: 'выполняется', call: 'вызывается',
+            text: 'Файл запущен напрямую: Python дал ему имя __main__, условие истинно, программа стартовала. Это обычный запуск вашей программы.'},
+      import: {value: '"main"', cond: 'ложно', call: 'не вызывается',
+            text: 'Файл импортирован другим файлом: Python дал ему собственное имя модуля. Определения из файла созданы и доступны, но программа не стартовала — именно этого мы и добиваемся.'}
+    };
+    document.querySelectorAll('[data-namemode]').forEach(button => button.addEventListener('click', () => {
+      const mode = button.dataset.namemode;
+      document.querySelectorAll('[data-namemode]').forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+      nameMap.dataset.mode = mode;
+      document.getElementById('nm-value').textContent = state[mode].value;
+      document.getElementById('nm-cond').textContent = state[mode].cond;
+      document.getElementById('nm-call').textContent = state[mode].call;
+      document.getElementById('name-explain').textContent = state[mode].text;
+    }));
+  }
+
+  const impMap = document.getElementById('imp-map');
+  if (impMap) {
+    const state = {
+      module: {name: 'calculator', what: 'модуль целиком', call: 'calculator.calculate_average([5, 4, 5])',
+        text: 'Видно, откуда пришла функция: имя модуля остаётся в строке вызова. Удобно, когда из модуля нужно много всего или когда имена в разных модулях совпадают.'},
+      name: {name: 'calculate_average', what: 'одна функция из модуля', call: 'calculate_average([5, 4, 5])',
+        text: 'Короче в вызове, но по строке уже не видно, из какого модуля пришло имя. Так пишут, когда из модуля нужны одна-две функции и имена не спорят между собой.'}
+    };
+    document.querySelectorAll('[data-imp]').forEach(button => button.addEventListener('click', () => {
+      const mode = button.dataset.imp;
+      document.querySelectorAll('[data-imp]').forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+      impMap.dataset.mode = mode;
+      document.getElementById('imp-name').textContent = state[mode].name;
+      document.getElementById('imp-what').textContent = state[mode].what;
+      document.getElementById('imp-call').textContent = state[mode].call;
+      document.getElementById('imp-explain').textContent = state[mode].text;
+    }));
+  }
+
+  const depMap = document.getElementById('dep-map');
+  if (depMap) {
+    const texts = {
+      ok: 'Стрелка одна и вниз: main.py импортирует расчёт и оформление. Калькулятор можно вызвать из тестов, из другой программы, из будущего веб-интерфейса — он ничего не знает о том, кто его использует.',
+      bad: 'Появилась встречная стрелка: расчёт импортирует точку запуска. Каждый модуль ждёт, пока догрузится другой, и Python сообщает об ошибке partially initialized module. Вычислениям точка запуска не нужна — данные они получают аргументами.'
+    };
+    document.querySelectorAll('[data-dep]').forEach(button => button.addEventListener('click', () => {
+      const mode = button.dataset.dep;
+      document.querySelectorAll('[data-dep]').forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+      depMap.dataset.mode = mode;
+      depMap.querySelector('[data-arrow=up]').hidden = mode !== 'bad';
+      document.getElementById('dep-explain').textContent = texts[mode];
+    }));
+  }
+
   const blocks = document.querySelectorAll('.evidence, .action-card, .lab');
   if (!blocks.length || !('IntersectionObserver' in window)) return;
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
