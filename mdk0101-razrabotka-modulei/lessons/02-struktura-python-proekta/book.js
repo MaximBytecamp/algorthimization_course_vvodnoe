@@ -183,3 +183,63 @@
   });
   show();
 })();
+
+// Interactive схемы главы 2.3 и 2.5 + мягкое появление крупных блоков.
+(() => {
+  const installMap = document.getElementById('install-map');
+  if (installMap) {
+    const explain = document.getElementById('install-explain');
+    const texts = {
+      m: 'Модуль pip запускается внутри выбранного Python, поэтому пакет попадает в окружение проекта. Тот же интерпретатор потом запускает вашу программу — и видит библиотеку.',
+      bare: 'Какая программа pip запустится, решает PATH. В одном терминале это pip из .venv, в другом — pip другого Python. Пакет может уехать в чужое окружение, и тогда программа не найдёт библиотеку.'
+    };
+    document.querySelectorAll('[data-install]').forEach(button => button.addEventListener('click', () => {
+      const mode = button.dataset.install;
+      document.querySelectorAll('[data-install]').forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+      installMap.dataset.mode = mode;
+      explain.textContent = texts[mode];
+    }));
+  }
+
+  const runMap = document.getElementById('run-map');
+  if (runMap) {
+    const explain = document.getElementById('run-explain');
+    const state = {
+      module: {
+        start: 'root', hidden: null,
+        text: 'Python начинает поиск с текущей папки — корня проекта. Внутри него виден пакет app, поэтому импорт from app.services.calculator работает.'
+      },
+      file: {
+        start: 'pkg', hidden: 'root',
+        text: 'При запуске файлом поиск начинается с папки, где лежит сам файл, — с app/. Корень проекта в поиск не попадает, пакет app снаружи не виден: ModuleNotFoundError: No module named app.'
+      }
+    };
+    document.querySelectorAll('[data-run]').forEach(button => button.addEventListener('click', () => {
+      const mode = button.dataset.run;
+      document.querySelectorAll('[data-run]').forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+      runMap.dataset.mode = mode;
+      runMap.querySelectorAll('.rm-line').forEach(line => {
+        line.removeAttribute('data-start'); line.removeAttribute('data-hidden');
+        if (line.dataset.level === state[mode].start) line.setAttribute('data-start','');
+        if (line.dataset.level === state[mode].hidden) line.setAttribute('data-hidden','');
+      });
+      explain.textContent = state[mode].text;
+    }));
+    runMap.querySelector('.rm-line[data-level=root]').setAttribute('data-start','');
+  }
+
+  const blocks = document.querySelectorAll('.evidence, .action-card, .lab');
+  if (!blocks.length || !('IntersectionObserver' in window)) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  blocks.forEach(block => block.classList.add('reveal'));
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add('seen');
+      observer.unobserve(entry.target);
+    });
+  }, {rootMargin: '0px 0px -12% 0px'});
+  blocks.forEach(block => observer.observe(block));
+  // Safety net: nothing may stay invisible because of a missed observer callback.
+  setTimeout(() => blocks.forEach(block => block.classList.add('seen')), 4000);
+})();
