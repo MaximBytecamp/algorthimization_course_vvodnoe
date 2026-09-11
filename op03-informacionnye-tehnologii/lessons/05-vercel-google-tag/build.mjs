@@ -87,6 +87,10 @@ C[88]=p('Дальше разберём автоматические событи
 // Дополнительные слайды вне авторской нумерации 20–88: почему источник из UTM
 // не появляется в отчётах сразу. Вставляются после исходного слайда 78 и имеют
 // собственные id, поэтому ссылки вида index.html#60 продолжают работать.
+// Авторские слайды, исключённые из показа. SOURCE.md остаётся неизменным:
+// текст сохраняется в исходнике, но в колоду не попадает.
+const OMIT=new Set([54]);
+
 const EXTRA=[
  {after:24,id:'slide-24a',stage:'GitHub → VS Code',badge:'ДОПОЛНЕНИЕ · АККАУНТ 1 / 2',title:'Шаг 0. Выйти из чужого аккаунта GitHub',
   body:p('На учебном компьютере в браузере часто остаётся аккаунт предыдущего студента. Если не выйти, копия шаблона появится у чужого пользователя, а вы не сможете её изменить.')
@@ -154,8 +158,14 @@ const shot=s=>{const c=captures.find(x=>x.sourceSlide===s.n);return `<figure cla
 // Порядок показа: авторские слайды 20–88 плюс дополнительные экраны после 78.
 const deck=[];
 for(const s of slides){
- deck.push({id:`slide-${s.n}`,key:String(s.n),title:s.title,stage:stage(s.n),badge:`ИСХОДНИК ${s.n} · ТЕМА 05 / ${String(s.n-19).padStart(2,'0')}`,dark:[20,55,78,86,88].includes(s.n),dense:[83,85].includes(s.n),body:C[s.n],shot:s.shot?s:null,h:s.n===20?'1':'2'});
+ if(!OMIT.has(s.n))deck.push({id:`slide-${s.n}`,key:String(s.n),title:s.title,stage:stage(s.n),badge:`ИСХОДНИК ${s.n} · ТЕМА 05 / ${String(s.n-19).padStart(2,'0')}`,dark:[20,55,78,86,88].includes(s.n),dense:[83,85].includes(s.n),body:C[s.n],shot:s.shot?s:null,h:s.n===20?'1':'2'});
  for(const e of EXTRA.filter(e=>e.after===s.n))deck.push({...e,key:e.id.replace('slide-',''),dense:!!e.dense,shot:null,h:'2'});
+}
+// Исключать можно только слайд без скриншота: иначе кадр остался бы без места.
+for(const n of OMIT){
+ const s=slides.find(x=>x.n===n);
+ if(!s)throw new Error(`OMIT: авторского слайда ${n} нет в SOURCE.md`);
+ if(s.shot)throw new Error(`OMIT: у слайда ${n} есть скриншот, сначала уберите его из labels`);
 }
 const total=deck.length;
 const fonts='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap';
@@ -170,4 +180,4 @@ const rows=captures.map(c=>`| ${c.lessonSlide} | ${c.sourceSlide} | ${c.file} | 
 fs.writeFileSync(path.join(dir,'SCREENSHOTS.md'),intro+rows+'\n\n## Подробные указания из исходника\n\n'+captures.map(c=>`### ${c.sourceSlide} — ${c.file}\n\n${c.instructions}\n`).join('\n'));
 const table=captures.map(c=>`<tr><td><a href="index.html#${c.sourceSlide}">${String(c.lessonSlide).padStart(2,'0')}</a></td><td>${c.sourceSlide}</td><td><code>${c.file}</code></td><td>${esc(c.application)}<br><b>${esc(c.screen)}</b></td><td>${esc(c.focus)}</td></tr>`).join('');
 fs.writeFileSync(path.join(dir,'screenshots.html'),`<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Кадры для темы 5 · ОП.03</title><link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="styles.css"></head><body class="lab5 shot-guide"><main><a href="index.html">← К презентации</a><p class="lesson-kicker">ОП.03 · ТЕМА 05</p><h1>Какие скриншоты снять</h1><p>${captures.length} кадра для 69 слайдов. «В теме» — номер экрана презентации. «Исходник» — номер 20–88 из авторского текста.</p><p>Сохраняйте PNG в <code>05-vercel-google-tag/shots/</code> под указанными именами. После обновления страницы кадры автоматически заменят заглушки. Для сайта оставьте адресную строку; для VS Code снимайте графический интерфейс.</p><p>Снимайте только учебные проекты. Личные данные скройте; Measurement ID можно оставить. Показатели Realtime и статусы Deployment должны быть настоящими.</p><div class="table-scroll"><table><thead><tr><th>В теме</th><th>Исходник</th><th>Файл</th><th>Экран</th><th>Акцент</th></tr></thead><tbody>${table}</tbody></table></div><p>Схемы на остальных слайдах уже сделаны в HTML/CSS и не требуют скриншотов.</p></main></body></html>`);
-console.log(`Built ${total} slides (${slides.length} authored + ${EXTRA.length} extra); ${captures.length} image placeholders and capture instructions.`);
+console.log(`Built ${total} slides (${slides.length} authored − ${OMIT.size} omitted + ${EXTRA.length} extra); ${captures.length} image placeholders and capture instructions.`);
