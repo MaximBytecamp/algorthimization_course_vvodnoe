@@ -3,9 +3,14 @@
   const slides = [...document.querySelectorAll('.lesson-slide')];
   let index = 0, returnFocus = null, touch = null, demoTimer = null;
   const pad = n => String(n).padStart(2,'0');
+  // Слайды адресуются по id, а не по позиции: между исходными 20–88 вставлены
+  // дополнительные экраны, поэтому «номер минус 20» больше не даёт индекс.
+  const indexOfId = id => slides.findIndex(s => s.id === id);
   const fromHash = () => {
-    const m = /^#(?:slide-)?(\d+)$/.exec(location.hash);
-    return m ? Math.max(0, Math.min(slides.length-1, Number(m[1])-20)) : 0;
+    const m = /^#(?:slide-)?(.+)$/.exec(location.hash);
+    if (!m) return 0;
+    const i = indexOfId('slide-' + decodeURIComponent(m[1]));
+    return i < 0 ? 0 : i;
   };
   function stopDemo() {
     clearTimeout(demoTimer);
@@ -27,10 +32,10 @@
     document.getElementById('next').disabled=index===slides.length-1;
     document.getElementById('progress').style.width=`${(index+1)/slides.length*100}%`;
     document.querySelector('.lesson-progress').setAttribute('aria-valuenow',index+1);
-    document.querySelectorAll('[data-go]').forEach(b=>b.setAttribute('aria-current',String(Number(b.dataset.go)===index+20)));
+    document.querySelectorAll('[data-go]').forEach(b=>b.setAttribute('aria-current',String(b.dataset.go===active.id)));
     document.title=`${pad(index+1)} · ${active.dataset.title} · Тема 5 · ОП.03`;
     document.getElementById('announcement').textContent=`Слайд ${index+1} из ${slides.length}. ${active.dataset.title}`;
-    if(hash) history.replaceState(null,'',`#${index+20}`);
+    if(hash) history.replaceState(null,'',`#${active.id.replace('slide-','')}`);
     if(moveFocus) document.getElementById('lesson-slides').focus({preventScroll:true});
   }
   function openDialog(id,trigger) { returnFocus=trigger;document.getElementById(id).showModal(); }
@@ -40,7 +45,7 @@
     d.addEventListener('close',()=>{if(returnFocus?.isConnected&&!returnFocus.closest('[inert]'))returnFocus.focus({preventScroll:true});});
     d.addEventListener('click',e=>{if(e.target!==d)return;const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();});
   });
-  document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{b.closest('dialog').close();show(Number(b.dataset.go)-20);}));
+  document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{b.closest('dialog').close();show(indexOfId(b.dataset.go));}));
   document.getElementById('prev').addEventListener('click',()=>show(index-1));
   document.getElementById('next').addEventListener('click',()=>show(index+1));
   document.querySelectorAll('.reveal').forEach(e=>e.style.setProperty('--i',[...e.parentElement.children].indexOf(e)));
