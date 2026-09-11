@@ -14,7 +14,11 @@
 
 Для публикации подготовлен репозиторий `MaximBytecamp/ga4-analytics-demo`.
 Настройки: Framework Preset **Other**, Root Directory — корень, Build Command — пусто, Output Directory — **.**.
-На момент подготовки стенда публикация ещё не выполнена: сохранённая авторизация Vercel отклонена (`invalidToken`), запущен штатный повторный вход CLI. После авторизации нужно импортировать демо-репозиторий и записать сюда настоящий Production URL.
+Проект создан и связан с GitHub. Первая публикация из `main` завершилась статусом **READY**.
+Постоянный Production URL: https://ga4-analytics-demo.vercel.app/
+ID проекта: `prj_03KL7xb5xoQlAcvRJLpPyGgOlCsc`.
+Первый Deployment: `dpl_CjDsdxuGuysFSTh98WZoNHfTMwH3`.
+Публичный адрес проверен без авторизации: HTTP 200. Google Tag ещё не установлен — это состояние сайта до шага 26 практики.
 
 ## GA4
 
