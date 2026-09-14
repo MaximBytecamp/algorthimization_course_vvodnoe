@@ -245,3 +245,92 @@ printf "\n## Root filesystem\n" >> README.md
 findmnt / -o TARGET,SOURCE,FSTYPE >> README.md
 cat README.md
 ```
+
+## Кадры второго Live-сеанса
+
+Семь кадров сняты после перезагрузки VM в том же Ubuntu 24.04.4 Live, 14 сентября 2026 года, 20:15–20:24.
+Live-сеанс начался заново, поэтому `~/linux-fhs-lab` создана повторно, номера inode (1605, 1607) и uptime
+отличаются от кадров 01–23. Приглашение оболочки в этом сеансе цветное. Ввод — `keyboardputstring`
+построчно с паузой, чтобы вывод не перемешивался с набором.
+
+Подготовка площадки перед кадрами (не снималась):
+
+```bash
+mkdir -p ~/linux-fhs-lab/{config,data,logs,tmp,screenshots}
+cd ~/linux-fhs-lab
+printf "Linux filesystem\n" > data/info.txt
+printf "mode=lab\n" > config/app.conf
+ln data/info.txt data/info-hard.txt
+ln -s data/info.txt info-link.txt
+```
+
+### cups-spread.png
+
+```bash
+cd ~
+dpkg -S /usr/sbin/cupsd
+dpkg -L cups-daemon | grep --color=never -xE '/(etc/cups|usr/sbin/cupsd|var/(log|spool|cache)/cups|lib/systemd/system/cups.service)'
+ls -ld /run/cups
+systemctl is-active cups
+```
+
+### files-root.png
+
+Файловый менеджер запущен командой `nautilus /` и развёрнут на весь экран.
+
+### man-hier.png
+
+```bash
+man hier
+```
+
+### cups-lifetime.png
+
+```bash
+ls /etc/cups
+ls -l /var/log/cups
+ls -ld /var/spool/cups /var/cache/cups
+ls -l /run/cups
+findmnt -n -o TARGET,FSTYPE -T /run/cups | cat
+findmnt -n -o TARGET,FSTYPE -T /var/log/cups | cat
+```
+
+### proc-uptime.png
+
+```bash
+cd ~/linux-fhs-lab
+rm -f saved-uptime.txt
+ls -l /proc/uptime
+cat /proc/uptime
+cp /proc/uptime saved-uptime.txt
+sleep 5
+cat /proc/uptime
+cat saved-uptime.txt
+ls -l saved-uptime.txt
+findmnt -n -o TARGET,FSTYPE -T /proc/uptime | cat
+findmnt -n -o TARGET,FSTYPE -T saved-uptime.txt | cat
+```
+
+### link-broken.png
+
+```bash
+cd ~/linux-fhs-lab
+ls -li data/info.txt data/info-hard.txt info-link.txt
+rm data/info.txt
+ls -li data/info-hard.txt info-link.txt
+cat info-link.txt
+cat data/info-hard.txt
+ln data/info-hard.txt data/info.txt
+cat info-link.txt
+ls -li data/info.txt data/info-hard.txt
+```
+
+### cups-unit.png
+
+```bash
+systemctl cat cups | grep --color=never -E 'ExecStart|^# /'
+head -6 /etc/logrotate.d/cups-daemon
+stat -c '%n inode=%i size=%s' /var/log/cups /var/log/cups/access_log
+```
+
+Числа моделей урока (inode в модели ссылок, три значения uptime) взяты из этих кадров и записаны в `FACTS` в `build.py`.
