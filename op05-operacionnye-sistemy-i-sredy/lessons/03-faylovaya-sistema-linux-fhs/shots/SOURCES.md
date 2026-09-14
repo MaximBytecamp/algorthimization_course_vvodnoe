@@ -248,7 +248,7 @@ cat README.md
 
 ## Кадры второго Live-сеанса
 
-Семь кадров сняты после перезагрузки VM в том же Ubuntu 24.04.4 Live, 14 сентября 2026 года, 20:15–20:24.
+Шесть кадров сняты после перезагрузки VM в том же Ubuntu 24.04.4 Live, 14 сентября 2026 года, 20:15–20:24.
 Live-сеанс начался заново, поэтому `~/linux-fhs-lab` создана повторно, номера inode (1605, 1607) и uptime
 отличаются от кадров 01–23. Приглашение оболочки в этом сеансе цветное. Ввод — `keyboardputstring`
 построчно с паузой, чтобы вывод не перемешивался с набором.
@@ -325,12 +325,5 @@ cat info-link.txt
 ls -li data/info.txt data/info-hard.txt
 ```
 
-### cups-unit.png
 
-```bash
-systemctl cat cups | grep --color=never -E 'ExecStart|^# /'
-head -6 /etc/logrotate.d/cups-daemon
-stat -c '%n inode=%i size=%s' /var/log/cups /var/log/cups/access_log
-```
-
-Числа моделей урока (inode в модели ссылок, три значения uptime) взяты из этих кадров и записаны в `FACTS` в `build.py`.
+Номера inode в схеме ссылок взяты из снимка link-broken и записаны в `FACTS` в `render.py`.
