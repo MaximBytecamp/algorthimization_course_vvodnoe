@@ -12,10 +12,11 @@
     document.querySelector('[role=progressbar]').setAttribute('aria-valuenow', current + 1);
     document.querySelector('#prev').disabled = current === 0;
     document.querySelector('#next').disabled = current === slides.length - 1;
-    history.replaceState(null, '', `#${current + 89}`);
-    document.title = `${current + 89} · ${slides[current].dataset.title} · Тема 6`;
+    history.replaceState(null, '', `#${slides[current].id.replace('slide-', '')}`);
+    document.title = `${slides[current].id.replace('slide-', '')} · ${slides[current].dataset.title} · Тема 6`;
   }
-  function fromHash() { const id = Number(location.hash.replace('#slide-', '').replace('#', '')); show(id >= 89 && id <= 170 ? id - 89 : 0); }
+  function indexById(id) { const found = slides.findIndex(slide => slide.id === `slide-${id}`); return found < 0 ? 0 : found; }
+  function fromHash() { const id = Number(location.hash.replace('#slide-', '').replace('#', '')); show(indexById(id)); }
   document.documentElement.classList.add('events-ready');
   fromHash();
   addEventListener('hashchange', fromHash);
@@ -23,7 +24,7 @@
   document.querySelector('#next').onclick = () => show(current + 1);
   document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => document.getElementById(b.dataset.open).showModal());
   document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('dialog').close());
-  document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { b.closest('dialog').close(); show(Number(b.dataset.go) - 89); });
+  document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { b.closest('dialog').close(); show(indexById(Number(b.dataset.go))); });
   const fullscreen = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); } catch { document.querySelector('#announcement').textContent = 'Полный экран недоступен в этом браузере.'; } };
   document.querySelector('#fullscreen').onclick = fullscreen;
   document.querySelector('#print').onclick = () => { document.querySelector('#sources').close(); window.print(); };
@@ -32,7 +33,7 @@
     if (['ArrowRight','PageDown',' '].includes(e.key)) { e.preventDefault(); show(current + 1); }
     if (['ArrowLeft','PageUp'].includes(e.key)) { e.preventDefault(); show(current - 1); }
     if (e.key === 'Home') { e.preventDefault(); show(0); }
-    if (e.key === 'End') { e.preventDefault(); show(81); }
+    if (e.key === 'End') { e.preventDefault(); show(slides.length - 1); }
     if (e.key.toLowerCase() === 'm') document.querySelector('#contents').showModal();
     if (e.key.toLowerCase() === 's') document.querySelector('#sources').showModal();
     if (e.key.toLowerCase() === 'f') fullscreen();

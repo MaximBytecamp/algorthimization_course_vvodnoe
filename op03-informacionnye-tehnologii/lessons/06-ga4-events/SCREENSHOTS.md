@@ -1,403 +1,202 @@
-# Кадры темы 6
+# Список скриншотов · Тема 6
 
-Новые кадры аккаунта пока не сняты: GA4 возвращает ошибку соединения. Это список съёмки, не подтверждение выполнения. Код в колоде показан настоящими текстовыми фрагментами, без имитации VS Code.
+Всего: **39**. Каждый файл вставляется на одноимённый слайд автоматически после команды `node build.mjs`. До съёмки на слайде видна пустая рамка. Снимать личный учебный проект; скрыть аккаунт, почту и другие личные данные. Интерфейс должен показывать указанный результат, а не только открытый раздел.
 
-Снимать на учебном проекте темы 5, показывать название ресурса и результат. Закрыть личные данные; не подменять интерфейс макетом. После добавления PNG выполнить `node build.mjs`.
+## GA4 и Tag Assistant
 
 <a id="slide-95"></a>
 
-## 95. Шаг 1. Открыть Enhanced Measurement
-
-Файл: `shots/95-shot.png`.
-
-Web stream details.
-
-Статус: pending.
+- [ ] **95. Шаг 1. Открыть Enhanced Measurement** — GA4: данные веб-потока — URL проекта, Measurement ID и блок Enhanced Measurement.
+  - Файл: `shots/95-shot.png`
 
 <a id="slide-96"></a>
 
-## 96. Часть событий можно получать без кода
-
-Файл: `shots/96-shot.png`.
-
-Блок Enhanced Measurement.
-
-Должен быть виден переключатель:
-
-On.
-
-Статус: pending.
+- [ ] **96. Часть событий можно получать без кода** — GA4: блок Enhanced Measurement; переключатель находится в положении On.
+  - Файл: `shots/96-shot.png`
 
 <a id="slide-97"></a>
 
-## 97. Шаг 2. Посмотреть автоматические измерения
-
-Файл: `shots/97-shot.png`.
-
-Открытые настройки Enhanced Measurement.
-
-Статус: pending.
+- [ ] **97. Шаг 2. Посмотреть автоматические измерения** — GA4: открытая панель Enhanced Measurement со списком автоматических измерений.
+  - Файл: `shots/97-shot.png`
 
 <a id="slide-101"></a>
 
-## 101. Шаг 3. Прокрутить страницу
-
-Файл: `shots/101-shot.png`.
-
-Realtime → Event count by Event name.
-
-Статус: pending.
-
-<a id="slide-103"></a>
-
-## 103. Шаг 4. Найти внешнюю ссылку
-
-Файл: `shots/103-shot.png`.
-
-VS Code.
-
-Показать HTML внешней ссылки.
-
-Статус: pending.
+- [ ] **101. Шаг 3. Прокрутить страницу** — GA4 Realtime: в списке событий видно scroll после прокрутки длинной страницы.
+  - Файл: `shots/101-shot.png`
 
 <a id="slide-104"></a>
 
-## 104. Шаг 5. Нажать внешнюю ссылку
-
-Файл: `shots/104-shot.png`.
-
-Realtime с событием `click`.
-
-Статус: pending.
-
-<a id="slide-107"></a>
-
-## 107. Шаг 6. Подготовить PDF для скачивания
-
-Файл: `shots/107-shot.png`.
-
-Explorer VS Code.
-
-Статус: pending.
-
-<a id="slide-108"></a>
-
-## 108. Шаг 7. Создать кнопку скачивания
-
-Файл: `shots/108-shot.png`.
-
-HTML-код ссылки в VS Code.
-
-Статус: pending.
+- [ ] **104. Шаг 5. Нажать внешнюю ссылку** — GA4 Realtime: событие click после перехода по внешней ссылке.
+  - Файл: `shots/104-shot.png`
 
 <a id="slide-109"></a>
 
-## 109. Шаг 8. Скачать файл
-
-Файл: `shots/109-shot.png`.
-
-Realtime.
-
-Статус: pending.
+- [ ] **109. Шаг 8. Скачать файл** — GA4 Realtime: событие file_download после нажатия ссылки на PDF.
+  - Файл: `shots/109-shot.png`
 
 <a id="slide-112"></a>
 
-## 112. Шаг 9. Form interactions
-
-Файл: `shots/112-shot.png`.
-
-Настройки Enhanced Measurement.
-
-Статус: pending.
-
-<a id="slide-113"></a>
-
-## 113. На странице должна быть форма
-
-Файл: `shots/113-shot.png`.
-
-Форма в браузере и соответствующий HTML в VS Code.
-
-Статус: pending.
+- [ ] **112. Шаг 9. Form interactions** — GA4: в настройках Enhanced Measurement включён пункт Form interactions.
+  - Файл: `shots/112-shot.png`
 
 <a id="slide-115"></a>
 
-## 115. Шаг 10. Начать заполнять форму
-
-Файл: `shots/115-shot.png`.
-
-Realtime.
-
-Статус: pending.
+- [ ] **115. Шаг 10. Начать заполнять форму** — GA4 Realtime: событие form_start после первого взаимодействия с формой.
+  - Файл: `shots/115-shot.png`
 
 <a id="slide-116"></a>
 
-## 116. Шаг 11. Отправить форму
-
-Файл: `shots/116-shot.png`.
-
-Realtime.
-
-Статус: pending.
-
-<a id="slide-119"></a>
-
-## 119. Шаг 12. Открыть script.js
-
-Файл: `shots/119-shot.png`.
-
-VS Code → `js/script.js`.
-
-Статус: pending.
-
-<a id="slide-120"></a>
-
-## 120. Шаг 13. Получить форму
-
-Файл: `shots/120-shot.png`.
-
-VS Code с этой строкой.
-
-Статус: pending.
-
-<a id="slide-122"></a>
-
-## 122. Шаг 15. gtag('event', ...)
-
-Файл: `shots/122-shot.png`.
-
-Код в VS Code.
-
-Статус: pending.
-
-<a id="slide-124"></a>
-
-## 124. Шаг 16. Передать контекст события
-
-Файл: `shots/124-shot.png`.
-
-Код в VS Code.
-
-Статус: pending.
-
-<a id="slide-126"></a>
-
-## 126. Итоговый обработчик
-
-Файл: `shots/126-shot.png`.
-
-Полный фрагмент в `script.js`.
-
-Статус: pending.
-
-<a id="slide-128"></a>
-
-## 128. Шаг 17. Save → Commit → Push
-
-Файл: `shots/128-shot.png`.
-
-VS Code Source Control.
-
-Статус: pending.
-
-<a id="slide-129"></a>
-
-## 129. Шаг 18. Проверить Deployment
-
-Файл: `shots/129-shot.png`.
-
-Vercel Deployments.
-
-Статус: pending.
-
-<a id="slide-130"></a>
-
-## 130. Шаг 19. Отправить тестовую заявку
-
-Файл: `shots/130-shot.png`.
-
-Форма в браузере.
-
-Статус: pending.
+- [ ] **116. Шаг 11. Отправить форму** — GA4 Realtime: событие form_submit после валидной отправки формы.
+  - Файл: `shots/116-shot.png`
 
 <a id="slide-131"></a>
 
-## 131. Шаг 20. Найти generate_lead
-
-Файл: `shots/131-shot.png`.
-
-Realtime → Event count by Event name.
-
-Статус: pending.
-
-<a id="slide-133"></a>
-
-## 133. Шаг 21. Подготовить HTML
-
-Файл: `shots/133-shot.png`.
-
-HTML в VS Code.
-
-Статус: pending.
-
-<a id="slide-134"></a>
-
-## 134. Шаг 22. querySelector
-
-Файл: `shots/134-shot.png`.
-
-Код VS Code.
-
-Статус: pending.
-
-<a id="slide-135"></a>
-
-## 135. Шаг 23. Custom Event
-
-Файл: `shots/135-shot.png`.
-
-Код в VS Code.
-
-Статус: pending.
-
-<a id="slide-139"></a>
-
-## 139. Шаг 24. Отправить изменения
-
-Файл: `shots/139-shot.png`.
-
-Source Control + Vercel Deployment.
-
-Статус: pending.
+- [ ] **131. Шаг 20. Найти generate_lead** — GA4 Realtime: событие generate_lead после отправки формы.
+  - Файл: `shots/131-shot.png`
 
 <a id="slide-140"></a>
 
-## 140. Шаг 25. Нажать кнопку
-
-Файл: `shots/140-shot.png`.
-
-Realtime с cta_click.
-
-Статус: pending.
+- [ ] **140. Шаг 25. Нажать кнопку** — GA4 Realtime: событие cta_click после одного нажатия кнопки.
+  - Файл: `shots/140-shot.png`
 
 <a id="slide-143"></a>
 
-## 143. Шаг 26. Google Tag Assistant
-
-Файл: `shots/143-shot.png`.
-
-Google Tag Assistant.
-
-Показать поле подключения URL.
-
-Статус: pending.
+- [ ] **143. Шаг 26. Google Tag Assistant** — Google Tag Assistant: подключён Production URL учебного сайта.
+  - Файл: `shots/143-shot.png`
 
 <a id="slide-144"></a>
 
-## 144. Шаг 27. Admin → DebugView
-
-Файл: `shots/144-shot.png`.
-
-Admin → Data display → DebugView.
-
-Статус: pending.
+- [ ] **144. Шаг 27. Admin → DebugView** — GA4 DebugView: открыт экран, выбрано своё debug-устройство.
+  - Файл: `shots/144-shot.png`
 
 <a id="slide-145"></a>
 
-## 145. События почти по секундам
-
-Файл: `shots/145-shot.png`.
-
-DebugView timeline.
-
-Статус: pending.
+- [ ] **145. События почти по секундам** — GA4 DebugView: в ленте видна последовательность событий тестового визита.
+  - Файл: `shots/145-shot.png`
 
 <a id="slide-146"></a>
 
-## 146. Шаг 28. Открыть событие
-
-Файл: `shots/146-shot.png`.
-
-DebugView с открытым generate_lead.
-
-Статус: pending.
+- [ ] **146. Шаг 28. Открыть событие** — GA4 DebugView: раскрыто событие generate_lead.
+  - Файл: `shots/146-shot.png`
 
 <a id="slide-147"></a>
 
-## 147. Параметр дошёл?
-
-Файл: `shots/147-shot.png`.
-
-DebugView → generate_lead → parameters.
-
-Статус: pending.
+- [ ] **147. Параметр дошёл?** — GA4 DebugView: у generate_lead виден lead_source=contact_form.
+  - Файл: `shots/147-shot.png`
 
 <a id="slide-148"></a>
 
-## 148. Шаг 29. Проверить Custom Event
-
-Файл: `shots/148-shot.png`.
-
-DebugView с параметрами cta_click.
-
-Статус: pending.
+- [ ] **148. Шаг 29. Проверить Custom Event** — GA4 DebugView: у cta_click видны button_name=program и page_section=hero.
+  - Файл: `shots/148-shot.png`
 
 <a id="slide-151"></a>
 
-## 151. Шаг 30. Admin → Custom definitions
-
-Файл: `shots/151-shot.png`.
-
-Custom definitions.
-
-Статус: pending.
+- [ ] **151. Шаг 30. Admin → Custom definitions** — GA4 Custom definitions: открыт список и кнопка создания определения.
+  - Файл: `shots/151-shot.png`
 
 <a id="slide-152"></a>
 
-## 152. Шаг 31. Создать Event-scoped Dimension
-
-Файл: `shots/152-shot.png`.
-
-Create custom dimension.
-
-Статус: pending.
+- [ ] **152. Шаг 31. Создать Event-scoped Dimension** — GA4 Create custom dimension: Event scope и параметр button_name.
+  - Файл: `shots/152-shot.png`
 
 <a id="slide-153"></a>
 
-## 153. Шаг 32. Второй параметр
-
-Файл: `shots/153-shot.png`.
-
-Вторая Custom Dimension.
-
-Статус: pending.
+- [ ] **153. Шаг 32. Второй параметр** — GA4 Create custom dimension: Event scope и параметр page_section.
+  - Файл: `shots/153-shot.png`
 
 <a id="slide-157"></a>
 
-## 157. Шаг 33. Admin → Events
-
-Файл: `shots/157-shot.png`.
-
-Admin → Events.
-
-Статус: pending.
+- [ ] **157. Шаг 33. Admin → Events** — GA4 Events: в списке найдено событие generate_lead.
+  - Файл: `shots/157-shot.png`
 
 <a id="slide-158"></a>
 
-## 158. Шаг 34. Mark as key event
-
-Файл: `shots/158-shot.png`.
-
-Events с отмеченным generate_lead.
-
-Статус: pending.
+- [ ] **158. Шаг 34. Mark as key event** — GA4 Events: generate_lead отмечено как Key Event.
+  - Файл: `shots/158-shot.png`
 
 <a id="slide-160"></a>
 
-## 160. Шаг 35. Отправить ещё одну форму
+- [ ] **160. Шаг 35. Отправить ещё одну форму** — GA4 Realtime: новое generate_lead после настройки Key Event.
+  - Файл: `shots/160-shot.png`
+## Публикация и сайт
 
-Файл: `shots/160-shot.png`.
+<a id="slide-129"></a>
 
-Realtime с generate_lead.
+- [ ] **129. Шаг 18. Проверить Deployment** — Vercel Deployments: нужный коммит имеет статусы Ready и Production.
+  - Файл: `shots/129-shot.png`
 
-Статус: pending.
+<a id="slide-130"></a>
+
+- [ ] **130. Шаг 19. Отправить тестовую заявку** — Production-сайт: форма Contacts после одной успешной учебной отправки; виден URL.
+  - Файл: `shots/130-shot.png`
+
+<a id="slide-139"></a>
+
+- [ ] **139. Шаг 24. Отправить изменения** — Source Control и Vercel: коммит CTA опубликован, deployment Ready.
+  - Файл: `shots/139-shot.png`
+## Редактор и код
+
+<a id="slide-103"></a>
+
+- [ ] **103. Шаг 4. Найти внешнюю ссылку** — VS Code: внешняя ссылка на GitHub в index.html, видны href и target.
+  - Файл: `shots/103-shot.png`
+
+<a id="slide-107"></a>
+
+- [ ] **107. Шаг 6. Подготовить PDF для скачивания** — VS Code Explorer: файл assets/analytics-guide.pdf находится в проекте.
+  - Файл: `shots/107-shot.png`
+
+<a id="slide-108"></a>
+
+- [ ] **108. Шаг 7. Создать кнопку скачивания** — VS Code: HTML-ссылка на analytics-guide.pdf с атрибутом download.
+  - Файл: `shots/108-shot.png`
+
+<a id="slide-113"></a>
+
+- [ ] **113. На странице должна быть форма** — Форма Contacts в браузере и её HTML с id="lead-form" в VS Code.
+  - Файл: `shots/113-shot.png`
+
+<a id="slide-119"></a>
+
+- [ ] **119. Шаг 12. Открыть script.js** — VS Code: открыт js/script.js и найден блок обработки формы.
+  - Файл: `shots/119-shot.png`
+
+<a id="slide-120"></a>
+
+- [ ] **120. Шаг 13. Получить форму** — VS Code: строка querySelector для #lead-form.
+  - Файл: `shots/120-shot.png`
+
+<a id="slide-122"></a>
+
+- [ ] **122. Шаг 15. gtag('event', ...)** — VS Code: вызов gtag с событием generate_lead внутри submit-обработчика.
+  - Файл: `shots/122-shot.png`
+
+<a id="slide-124"></a>
+
+- [ ] **124. Шаг 16. Передать контекст события** — VS Code: generate_lead с параметром lead_source: contact_form.
+  - Файл: `shots/124-shot.png`
+
+<a id="slide-126"></a>
+
+- [ ] **126. Итоговый обработчик** — VS Code: целиком виден итоговый обработчик lead-form без второго submit-обработчика.
+  - Файл: `shots/126-shot.png`
+
+<a id="slide-128"></a>
+
+- [ ] **128. Шаг 17. Save → Commit → Push** — VS Code Source Control: изменения contacts.html и script.js готовы к коммиту.
+  - Файл: `shots/128-shot.png`
+
+<a id="slide-133"></a>
+
+- [ ] **133. Шаг 21. Подготовить HTML** — VS Code: кнопка #program-cta в index.html.
+  - Файл: `shots/133-shot.png`
+
+<a id="slide-134"></a>
+
+- [ ] **134. Шаг 22. querySelector** — VS Code: querySelector для #program-cta.
+  - Файл: `shots/134-shot.png`
+
+<a id="slide-135"></a>
+
+- [ ] **135. Шаг 23. Custom Event** — VS Code: click-обработчик cta_click; виден один обработчик кнопки.
+  - Файл: `shots/135-shot.png`
