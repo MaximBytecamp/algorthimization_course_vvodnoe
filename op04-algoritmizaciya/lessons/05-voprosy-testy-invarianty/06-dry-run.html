@@ -12,7 +12,34 @@
             first = value
         elif value &gt; second:
             second = value
-    return second</code></pre></figure><div class="table-wrap"><table><thead><tr><th scope="col">value</th><th scope="col">first до</th><th scope="col">second до</th><th scope="col">Ветка</th><th scope="col">first после</th><th scope="col">second после</th></tr></thead><tbody><tr><td>−10</td><td>0</td><td>0</td><td>Ни одна</td><td>0</td><td>0</td></tr><tr><td>−3</td><td>0</td><td>0</td><td>Ни одна</td><td>0</td><td>0</td></tr><tr><td>−5</td><td>0</td><td>0</td><td>Ни одна</td><td>0</td><td>0</td></tr></tbody></table></div><p>Для <code>[-10, -3, -5]</code> ожидаем −5, а функция вернёт 0. Начальная пара нулей не описывает обработанную часть. Даже наличие положительных чисел не гарантирует правильность: для <code>[5, -1]</code> второй максимум равен −1, но исходный код вернёт 0.</p></section><section id="bounds"><h2>Правая граница range не включается</h2><p>Полуинтервал <code>[start, end)</code> включает начало и исключает конец. <code>range(2, 5)</code> перебирает 2, 3, 4. Индексы списка длины n — от 0 до n − 1, поэтому полный проход задаётся <code>range(n)</code>.</p><figure class="code"><figcaption><span>contains_zero · исходная версия</span><a href="materials/buggy.py" download>Скачать файл ↓</a></figcaption><pre><code>def contains_zero(numbers):
+    return second</code></pre></figure><div class="table-wrap"><table><thead><tr><th scope="col">value</th><th scope="col">first до</th><th scope="col">second до</th><th scope="col">Ветка</th><th scope="col">first после</th><th scope="col">second после</th></tr></thead><tbody><tr><td>−10</td><td>0</td><td>0</td><td>Ни одна</td><td>0</td><td>0</td></tr><tr><td>−3</td><td>0</td><td>0</td><td>Ни одна</td><td>0</td><td>0</td></tr><tr><td>−5</td><td>0</td><td>0</td><td>Ни одна</td><td>0</td><td>0</td></tr></tbody></table></div><p>Для <code>[-10, -3, -5]</code> ожидаем −5, а функция вернёт 0. Начальная пара нулей не описывает обработанную часть. Даже наличие положительных чисел не гарантирует правильность: для <code>[5, -1]</code> второй максимум равен −1, но исходный код вернёт 0.</p></section><p>Таблицу ручного прогона можно получить и от самой программы: добавить <code>print</code> с состоянием до и после каждого шага. Вывод должен совпасть с таблицей выше.</p><figure class="code"><figcaption><span>5_6_trassirovka.py · трассировка</span><a href="materials/primery/5_6_trassirovka.py" download>Скачать файл ↓</a></figcaption><pre><code>def second_max(numbers):
+    first = 0
+    second = 0
+    for value in numbers:
+        before = (first, second)
+        if value &gt; first:
+            second = first
+            first = value
+            branch = &quot;if&quot;
+        elif value &gt; second:
+            second = value
+            branch = &quot;elif&quot;
+        else:
+            branch = &quot;нет&quot;
+        print(f&quot;value={value:&gt;3} до={before} ветка={branch:4} после={(first, second)}&quot;)
+    return second
+
+
+print(&quot;результат:&quot;, second_max([-10, -3, -5]))</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод в терминал</span><span>$ python3 5_6_trassirovka.py</span></figcaption><pre><code>value=-10 до=(0, 0) ветка=нет  после=(0, 0)
+value= -3 до=(0, 0) ветка=нет  после=(0, 0)
+value= -5 до=(0, 0) ветка=нет  после=(0, 0)
+результат: 0</code></pre></figure><p>Ни одно условие не выполнилось, пара (0, 0) не изменилась, и функция вернула 0. Отладочные <code>print</code> после поиска ошибки удаляют.</p><figure class="shot"><a href="shots/vs-trace.png" target="_blank" rel="noopener"><img src="shots/vs-trace.png" alt="Трассировка second_max в VS Code" width="1600" height="1000" loading="lazy"></a><figcaption><b>Снимок · VS Code</b>Запуск трассировки в VS Code. Строка 15 с <code>print</code> выполняется на каждом шаге цикла, поэтому в терминале три строки состояний и итоговый результат.</figcaption></figure><section id="bounds"><h2>Правая граница range не включается</h2><p>Полуинтервал <code>[start, end)</code> включает начало и исключает конец. <code>range(2, 5)</code> перебирает 2, 3, 4. Индексы списка длины n — от 0 до n − 1, поэтому полный проход задаётся <code>range(n)</code>.</p><figure class="code"><figcaption><span>5_6_range.py · какие индексы перебирает range</span><a href="materials/primery/5_6_range.py" download>Скачать файл ↓</a></figcaption><pre><code>print(list(range(2, 5)))
+
+numbers = [4, 8, 0]
+print(list(range(len(numbers) - 1)))
+print(list(range(len(numbers))))</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод в терминал</span><span>$ python3 5_6_range.py</span></figcaption><pre><code>[2, 3, 4]
+[0, 1]
+[0, 1, 2]</code></pre></figure><p>Вторая строка — индексы исходной версии для <code>[4, 8, 0]</code>: индекса 2 нет. Третья — полный проход <code>range(len(numbers))</code>.</p><figure class="code"><figcaption><span>contains_zero · исходная версия</span><a href="materials/buggy.py" download>Скачать файл ↓</a></figcaption><pre><code>def contains_zero(numbers):
     for i in range(len(numbers) - 1):
         if numbers[i] == 0:
             return True
@@ -20,4 +47,15 @@
     for i in range(len(numbers) - 1):
         if numbers[i] &gt; numbers[i + 1]:
             return False
-    return True</code></pre></figure><div class="case"><span class="eyebrow">Попробуйте самостоятельно</span><h3>Проверьте определение порядка</h3><p>Что вернёт этот код для <code>[]</code>, <code>[7]</code>, <code>[1, 2, 2, 4]</code>? Как изменится проверка для строго возрастающего порядка?</p><details><summary>Открыть разбор</summary><div><p>Во всех трёх случаях True. В пустом и одноэлементном списках нет пары, нарушающей порядок. При неубывании равные соседи допустимы. Для строгого возрастания нарушение проверяется через <code>&gt;=</code>, и список с двумя соседними двойками уже даст False.</p></div></details></div></section></article><nav class="chapter-nav" aria-label="Переходы между модулями"><a href="05-invariant.html">← Предыдущий модуль</a><a href="07-praktikum.html">Следующий модуль →</a></nav><footer class="page-footer"><span>Основы алгоритмизации и программирования</span><a href="index.html#materials">Материалы темы</a></footer></div></main></div></body></html>
+    return True</code></pre></figure><p>Запуск на трёх входах из вопроса ниже и на входе с нарушением порядка:</p><figure class="code"><figcaption><span>5_6_is_sorted.py · проверка</span><a href="materials/primery/5_6_is_sorted.py" download>Скачать файл ↓</a></figcaption><pre><code>def is_sorted(numbers):
+    for i in range(len(numbers) - 1):
+        if numbers[i] &gt; numbers[i + 1]:
+            return False
+    return True
+
+
+for data in ([], [7], [1, 2, 2, 4], [1, 3, 2]):
+    print(data, is_sorted(data))</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод в терминал</span><span>$ python3 5_6_is_sorted.py</span></figcaption><pre><code>[] True
+[7] True
+[1, 2, 2, 4] True
+[1, 3, 2] False</code></pre></figure><div class="case"><span class="eyebrow">Попробуйте самостоятельно</span><h3>Проверьте определение порядка</h3><p>Что вернёт этот код для <code>[]</code>, <code>[7]</code>, <code>[1, 2, 2, 4]</code>? Как изменится проверка для строго возрастающего порядка?</p><details><summary>Открыть разбор</summary><div><p>Во всех трёх случаях True. В пустом и одноэлементном списках нет пары, нарушающей порядок. При неубывании равные соседи допустимы. Для строгого возрастания нарушение проверяется через <code>&gt;=</code>, и список с двумя соседними двойками уже даст False.</p></div></details></div></section></article><nav class="chapter-nav" aria-label="Переходы между модулями"><a href="05-invariant.html">← Предыдущий модуль</a><a href="07-praktikum.html">Следующий модуль →</a></nav><footer class="page-footer"><span>Основы алгоритмизации и программирования</span><a href="index.html#materials">Материалы темы</a></footer></div></main></div></body></html>

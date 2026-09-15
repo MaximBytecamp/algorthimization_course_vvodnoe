@@ -58,6 +58,8 @@ C. Неубывание: равные соседи разрешены, [] и [x]
 - materials/examples.py — запускаемые примеры лекции.
 - materials/buggy.py — оригиналы трёх функций для скачивания со страниц.
 - materials/reference.py и test_reference.py — эталон и его проверки без распаковки.
+- materials/primery/ и primery.zip — 14 примеров к модулям 5.1–5.6; вывод на страницах получен их запуском (Python 3.12).
+- shots/ — четыре снимка VS Code: упавшие тесты (5.7), трассировка ValueError (5.3), отладочный print (5.6), успешный запуск готовой работы (5.8).
 
 Тесты: `python3 -m unittest discover -s materials -p 'test_reference.py' -v` из папки темы.
 
