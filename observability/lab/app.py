@@ -5,6 +5,7 @@
 import asyncio
 import json
 import logging
+import os
 import time
 import traceback
 import uuid
@@ -55,7 +56,8 @@ async def products(scenario: Literal["fast", "slow", "error"] = "fast"):
         await stage("serialize", 0.01)
     except TimeoutError:
         status = 500
-        exception_text = traceback.format_exc()
+        # Путь к папке проекта убираем: журналу нужен файл и строка, а не устройство диска сервера.
+        exception_text = traceback.format_exc().replace(str(Path(__file__).parent) + os.sep, "")
         logger.exception("dependency_timeout request_id=%s", request_id)
 
     elapsed = time.perf_counter() - started

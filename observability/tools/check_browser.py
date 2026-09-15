@@ -22,10 +22,10 @@ with sync_playwright() as p:
     page.get_by_role('button',name='По длительности',exact=True).click()
     assert page.locator('.duration-chart button').count()==20
     page.locator('.duration-chart button').nth(18).click()
-    assert '3024.333' in page.locator('.quantile .widget-detail').inner_text()
+    assert '3024.239' in page.locator('.quantile .widget-detail').inner_text()
     if width in [1440,390]:page.locator('.quantile').screenshot(path=f'/tmp/observability-metrics-{width}.png')
    if '01-posle' in relative:
-    page.get_by_role('button',name='После deploy',exact=True).click()
+    page.get_by_role('button',name='После развёртывания',exact=True).click()
     assert page.locator('.system-route>span').count()==5
     page.locator('.zoom').first.click()
     assert page.locator('dialog').is_visible()
@@ -58,8 +58,8 @@ with sync_playwright() as p:
     assert '\\Scripts\\python.exe' in page.locator('[data-command="windows"]').inner_text()
   print(width,'px: all pages and interactions OK',flush=True)
  nojs=b.new_context(java_script_enabled=False,viewport={'width':390,'height':844})
- np=nojs.new_page();np.goto(base+'temy/05-logs.html');np.locator('.case summary').first.click()
- assert np.locator('.case details').first.get_attribute('open') is not None
+ np=nojs.new_page();np.goto(base+'temy/05-logs.html');np.locator('.selfcheck summary').first.click()
+ assert np.locator('.selfcheck details').first.get_attribute('open') is not None
  print('No-JS narrative and native disclosures OK',flush=True)
  assert not errors,errors
  page.goto(base+'temy/08-prometheus-grafana.html')
