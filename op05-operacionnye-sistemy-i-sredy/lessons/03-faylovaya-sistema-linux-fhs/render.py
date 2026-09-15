@@ -4,6 +4,7 @@ from pathlib import Path
 import html
 from shot_notes import NOTES
 from explain import explain
+from command_summary import SUMMARY
 
 B =Path(__file__).resolve().parent
 E = html.escape
@@ -67,8 +68,12 @@ def probe_html(d, chapter):
     cmds = '\n'.join(c for c, _ in d['lines'])
     def line(c, w):
         rows = ''.join(f'<dt><code>{E(p)}</code></dt><dd>{E(t)}</dd>' for p, t in explain(c))
+        whole = SUMMARY.get(c)
+        if not whole:
+            missing.append('описание команды ' + c)
+        head = f'<p class="explain-whole"><b>Что делает команда.</b> {E(whole)}</p><p class="explain-parts">По частям:</p>' if whole else ''
         return (f'<li><code>{E(c)}</code>' + (f'<span class="why"># {w}</span>' if w else '<span class="why"></span>')
-                + f'<details class="explain"><summary>разбор</summary><dl>{rows}</dl></details></li>')
+                + f'<details class="explain"><summary>что делает</summary><div class="explain-body">{head}<dl>{rows}</dl></div></details></li>')
     lines = ''.join(line(c, w) for c, w in d['lines'])
     return (f'<section class="probe" aria-label="Команды {chapter}.{counters["probe"]}"><header><span class="probe-tag">В терминале</span>'
             f'<b>{E(d["title"])}</b><button class="copy" type="button" data-copy="{E(cmds)}">Копировать</button></header>'
