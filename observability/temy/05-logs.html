@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#302330"><meta name="description" content="Логи: событие, контекст и исключение. Подробный справочник Макарова М. Н.: объяснения, измерения, интерактивные схемы и реальные скриншоты."><title>Логи: событие, контекст и исключение · Наблюдаемость · Макаров М. Н.</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="../styles.css"><script src="../assets/experiment-data.js" defer></script><script src="../book.js" defer></script></head><body>
+<a class="skip" href="#main">К содержанию</a><div class="progress" aria-hidden="true"><span></span></div>
+<header class="topbar"><a class="brand" href="../index.html"><b>∿</b><span>Метрики и<br>наблюдаемость</span></a><div class="top-links"><a href="../../index.html">Все дисциплины</a><a href="https://python-theory-makarov.vercel.app/" target="_blank" rel="noreferrer">Справочник Python ↗</a></div><details class="chapter-menu"><summary>Главы темы 1</summary><nav aria-label="Главы первой темы"><a href="01-posle-deploy.html">1.1 После запуска: что происходит с приложением</a><a href="02-monitoring.html">1.2 Мониторинг: измерения и история</a><a href="03-observability.html">1.3 Наблюдаемость и телеметрия</a><a href="04-metrics.html">1.4 Метрики: числа, интервалы и распределения</a><a href="05-logs.html" aria-current="page">1.5 Логи: событие, контекст и исключение</a><a href="06-traces.html">1.6 Трассы: где операция потратила время</a><a href="07-rassledovanie.html">1.7 Кейс: API иногда отвечает медленно</a><a href="08-prometheus-grafana.html">1.8 Где работают Prometheus, Grafana и OpenTelemetry</a><a href="09-praktika.html">1.9 Практика: от жалобы к проверяемому выводу</a></nav>
+</details></header>
+
+<div class="book"><div class="book-body"><aside class="spine" aria-hidden="true"><span>Наблюдаемость / Метрики · Логи · Трассы / Макаров М. Н.</span></aside>
+<main class="leaf" id="main"><div class="running"><a href="../index.html">Практический справочник</a><span>Глава 1.5</span></div><header class="chapter-head"><span class="chapter-num">1.5</span><h1>Логи: событие, контекст и исключение</h1><p class="lead">Учимся читать структурированную запись, связывать события одного запроса и отличать стек исключения от распределённой трассы.</p>
+</header>
+<dl class="passport"><div><dt>Раздел</dt><dd>Основы наблюдаемости</dd></div><div><dt>Уровень</dt><dd>С нуля · Python знаком</dd></div><div><dt>Как изучать</dt><dd>Читать, проверять, повторять</dd></div><div><dt>Опора</dt><dd>Один API и его данные</dd></div></dl>
+<nav class="contents" aria-label="Содержание главы"><b>В этой главе</b><ol><li><a href="#event">Одна запись отвечает за одно событие</a></li><li><a href="#structure">Структура упрощает поиск</a></li><li><a href="#exception">Читаем настоящий traceback</a></li><li><a href="#count">Можно ли посчитать метрики из логов</a></li><li><a href="#context">Сохраняем нужные подробности</a></li><li><a href="#check">Самопроверка и памятка</a></li></ol></nav>
+<section
+ id="event"><h2><span class="sec">§1</span>Одна запись отвечает за одно событие</h2><p>Счётчик ошибок сообщает масштаб, но не сохраняет описание каждой ошибки. <strong>Лог</strong> — запись о произошедшем событии. В минимальном полезном варианте в ней есть время и содержание; в рабочем сервисе также нужны компонент, уровень и контекст.</p>
+<p>Фраза <code>Request processed</code> показывает, что выполнение дошло до строки логирования. Без статуса, маршрута, времени и идентификатора мы не знаем, какой запрос обработан и каков его результат. Поэтому сначала определяем, какие вопросы должна закрывать запись, затем выбираем поля.</p>
+<div class="interactive log-anatomy" data-log><div class="widget-head"><b>Структурированный лог по полям</b></div><div class="log-fields"><button data-field="timestamp">timestamp</button><button data-field="level">level</button><button data-field="service">service</button><button data-field="event">event</button><button data-field="status">status</button><button data-field="request_id">request_id</button><button data-field="duration_ms">duration_ms</button></div><pre><code>{"service":"products-api","event":"request_completed",
+ "status":500,"request_id":"f81c…","duration_ms":80.6}</code></pre><p class="widget-detail" aria-live="polite">Выберите поле: увидите, на какой вопрос оно отвечает и чего не гарантирует.</p>
+</div></section>
+<section
+ id="structure"><h2><span class="sec">§2</span>Структура упрощает поиск</h2><p>В свободной строке «ошибка базы у запроса ...» контекст приходится извлекать из текста. В JSON можно отобрать <code>event = request_completed</code> и <code>status = 500</code>, затем сгруппировать по сервису. Это не делает JSON автоматически хорошим логом: значения и названия полей должны быть последовательными.</p>
+<figure class="code"><figcaption><span>Python · формирование события</span><a download href="../lab/app.py">Файл целиком ↓</a></figcaption><pre><code>logger.info(json.dumps({
+    <span class="s">&quot;event&quot;</span>: <span class="s">&quot;request_completed&quot;</span>,
+    <span class="s">&quot;route&quot;</span>: <span class="s">&quot;/products&quot;</span>,
+    <span class="s">&quot;status&quot;</span>: status,
+    <span class="s">&quot;duration_ms&quot;</span>: elapsed * <span class="n">1000</span>,
+    <span class="s">&quot;request_id&quot;</span>: request_id,
+}))</code></pre></figure>
+<p><code>logger.info</code> записывает сообщение через систему логирования Python; <code>json.dumps</code> превращает словарь в строку JSON. Здесь показан смысл полей. Полная программа дополнительно ставит временную отметку, сохраняет события для лаборатории и обрабатывает исключение.</p>
+<p>Единицы фиксируем в имени или схеме: <code>duration_ms</code> измеряется в миллисекундах. Число 80 без единицы допускает слишком много трактовок. Время события в стенде записывается с часовым поясом UTC; браузер и Grafana могут показывать локальное время.</p>
+</section>
+<section
+ id="exception"><h2><span class="sec">§3</span>Читаем настоящий traceback</h2><figure class="evidence"><button class="zoom" data-image="../shots/api-error.png" aria-label="Увеличить: Ошибка 500 и Python traceback"><img src="../shots/api-error.png" alt="Ошибка 500 и Python traceback" loading="lazy" width="1440" height="1080"></button><figcaption><b>Кадр · Ошибка 500 и Python traceback</b><p>Кадр снят после сценария error. Исключение TimeoutError действительно поднято и перехвачено в приложении. Текст прямо указывает, что зависимость моделируется.</p>
+<a href="../shots/api-error.png" target="_blank" rel="noreferrer">Открыть оригинал ↗</a></figcaption></figure>
+<p><strong>Traceback</strong> в Python показывает стек вызовов, приведший к исключению. Читать удобно от последней строки: там тип исключения и сообщение. Затем выше смотрим файл и строку, в которой ошибка возникла. Предыдущие кадры объясняют, как выполнение дошло до этого места.</p>
+<figure class="code"><figcaption><span>Python · exception внутри except</span><a download href="../lab/app.py">Файл целиком ↓</a></figcaption><pre><code><span class="k">try</span>:
+    <span class="k">raise</span> TimeoutError(<span class="s">&quot;Simulated dependency timeout&quot;</span>)
+<span class="k">except</span> TimeoutError:
+    logger.exception(<span class="s">&quot;dependency_timeout request_id=%s&quot;</span>, request_id)</code></pre></figure>
+<p><code>logger.exception</code> добавляет сведения о текущем исключении, поэтому его вызывают при обработке ошибки. Клиенту можно вернуть краткий результат, а подробности сохранить для диагностики. Возвращать весь внутренний стек пользователю для работы телеметрии не требуется.</p>
+<aside class="margin-note"><b>Traceback и trace</b><p>Стек исключения описывает цепочку вызовов в месте ошибки. Распределённая трасса связывает этапы операции и их интервалы времени, в том числе между сервисами. В успешной медленной операции traceback может вообще отсутствовать, а трасса всё равно полезна.</p>
+</aside>
+</section>
+<section
+ id="count"><h2><span class="sec">§4</span>Можно ли посчитать метрики из логов</h2><p>Да: если каждая нужная операция записана ровно один раз и содержит достаточные поля, из журнала можно посчитать количество, долю ошибок и распределение длительностей. Неверно утверждать, что логи принципиально не подходят для численных вопросов. Цена и ограничения зависят от объёма и системы запросов.</p>
+<p>Проблемы появляются, когда один запрос создаёт несколько строк, записи дублируются при доставке, часть событий потеряна или длительность отсутствует. Тогда «количество строк с ERROR» не равно «количество неуспешных запросов». Для расчёта нужно определить событие учёта и обработку дубликатов.</p>
+<div class="case"><span class="eyebrow">Разберите самостоятельно</span><h3>Почему grep ERROR недостаточно</h3><p>Один запрос сделал три повтора и завершился успешно. Каждый повтор записал ошибку. Второй запрос упал без повторов. В журнале четыре ERROR. Сколько неуспешных запросов?</p>
+<details><summary>Проверить рассуждение</summary><p>По условию один. Количество ошибочных попыток — четыре, количество неуспешных запросов — одно. Для разных вопросов нужны разные события и явная связь попытки с запросом.</p>
+</details></div></section>
+<section
+ id="context"><h2><span class="sec">§5</span>Сохраняем нужные подробности</h2><p>Лог полезен, когда из него понятно, что случилось, где и к какой операции относится запись. Полный текст пользовательского документа или заголовок Authorization обычно не помогают ответить на этот вопрос. Для учебных материалов используются только синтетические данные; в рабочем сервисе состав полей согласуют с требованиями хранения и доступа.</p>
+<p>Уровень <code>ERROR</code> не определяет масштаб. Один и тот же тип ошибки может возникнуть один раз за месяц или на каждом запросе. Поэтому контекст отдельной записи сопоставляют с количеством операций за интервал.</p>
+</section>
+<section
+ id="check"><h2><span class="sec">✓</span>Самопроверка и памятка</h2><div class="case"><span class="eyebrow">Разберите самостоятельно</span><h3>Как найти лог выбранного запроса среди сотни одновременных?</h3><p>Сначала сформулируйте ответ своими словами и укажите, на какие данные опираетесь.</p>
+<details><summary>Проверить рассуждение</summary><p>По его request_id или trace_id при условии, что идентификатор записан в нужных событиях. Одного совпадения времени недостаточно.</p>
+</details></div><div class="recap"><ul><li>Полезное событие содержит время, компонент, действие и контекст.</li><li>Число строк с ERROR может отличаться от числа ошибочных операций.</li><li>Traceback локализует исключение в коде; для пути операции нужны дополнительные данные.</li></ul></div></section>
+<section
+ class="references"><h3>Прочитать в первоисточнике</h3><ul><li><a href="https://docs.python.org/3/library/logging.html" target="_blank" rel="noreferrer">Python · logging ↗</a></li><li><a href="https://docs.python.org/3/library/traceback.html" target="_blank" rel="noreferrer">Python · traceback ↗</a></li><li><a href="https://opentelemetry.io/docs/concepts/signals/logs/" target="_blank" rel="noreferrer">OpenTelemetry · Logs ↗</a></li></ul></section>
+<nav class="chapter-nav" aria-label="Переходы"><a href="04-metrics.html">← Глава 1.4</a><a href="06-traces.html">Глава 1.6 →</a></nav>
+<footer><a href="../index.html">К оглавлению ↑</a><span>Автор: Макаров Максим Николаевич</span><a href="../SOURCES.md">Источники и съёмка</a></footer></main></div></div>
+<dialog id="image-dialog" aria-label="Увеличенный скриншот"><form method="dialog"><button aria-label="Закрыть изображение">Закрыть ×</button></form><img alt=""><p></p>
+</dialog></body></html>

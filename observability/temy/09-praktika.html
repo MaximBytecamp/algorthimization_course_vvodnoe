@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#302330"><meta name="description" content="Практика: от жалобы к проверяемому выводу. Подробный справочник Макарова М. Н.: объяснения, измерения, интерактивные схемы и реальные скриншоты."><title>Практика: от жалобы к проверяемому выводу · Наблюдаемость · Макаров М. Н.</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="../styles.css"><script src="../assets/experiment-data.js" defer></script><script src="../book.js" defer></script></head><body>
+<a class="skip" href="#main">К содержанию</a><div class="progress" aria-hidden="true"><span></span></div>
+<header class="topbar"><a class="brand" href="../index.html"><b>∿</b><span>Метрики и<br>наблюдаемость</span></a><div class="top-links"><a href="../../index.html">Все дисциплины</a><a href="https://python-theory-makarov.vercel.app/" target="_blank" rel="noreferrer">Справочник Python ↗</a></div><details class="chapter-menu"><summary>Главы темы 1</summary><nav aria-label="Главы первой темы"><a href="01-posle-deploy.html">1.1 После запуска: что происходит с приложением</a><a href="02-monitoring.html">1.2 Мониторинг: измерения и история</a><a href="03-observability.html">1.3 Наблюдаемость и телеметрия</a><a href="04-metrics.html">1.4 Метрики: числа, интервалы и распределения</a><a href="05-logs.html">1.5 Логи: событие, контекст и исключение</a><a href="06-traces.html">1.6 Трассы: где операция потратила время</a><a href="07-rassledovanie.html">1.7 Кейс: API иногда отвечает медленно</a><a href="08-prometheus-grafana.html">1.8 Где работают Prometheus, Grafana и OpenTelemetry</a><a href="09-praktika.html" aria-current="page">1.9 Практика: от жалобы к проверяемому выводу</a></nav>
+</details></header>
+
+<div class="book"><div class="book-body"><aside class="spine" aria-hidden="true"><span>Наблюдаемость / Метрики · Логи · Трассы / Макаров М. Н.</span></aside>
+<main class="leaf" id="main"><div class="running"><a href="../index.html">Практический справочник</a><span>Глава 1.9</span></div><header class="chapter-head"><span class="chapter-num">1.9</span><h1>Практика: от жалобы к проверяемому выводу</h1><p class="lead">Запускаем знакомый Python-проект, выполняем контролируемые запросы, сохраняем исходные данные и составляем собственный разбор. Prometheus для обязательной части не нужен.</p>
+</header>
+<dl class="passport"><div><dt>Раздел</dt><dd>Основы наблюдаемости</dd></div><div><dt>Уровень</dt><dd>С нуля · Python знаком</dd></div><div><dt>Как изучать</dt><dd>Читать, проверять, повторять</dd></div><div><dt>Опора</dt><dd>Один API и его данные</dd></div></dl>
+<nav class="contents" aria-label="Содержание главы"><b>В этой главе</b><ol><li><a href="#start">Подготовка и первый запуск</a></li><li><a href="#code">Как внесена задержка и ошибка</a></li><li><a href="#blind">Этап A · наблюдение без общей истории</a></li><li><a href="#measure">Этап B · один и тот же эксперимент</a></li><li><a href="#checks">Что считать готовой работой</a></li><li><a href="#troubleshooting">Если опыт не запускается</a></li><li><a href="#next">Что изучать дальше</a></li><li><a href="#check">Самопроверка и памятка</a></li></ol></nav>
+<section
+ id="start"><h2><span class="sec">§1</span>Подготовка и первый запуск</h2><p>Скачайте архив и распакуйте его в отдельную рабочую папку. Внутри находится <code>telemetry-lab</code> с приложением, скриптом эксперимента и инструкцией. Требуется Python 3.12; установка зависимостей выполняется один раз в окружение проекта.</p>
+<p><a class="primary" href="../assets/telemetry-lab.zip" download>Скачать учебный проект ↓</a></p>
+<div class="os-commands"><div class="controls" role="group" aria-label="Операционная система"><button data-os="unix" aria-pressed="true">macOS / Linux</button><button data-os="windows" aria-pressed="false">Windows · PowerShell</button></div><div data-command="unix"><figure class="code"><figcaption><span>Терминал · из папки проекта</span></figcaption><pre><code>cd telemetry-lab
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m uvicorn app:app --host 127.0.0.1 --port 8015</code></pre></figure>
+</div><div data-command="windows" hidden><figure class="code"><figcaption><span>PowerShell · активация не требуется</span></figcaption><pre><code>cd telemetry-lab
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m uvicorn app:app --host 127.0.0.1 --port 8015</code></pre></figure>
+</div></div><p>Терминал с Uvicorn оставьте открытым: в нём работает сервер. Откройте <code>http://127.0.0.1:8015/lab</code>. Кнопки выполняют настоящие HTTP-запросы. Swagger доступен по <code>/docs</code>, проверка процесса — по <code>/health</code>.</p>
+<p>Если окружения и зависимости пока непривычны, используйте <a href="../../mdk0101-razrabotka-modulei/lessons/02-struktura-python-proekta/index.html">материал о структуре Python-проекта</a>. Перед экспериментом достаточно понять: сервер работает в одном терминале, клиент запускается отдельно.</p>
+</section>
+<section
+ id="code"><h2><span class="sec">§2</span>Как внесена задержка и ошибка</h2><figure class="code"><figcaption><span>Фрагмент app.py · управляемые сценарии</span><a download href="../lab/app.py">Файл целиком ↓</a></figcaption><pre><code><span class="k">await</span> stage(<span class="s">&quot;validate&quot;</span>, <span class="n">0.01</span>)
+<span class="k">try</span>:
+    <span class="k">await</span> stage(<span class="s">&quot;dependency.wait (simulated)&quot;</span>,
+                <span class="n">3.0</span> <span class="k">if</span> scenario == <span class="s">&quot;slow&quot;</span> <span class="k">else</span> <span class="n">0.06</span>)
+    <span class="k">if</span> scenario == <span class="s">&quot;error&quot;</span>:
+        <span class="k">raise</span> TimeoutError(<span class="s">&quot;Simulated dependency timeout; no database is connected&quot;</span>)
+    <span class="k">await</span> stage(<span class="s">&quot;serialize&quot;</span>, <span class="n">0.01</span>)
+<span class="k">except</span> TimeoutError:
+    status = <span class="n">500</span>
+    exception_text = traceback.format_exc()</code></pre></figure>
+<p><code>asyncio.sleep</code> моделирует ожидание: корутина приостанавливается, и цикл событий может выполнять другую работу. Это не нагрузочный CPU-тест и не настоящая задержка SQL. В сценарии slow меняется только ожидание; в error действительно поднимается исключение, которое приложение превращает в HTTP 500.</p>
+<p>Функция <code>stage</code> измеряет интервал через <code>time.perf_counter()</code>. Этот таймер подходит для длительностей. Отдельно через <code>datetime.now(timezone.utc)</code> записывается календарное время события. Нельзя вычитать perf_counter одного процесса из отметки времени другой машины: это разные шкалы.</p>
+<figure class="evidence"><button class="zoom" data-image="../shots/fastapi-swagger.png" aria-label="Увеличить: Маршруты учебного API в Swagger"><img src="../shots/fastapi-swagger.png" alt="Маршруты учебного API в Swagger" loading="lazy" width="1440" height="1080"></button><figcaption><b>Кадр · Маршруты учебного API в Swagger</b><p>Документация создана самим FastAPI. Параметр scenario имеет три допустимых значения; переключение определяет воспроизводимый сценарий.</p>
+<a href="../shots/fastapi-swagger.png" target="_blank" rel="noreferrer">Открыть оригинал ↗</a></figcaption></figure>
+</section>
+<section
+ id="blind"><h2><span class="sec">§3</span>Этап A · наблюдение без общей истории</h2><p>Нажмите fast, затем slow, затем error. Для каждого сохраните статус и длительность. После этого ответьте: сколько операций прошло за предыдущие сутки? Какая доля пользователей столкнулась с задержкой? Стало ли приложение медленнее, чем вчера?</p>
+<p>У локального стенда таких сведений нет. Три ручных запроса описывают только три выполненных опыта. Это не призыв игнорировать логи: это проверка границ наблюдения. Если нужная история не собиралась, её отсутствие нужно записать в вывод, а не заменить предположением.</p>
+<div class="case"><span class="eyebrow">Разберите самостоятельно</span><h3>Узкий health-check</h3><p>Выполните error на /products, затем откройте /health. Объясните, почему второй запрос успешен.</p>
+<details><summary>Проверить рассуждение</summary><p>/health проверяет только возможность выполнить простой обработчик процесса. Он не выполняет сценарий /products и не проверяет ту же зависимость. Ошибка одного маршрута не обязана делать весь процесс недоступным.</p>
+</details></div></section>
+<section
+ id="measure"><h2><span class="sec">§4</span>Этап B · один и тот же эксперимент</h2><p>Откройте второй терминал в распакованной папке. Запустите скрипт тем же Python из окружения.</p>
+<figure class="code"><figcaption><span>Клиент эксперимента · сервер продолжает работать</span><a download href="../lab/experiment.py">Файл целиком ↓</a></figcaption><pre><code># macOS / Linux
+.venv/bin/python experiment.py
+
+# Windows PowerShell
+.\.venv\Scripts\python.exe experiment.py</code></pre></figure>
+<p>Скрипт последовательно отправляет двадцать запросов и пишет <code>results/requests.csv</code>, <code>summary.json</code> и <code>events.json</code>. HTTP 500 учитывается как результат запроса, а не прерывает эксперимент. Поле <code>client_ms</code> измеряет клиентский интервал; <code>handler_ms</code> берётся из ответа сервера.</p>
+<ul><li>Проверьте количество строк и ожидаемую последовательность: slow на 7-м и 17-м запросах, error на 13-м.</li><li>Вычислите долю HTTP 500 и долю запросов дольше секунды. Укажите знаменатель.</li><li>Сравните среднее и p95. Запишите метод расчёта и объясните разницу.</li><li>Найдите request_id медленного запроса в events.json; сопоставьте длительность с этапами.</li><li>Для ошибочного запроса найдите exception. Объясните, что известно о причине именно в этой модели.</li></ul><aside class="margin-note"><b>Повторяемость не означает одинаковые миллисекунды</b><p>Сценарии и ожидаемые статусы детерминированы. Реальное планирование, сеть и нагрузка машины влияют на длительности. Сравнивайте закономерность и исходные строки, а не требуйте точного совпадения со скриншотом.</p>
+</aside>
+</section>
+<section
+ id="checks"><h2><span class="sec">§5</span>Что считать готовой работой</h2><div class="table-scroll"><table><thead><tr><th scope="col">Результат</th><th scope="col">Проверка</th></tr></thead><tbody><tr><td>Воспроизводимый запуск</td><td>Другой человек может запустить архив по вашей команде.</td></tr><tr><td>Исходные измерения</td><td>Сохранены все 20 строк, статусы и единицы времени.</td></tr><tr><td>Верные расчёты</td><td>Доля ошибок, среднее и p95 привязаны к одной выборке.</td></tr><tr><td>Связь сигналов</td><td>Для выбранного запроса связаны ответ, событие и этапы.</td></tr><tr><td>Ограничения вывода</td><td>Симуляция зависимости, маленькая выборка и один процесс названы явно.</td></tr><tr><td>Инженерный отчёт</td><td>Есть наблюдения, гипотеза, проверка и следующий вопрос.</td></tr></tbody></table>
+</div><p><a href="../assets/investigation.md" download>Скачать бланк отчёта</a>. После основного опыта измените одну величину — например, число slow-запросов в сценарии. До запуска предскажите, что изменится в среднем и p95, затем проверьте на новом CSV. Не меняйте сразу задержку, число запросов и метод расчёта: иначе причины различий смешаются.</p>
+</section>
+<section
+ id="troubleshooting"><h2><span class="sec">§6</span>Если опыт не запускается</h2><div class="table-scroll"><table><thead><tr><th scope="col">Симптом</th><th scope="col">Что проверить</th></tr></thead><tbody><tr><td>No module named fastapi</td><td>Зависимости установлены тем же Python, которым запускается Uvicorn.</td></tr><tr><td>Address already in use</td><td>Порт 8015 занят. Выберите другой порт и передайте experiment.py --base http://127.0.0.1:НОВЫЙ_ПОРТ.</td></tr><tr><td>Connection refused</td><td>Сервер работает и адрес клиента совпадает с --host/--port.</td></tr><tr><td>В /events есть лишние записи</td><td>Консоль и Swagger тоже вызывают /products. experiment.py отбирает свои события по request_id.</td></tr><tr><td>После перезапуска пустая история</td><td>Учебный процесс держит ограниченный журнал в памяти. CSV предыдущего прогона сохраняется на диске.</td></tr><tr><td>В Grafana сначала нет линии</td><td>Дополнительному стенду нужны успешные scrape и минимум два наблюдения для скорости.</td></tr></tbody></table>
+</div></section>
+<section
+ id="next"><h2><span class="sec">§7</span>Что изучать дальше</h2><p>Мы сформулировали вопросы к работающему сервису и проверили, какие данные на них отвечают. Следующий модуль начнётся с устройства метрики: имя, единица, timestamp, labels и sample. Затем появятся Counter, Gauge и Histogram, а уже после них — запросы и графики.</p>
+<p>Полная карта раздела находится в оглавлении. Неготовые главы обозначены как план и не ведут на пустые страницы. Первая тема завершена практикой: к дальнейшему изучению можно переходить, когда вы можете объяснить опыт по исходным данным.</p>
+</section>
+<section
+ id="check"><h2><span class="sec">✓</span>Самопроверка и памятка</h2><div class="case"><span class="eyebrow">Разберите самостоятельно</span><h3>Почему в Prometheus запросов больше двадцати, а в вашем CSV двадцать?</h3><p>Сначала сформулируйте ответ своими словами и укажите, на какие данные опираетесь.</p>
+<details><summary>Проверить рассуждение</summary><p>Счётчик приложения включает и запросы из консоли/Swagger. CSV описывает только выбранный запуск experiment.py. Это разные области учёта, а не обязательно ошибка сбора.</p>
+</details></div><div class="recap"><ul><li>В одном терминале работает сервер, в другом запускается клиент.</li><li>Сохранённые результаты привязаны к конкретному прогону.</li><li>Вывод должен учитывать границы модели и точки измерения.</li></ul></div></section>
+<section
+ class="references"><h3>Прочитать в первоисточнике</h3><ul><li><a href="https://fastapi.tiangolo.com/tutorial/first-steps/" target="_blank" rel="noreferrer">FastAPI · First steps ↗</a></li><li><a href="https://docs.python.org/3/library/time.html#time.perf_counter" target="_blank" rel="noreferrer">Python · perf_counter ↗</a></li><li><a href="https://docs.python.org/3/library/asyncio-task.html#asyncio.sleep" target="_blank" rel="noreferrer">Python · asyncio.sleep ↗</a></li></ul></section>
+<nav class="chapter-nav" aria-label="Переходы"><a href="08-prometheus-grafana.html">← Глава 1.8</a><a href="../index.html">Всё содержание ↑</a></nav>
+<footer><a href="../index.html">К оглавлению ↑</a><span>Автор: Макаров Максим Николаевич</span><a href="../SOURCES.md">Источники и съёмка</a></footer></main></div></div>
+<dialog id="image-dialog" aria-label="Увеличенный скриншот"><form method="dialog"><button aria-label="Закрыть изображение">Закрыть ×</button></form><img alt=""><p></p>
+</dialog></body></html>
