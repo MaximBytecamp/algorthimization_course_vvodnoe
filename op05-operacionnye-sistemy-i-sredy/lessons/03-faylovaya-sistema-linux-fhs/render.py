@@ -2,8 +2,9 @@
 # и три интерактивные схемы (переходы cd, имена и inode, монтирование).
 from pathlib import Path
 import html
+from shot_notes import NOTES
 
-B = Path(__file__).resolve().parent
+B =Path(__file__).resolve().parent
 E = html.escape
 W_SHOT, H_SHOT = 1280, 800
 
@@ -42,13 +43,22 @@ def core_html(d, chapter):
     if not (B / 'shots' / f'{name}.png').exists():
         missing.append(name)
         return ''
+    if counters['core'] == 0:
+        counters['seen'] = {}
     counters['core'] += 1
+    seen = counters['seen']
+    seen[name] = seen.get(name, 0) + 1
+    key = f'{chapter}:{name}' + (f':{seen[name]}' if seen[name] > 1 else '')
+    if key not in NOTES:
+        missing.append('вывод ' + key)
+    shows, use = NOTES.get(key, ('', ''))
+    after = (f'<div class="core-after"><p><b>Что показывает снимок.</b> {shows}</p><p><b>Где это пригодится.</b> {use}</p></div>' if shows else '')
     body = lens_html(name, d['lens']) if d['lens'] else ''
     wide = '' if d['lens'] else ' core--whole'
     return (f'<figure class="core{wide}"><figcaption class="core-head"><span class="core-tag">Снимок {chapter}.{counters["core"]}</span>'
             f'<span class="core-src">Ubuntu 24.04</span></figcaption>{body}'
             f'<div class="core-foot"><a class="zoom-shot" href="shots/{name}.png"><img src="shots/{name}.png" alt="{E(d["caption"])}" width="1280" height="800" loading="lazy"><span>Весь снимок ↗</span></a>'
-            f'<p>{d["caption"]}</p></div></figure>')
+            f'<p>{d["caption"]}</p></div>{after}</figure>')
 
 
 def probe_html(d, chapter):
