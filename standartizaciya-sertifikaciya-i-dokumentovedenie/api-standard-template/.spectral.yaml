@@ -1,0 +1,44 @@
+extends:
+  - spectral:oas
+
+rules:
+  info-contact: error
+  info-description: error
+  operation-operationId: error
+  operation-tags: error
+  path-params: error
+
+  # Собственные правила проекта из docs/API_STYLE_GUIDE.md
+
+  error-responses-use-problem-json:
+    description: Ответы 4xx и 5xx MUST использовать application/problem+json.
+    severity: error
+    given: "$.paths[*][*].responses[?(@property.match(/^[45]/))]"
+    then:
+      field: content
+      function: schema
+      functionOptions:
+        schema:
+          type: object
+          required:
+            - application/problem+json
+
+  json-properties-snake-case:
+    description: Свойства JSON MUST быть записаны в snake_case.
+    severity: error
+    given: "$.components.schemas[*].properties"
+    then:
+      field: "@key"
+      function: casing
+      functionOptions:
+        type: snake
+
+  paths-no-verbs:
+    description: URI MUST описывать ресурс существительным, а не действием.
+    severity: error
+    given: "$.paths"
+    then:
+      field: "@key"
+      function: pattern
+      functionOptions:
+        notMatch: "/(get|create|update|delete|remove|add)[A-Za-z]*(/|$)"

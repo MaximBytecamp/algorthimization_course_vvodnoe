@@ -1,0 +1,746 @@
+openapi: 3.1.0
+info:
+  title: Service Desk API
+  summary: Учебный стандартизированный REST API
+  description: '
+
+    Учебный API системы регистрации обращений в службу поддержки.
+
+
+    * Контракт описан правилами из `docs/API_STYLE_GUIDE.md`, источники правил — `docs/STANDARDS.md`.
+
+    * Ошибки возвращаются в формате Problem Details (RFC 9457), `application/problem+json`.
+
+    * Операции записи требуют Bearer token: `demo-token` — запись, `viewer-token`
+    — только чтение.
+
+    * Мажорная версия API указана в пути: `/api/v1`.
+
+    * Каждый ответ содержит `X-Request-Id`. Обращение отдаётся с `ETag`, изменение
+    принимает `If-Match`.
+
+    '
+  contact:
+    name: API Team
+    url: https://github.com/MaximBytecamp/api-standard-template
+    email: api-team@example.edu
+  license:
+    name: MIT
+    identifier: MIT
+  version: 1.1.0
+servers:
+- url: http://127.0.0.1:8000
+  description: Local development
+paths:
+  /api/v1/tickets:
+    get:
+      tags:
+      - Tickets
+      summary: Получить список обращений
+      description: Возвращает страницу обращений. Размер страницы ограничен параметром
+        limit.
+      operationId: listTickets
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/TicketStatus'
+          - type: 'null'
+          description: Показать только обращения с этим статусом
+          title: Status
+        description: Показать только обращения с этим статусом
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          description: Сколько обращений вернуть, от 1 до 100
+          default: 20
+          title: Limit
+        description: Сколько обращений вернуть, от 1 до 100
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          description: Сколько обращений пропустить от начала выборки
+          default: 0
+          title: Offset
+        description: Сколько обращений пропустить от начала выборки
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketPage'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '422':
+          description: Validation Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+    post:
+      tags:
+      - Tickets
+      summary: Создать обращение
+      description: Регистрирует новое обращение со статусом open. Идентификатор формирует
+        сервер. Повтор запроса с тем же Idempotency-Key и тем же телом не создаёт
+        второе обращение.
+      operationId: createTicket
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          description: Уникальный ключ запроса. Повтор с тем же ключом и телом вернёт
+            первый результат
+          title: Idempotency-Key
+        description: Уникальный ключ запроса. Повтор с тем же ключом и телом вернёт
+          первый результат
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketCreate'
+      responses:
+        '201':
+          description: Обращение создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+          headers:
+            Location:
+              description: Адрес созданного обращения
+              schema:
+                type: string
+                example: /api/v1/tickets/8d45c3e2-7f1a-4c55-9a39-2b1f0e6d4a10
+            ETag:
+              description: Версия представления обращения
+              schema:
+                type: string
+                example: '"5d41402abc4b2a76"'
+            X-RateLimit-Limit:
+              description: Сколько операций записи разрешено за минуту
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Сколько операций записи осталось в текущем окне
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              description: Через сколько секунд окно сбросится
+              schema:
+                type: integer
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '401':
+          description: Нет Bearer token или токен неизвестен
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Токен известен, но изменять обращения ему запрещено
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Тело не соответствует схеме или Idempotency-Key уже использован
+            с другим телом
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: Превышен лимит операций записи
+          headers:
+            Retry-After:
+              description: Через сколько секунд можно повторить запрос
+              schema:
+                type: integer
+            X-RateLimit-Limit:
+              description: Сколько операций записи разрешено за минуту
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Сколько операций записи осталось в текущем окне
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              description: Через сколько секунд окно сбросится
+              schema:
+                type: integer
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/tickets/open:
+    get:
+      tags:
+      - Tickets
+      summary: Получить открытые обращения (устарело)
+      description: Устарело с 16.09.2026, будет отключено 01.03.2027. Используйте
+        GET /api/v1/tickets?status=open. Ответ содержит заголовки Deprecation (RFC
+        9745) и Sunset (RFC 8594).
+      operationId: listOpenTickets
+      deprecated: true
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          description: Сколько обращений вернуть, от 1 до 100
+          default: 20
+          title: Limit
+        description: Сколько обращений вернуть, от 1 до 100
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          description: Сколько обращений пропустить от начала выборки
+          default: 0
+          title: Offset
+        description: Сколько обращений пропустить от начала выборки
+      responses:
+        '200':
+          description: Открытые обращения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketPage'
+          headers:
+            Deprecation:
+              description: Когда операция признана устаревшей, дата в формате @секунды
+                Unix
+              schema:
+                type: string
+                example: '@1789516800'
+            Sunset:
+              description: Когда операция перестанет отвечать, HTTP-date
+              schema:
+                type: string
+                example: Mon, 01 Mar 2027 00:00:00 GMT
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '422':
+          description: Validation Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/tickets/{ticket_id}:
+    get:
+      tags:
+      - Tickets
+      summary: Получить обращение
+      description: Возвращает одно обращение. Если If-None-Match совпадает с текущим
+        ETag, сервер отвечает 304 без тела.
+      operationId: getTicket
+      parameters:
+      - name: ticket_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Ticket Id
+      - name: If-None-Match
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: ETag, полученный ранее
+          title: If-None-Match
+        description: ETag, полученный ранее
+      responses:
+        '200':
+          description: Обращение
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+          headers:
+            ETag:
+              description: Версия представления обращения
+              schema:
+                type: string
+                example: '"5d41402abc4b2a76"'
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '304':
+          description: Представление не изменилось с версии из If-None-Match
+          headers:
+            ETag:
+              description: Версия представления обращения
+              schema:
+                type: string
+                example: '"5d41402abc4b2a76"'
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '404':
+          description: Обращение с таким ticket_id не существует
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Validation Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+    patch:
+      tags:
+      - Tickets
+      summary: Изменить обращение
+      description: Меняет только переданные поля. Если передан If-Match и обращение
+        за это время изменилось, сервер отвечает 412 и ничего не меняет.
+      operationId: updateTicket
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: ticket_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Ticket Id
+      - name: If-Match
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: ETag версии, которую клиент видел перед изменением
+          title: If-Match
+        description: ETag версии, которую клиент видел перед изменением
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketUpdate'
+      responses:
+        '200':
+          description: Обращение изменено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+          headers:
+            ETag:
+              description: Версия представления обращения
+              schema:
+                type: string
+                example: '"5d41402abc4b2a76"'
+            X-RateLimit-Limit:
+              description: Сколько операций записи разрешено за минуту
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Сколько операций записи осталось в текущем окне
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              description: Через сколько секунд окно сбросится
+              schema:
+                type: integer
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '401':
+          description: Нет Bearer token или токен неизвестен
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Токен известен, но изменять обращения ему запрещено
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Обращение с таким ticket_id не существует
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '412':
+          description: ETag из If-Match не совпадает с текущей версией обращения
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: Превышен лимит операций записи
+          headers:
+            Retry-After:
+              description: Через сколько секунд можно повторить запрос
+              schema:
+                type: integer
+            X-RateLimit-Limit:
+              description: Сколько операций записи разрешено за минуту
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Сколько операций записи осталось в текущем окне
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              description: Через сколько секунд окно сбросится
+              schema:
+                type: integer
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Validation Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+    delete:
+      tags:
+      - Tickets
+      summary: Удалить обращение
+      description: Удаляет обращение. Успешный ответ не содержит тела.
+      operationId: deleteTicket
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: ticket_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Ticket Id
+      responses:
+        '204':
+          description: Обращение удалено
+          headers:
+            X-RateLimit-Limit:
+              description: Сколько операций записи разрешено за минуту
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Сколько операций записи осталось в текущем окне
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              description: Через сколько секунд окно сбросится
+              schema:
+                type: integer
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '401':
+          description: Нет Bearer token или токен неизвестен
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Токен известен, но изменять обращения ему запрещено
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Обращение с таким ticket_id не существует
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: Превышен лимит операций записи
+          headers:
+            Retry-After:
+              description: Через сколько секунд можно повторить запрос
+              schema:
+                type: integer
+            X-RateLimit-Limit:
+              description: Сколько операций записи разрешено за минуту
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Сколько операций записи осталось в текущем окне
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              description: Через сколько секунд окно сбросится
+              schema:
+                type: integer
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Validation Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+components:
+  schemas:
+    Ticket:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        title:
+          type: string
+          title: Title
+        description:
+          type: string
+          title: Description
+        status:
+          $ref: '#/components/schemas/TicketStatus'
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+      - id
+      - title
+      - description
+      - status
+      - created_at
+      - updated_at
+      title: Ticket
+      examples:
+      - created_at: '2026-09-15T17:30:00Z'
+        description: Ошибка подключения после обновления клиента
+        id: 8d45c3e2-7f1a-4c55-9a39-2b1f0e6d4a10
+        status: open
+        title: Не работает VPN
+        updated_at: '2026-09-15T17:30:00Z'
+    TicketCreate:
+      properties:
+        title:
+          type: string
+          maxLength: 120
+          minLength: 3
+          title: Title
+          description: Короткая суть обращения
+        description:
+          type: string
+          maxLength: 2000
+          title: Description
+          description: Что делали и что увидели
+          default: ''
+      additionalProperties: false
+      type: object
+      required:
+      - title
+      title: TicketCreate
+      examples:
+      - description: Ошибка подключения после обновления клиента
+        title: Не работает VPN
+    TicketPage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/Ticket'
+          type: array
+          title: Items
+        total:
+          type: integer
+          title: Total
+          description: Сколько обращений подходит под фильтр
+        limit:
+          type: integer
+          title: Limit
+        offset:
+          type: integer
+          title: Offset
+      type: object
+      required:
+      - items
+      - total
+      - limit
+      - offset
+      title: TicketPage
+    TicketStatus:
+      type: string
+      enum:
+      - open
+      - in_progress
+      - closed
+      title: TicketStatus
+    TicketUpdate:
+      properties:
+        title:
+          anyOf:
+          - type: string
+            maxLength: 120
+            minLength: 3
+          - type: 'null'
+          title: Title
+        description:
+          anyOf:
+          - type: string
+            maxLength: 2000
+          - type: 'null'
+          title: Description
+        status:
+          anyOf:
+          - $ref: '#/components/schemas/TicketStatus'
+          - type: 'null'
+      additionalProperties: false
+      type: object
+      title: TicketUpdate
+      examples:
+      - status: closed
+    ProblemDetails:
+      description: Тело ошибки по RFC 9457.
+      examples:
+      - detail: Ticket 8d45c3e2-7f1a-4c55-9a39-2b1f0e6d4a10 does not exist
+        instance: /api/v1/tickets/8d45c3e2-7f1a-4c55-9a39-2b1f0e6d4a10
+        status: 404
+        title: Resource not found
+        type: https://maximbytecamp.github.io/api-standard-template/problems/http-404
+      properties:
+        type:
+          description: URI, который определяет вид проблемы
+          title: Type
+          type: string
+        title:
+          description: Краткое описание вида проблемы
+          title: Title
+          type: string
+        status:
+          description: HTTP status code этого ответа
+          title: Status
+          type: integer
+        detail:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          description: Что случилось в этом запросе
+          title: Detail
+        instance:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          description: Адрес запроса, где возникла ошибка
+          title: Instance
+        errors:
+          anyOf:
+          - items:
+              type: object
+            type: array
+          - type: 'null'
+          default: null
+          description: Поля, не прошедшие валидацию (только для 422)
+          title: Errors
+      required:
+      - type
+      - title
+      - status
+      title: ProblemDetails
+      type: object
+  securitySchemes:
+    BearerAuth:
+      type: http
+      description: 'Учебные токены: demo-token может изменять обращения, viewer-token
+        — только читать.'
+      scheme: bearer
+  headers:
+    XRequestId:
+      description: 'Идентификатор запроса: значение клиента или UUID, созданный сервером'
+      schema:
+        type: string
+        example: 0b6f3c1e-2a9d-4a4f-9d7e-3f4a1c2b5d6e
+tags:
+- name: Tickets
+  description: 'Обращения в службу поддержки: создание, просмотр, изменение и удаление'

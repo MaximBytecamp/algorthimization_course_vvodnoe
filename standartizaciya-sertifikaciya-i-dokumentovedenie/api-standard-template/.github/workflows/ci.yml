@@ -1,0 +1,52 @@
+name: API contract
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Contract and behaviour tests
+        run: pytest
+
+      - name: OpenAPI files match the code
+        run: python scripts/export_openapi.py --check
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Spectral lint
+        run: npx --yes @stoplight/spectral-cli@6.16.3 lint openapi/openapi.yaml --fail-severity=warn
+
+  # Сравнивает контракт в pull request с контрактом в целевой ветке.
+  # Источник — docs/STANDARDS.md, раздел 23.
+  breaking-changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - run: git fetch --depth=1 origin ${{ github.base_ref }}
+
+      - name: oasdiff breaking
+        uses: oasdiff/oasdiff-action/breaking@v0.1.17
+        with:
+          base: "origin/${{ github.base_ref }}:openapi/openapi.yaml"
+          revision: "HEAD:openapi/openapi.yaml"
+          fail-on: ERR
+          review: false
