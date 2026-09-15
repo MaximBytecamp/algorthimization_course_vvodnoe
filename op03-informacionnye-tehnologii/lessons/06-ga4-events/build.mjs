@@ -1,0 +1,60 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {copy,titles} from './content.mjs';
+const root=path.dirname(fileURLToPath(import.meta.url));
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const inline=s=>esc(s).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+const source=fs.readFileSync(path.join(root,'SOURCE.md'),'utf8');
+const slides=[...source.matchAll(/^# Слайд (\d+)\.[\s\S]*?(?=^# Слайд |$(?![\s\S]))/gm)].map(m=>({id:+m[1],title:m[0].match(/## Заголовок\s+([\s\S]*?)(?=\n## )/)?.[1].trim(),shot:m[0].match(/## Скриншот\s+([\s\S]*?)(?=\n## |\n---|$)/)?.[1].trim()}));
+if(slides.length!==82||slides.some((s,i)=>s.id!==89+i||!copy[s.id]))throw Error('Expected every source slide 89–170');
+const stage=id=>id<95?'Событийная модель':id<111?'Автоматические измерения':id<119?'Форма и бизнес-смысл':id<132?'Рекомендуемое событие':id<141?'Собственное событие':id<150?'DebugView':id<155?'Custom Dimensions':id<161?'Key Events':'Путь пользователя';
+const leadCode=`const leadForm = document.querySelector('#lead-form');
+if (leadForm) {
+  leadForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (typeof gtag === 'function') {
+      gtag('event', 'generate_lead', {
+        lead_source: 'contact_form'
+      });
+    }
+    document.querySelector('#form-status').textContent =
+      'Учебная форма проверена. Данные не отправлены.';
+  });
+}`;
+const checklist=['Enhanced Measurement','scroll в Realtime','click по внешней ссылке','file_download','form_start','form_submit','Код generate_lead','generate_lead в Realtime','Код cta_click','Параметры cta_click в DebugView','lead_source в DebugView','Custom Dimension button_name','generate_lead как Key Event'];
+function code(s,lang='javascript'){return `<figure class="code"><figcaption>${esc(lang)} · <button type="button" data-copy>Копировать</button></figcaption><pre><code>${esc(s)}</code></pre></figure>`;}
+function widget(kind,args){
+const parts=args.split(';');
+if(kind==='flow')return '<ol class="flow">'+args.split(' → ').map((x,i)=>{const[a,b]=x.split('|');return `<li><small>${String(i+1).padStart(2,'0')}</small><b>${inline(a)}</b><span>${inline(b||'')}</span></li>`}).join('')+'</ol>';
+if(kind==='events')return '<dl class="definitions">'+parts.map(x=>{const[a,b]=x.split('|');return `<div><dt>${inline(a)}</dt><dd>${inline(b)}</dd></div>`}).join('')+'</dl>';
+if(kind==='packet'){const [name,fields]=args.split('|');return `<div class="packet"><div class="packet-head"><small>EVENT NAME</small><strong>${esc(name)}</strong></div><dl>${fields.split(';').map(p=>{const at=p.indexOf('=');return `<div><dt>${esc(p.slice(0,at))}</dt><dd>${esc(p.slice(at+1))}</dd></div>`}).join('')}</dl><span class="caption">Учебный состав события · параметры проверяем в DebugView</span></div>`;}
+if(kind==='note')return `<aside class="note">${inline(args)}</aside>`;
+if(kind==='fields')return '<dl class="fields">'+parts.map(x=>{const[a,b]=x.split('|');return `<div><dt>${esc(a)}</dt><dd>${esc(b)}</dd></div>`}).join('')+'</dl>';
+if(kind==='timeline')return '<ol class="timeline">'+parts.map((t,i)=>`<li><small>${String(i+1).padStart(2,'0')}</small><code>${esc(t)}</code></li>`).join('')+'</ol>';
+if(kind==='leadcode')return code(leadCode);
+if(kind==='scroll')return `<div class="scroll-model"><label>Глубина видимой области: <output>0%</output><input type="range" min="0" max="100" value="0" aria-label="Глубина прокрутки"></label><div class="depth"><i></i><span>90%</span></div><p role="status">Событие ещё не возникло.</p><button type="button" data-reset-scroll>Новый просмотр</button><small>Локальная модель · ничего не отправляет в Google</small></div>`;
+if(kind==='decision')return `<ol class="decision"><li><b>Собирается автоматически?</b><span>Да → проверяем и используем существующее событие.</span></li><li><b>Есть рекомендуемое имя?</b><span>Да → реализуем отправку с именем Google.</span></li><li><b>Нужен свой смысл?</b><span>Создаём Custom Event и описываем его параметры.</span></li></ol>`;
+if(kind==='comparison')return '<table><caption>Учебный пример, не данные аккаунта</caption><thead><tr><th>Источник</th><th>Пользователи</th><th>С заявкой</th><th>Доля</th></tr></thead><tbody><tr><td>Telegram</td><td>100</td><td>12</td><td>12%</td></tr><tr><td>VK</td><td>180</td><td>7</td><td>3,9%</td></tr><tr><td>Direct</td><td>50</td><td>9</td><td>18%</td></tr></tbody></table>';
+if(kind==='funnel')return '<div class="funnel">'+[['page_view',1000,100],['cta_click',300,70],['form_start',120,49],['generate_lead',80,35]].map(([n,c,w])=>`<div style="--w:${w}%"><code>${n}</code><b>${c}</b></div>`).join('')+'</div>';
+if(kind==='checklist')return '<ol class="checklist">'+checklist.map(t=>`<li><label><input type="checkbox">${esc(t)}</label></li>`).join('')+'</ol>';
+if(kind==='quiz')return '<div class="quiz">'+[['Event и parameter','Event описывает действие; parameter добавляет контекст. Например, cta_click и button_name=program.'],['Automatic, Recommended и Custom','Автоматическое измерение выполняет тег; рекомендуемое имя Google реализуем сами; собственное имя определяем для своей задачи.'],['DebugView и Custom Dimension','DebugView показывает параметр конкретного события. Custom Dimension регистрирует разрез для отчётов.'],['Key Event','Это статус важного действия в ресурсе GA4. Он сам не создаёт событие и не добавляет обработчик.']].map(([q,a])=>`<details><summary>${q}</summary><p>${a}</p></details>`).join('')+'</div>';
+throw Error('Unknown widget '+kind);
+}
+function render(md){let result=[],lines=md.trim().split('\n'),i=0;while(i<lines.length){const l=lines[i];if(!l.trim()){i++;continue}if(l.startsWith('~~~')){const lang=l.slice(3);let body=[];i++;while(i<lines.length&&!lines[i].startsWith('~~~'))body.push(lines[i++]);i++;result.push(code(body.join('\n'),lang));continue}if(l.startsWith(':::')){const [,kind,args='']=l.match(/^:::(\w+)\s*(.*)$/);result.push(widget(kind,args));i++;continue}let p=[];while(i<lines.length&&lines[i].trim()&&!/^(:::|~~~)/.test(lines[i]))p.push(lines[i++]);result.push('<p>'+inline(p.join(' '))+'</p>')}return result.join('\n')}
+const trace=`<div class="event-lab"><div><p class="caption">ДЕМОНСТРАЦИЯ · ЛОКАЛЬНО</p><h3>Действие → запись события</h3><p>Нажмите кнопку и раскройте запись.</p><button type="button" data-demo-event="cta_click">Посмотреть программу</button><button type="button" data-demo-event="generate_lead">Проверить учебную форму</button><button type="button" data-demo-clear>Очистить</button></div><output class="event-log" aria-live="polite">Журнал пуст. В GA4 ничего не отправляется.</output></div>`;
+const sources=[['Enhanced Measurement','https://support.google.com/analytics/answer/9216061?hl=ru'],['Рекомендуемые события','https://developers.google.com/analytics/devguides/collection/ga4/reference/events#generate_lead'],['DebugView','https://support.google.com/analytics/answer/7201382?hl=ru'],['Custom Dimensions','https://support.google.com/analytics/answer/14240153?hl=ru'],['Key Events','https://support.google.com/analytics/answer/13128484?hl=ru'],['Имена событий','https://support.google.com/analytics/answer/13316687?hl=ru']];
+let manifest=[];
+const sections=slides.map((s,i)=>{let title=titles[s.id]||s.title;let body=render(copy[s.id]);if(s.id===92)body+=trace;const file=`shots/${s.id}-shot.png`;if(s.shot){const exists=fs.existsSync(path.join(root,file));manifest.push({slide:s.id,title,requested:s.shot,file,status:exists?'captured':'pending',reason:exists?null:'GA4 недоступен: ERR_CONNECTION_CLOSED / TLS connect error; код показывается текстом.'});if(exists)body+=`<figure class="shot"><button data-zoom><img src="${file}" alt="${esc(s.shot)}" loading="lazy"></button><figcaption>${esc(s.shot)}</figcaption></figure>`;else if(!/VS Code|Source Control|HTML|Explorer/.test(s.shot))body+=`<p class="capture-instruction"><b>Проверка на вашем экране:</b> ${inline(s.shot.replace(/\n+/g,' '))} <a href="SCREENSHOTS.md#slide-${s.id}">Требования к кадру ↗</a></p>`;}return `<section class="lesson-slide ${[89,117,132,141,155,170].includes(s.id)?'dark':''}" id="slide-${s.id}" data-title="${esc(title)}" data-stage="${stage(s.id)}" aria-labelledby="title-${s.id}"><div class="lesson-inner"><p class="kicker">${stage(s.id)}<span>ИСХОДНИК ${s.id} · ${i+1} / 82</span></p><h${i===0?1:2} id="title-${s.id}">${inline(title)}</h${i===0?1:2}><div class="content">${body}</div></div></section>`}).join('\n');
+const html=`<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0C2733"><title>Тема 6 · События GA4 · ОП.03</title><link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="styles.css"><script src="script.js" defer></script></head>
+<body class="events6"><a class="skip" href="#lesson-slides">К слайду</a><header class="lesson-header"><a class="brand6" href="../../index.html"><span>И/Т</span><b>ОП.03 · ТЕМА 06<small>События · параметры · ключевые действия</small></b></a><nav aria-label="Управление"><button data-open="contents">Содержание</button><a href="materials.html">Материалы</a><button data-open="sources">Источники</button><button id="fullscreen" aria-label="Полный экран">⛶</button><span class="counter"><b id="current">01</b> / 82</span></nav></header>
+<main id="lesson-slides" tabindex="-1">${sections}</main><footer class="lesson-footer"><span id="chapter">Событийная модель</span><small>← → листать · M содержание · F полный экран</small><button id="prev" aria-label="Предыдущий слайд">←</button><button id="next" aria-label="Следующий слайд">Далее →</button><div class="progress" role="progressbar" aria-label="Прогресс" aria-valuemin="1" aria-valuemax="82" aria-valuenow="1"><i id="progress"></i></div></footer>
+<dialog id="contents"><header><h2>Тема 6 · 82 слайда</h2><button data-close aria-label="Закрыть">✕</button></header><p>Номера 89–170 сохранены из сценария. Прямая ссылка: index.html#147.</p><div class="contents-list">${slides.map((s,i)=>`<button data-go="${s.id}"><b>${String(i+1).padStart(2,'0')}</b><span>${inline(titles[s.id]||s.title)}</span><small>${s.id}</small></button>`).join('')}</div></dialog>
+<dialog id="sources"><header><h2>Источники и материалы</h2><button data-close aria-label="Закрыть">✕</button></header><p>Авторский сценарий: 82 слайда, 89–170. Технические уточнения сверены с документацией Google.</p>${sources.map(([name,url])=>`<a href="${url}" target="_blank" rel="noopener noreferrer">${name} ↗</a>`).join('')}<p>Демонстрации и таблицы в колоде — подписанные учебные примеры. Новые кадры аккаунта GA4 пока не сняты: соединение недоступно.</p><a href="materials.html">Материалы и рабочий пример →</a><button id="print">Печать / сохранить PDF</button></dialog>
+<dialog id="visual"><header><h2>Скриншот</h2><button data-close aria-label="Закрыть">✕</button></header><img alt=""></dialog><div id="announcement" class="sr-only" aria-live="polite"></div><noscript><p>JavaScript выключен: все слайды доступны последовательно.</p></noscript></body></html>`;
+fs.writeFileSync(path.join(root,'index.html'),html);
+fs.mkdirSync(path.join(root,'shots'),{recursive:true});
+fs.writeFileSync(path.join(root,'shots/manifest.json'),JSON.stringify(manifest,null,2)+'\n');
+fs.writeFileSync(path.join(root,'SCREENSHOTS.md'),'# Кадры темы 6\n\nНовые кадры аккаунта пока не сняты: GA4 возвращает ошибку соединения. Это список съёмки, не подтверждение выполнения. Код в колоде показан настоящими текстовыми фрагментами, без имитации VS Code.\n\nСнимать на учебном проекте темы 5, показывать название ресурса и результат. Закрыть личные данные; не подменять интерфейс макетом. После добавления PNG выполнить `node build.mjs`.\n\n'+manifest.map(s=>`<a id="slide-${s.slide}"></a>\n\n## ${s.slide}. ${s.title}\n\nФайл: \`${s.file}\`.\n\n${s.requested}\n\nСтатус: ${s.status}.\n`).join('\n'));
+console.log(`Built ${slides.length} slides, ${manifest.length} planned screenshots`);
