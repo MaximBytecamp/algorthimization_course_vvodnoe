@@ -159,6 +159,9 @@ with zipfile.ZipFile(B / 'materials/linux-fhs-lab.zip', 'w', zipfile.ZIP_DEFLATE
     for d in ['screenshots', 'config', 'data', 'logs', 'tmp']:
         z.writestr(f'linux-fhs-lab/{d}/', '')
 
+from explain import UNKNOWN
+if UNKNOWN:
+    print('Нет объяснения для частей команд:\n  ' + '\n  '.join(sorted(set(UNKNOWN))))
 if missing:
     print('Нет снимков (блоки пропущены):', ', '.join(sorted(set(missing))))
 print('Готово:', N, 'частей')

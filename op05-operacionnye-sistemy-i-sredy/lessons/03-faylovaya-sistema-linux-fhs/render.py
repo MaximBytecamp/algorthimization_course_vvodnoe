@@ -3,6 +3,7 @@
 from pathlib import Path
 import html
 from shot_notes import NOTES
+from explain import explain
 
 B =Path(__file__).resolve().parent
 E = html.escape
@@ -64,7 +65,11 @@ def core_html(d, chapter):
 def probe_html(d, chapter):
     counters['probe'] += 1
     cmds = '\n'.join(c for c, _ in d['lines'])
-    lines = ''.join(f'<li><code>{E(c)}</code>' + (f'<span class="why"># {w}</span>' if w else '') + '</li>' for c, w in d['lines'])
+    def line(c, w):
+        rows = ''.join(f'<dt><code>{E(p)}</code></dt><dd>{E(t)}</dd>' for p, t in explain(c))
+        return (f'<li><code>{E(c)}</code>' + (f'<span class="why"># {w}</span>' if w else '<span class="why"></span>')
+                + f'<details class="explain"><summary>разбор</summary><dl>{rows}</dl></details></li>')
+    lines = ''.join(line(c, w) for c, w in d['lines'])
     return (f'<section class="probe" aria-label="Команды {chapter}.{counters["probe"]}"><header><span class="probe-tag">В терминале</span>'
             f'<b>{E(d["title"])}</b><button class="copy" type="button" data-copy="{E(cmds)}">Копировать</button></header>'
             f'<ol class="probe-lines">{lines}</ol><footer><span>Результат</span><p>{d["expect"]}</p></footer></section>')
