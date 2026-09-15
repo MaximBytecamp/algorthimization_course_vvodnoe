@@ -98,21 +98,21 @@ const SRC = {
 };
 
 const lessonGroups = [
-  { title: 'Что стандартизируем', time: 'часть 1', start: 1, end: 3 },
-  { title: 'Запрос, ответ, ресурс', time: 'часть 2', start: 4, end: 8 },
-  { title: 'Архитектурный стиль REST', time: 'часть 3', start: 9, end: 15 },
-  { title: 'Правила HTTP API', time: 'часть 4', start: 16, end: 33 },
-  { title: 'Практика: контракт', time: 'часть 5', start: 34, end: 36 },
-  { title: 'OpenAPI', time: 'часть 6', start: 37, end: 53 },
-  { title: 'FastAPI и документация', time: 'часть 7', start: 54, end: 60 },
-  { title: 'Единый формат ошибок', time: 'часть 8', start: 61, end: 65 },
-  { title: 'Версии и изменения', time: 'часть 9', start: 66, end: 75 },
-  { title: 'Стандарт и его проверка', time: 'часть 10', start: 76, end: 86 },
-  { title: 'Стандарты реальных команд', time: 'часть 11', start: 87, end: 94 },
-  { title: 'Репозиторий API на GitHub', time: 'часть 12', start: 95, end: 103 },
-  { title: 'Заголовки и совместимость', time: 'часть 13', start: 104, end: 113 },
-  { title: 'Практическая работа', time: 'часть 14', start: 114, end: 120 },
-  { title: 'Итог темы', time: 'часть 15', start: 121, end: 122 },
+  { title: 'Что стандартизируем', bridge: 'Начинаем с того, что именно будем стандартизировать и чем стандартизация отличается от проверки.', time: 'часть 1', start: 1, end: 3 },
+  { title: 'Запрос, ответ, ресурс', bridge: 'Правила пишутся для обмена сообщениями между программами, поэтому сначала разберём один такой обмен.', time: 'часть 2', start: 4, end: 8 },
+  { title: 'Архитектурный стиль REST', bridge: 'Ресурс, метод и код ответа пришли в HTTP API из архитектурного стиля REST. Разберём его ограничения.', time: 'часть 3', start: 9, end: 15 },
+  { title: 'Правила HTTP API', bridge: 'REST задаёт принципы, но не говорит, как назвать адрес и какой код вернуть. Это решают правила HTTP API.', time: 'часть 4', start: 16, end: 33 },
+  { title: 'Практика: контракт', bridge: 'Правил уже достаточно, чтобы спроектировать контракт Service Desk и найти ошибки в чужом.', time: 'часть 5', start: 34, end: 36 },
+  { title: 'OpenAPI', bridge: 'Контракт спроектирован. Теперь его нужно записать так, чтобы документ не разошёлся с кодом.', time: 'часть 6', start: 37, end: 53 },
+  { title: 'FastAPI и документация', bridge: 'Документ OpenAPI можно писать руками, а можно получать из кода. Учебный проект делает второе.', time: 'часть 7', start: 54, end: 60 },
+  { title: 'Единый формат ошибок', bridge: 'Успешные ответы описаны схемами. Ошибкам нужен такой же единый формат на весь API.', time: 'часть 8', start: 61, end: 65 },
+  { title: 'Версии и изменения', bridge: 'Контракт вместе с ошибками готов. Следующий вопрос — как его менять, не ломая клиентов.', time: 'часть 9', start: 66, end: 75 },
+  { title: 'Стандарт и его проверка', bridge: 'Правила именования, ошибок и версий уже есть. Их нужно собрать в один стандарт и проверять автоматически.', time: 'часть 10', start: 76, end: 86 },
+  { title: 'Стандарты реальных команд', bridge: 'Так устроен стандарт учебного проекта. Посмотрим, как это делают OpenAPI Initiative, Zalando, Microsoft и другие.', time: 'часть 11', start: 87, end: 94 },
+  { title: 'Репозиторий API на GitHub', bridge: 'Компании публикуют не только описание API, но и правила работы с его репозиторием.', time: 'часть 12', start: 95, end: 103 },
+  { title: 'Заголовки и совместимость', bridge: 'Репозиторий оформлен. Остались правила, которые клиент видит в каждом ответе: заголовки версии, лимитов и совместимости.', time: 'часть 13', start: 104, end: 113 },
+  { title: 'Практическая работа', bridge: 'Все механизмы собраны в учебном эталоне. Его структура становится образцом для вашей работы.', time: 'часть 14', start: 114, end: 120 },
+  { title: 'Итог темы', bridge: 'Практическая работа закрывает тему. Соберём весь процесс в одну схему.', time: 'часть 15', start: 121, end: 122 },
 ];
 
 const lessonSlides = [
@@ -179,7 +179,7 @@ const lessonSlides = [
       code('GET /api/v1/tickets/42', 'HTTP request') +
       code('200 OK\nContent-Type: application/json\n\n{\n  "id": 42,\n  "title": "Не работает VPN",\n  "status": "open"\n}', 'HTTP response') +
       note('Здесь клиент просит обращение с идентификатором 42. Сервер отвечает кодом <code>200 OK</code>, сообщает формат тела и передаёт само обращение в JSON.'),
-      chain(['CLIENT', '*HTTP REQUEST|метод и адрес', 'SERVER', '*HTTP RESPONSE|код, заголовки, тело', 'CLIENT'])
+      chain(['CLIENT', '*HTTP REQUEST|метод и адрес', 'SERVER', '*HTTP RESPONSE|код, заголовки, тело', 'CLIENT'], 'travel')
     ),
   },
   // 6
@@ -287,7 +287,7 @@ const lessonSlides = [
         ['API Gateway', 'проверяет токены, ограничивает частоту запросов'],
         ['Load Balancer', 'распределяет запросы между экземплярами сервиса'],
       ]) + takeaway('Инфраструктуру можно менять без изменения клиентского контракта.'),
-      chain(['CLIENT', 'CDN', 'API GATEWAY', 'LOAD BALANCER', '*FASTAPI'])
+      chain(['CLIENT', 'CDN', 'API GATEWAY', 'LOAD BALANCER', '*FASTAPI'], 'travel')
     ),
   },
   // 14
@@ -344,7 +344,7 @@ const lessonSlides = [
   // 18
   {
     title: 'Метод нельзя выбирать случайно',
-    intro: 'HTTP уже определяет назначение стандартных методов.',
+    intro: 'Начнём с нижнего уровня пирамиды — стандартов IETF. HTTP уже определяет назначение стандартных методов.',
     body: split(
       text('<p>RFC 9110 «HTTP Semantics» описывает, в частности, методы:</p>') + code('GET\nHEAD\nPOST\nPUT\nDELETE\nOPTIONS') +
       text('<p>и их свойства — например, safe и idempotent.</p>') +
@@ -560,7 +560,7 @@ const lessonSlides = [
     title: 'Что мы уже собрали',
     intro: 'Теперь у нас есть вся цепочка обмена между клиентом и сервером.',
     body: split(
-      chain(['CLIENT', 'HTTP REQUEST', '*RESOURCE URI + HTTP METHOD', 'SERVER', '*HTTP STATUS + HEADERS + JSON', 'CLIENT'], 'compact'),
+      chain(['CLIENT', 'HTTP REQUEST', '*RESOURCE URI + HTTP METHOD', 'SERVER', '*HTTP STATUS + HEADERS + JSON', 'CLIENT'], 'compact travel'),
       text('<p>Каждое звено этой цепочки подчиняется правилам: метод выбирается по семантике HTTP, адрес описывает ресурс, код сообщает фактический результат, тело имеет объявленный формат.</p>') +
       takeaway('Следующая проблема — как формально описать этот контракт.')
     ),
@@ -786,7 +786,8 @@ const lessonSlides = [
     body: split(
       code('pip install -r requirements.txt\nuvicorn app.main:app --reload', 'терминал, папка api-standard-template') +
       text('<p>В браузере перейти:</p>') + code('http://127.0.0.1:8000/docs') +
-      olist(['Найти группу <code>Tickets</code>.', 'Раскрыть <code>GET /api/v1/tickets</code>.', 'Сверить название API и версию <code>1.0.0</code> в шапке.']),
+      olist(['Найти группу <code>Tickets</code>.', 'Раскрыть <code>GET /api/v1/tickets</code>.', 'Сверить название API и версию в шапке.']) +
+      note('Кадры этой части сняты на версии 1.0.0. Заголовки, которые появились в 1.1.0, разобраны в части 13.'),
       shot('55-swagger-ui.png', 'Swagger UI · /docs', 'Шапка Service Desk API с версией 1.0.0 и отметкой OAS 3.1, группа Tickets, раскрытая операция GET /api/v1/tickets.'),
       'wide-right'
     ),
@@ -876,7 +877,7 @@ const lessonSlides = [
     title: 'Применяем единый error contract',
     intro: 'Так учебный проект отвечает на запрос несуществующего обращения.',
     body: split(
-      code('{\n  "type": "https://maximbytecamp.github.io/api-standard-template/problems/http-404",\n  "title": "Resource not found",\n  "status": 404,\n  "detail": "Ticket ... does not exist",\n  "instance": "/api/v1/tickets/..."\n}', '404 · application/problem+json'),
+      code('{\n  "type": "https://example.edu/problems/http-404",\n  "title": "Resource not found",\n  "status": 404,\n  "detail": "Ticket ... does not exist",\n  "instance": "/api/v1/tickets/..."\n}', '404 · application/problem+json'),
       table(['Поле', 'Для чего клиенту'], [
         ['type', 'ветвить обработку: по нему, а не по тексту, программа узнаёт вид ошибки'],
         ['title', 'показать человеку общий заголовок'],
@@ -884,7 +885,7 @@ const lessonSlides = [
         ['detail', 'показать подробность конкретного случая'],
         ['instance', 'найти запрос в логах сервера'],
       ]) + takeaway('Клиент знает структуру ошибки независимо от endpoint.') +
-      note('Все обработчики лежат в <code>app/problems.py</code>. Там же ошибки валидации 422 получают дополнительное поле <code>errors</code> со списком неверных полей.')
+      note('Все обработчики лежат в <code>app/problems.py</code>. Там же ошибки валидации 422 получают дополнительное поле <code>errors</code> со списком неверных полей. Адрес <code>example.edu</code> в версии 1.0.0 никуда не ведёт — как это исправлено, показывает слайд 102.')
     ),
   },
   // 64
@@ -1005,7 +1006,7 @@ const lessonSlides = [
     body: `<div class="timeline"><div>ACTIVE<small>работает</small></div><div>DEPRECATED<small>объявлен устаревшим</small></div><div>MIGRATION PERIOD<small>клиенты переходят</small></div><div>SUNSET<small>дата отключения</small></div><div>REMOVED<small>удалён</small></div></div>` +
       split(
         text('<p>OpenAPI позволяет отметить operation:</p>') + code('get:\n  operationId: listTicketsOld\n  ⟦deprecated: true⟧\n  description: Используйте GET /api/v2/tickets'),
-        text('<p>Swagger UI зачёркивает такую операцию. Zalando API Guidelines требуют отражать deprecation непосредственно в API specification и описывать путь миграции.</p>')
+        text('<p>Swagger UI зачёркивает такую операцию. Zalando API Guidelines требуют отражать deprecation непосредственно в API specification и описывать путь миграции. Как сообщить об этом в каждом ответе — слайд 106.</p>')
       ),
   },
   // 74
@@ -1015,7 +1016,7 @@ const lessonSlides = [
     body: split(
       code('## [1.1.0]\n\n### Added\n\n- GET /api/v1/tickets/{id}/comments\n- optional status filter\n\n### Deprecated\n\n- field old_status', 'CHANGELOG.md'),
       text('<p>Разделы <code>Added</code>, <code>Changed</code>, <code>Deprecated</code>, <code>Removed</code>, <code>Fixed</code>, <code>Security</code> взяты из соглашения Keep a Changelog.</p>') +
-      takeaway('Changelog предназначен для потребителя API, а не только для разработчика. Рефакторинг, который не меняет контракт, туда не пишут.')
+      takeaway('Changelog предназначен для потребителя API, а не только для разработчика. Рефакторинг, который не меняет контракт, туда не пишут.') + note('Как журнал ведут Stripe и Kubernetes — слайд 100.')
     ),
   },
   // 75
@@ -1147,7 +1148,7 @@ const lessonSlides = [
     title: 'Теперь документация становится частью разработки',
     intro: 'Итоговая цепочка: каждое звено проверяет предыдущее.',
     body: split(
-      chain(['API STYLE GUIDE', 'FASTAPI CODE', '*OPENAPI SCHEMA', 'SWAGGER UI / REDOC', 'LINTER', 'CONTRACT TESTS', 'CI'], 'compact'),
+      chain(['API STYLE GUIDE', 'FASTAPI CODE', '*OPENAPI SCHEMA', 'SWAGGER UI / REDOC', 'LINTER', 'CONTRACT TESTS', 'CI'], 'compact travel'),
       text('<p>Style guide задаёт правила. Код реализует контракт, из кода получается схема. По схеме строится документация, её проверяют линтер и тесты, а CI не даёт объединить изменение, которое нарушает правила.</p>') +
       takeaway('API больше не является только набором функций Python.')
     ),
@@ -1404,7 +1405,7 @@ const lessonSlides = [
       text('<p>В списке совместимых изменений GitHub есть «Adding a response field» — добавление поля в ответ.</p>') +
       quote('Teams MAY define backwards compatibility as their business needs require. For example, Azure defines the addition of a new JSON field in a response to be not backwards compatible.', 'команды MAY определять обратную совместимость так, как требует их бизнес. Например, Azure считает добавление нового поля JSON в ответ обратно несовместимым изменением.', 'Azure REST API Specs · Breaking changes guidelines', SRC.azBreaking),
       shot('e-azure-new-field-breaking.png', 'github.com · Azure/azure-rest-api-specs', 'Документ Azure о breaking changes: добавление нового поля в ответ названо несовместимым. Документ помечен как устаревший и ссылается на актуальную политику.', 'compact') +
-      takeaway('Поэтому политика совместимости записывается явно. В учебном проекте принято правило GitHub, и клиенты обязаны игнорировать неизвестные поля: <code>docs/VERSIONING.md</code>.'),
+      note('Поэтому политика совместимости записывается явно. В учебном проекте принято правило GitHub, и клиенты обязаны игнорировать неизвестные поля: <code>docs/VERSIONING.md</code>. Список breaking changes GitHub разобран на слайде 69.'),
       'wide-right'
     ),
   },
@@ -1639,8 +1640,8 @@ const lessonSlides = [
     title: 'Как теперь выглядит процесс разработки API',
     intro: 'Стандартизация сопровождает API на протяжении всего жизненного цикла.',
     body: split(
-      chain(['BUSINESS DOMAIN', 'RESOURCES', 'API STYLE GUIDE', 'HTTP CONTRACT', '*OPENAPI', 'FASTAPI IMPLEMENTATION', 'SWAGGER UI / REDOC'], 'compact'),
-      chain(['LINTER', 'CONTRACT TESTS', 'GITHUB', 'CI', '*API RELEASE', 'CHANGELOG / VERSIONING / DEPRECATION'], 'compact') +
+      chain(['BUSINESS DOMAIN', 'RESOURCES', 'API STYLE GUIDE', 'HTTP CONTRACT', '*OPENAPI', 'FASTAPI IMPLEMENTATION', 'SWAGGER UI / REDOC'], 'compact travel'),
+      chain(['LINTER', 'CONTRACT TESTS', 'GITHUB', 'CI', '*API RELEASE', 'CHANGELOG / VERSIONING / DEPRECATION'], 'compact travel late') +
       note('Левая колонка продолжается в правой: после документации изменение проходит линтер и тесты.')
     ),
   },

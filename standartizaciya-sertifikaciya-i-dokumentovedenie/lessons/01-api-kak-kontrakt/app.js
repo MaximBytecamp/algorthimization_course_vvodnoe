@@ -7,9 +7,17 @@
 
   main.innerHTML = lessonSlides.map((slide, i) => {
     const n = i + 1, group = groupFor(n), tag = n === 1 ? 'h1' : 'h2';
-    return `<section class="slide${slide.cls ? ' ' + slide.cls : ''}" id="slide-${pad(n)}" aria-labelledby="title-${pad(n)}" hidden><header><p class="eyebrow">${group.title}<span>${pad(n)} / ${total}</span></p><${tag} id="title-${pad(n)}">${slide.title}</${tag}>${slide.intro ? `<p class="lead">${slide.intro}</p>` : ''}</header><div class="slide-body">${slide.body}</div></section>`;
+    const partIndex = lessonGroups.indexOf(group);
+    // Карта частей и связка с предыдущей частью — только на первом слайде части.
+    const cover = n === group.start ? `<div class="part-cover"><ol class="part-map" aria-label="Части темы">${lessonGroups.map((g, gi) => `<li class="${gi < partIndex ? 'done' : gi === partIndex ? 'now' : ''}" title="${g.title}"><span>${gi + 1}</span></li>`).join('')}</ol><p class="part-bridge"><b>Часть ${partIndex + 1} из ${lessonGroups.length}.</b> ${group.bridge || ''}</p></div>` : '';
+    return `<section class="slide${slide.cls ? ' ' + slide.cls : ''}" id="slide-${pad(n)}" aria-labelledby="title-${pad(n)}" hidden><header>${cover}<p class="eyebrow">${group.title}<span>${pad(n)} / ${total}</span></p><${tag} id="title-${pad(n)}">${slide.title}</${tag}>${slide.intro ? `<p class="lead">${slide.intro}</p>` : ''}</header><div class="slide-body">${slide.body}</div></section>`;
   }).join('');
   const slides = [...main.querySelectorAll('.slide')];
+  // Порядок появления: номер элемента внутри контейнера задаёт задержку анимации.
+  const STAGGER = '.slide-body, .stack, .cards, .status-grid, .versions, .questions, .checklist, .endpoints, .chain, .timeline, .orbit .side, .row-chain, .legend, .strength';
+  slides.forEach(slide => slide.querySelectorAll(STAGGER).forEach(box => {
+    [...box.children].forEach((child, i) => child.style.setProperty('--i', Math.min(i, 9)));
+  }));
 
   document.getElementById('outline').innerHTML = lessonGroups.map(group => `<section><h3>${group.title}<small>${group.time}</small></h3>${lessonSlides.slice(group.start - 1, group.end).map((slide, i) => `<button data-go="${group.start + i}"><span>${pad(group.start + i)}</span>${slide.title}</button>`).join('')}</section>`).join('');
 
@@ -23,7 +31,10 @@
   function show(target, updateHash = true) {
     index = Math.max(0, Math.min(total - 1, target));
     const focusInSlide = main.contains(document.activeElement);
-    slides.forEach((slide, i) => { slide.hidden = i !== index; });
+    slides.forEach((slide, i) => { slide.hidden = i !== index; slide.classList.remove('enter'); });
+    // Перезапуск анимаций при каждом показе слайда.
+    void slides[index].offsetWidth;
+    slides[index].classList.add('enter');
     main.scrollTop = 0;
     const group = groupFor(index + 1);
     document.getElementById('chapter').textContent = `${group.title} · ${group.time}`;
