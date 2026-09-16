@@ -99,7 +99,9 @@ ga4-analytics-lab/
 └── contacts.html
 ~~~
 
-Откройте PDF отдельно и убедитесь, что он читается. Не переименовывайте текстовый файл в .pdf.`,
+Откройте PDF отдельно и убедитесь, что он читается. Не переименовывайте текстовый файл в .pdf.
+
+Готовый файл: [analytics-guide.pdf](files/assets/analytics-guide.pdf) — положите его в папку \`assets/\`.`,
 108: `В \`index.html\` добавьте ссылку:
 
 ~~~html
@@ -108,7 +110,8 @@ ga4-analytics-lab/
 </a>
 ~~~
 
-:::flow Save|HTML и PDF → Commit|проверить оба файла → Push|отправить в GitHub → Vercel|дождаться Ready`,
+:::flow Save|HTML и PDF → Commit|проверить оба файла → Push|отправить в GitHub → Vercel|дождаться Ready
+:::files index.html`,
 109: `Откройте Production URL после публикации. Нажмите **Скачать материал** и проверьте, что файл действительно доступен.
 
 Затем найдите \`file_download\` в Realtime.
