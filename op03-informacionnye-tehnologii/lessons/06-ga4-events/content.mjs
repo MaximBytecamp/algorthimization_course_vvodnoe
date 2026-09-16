@@ -73,7 +73,9 @@ export const copy = {
 </a>
 ~~~
 
-Сохраните файл, сделайте Commit и Push. Дождитесь Production Deployment со статусом Ready.`,
+Сохраните файл, сделайте Commit и Push. Дождитесь Production Deployment со статусом Ready.
+
+:::files index.html`,
 104: `На опубликованной странице нажмите **Открыть GitHub**. Затем вернитесь в GA4 Realtime и найдите \`click\`.
 
 Сопоставьте время действия и домен ссылки. Одного названия события недостаточно, если пользователей несколько.
@@ -139,7 +141,7 @@ ga4-analytics-lab/
 ~~~
 ID формы в HTML должен совпадать с селектором в JavaScript.
 
-Готовый файл: [contacts.html](files/contacts.html).`,
+:::files contacts.html`,
 114: `Мы измеряем действие, а не содержимое персональных полей.
 
 Не передавайте в GA4 имя, email, телефон, пароль — ни в параметрах события, ни в URL, ни в названии страницы.
@@ -223,7 +225,7 @@ UTM описывает источник визита; \`lead_source\` в это�
 :::leadcode
 :::note Данные полей не читаются и не отправляются. На настоящем сайте перенесите generate_lead после успешного ответа сервера.
 
-Готовый файл: [js/script.js](files/js/script.js) или [весь код архивом](files/ga4-events-final.zip).`,
+:::files js/script.js`,
 127: `Один \`script.js\` подключается на трёх страницах, но форма есть только на Contacts.
 
 :::flow Home|null → About|null → Contacts|HTMLFormElement
@@ -260,7 +262,9 @@ UTM описывает источник визита; \`lead_source\` в это�
 </button>
 ~~~
 
-На странице оставьте один элемент с этим ID. В рабочем примере кнопка раскрывает описание программы.`,
+На странице оставьте один элемент с этим ID. В рабочем примере кнопка раскрывает описание программы.
+
+:::files index.html`,
 134: `В том же \`js/script.js\` найдите кнопку:
 
 ~~~javascript
@@ -301,7 +305,7 @@ gtag('event', 'cta_click', {
 
 В Vercel проверьте нужный commit, **Ready** и **Production**.
 
-Готовые файлы: [index.html](files/index.html), [js/script.js](files/js/script.js), [архив целиком](files/ga4-events-final.zip).`,
+:::files index.html;js/script.js`,
 140: `Нажмите **Посмотреть программу** один раз на Production-сайте.
 
 Найдите \`cta_click\` в Realtime. Для проверки количества и параметров затем перейдём к DebugView.

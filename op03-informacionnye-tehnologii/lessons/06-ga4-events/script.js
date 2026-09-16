@@ -41,6 +41,12 @@
   document.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => {
     try { await navigator.clipboard.writeText(b.closest('figure').querySelector('code').textContent); b.textContent = 'Скопировано'; } catch { b.textContent = 'Выделите код вручную'; }
   });
+  document.querySelectorAll('[data-copy-file]').forEach(b => b.onclick = async () => {
+    const text = new TextDecoder().decode(Uint8Array.from(atob(b.dataset.b64), c => c.charCodeAt(0)));
+    try { await navigator.clipboard.writeText(text); b.textContent = 'Скопировано'; }
+    catch { b.textContent = 'Скачайте файл'; }
+    setTimeout(() => { b.textContent = 'Копировать файл'; }, 2500);
+  });
   document.querySelectorAll('[data-zoom]').forEach(b => b.onclick = () => { const modal = document.querySelector('#visual'); modal.querySelector('img').src = b.querySelector('img').src; modal.querySelector('img').alt = b.querySelector('img').alt; modal.showModal(); });
   const log = document.querySelector('.event-log'); let events = [];
   document.querySelectorAll('[data-demo-event]').forEach(b => b.onclick = () => {
