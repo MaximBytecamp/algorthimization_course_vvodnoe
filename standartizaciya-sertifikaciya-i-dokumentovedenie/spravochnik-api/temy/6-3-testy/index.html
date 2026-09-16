@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 6.3 справочника: контрактные тесты — проверки описания, проверки поведения и сверка выгруженного файла с кодом; 31 настоящий тест учебного проекта.">
+<title>6.3 Контрактные тесты · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 6 · Стандарт и его проверка</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 6 · Стандарт и его проверка</p><p class="folio">Глава 6.3</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">6.3</span>
+<h1>Контрактные<br>тесты</h1>
+<p class="lead">Линтер проверил описание и молчит. Это ещё не значит, что сервис ведёт себя так, как обещает: описание и поведение живут отдельно, и сойтись они могут только потому, что кто-то это проверил. Тесты — и есть тот, кто проверяет, причём при каждом изменении.</p>
+<p class="pull">«Обещание, которое никто не проверяет, перестаёт быть правдой в среднем через два месяца.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Стандарт</dd></div>
+<div><dt>Уровень</dt><dd>Средний</dd></div>
+<div><dt>Связанные главы</dt><dd>6.2 Линтер Spectral · 6.4 CI · 3.3 FastAPI и OpenAPI</dd></div>
+<div><dt>Зачем это знать</dt><dd>Чтобы контракт оставался правдой, а не благим намерением</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Три вида проверок</a></li>
+<li><a href="#s2">Тесты описания</a></li>
+<li><a href="#s3">Тесты поведения</a></li>
+<li><a href="#s4">Проверка заголовков и условных запросов</a></li>
+<li><a href="#s5">Сверка выгруженного файла с кодом</a></li>
+<li><a href="#s6">Подготовка: чистое состояние</a></li>
+<li><a href="#s7">Настоящий прогон</a></li>
+<li><a href="#s8">Что писать тестом, а что нет</a></li>
+<li><a href="#s9">Частые ошибки</a></li>
+<li><a href="#s10">Проверьте себя</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Три вида проверок</h2>
+<p>В учебном проекте 31 тест, разложенный по трём файлам. Деление не случайное: каждый файл отвечает на свой вопрос.</p>
+
+<div class="tree">
+<p class="tree__head">tests/</p>
+<div class="tree__row"><b>conftest.py</b><span>подготовка: чистое хранилище, токены, пониженный лимит записи</span></div>
+<div class="tree__row tree__row--hot"><b>test_contract.py · 9 тестов</b><span>правильно ли устроено <b>описание</b>: метаданные, <code>operationId</code>, теги, ответы, префикс версии</span></div>
+<div class="tree__row tree__row--hot"><b>test_tickets.py · 10 тестов</b><span>правильно ли <b>ведёт себя</b> сервис: коды, <code>Location</code>, права, формат ошибок</span></div>
+<div class="tree__row tree__row--hot"><b>test_http_features.py · 12 тестов</b><span>работают ли <b>механизмы</b> из модуля 4: <code>ETag</code>, <code>If-Match</code>, идемпотентность, лимиты, устаревание, CORS</span></div>
+</div>
+
+<p>Первый файл читает описание как данные; два других поднимают приложение и отправляют в него настоящие запросы.</p>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Тесты описания</h2>
+<p>Описание в FastAPI — обычный словарь, который возвращает <code>app.openapi()</code>. Значит, правила стандарта про структуру контракта записываются обычным перебором.</p>
+
+<div class="code"><b>tests/test_contract.py · перебор всех операций</b><pre>HTTP_METHODS = {<span class="s">"get"</span>, <span class="s">"put"</span>, <span class="s">"post"</span>, <span class="s">"delete"</span>, <span class="s">"options"</span>, <span class="s">"head"</span>, <span class="s">"patch"</span>, <span class="s">"trace"</span>}
+
+<span class="k">def</span> <span class="f">operations</span>(schema):
+    <span class="k">for</span> path, path_item <span class="k">in</span> schema[<span class="s">"paths"</span>].items():
+        <span class="k">for</span> method, operation <span class="k">in</span> path_item.items():
+            <span class="k">if</span> method <span class="k">in</span> HTTP_METHODS:
+                <span class="k">yield</span> path, method, operation</pre></div>
+
+<p>Вспомогательная функция важнее, чем кажется: она отбрасывает то, что лежит рядом с операциями, но операциями не является — например, общие параметры пути. Дальше каждый тест — один цикл по всем операциям сразу, и новая операция автоматически попадает под все проверки.</p>
+
+<div class="code"><b>девять правил, записанных тестами</b><pre>test_openapi_contract_has_required_metadata   <span class="c"># title, version, description, contact</span>
+test_every_operation_has_operation_id          <span class="c"># operationId задан</span>
+test_operation_ids_are_unique                  <span class="c"># и не повторяется</span>
+test_every_operation_has_tag_and_summary       <span class="c"># группа и краткое описание</span>
+test_every_operation_defines_success_response  <span class="c"># успешный ответ описан</span>
+test_errors_use_problem_details                <span class="c"># 4xx и 5xx — application/problem+json</span>
+test_write_operations_require_bearer_token     <span class="c"># у операций записи есть security</span>
+test_paths_use_major_version_prefix            <span class="c"># все пути начинаются с /api/v1</span>
+test_committed_openapi_matches_code            <span class="c"># файл в репозитории равен описанию из кода</span></pre></div>
+
+<div class="note"><b>Зачем дублировать линтер</b><p>Часть этих правил проверяет и Spectral. Дублирование намеренное: тесты запускаются на каждом изменении кода и не требуют Node.js, а линтер ловит то, что удобнее выразить через JSONPath. Две проверки одного правила стоят дёшево, а пропущенное нарушение — дорого.</p></div>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Тесты поведения</h2>
+<p>Второй вид проверок отправляет настоящие запросы. Каждый тест — это правило стандарта, переписанное кодом.</p>
+
+<div class="code"><b>«Создание MUST возвращать 201 с заголовком Location»</b><pre><span class="k">def</span> <span class="f">test_create_returns_201_and_location</span>(client, writer):
+    response = client.post(<span class="s">"/api/v1/tickets"</span>, json={<span class="s">"title"</span>: <span class="s">"Не работает VPN"</span>}, headers=writer)
+    <span class="k">assert</span> response.status_code == <span class="n">201</span>
+    ticket = response.json()
+    <span class="k">assert</span> ticket[<span class="s">"status"</span>] == <span class="s">"open"</span>
+    <span class="k">assert</span> response.headers[<span class="s">"Location"</span>] == <span class="s">f"/api/v1/tickets/{ticket['id']}"</span></pre></div>
+
+<p>Проверяется не только код, но и <code>Location</code>, и начальный статус. Это ровно то, что обещано клиенту в главах 2.2 и 2.3.</p>
+
+<div class="code"><b>«401 — не узнали, 403 — узнали, но нельзя»</b><pre><span class="k">def</span> <span class="f">test_create_without_token_is_401</span>(client):
+    response = client.post(<span class="s">"/api/v1/tickets"</span>, json={<span class="s">"title"</span>: <span class="s">"Не работает VPN"</span>})
+    <span class="k">assert</span> response.status_code == <span class="n">401</span>
+    <span class="k">assert</span> response.headers[<span class="s">"content-type"</span>] == PROBLEM
+    <span class="k">assert</span> response.headers[<span class="s">"WWW-Authenticate"</span>] == <span class="s">"Bearer"</span>
+
+<span class="k">def</span> <span class="f">test_viewer_cannot_delete_403</span>(client, viewer):
+    ticket_id = client.get(<span class="s">"/api/v1/tickets"</span>).json()[<span class="s">"items"</span>][<span class="n">0</span>][<span class="s">"id"</span>]
+    response = client.delete(<span class="s">f"/api/v1/tickets/{ticket_id}"</span>, headers=viewer)
+    <span class="k">assert</span> response.status_code == <span class="n">403</span>
+    <span class="k">assert</span> response.json()[<span class="s">"title"</span>] == <span class="s">"Operation forbidden"</span></pre></div>
+
+<p>Два теста рядом — и разница из главы 4.2 перестаёт быть теорией: её невозможно нечаянно сломать, не уронив сборку.</p>
+
+<div class="code"><b>«Клиент не передаёт поля, которые формирует сервер»</b><pre><span class="k">def</span> <span class="f">test_client_cannot_send_id</span>(client, writer):
+    response = client.post(<span class="s">"/api/v1/tickets"</span>, json={<span class="s">"id"</span>: <span class="k">str</span>(uuid4()), <span class="s">"title"</span>: <span class="s">"VPN"</span>}, headers=writer)
+    <span class="k">assert</span> response.status_code == <span class="n">422</span></pre></div>
+
+<p>Этот тест сторожит настройку <code>extra="forbid"</code> из главы 3.3. Уберите её — и сервис молча примет чужой <code>id</code>, а тест это заметит.</p>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>Проверка заголовков и условных запросов</h2>
+<p>Механизмы из модуля 4 проверяются сценариями из нескольких запросов — иначе их не воспроизвести.</p>
+
+<div class="code"><b>потерянное изменение: должен быть 412</b><pre><span class="k">def</span> <span class="f">test_patch_with_stale_if_match_is_412</span>(client, writer):
+    url = <span class="s">f"/api/v1/tickets/{first_ticket_id(client)}"</span>
+    old_etag = client.get(url).headers[<span class="s">"ETag"</span>]                      <span class="c"># 1. прочитали версию</span>
+    client.patch(url, json={<span class="s">"status"</span>: <span class="s">"in_progress"</span>}, headers=writer)  <span class="c"># 2. кто-то изменил</span>
+    response = client.patch(url, json={<span class="s">"status"</span>: <span class="s">"closed"</span>},
+                            headers={**writer, <span class="s">"If-Match"</span>: old_etag})   <span class="c"># 3. пишем по старой версии</span>
+    <span class="k">assert</span> response.status_code == <span class="n">412</span>
+    <span class="k">assert</span> response.headers[<span class="s">"content-type"</span>] == PROBLEM
+    <span class="k">assert</span> client.get(url).json()[<span class="s">"status"</span>] == <span class="s">"in_progress"</span>        <span class="c"># 4. ничего не изменилось</span></pre></div>
+
+<p>Последняя строка — самая ценная. Мало вернуть <code>412</code>: нужно ещё и <b>не изменить</b> ресурс. Тест проверяет именно это, а значит, обещание «при несовпадении сервер MUST ответить 412 и не менять ресурс» выполнено целиком, а не наполовину.</p>
+
+<div class="code"><b>двенадцать механизмов под проверкой</b><pre>test_request_id_is_generated                      test_idempotency_key_prevents_duplicate
+test_request_id_from_client_is_returned           test_idempotency_key_with_other_body_is_422
+test_unsafe_request_id_is_replaced                test_write_limit_returns_429_with_retry_after
+test_get_returns_etag_and_304_for_same_version    test_deprecated_operation_sends_deprecation_and_sunset
+test_patch_with_stale_if_match_is_412             test_cors_exposes_contract_headers
+test_patch_with_current_if_match_succeeds         test_every_response_documents_request_id</pre></div>
+
+<p>Названия читаются как список обещаний API — это не совпадение, а приём: имя теста пишут так, чтобы по одному только списку было видно, что сервис гарантирует.</p>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>Сверка выгруженного файла с кодом</h2>
+<p>Отдельная проверка стоит того, чтобы разобрать её подробно, — она решает беду из главы 3.1.</p>
+
+<div class="code"><b>tests/test_contract.py</b><pre><span class="k">def</span> <span class="f">test_committed_openapi_matches_code</span>():
+    committed = json.loads((ROOT / <span class="s">"openapi"</span> / <span class="s">"openapi.json"</span>).read_text(encoding=<span class="s">"utf-8"</span>))
+    <span class="k">assert</span> committed == app.openapi(), <span class="s">"run: python scripts/export_openapi.py"</span></pre></div>
+
+<p>Файл описания лежит в репозитории, чтобы его было видно в pull request и чтобы с ним мог работать oasdiff. Но файл — копия, а источник правды — код. Тест не даёт копии устареть, и в сообщении об ошибке сразу написано, что делать: запустить выгрузку.</p>
+
+<div class="takeaway"><b>Мысль главы</b><p>Хорошее сообщение об ошибке теста содержит не только «не совпало», но и следующий шаг. Тест, который падает с одним словом <code>AssertionError</code>, отнимает у коллеги полчаса.</p></div>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Подготовка: чистое состояние</h2>
+<p>Тесты, меняющие данные, мешают друг другу, если состояние между ними не сбрасывать. За это отвечает <code>conftest.py</code>.</p>
+
+<div class="code"><b>tests/conftest.py</b><pre>@pytest.fixture
+<span class="k">def</span> <span class="f">client</span>():
+    repository.reset()          <span class="c"># обращения — как в начале</span>
+    idempotency_store.reset()   <span class="c"># забыть использованные ключи</span>
+    write_limiter.reset()       <span class="c"># обнулить счётчик запросов</span>
+    <span class="k">return</span> TestClient(app)
+
+@pytest.fixture
+<span class="k">def</span> <span class="f">writer</span>():
+    <span class="k">return</span> {<span class="s">"Authorization"</span>: <span class="s">"Bearer demo-token"</span>}
+
+@pytest.fixture
+<span class="k">def</span> <span class="f">low_write_limit</span>():
+    original = write_limiter.limit
+    write_limiter.limit = <span class="n">2</span>    <span class="c"># временно снижаем предел</span>
+    <span class="k">yield</span>
+    write_limiter.limit = original</pre></div>
+
+<p>Последняя заготовка — приём, который стоит запомнить. Проверить лимит в 60 запросов в минуту «честно» означало бы отправить 61 запрос; вместо этого лимит на время теста снижается до двух, а после теста возвращается. Проверяется механизм, а не число.</p>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>Настоящий прогон</h2>
+<div class="code"><b>терминал</b><pre>pytest -q</pre></div>
+
+<div class="code code--out"><b>вывод</b><pre>...............................                                          [100%]
+31 passed in 0.07s</pre></div>
+
+<p>Тридцать одна проверка за семь сотых секунды — потому что сервис не поднимается по сети: <code>TestClient</code> обращается к приложению напрямую. Отсюда практический вывод: такие тесты можно запускать при каждом сохранении файла, а не только в сборке.</p>
+
+<p>И обратная сторона: раз сеть не участвует, эти тесты не заметят беды, которые возникают только по-настоящему — неверную настройку сервера, обратный прокси, срезающий заголовки, или CORS в рабочем контуре. Для них нужна проверка на живом стенде, и это уже другой разговор.</p>
+</section>
+
+<section class="sec" id="s8">
+<h2><i>§8</i>Что писать тестом, а что нет</h2>
+<div class="compare">
+<div><b>Обязательно тестом</b><ul><li>каждое MUST из стандарта</li><li>коды ответов и заголовки, которые обещаны</li><li>разграничение прав: <code>401</code> и <code>403</code></li><li>сценарии из нескольких запросов: <code>412</code>, идемпотентность, <code>304</code></li><li>совпадение выгруженного файла с кодом</li></ul></div>
+<div><b>Не тестом</b><ul><li>осмысленность текста описания</li><li>удачность имени поля</li><li>то, что уже проверяет линтер строже и полнее</li><li>внутреннее устройство модулей, не видное клиенту</li></ul></div>
+</div>
+
+<p>Ориентир тот же, что и в главе 6.1: тест пишется на обещание, данное клиенту. Если правило нельзя нарушить так, чтобы клиент это заметил, — тест на него не нужен.</p>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s9">
+<h2><i>§9</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Проверять только код ответа</b>Заголовки <code>Location</code>, <code>ETag</code>, <code>WWW-Authenticate</code> — тоже часть обещания.</div>
+<div><b>Проверить отказ и не проверить последствие</b>После <code>412</code> нужно убедиться, что ресурс не изменился. Иначе тест пропустит половину беды.</div>
+<div><b>Тесты, зависящие от порядка запуска</b>Состояние между тестами сбрасывается заготовкой, иначе падения начинают «плавать».</div>
+<div><b>Проверять лимит честными 61 запросом</b>Долго и хрупко. Снизьте предел на время теста.</div>
+<div><b>Сообщение об ошибке без следующего шага</b>Коллега должен из падения понять, что делать, а не идти читать исходники.</div>
+<div><b>Считать, что зелёные тесты = рабочий API</b>Сеть, прокси и настройки развёртывания они не проверяют.</div>
+</div>
+</section>
+
+<section class="sec" id="s10">
+<h2><i>§10</i>Проверьте себя</h2>
+<ol class="check">
+<li>На какие три вопроса отвечают три файла тестов учебного проекта?</li>
+<li>Почему тест на структуру описания пишут циклом по всем операциям, а не по одной?</li>
+<li>Зачем в тесте на <code>412</code> нужна последняя проверка, если код ответа уже сверен?</li>
+<li>Что проверяет <code>test_committed_openapi_matches_code</code> и какую беду это предотвращает?</li>
+<li>Почему лимит записи проверяют с временно сниженным пределом?</li>
+<li>Назовите две вещи, которые эти 31 тест не заметят, даже если все зелёные.</li>
+</ol>
+
+<div class="cheat">
+<div><b>Три файла</b><code>test_contract.py — описание</code><code>test_tickets.py — поведение</code><code>test_http_features.py — механизмы</code></div>
+<div><b>Проверять</b><code>код ответа</code><code>заголовки</code><code>тело</code><code>состояние после</code></div>
+<div><b>Заготовки</b><code>чистое хранилище</code><code>токены</code><code>сниженный лимит</code></div>
+<div><b>Границы</b><code>сеть и прокси — нет</code><code>смысл текста — нет</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../6-2-spectral/index.html">← Глава 6.2. Линтер Spectral</a>
+<a href="../6-4-ci/index.html">Глава 6.4. CI и поиск breaking changes →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 6 · глава 6.3</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>

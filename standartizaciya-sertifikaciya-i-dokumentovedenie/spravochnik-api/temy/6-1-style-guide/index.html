@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 6.1 справочника: свой стандарт проекта — уровни требований MUST, SHOULD и MAY по RFC 2119, структура API Style Guide и правило «каждое правило проверяемо».">
+<title>6.1 API Style Guide · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 6 · Стандарт и его проверка</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 6 · Стандарт и его проверка</p><p class="folio">Глава 6.1</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">6.1</span>
+<h1>API<br>Style Guide</h1>
+<p class="lead">До сих пор мы разбирали отдельные правила: адреса, методы, коды, заголовки, версии. Теперь соберём их в один документ — внутренний стандарт проекта. Главное в нём не список, а два свойства: у каждого правила есть сила требования и способ проверки.</p>
+<p class="pull">«Правило, которое нечем проверить, — это пожелание. Пожелания не соблюдают.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Стандарт</dd></div>
+<div><dt>Уровень</dt><dd>Базовый</dd></div>
+<div><dt>Связанные главы</dt><dd>6.2 Линтер Spectral · 6.3 Контрактные тесты · 7.4 Стандарты компаний</dd></div>
+<div><dt>Зачем это знать</dt><dd>Чтобы договорённости команды жили дольше, чем память участников</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Зачем нужен свой стандарт</a></li>
+<li><a href="#s2">MUST, SHOULD, MAY: RFC 2119</a></li>
+<li><a href="#s3">Как выбрать уровень требования</a></li>
+<li><a href="#s4">Каждое правило проверяемо</a></li>
+<li><a href="#s5">Структура документа</a></li>
+<li><a href="#s6">Правило без источника не правило</a></li>
+<li><a href="#s7">Своды крупных компаний</a></li>
+<li><a href="#s8">Частые ошибки</a></li>
+<li><a href="#s9">Проверьте себя</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Зачем нужен свой стандарт</h2>
+<p>Пока сервис пишет один человек, договорённости живут у него в голове. Как только появляется второй, начинаются разночтения: у одного <code>created_at</code>, у другого <code>createdAt</code>; один возвращает <code>200</code> при создании, другой <code>201</code>. Каждое такое расхождение по отдельности мелочь, а вместе они превращают API в набор разных API под одним адресом.</p>
+
+<div class="compare">
+<div><b>Без стандарта</b><ul><li>решение зависит от того, кто пишет</li><li>спор на каждом ревью заново</li><li>клиент учит исключения наизусть</li><li>новый участник узнаёт правила случайно</li></ul></div>
+<div><b>Со стандартом</b><ul><li>решение уже принято</li><li>ревью сверяется с документом</li><li>клиент видит единообразие</li><li>новый участник читает один файл</li></ul></div>
+</div>
+
+<p>В учебном проекте это файл <code>docs/API_STYLE_GUIDE.md</code>. Он небольшой — около сотни строк — и целиком состоит из решений, которые мы разбирали в предыдущих модулях.</p>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>MUST, SHOULD, MAY: RFC 2119</h2>
+<p>Первое, что задаёт документ, — как читать силу требования. Слова взяты не произвольно: их значения определены отдельным стандартом, RFC 2119, и в стандартах эти слова пишут заглавными буквами именно поэтому.</p>
+
+<div class="code code--out"><b>docs/API_STYLE_GUIDE.md · шапка</b><pre>Внутренний стандарт проекта. Сила требования обозначается словами из RFC 2119:
+MUST — обязательно, SHOULD — рекомендуется, отступление нужно обосновать,
+MAY — допускается.</pre></div>
+
+<div class="ops">
+<div><b>MUST · MUST NOT</b><span>Обязательно. Отступления нет: нарушение — ошибка, и его не пропускает проверка. «Каждый ответ MUST содержать <code>X-Request-Id</code>.»</span><i>обязательно</i></div>
+<div><b>SHOULD · SHOULD NOT</b><span>Рекомендуется. Отступить можно, но нужно понимать последствия и объяснить причину. «Успешное удаление SHOULD возвращать <code>204</code>.»</span><i>обоснуй</i></div>
+<div><b>MAY</b><span>Допускается. Возможность, а не требование. «<code>POST</code> MAY принимать <code>Idempotency-Key</code>.»</span><i>можно</i></div>
+</div>
+
+<p>Разница между MUST и SHOULD — не про строгость автора, а про то, что происходит на ревью. К MUST вопрос один: выполнено или нет. К SHOULD вопрос другой: если не выполнено, то почему — и ответ записывается.</p>
+
+<div class="note"><b>Почему это важно читать в чужих стандартах</b><p>Открывая свод правил Zalando или RFC, первым делом смотрите на слово. Правило 182 про <code>ETag</code> — это MAY: «можно предусмотреть». Правило 153 про <code>429</code> — MUST. Одинаково выглядящие пункты списка имеют совершенно разный вес, и без этого различия свод читается неправильно.</p></div>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Как выбрать уровень требования</h2>
+<p>Выбор уровня — самая содержательная часть написания стандарта. Ориентир простой:</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Вопрос о правиле</th><th>Ответ</th><th>Уровень</th></tr></thead>
+<tbody>
+<tr><td>Нарушение ломает клиента или делает API непредсказуемым?</td><td>да</td><td>MUST</td></tr>
+<tr><td>Нарушение делает API хуже, но есть случаи, когда оправдано?</td><td>да</td><td>SHOULD</td></tr>
+<tr><td>Это возможность, которой можно пользоваться, а можно нет?</td><td>да</td><td>MAY</td></tr>
+<tr><td>Нарушение вообще незаметно снаружи?</td><td>да</td><td>правилу не место в стандарте API</td></tr>
+</tbody>
+</table></div>
+
+<p>Последняя строка отсекает самую частую ошибку: внутренние соглашения о коде — имена переменных, структура папок, стиль коммитов — в стандарт API не входят. Стандарт API описывает то, что видит клиент.</p>
+
+<div class="fork">
+<div><b>Всё сделать MUST</b><p>Соблазнительно и вредно: документ становится невыполнимым, его начинают нарушать целиком, а не по пунктам. Если MUST нарушается регулярно — это был SHOULD.</p></div>
+<div><b>Всё сделать SHOULD</b><p>Другая крайность: тогда ни одно правило не обязательно и каждое ревью снова превращается в спор. MUST должно быть достаточно, чтобы API оставался предсказуемым.</p></div>
+</div>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>Каждое правило проверяемо</h2>
+<p>Второе свойство документа важнее первого. Посмотрите на настоящие строки стандарта — в скобках указано, чем правило проверяется:</p>
+
+<div class="code code--out"><b>docs/API_STYLE_GUIDE.md · выдержки</b><pre>- URI MUST use nouns: /tickets, а не /getTickets (.spectral.yaml: paths-no-verbs).
+- Все пути MUST начинаться с мажорной версии: /api/v1/ (tests/test_contract.py).
+- Каждый ответ MUST содержать X-Request-Id (tests/test_http_features.py).
+- Свойства MUST быть в snake_case: created_at, ticket_id (json-properties-snake-case).
+- Создание ресурса MUST выполняться POST на коллекцию и возвращать 201 Created
+  с заголовком Location (tests/test_tickets.py).</pre></div>
+
+<p>Каждая ссылка в скобках — это файл, который можно запустить. Правило без пометки проверяется человеком на ревью, и таких в документе заметно меньше.</p>
+
+<div class="ops">
+<div><b>Линтер</b><span>Проверяет описание: имена путей, регистр свойств, наличие <code>operationId</code>, media type ошибок. Глава 6.2.</span><i>.spectral.yaml</i></div>
+<div><b>Тесты описания</b><span>Проверяют структуру контракта: префикс версии, уникальность <code>operationId</code>, требование токена. Глава 6.3.</span><i>test_contract.py</i></div>
+<div><b>Тесты поведения</b><span>Проверяют, что сервис действительно так отвечает: <code>201</code> с <code>Location</code>, <code>412</code> на устаревший <code>If-Match</code>.</span><i>test_tickets.py</i></div>
+<div><b>Ревью</b><span>Всё, что машина не поймает: осмысленность формулировок, уместность нового поля, качество примеров.</span><i>человек</i></div>
+</div>
+
+<div class="takeaway"><b>Мысль главы</b><p>Стандарт живёт ровно настолько, насколько он автоматизирован. Написав правило, сразу спросите себя: чем я проверю, что его соблюдают?</p></div>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>Структура документа</h2>
+<p>Разделы удобно строить по пути запроса — от адреса к телу, — а не по важности.</p>
+
+<div class="tree">
+<p class="tree__head">docs/API_STYLE_GUIDE.md</p>
+<div class="tree__row"><b>1. URI</b><span>существительные, множественное число, вложенность, префикс версии</span></div>
+<div class="tree__row"><b>2. HTTP</b><span>какой метод что делает, какой код когда возвращается</span></div>
+<div class="tree__row tree__row--hot"><b>3. Заголовки</b><span><code>X-Request-Id</code>, <code>ETag</code>, <code>If-Match</code>, лимиты, <code>Idempotency-Key</code>, CORS</span></div>
+<div class="tree__row"><b>4. Операции OpenAPI</b><span><code>operationId</code>, теги, описания ответов, примеры</span></div>
+<div class="tree__row"><b>5. JSON</b><span>snake_case, формат даты, отдельные схемы, пагинация</span></div>
+<div class="tree__row"><b>6. Ошибки</b><span>Problem Details, набор кодов, что нельзя раскрывать</span></div>
+<div class="tree__row"><b>7. Версии</b><span>SemVer, путь <code>/api/v1</code>, устаревание</span></div>
+</div>
+
+<p>Такой порядок удобен читателю: проверяя своё изменение, он идёт сверху вниз ровно в том порядке, в каком формируется запрос.</p>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Правило без источника не правило</h2>
+<p>У каждого правила в учебном проекте есть отдельный документ-обоснование — <code>docs/STANDARDS.md</code>. Там для каждого решения указан источник: раздел RFC, правило из свода компании или ссылка на документацию крупного API, с цитатой в оригинале и переводом.</p>
+
+<div class="code code--out"><b>docs/STANDARDS.md · вид одной записи</b><pre>## 4. Формат ошибок: Problem Details
+
+В проекте: app/problems.py, docs/ERRORS.md, страницы видов ошибок на GitHub Pages.
+
+Источник: RFC 9457, раздел 3.1.1, Standards Track.
+
+> If the type URI is a locator …, dereferencing it SHOULD provide human-readable
+> documentation for the problem type …
+
+Перевод: если URI в поле type является адресом …
+
+Как это делают другие: Zalando — application/problem+json; Azure — своя структура
+ошибки и заголовок x-ms-error-code.</pre></div>
+
+<p>Четыре части записи отвечают на четыре вопроса: где это в нашем коде, откуда правило взято, что оно означает по-русски и какие есть другие варианты. Последняя часть особенно полезна: она показывает, что решение было выбором, а не единственной возможностью.</p>
+
+<div class="note note--warn"><b>Зачем так строго</b><p>Правило без источника обсуждается бесконечно, потому что спорить можно с автором. Правило со ссылкой на RFC обсуждать нечем: либо вы принимаете стандарт, либо записываете обоснованное отступление — и это уже другой, гораздо более короткий разговор.</p></div>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>Своды крупных компаний</h2>
+<p>Свой стандарт пишут не с нуля — смотрят, как это сделано у других, и берут подходящее.</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Свод</th><th>Чем полезен</th><th>Особенность</th></tr></thead>
+<tbody>
+<tr><td><a href="https://opensource.zalando.com/restful-api-guidelines/" target="_blank" rel="noopener">Zalando RESTful API Guidelines</a></td><td>Самый подробный: каждое правило пронумеровано и имеет уровень</td><td>На правило можно сослаться номером: «rule 176»</td></tr>
+<tr><td><a href="https://github.com/microsoft/api-guidelines" target="_blank" rel="noopener">Microsoft API Guidelines</a></td><td>Отдельные своды для Azure и Microsoft Graph</td><td>Внутри одной компании решения расходятся</td></tr>
+<tr><td><a href="https://github.com/adidas/api-guidelines" target="_blank" rel="noopener">adidas API Guidelines</a></td><td>Компактный, читается за вечер</td><td>Хороший образец для небольшой команды</td></tr>
+<tr><td><a href="https://github.com/digitalocean/openapi" target="_blank" rel="noopener">DigitalOcean</a></td><td>Правила выражены готовым набором для линтера</td><td>Стандарт и его проверка — один и тот же файл</td></tr>
+</tbody>
+</table></div>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/88-zalando-guidelines.png" alt="Сайт Zalando RESTful API Guidelines со списком пронумерованных правил" loading="lazy">
+<figcaption><b>Пронумерованные правила.</b> Каждое правило — отдельный пункт с уровнем требования и постоянным номером. На такое правило удобно ссылаться в ревью и в собственном стандарте, что мы и делали во всех предыдущих модулях.</figcaption></figure>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/93-digitalocean-spectral-ruleset.png" alt="Репозиторий DigitalOcean с набором правил Spectral для их OpenAPI" loading="lazy">
+<figcaption><b>Стандарт как код.</b> У DigitalOcean правила стиля выражены прямо набором правил линтера. Это предельный случай принципа из §4: документ и проверка не расходятся, потому что это один файл.</figcaption></figure>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s8">
+<h2><i>§8</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Стандарт без уровней требований</b>Непонятно, что обязательно, а что пожелание, и на ревью спорят о каждом пункте.</div>
+<div><b>Правило без способа проверки</b>Соблюдается первые две недели, потом забывается.</div>
+<div><b>Всё объявить MUST</b>Документ становится невыполнимым, и его перестают соблюдать целиком.</div>
+<div><b>Правила о внутреннем устройстве</b>Имена переменных и структура папок клиенту не видны — это другой документ.</div>
+<div><b>Правило без источника</b>Обсуждается бесконечно, потому что спорят с автором, а не со стандартом.</div>
+<div><b>Стандарт, который никто не читал</b>Документ нужно давать новому участнику в первый день и ссылаться на него в каждом ревью.</div>
+</div>
+</section>
+
+<section class="sec" id="s9">
+<h2><i>§9</i>Проверьте себя</h2>
+<ol class="check">
+<li>Что означают MUST, SHOULD и MAY и чем отличается разговор на ревью для первых двух?</li>
+<li>Как выбрать уровень требования для нового правила? Приведите пример для каждого уровня.</li>
+<li>Почему правило «имена переменных в snake_case» не место в API Style Guide, а «свойства JSON в snake_case» — место?</li>
+<li>Назовите четыре способа проверки правил в учебном проекте.</li>
+<li>Из каких четырёх частей состоит запись в <code>STANDARDS.md</code> и зачем нужна последняя?</li>
+<li>Почему стандарт DigitalOcean, выраженный набором правил линтера, не может разойтись с проверкой?</li>
+</ol>
+
+<div class="cheat">
+<div><b>Уровни · RFC 2119</b><code>MUST — обязательно</code><code>SHOULD — обоснуй отступление</code><code>MAY — допускается</code></div>
+<div><b>Проверка</b><code>.spectral.yaml — описание</code><code>test_contract.py — структура</code><code>test_tickets.py — поведение</code><code>ревью — смысл</code></div>
+<div><b>Запись правила</b><code>где в коде</code><code>источник</code><code>перевод</code><code>варианты у других</code></div>
+<div><b>Образцы</b><code>Zalando</code><code>Microsoft</code><code>adidas</code><code>DigitalOcean</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../5-4-changelog-adr/index.html">← Глава 5.4. CHANGELOG и ADR</a>
+<a href="../6-2-spectral/index.html">Глава 6.2. Линтер Spectral →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 6 · глава 6.1</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>

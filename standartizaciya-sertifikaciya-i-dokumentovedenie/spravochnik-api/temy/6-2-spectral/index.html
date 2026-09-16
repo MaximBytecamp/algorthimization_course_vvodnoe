@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 6.2 справочника: линтер Spectral — готовый набор spectral:oas, свои правила проекта на JSONPath, разбор настоящего вывода с ошибками и запуск в сборке.">
+<title>6.2 Линтер Spectral · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 6 · Стандарт и его проверка</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 6 · Стандарт и его проверка</p><p class="folio">Глава 6.2</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">6.2</span>
+<h1>Линтер<br>Spectral</h1>
+<p class="lead">Правила из предыдущей главы нужно кому-то проверять. Часть из них — те, что видны прямо в описании OpenAPI, — проверяет линтер: программа, которая читает контракт и сообщает о нарушениях. Разберём готовый набор правил, напишем два своих и посмотрим на настоящий вывод с ошибками.</p>
+<p class="pull">«Линтер не спорит и не устаёт. Ему всё равно, кто написал описание и как поздно вечером.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Стандарт</dd></div>
+<div><dt>Уровень</dt><dd>Средний</dd></div>
+<div><dt>Связанные главы</dt><dd>6.1 API Style Guide · 6.3 Контрактные тесты · 6.4 CI</dd></div>
+<div><dt>Зачем это знать</dt><dd>Чтобы правила стиля проверялись сами, а не глазами на ревью</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Что такое линтер описания</a></li>
+<li><a href="#s2">Готовый набор spectral:oas</a></li>
+<li><a href="#s3">Файл настроек проекта</a></li>
+<li><a href="#s4">Своё правило: из чего состоит</a></li>
+<li><a href="#s5">Три правила учебного проекта</a></li>
+<li><a href="#s6">Настоящий вывод на плохом контракте</a></li>
+<li><a href="#s7">Уровни и порог падения</a></li>
+<li><a href="#s8">Чего линтер не проверяет</a></li>
+<li><a href="#s9">Частые ошибки</a></li>
+<li><a href="#s10">Проверьте себя</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Что такое линтер описания</h2>
+<p><span class="term">Spectral</span> читает файл описания OpenAPI и проверяет его по набору правил. Он не запускает сервис и не отправляет запросов — работает только с текстом контракта. Отсюда сразу видно, что ему доступно, а что нет: всё, что записано в описании, он проверит; всё, что живёт только в поведении, — не увидит.</p>
+
+<div class="code"><b>запуск</b><pre>npx @stoplight/spectral-cli@6.16.3 lint openapi/openapi.yaml --fail-severity=warn</pre></div>
+
+<div class="code code--out"><b>вывод на исправном контракте учебного проекта</b><pre>No results with a severity of 'warn' or higher found!</pre></div>
+
+<p>Обратите внимание на закреплённую версию <code>@6.16.3</code>: если её не указать, завтра выйдет новая, добавит правило, и сборка упадёт без единого изменения в вашем коде. Мы уже сталкивались с этим правилом в главах 3.4 и 5.2 — фиксируйте версии внешних инструментов всегда.</p>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Готовый набор spectral:oas</h2>
+<p>Писать правила с нуля не нужно: в Spectral встроен набор <code>spectral:oas</code> — десятки проверок для описаний OpenAPI. Он ловит и формальные ошибки (описание не соответствует схеме формата), и содержательные упущения.</p>
+
+<div class="ops">
+<div><b>info-contact</b><span>В разделе <code>info</code> заполнены контакты владельца API. Ровно то требование Zalando 218, о котором шла речь в главе 3.2.</span><i>info</i></div>
+<div><b>info-description</b><span>У API есть описание, а не только название.</span><i>info</i></div>
+<div><b>operation-operationId</b><span>У каждой операции задан <code>operationId</code>. Без него генераторы клиентов придумывают имена сами.</span><i>операции</i></div>
+<div><b>operation-tags</b><span>Каждая операция отнесена к группе, иначе она попадёт в безымянный раздел документации.</span><i>операции</i></div>
+<div><b>path-params</b><span>Параметры пути объявлены и совпадают с тем, что написано в самом пути.</span><i>пути</i></div>
+</div>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/79-spectral-repo.png" alt="Репозиторий Spectral на GitHub: описание линтера для OpenAPI и JSON" loading="lazy">
+<figcaption><b>Исходный проект.</b> Spectral — открытый линтер для JSON и YAML с готовыми наборами правил для OpenAPI. Набор <code>spectral:oas</code> встроен: подключать его отдельно не нужно, достаточно строки <code>extends</code>.</figcaption></figure>
+
+<p>В файле настроек проекта эти правила перечислены отдельно — не потому, что они выключены по умолчанию, а потому, что им повышен уровень до <code>error</code>: в этом проекте отсутствие контактов не предупреждение, а ошибка.</p>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Файл настроек проекта</h2>
+<div class="code"><b>.spectral.yaml · начало</b><pre>extends:
+  - spectral:oas
+
+rules:
+  info-contact: error
+  info-description: error
+  operation-operationId: error
+  operation-tags: error
+  path-params: error
+
+  # Собственные правила проекта из docs/API_STYLE_GUIDE.md
+  …</pre></div>
+
+<div class="ops">
+<div><b>extends</b><span>Какие готовые наборы взять за основу. Можно указать и чужой набор по адресу — так поступают компании, публикующие свои правила.</span><i>основа</i></div>
+<div><b>rules</b><span>Изменения: повысить или понизить уровень готового правила, выключить его или добавить своё.</span><i>правки</i></div>
+<div><b>комментарий</b><span>Ссылка на раздел стандарта, из которого взяты собственные правила. Связь документа и проверки не должна теряться.</span><i>связь</i></div>
+</div>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>Своё правило: из чего состоит</h2>
+<p>Собственное правило описывается четырьмя частями. Разберём их на правиле про имена путей.</p>
+
+<div class="code"><b>.spectral.yaml · правило paths-no-verbs</b><pre>paths-no-verbs:
+  description: URI MUST описывать ресурс существительным, а не действием.
+  severity: error
+  given: <span class="s">"$.paths"</span>
+  then:
+    field: <span class="s">"@key"</span>
+    function: pattern
+    functionOptions:
+      notMatch: <span class="s">"/(get|create|update|delete|remove|add)[A-Za-z]*(/|$)"</span></pre></div>
+
+<div class="ops">
+<div><b>description</b><span>Текст, который увидит человек в выводе. Пишется так же, как строка стандарта, — со словом уровня требования.</span><i>что нарушено</i></div>
+<div><b>severity</b><span>Насколько это серьёзно: <code>error</code>, <code>warn</code>, <code>info</code>, <code>hint</code>.</span><i>насколько важно</i></div>
+<div><b>given</b><span>Куда смотреть. Выражение JSONPath по документу описания: здесь — раздел <code>paths</code> целиком.</span><i>где искать</i></div>
+<div><b>then</b><span>Что проверять и какой проверкой. Здесь: взять ключ (<code>@key</code> — сам адрес) и убедиться, что он не совпадает с образцом из глаголов.</span><i>что проверять</i></div>
+</div>
+
+<div class="note"><b>Про @key</b><p>Особое значение <code>@key</code> означает «проверяй не значение, а имя поля». Это нужно там, где смысл несёт именно имя: адрес в <code>paths</code>, название свойства в схеме. Без него правило проверяло бы содержимое, а не заголовок.</p></div>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>Три правила учебного проекта</h2>
+
+<div class="code"><b>1 · ошибки отвечают в формате Problem Details</b><pre>error-responses-use-problem-json:
+  description: Ответы 4xx и 5xx MUST использовать application/problem+json.
+  severity: error
+  given: <span class="s">"$.paths[*][*].responses[?(@property.match(/^[45]/))]"</span>
+  then:
+    field: content
+    function: schema
+    functionOptions:
+      schema:
+        type: object
+        required: [application/problem+json]</pre></div>
+
+<p>Выражение в <code>given</code> читается так: во всех путях, во всех операциях, среди ответов взять те, чей код начинается с <code>4</code> или <code>5</code>. Дальше у каждого проверяется, что в <code>content</code> есть ключ <code>application/problem+json</code>. Это правило из главы 4.1, доведённое до автоматической проверки.</p>
+
+<div class="code"><b>2 · свойства JSON в snake_case</b><pre>json-properties-snake-case:
+  description: Свойства JSON MUST быть записаны в snake_case.
+  severity: error
+  given: <span class="s">"$.components.schemas[*].properties"</span>
+  then:
+    field: <span class="s">"@key"</span>
+    function: casing
+    functionOptions:
+      type: snake</pre></div>
+
+<p>Здесь используется готовая проверка <code>casing</code> — писать образец вручную не нужно. Правило смотрит на имена свойств всех схем сразу, поэтому уследить за единообразием в описании из тысячи строк больше не требуется.</p>
+
+<div class="code"><b>3 · адреса без глаголов</b><pre>paths-no-verbs:  <span class="c"># разобрано в §4</span></pre></div>
+
+<p>Три правила — немного, и это нормально. Набор растёт по мере того, как в ревью повторяется одно и то же замечание: заметили третий раз — превращайте в правило.</p>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Настоящий вывод на плохом контракте</h2>
+<p>Проверим, что правила работают. Возьмём описание учебного сервиса и намеренно испортим его в двух местах: переименуем <code>created_at</code> в <code>createdAt</code> и заменим адрес <code>/api/v1/tickets/open</code> на <code>/api/v1/getTickets</code>.</p>
+
+<div class="code"><b>терминал</b><pre>npx @stoplight/spectral-cli@6.16.3 lint bad.yaml --fail-severity=warn</pre></div>
+
+<div class="code code--out"><b>настоящий вывод</b><pre>bad.yaml
+ 209:22  error  paths-no-verbs              URI MUST описывать ресурс существительным,
+                                            а не действием.  paths./api/v1/getTickets
+ 581:19  error  json-properties-snake-case  Свойства JSON MUST быть записаны в snake_case.
+                                            components.schemas.Ticket.properties.createdAt
+
+✖ 2 problems (2 errors, 0 warnings, 0 infos, 0 hints)</pre></div>
+
+<ol class="steps">
+<li><b>Строка и столбец.</b> <code>209:22</code> — точное место в файле, можно открыть и поправить.</li>
+<li><b>Уровень и имя правила.</b> По имени правило находится в <code>.spectral.yaml</code>, а оттуда — в стандарте.</li>
+<li><b>Текст описания.</b> Тот же, что был записан в правиле: человек сразу видит, что именно нарушено.</li>
+<li><b>Путь внутри документа.</b> <code>components.schemas.Ticket.properties.createdAt</code> — где в структуре описания сидит нарушение.</li>
+<li><b>Итог.</b> Две ошибки — значит, ненулевой код возврата, и сборка не пройдёт.</li>
+</ol>
+
+<div class="note"><b>Почему это ценнее замечания на ревью</b><p>Замечание человека приходит через час или через день, зависит от настроения и иногда пропускается. Вывод линтера приходит за секунды, одинаков для всех и не обсуждается. Ревью в результате освобождается для вопросов, которые машина решить не может.</p></div>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>Уровни и порог падения</h2>
+<p>У каждого правила есть уровень, а у запуска — порог, начиная с которого проверка считается провалившейся.</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Уровень</th><th>Смысл</th><th>Соответствие стандарту проекта</th></tr></thead>
+<tbody>
+<tr><td><code>error</code></td><td>Нарушение обязательного правила</td><td>MUST</td></tr>
+<tr><td><code>warn</code></td><td>Нарушение рекомендации</td><td>SHOULD</td></tr>
+<tr><td><code>info</code></td><td>Замечание к сведению</td><td>—</td></tr>
+<tr><td><code>hint</code></td><td>Подсказка, как сделать лучше</td><td>MAY</td></tr>
+</tbody>
+</table></div>
+
+<p>В учебном проекте запуск идёт с ключом <code>--fail-severity=warn</code>: падает не только на ошибках, но и на предупреждениях. Это осознанно строгий выбор — для учебного стенда, где описание небольшое, проще держать его безупречным, чем накапливать «известные предупреждения», на которые все перестают смотреть.</p>
+
+<div class="fork">
+<div><b>Строгий порог</b><p><code>--fail-severity=warn</code>. Годится, когда описание маленькое или проект молодой. Держит контракт в чистоте с первого дня.</p></div>
+<div><b>Мягкий порог</b><p><code>--fail-severity=error</code>. Нужен большому существующему API: сначала останавливают появление новых ошибок, потом постепенно вычищают предупреждения.</p></div>
+</div>
+</section>
+
+<section class="sec" id="s8">
+<h2><i>§8</i>Чего линтер не проверяет</h2>
+<p>Ограничение то же, что у oasdiff из главы 5.2: линтер видит описание, а не поведение.</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Правило стандарта</th><th>Проверяет линтер?</th><th>Чем проверяется</th></tr></thead>
+<tbody>
+<tr><td>Адреса без глаголов</td><td>да</td><td><code>paths-no-verbs</code></td></tr>
+<tr><td>Свойства в snake_case</td><td>да</td><td><code>json-properties-snake-case</code></td></tr>
+<tr><td>Ошибки в формате Problem Details <b>в описании</b></td><td>да</td><td><code>error-responses-use-problem-json</code></td></tr>
+<tr><td>Сервис <b>действительно</b> отвечает Problem Details</td><td>нет</td><td>тесты поведения, глава 6.3</td></tr>
+<tr><td><code>201</code> приходит с заголовком <code>Location</code></td><td>нет</td><td>тесты поведения</td></tr>
+<tr><td>Выгруженный файл совпадает с кодом</td><td>нет</td><td><code>export_openapi.py --check</code></td></tr>
+<tr><td>Изменение не ломает клиентов</td><td>нет</td><td>oasdiff, глава 5.2</td></tr>
+</tbody>
+</table></div>
+
+<p>Отсюда состав сборки, который мы разберём в главе 6.4: линтер, тесты и сравнение версий — три разные проверки, каждая закрывает свою часть стандарта, и ни одна не заменяет остальные.</p>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s9">
+<h2><i>§9</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Запускать линтер без закреплённой версии</b>Новая версия добавит правило, и сборка упадёт без изменений в вашем коде.</div>
+<div><b>Правило без понятного description</b>Человек видит имя правила и не понимает, что от него хотят.</div>
+<div><b>Копить предупреждения</b>Список «известных» растёт, на вывод перестают смотреть, польза исчезает.</div>
+<div><b>Считать зелёный линтер доказательством правильности API</b>Он проверил описание, а не поведение сервиса.</div>
+<div><b>Правила в линтере есть, а в стандарте нет</b>Тогда проверка живёт отдельно от документа, и её решения нечем обосновать.</div>
+</div>
+</section>
+
+<section class="sec" id="s10">
+<h2><i>§10</i>Проверьте себя</h2>
+<ol class="check">
+<li>Что читает Spectral и почему он не может проверить, что сервис вернул <code>201</code> с <code>Location</code>?</li>
+<li>Из каких четырёх частей состоит своё правило? Объясните назначение каждой.</li>
+<li>Что означает <code>@key</code> в поле <code>field</code> и почему без него правило про snake_case не сработает?</li>
+<li>Прочитайте выражение <code>$.paths[*][*].responses[?(@property.match(/^[45]/))]</code> словами.</li>
+<li>Чем отличается запуск с <code>--fail-severity=warn</code> от <code>--fail-severity=error</code> и когда какой выбирают?</li>
+<li>Назовите три правила стандарта, которые линтер проверить не может, и скажите, чем они проверяются.</li>
+</ol>
+
+<div class="cheat">
+<div><b>Запуск</b><code>spectral-cli@6.16.3 lint</code><code>--fail-severity=warn</code></div>
+<div><b>Своё правило</b><code>description</code><code>severity</code><code>given (JSONPath)</code><code>then (функция)</code></div>
+<div><b>Правила проекта</b><code>error-responses-use-problem-json</code><code>json-properties-snake-case</code><code>paths-no-verbs</code></div>
+<div><b>Границы</b><code>описание — да</code><code>поведение — нет</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../6-1-style-guide/index.html">← Глава 6.1. API Style Guide</a>
+<a href="../6-3-testy/index.html">Глава 6.3. Контрактные тесты →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 6 · глава 6.2</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>

@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 6.4 справочника: сборка GitHub Actions для контракта — четыре проверки в задаче contract, сравнение oasdiff в pull request, защита ветки и красная сборка на живом репозитории.">
+<title>6.4 CI и поиск breaking changes · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 6 · Стандарт и его проверка</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 6 · Стандарт и его проверка</p><p class="folio">Глава 6.4</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">6.4</span>
+<h1>CI и поиск<br>breaking changes</h1>
+<p class="lead">Проверки есть, но польза от них появляется только тогда, когда их нельзя обойти. Соберём линтер, тесты и сравнение версий в одну сборку, запустим её на каждом изменении и запретим объединять изменение, пока она красная. С этого момента стандарт перестаёт зависеть от того, кто сегодня смотрит pull request.</p>
+<p class="pull">«Проверка, которую можно пропустить, рано или поздно будет пропущена — обычно перед выходными.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Стандарт</dd></div>
+<div><dt>Уровень</dt><dd>Средний</dd></div>
+<div><dt>Связанные главы</dt><dd>6.2 Линтер · 6.3 Тесты · 5.2 Breaking changes · 7.1 Шаблон pull request</dd></div>
+<div><dt>Зачем это знать</dt><dd>Чтобы контракт защищался автоматически, а не силой воли команды</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Что такое сборка контракта</a></li>
+<li><a href="#s2">Задача contract: четыре проверки</a></li>
+<li><a href="#s3">Задача breaking-changes</a></li>
+<li><a href="#s4">Как сравниваются две версии контракта</a></li>
+<li><a href="#s5">Зелёная сборка</a></li>
+<li><a href="#s6">Красная сборка: настоящий случай</a></li>
+<li><a href="#s7">Защита ветки</a></li>
+<li><a href="#s8">Сколько это стоит по времени</a></li>
+<li><a href="#s9">Частые ошибки</a></li>
+<li><a href="#s10">Проверьте себя</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Что такое сборка контракта</h2>
+<p><span class="term">CI</span> — непрерывная интеграция: набор проверок, который запускается сам при каждом изменении. В учебном проекте это один файл <code>.github/workflows/ci.yml</code> и две задачи внутри него.</p>
+
+<div class="code"><b>.github/workflows/ci.yml · когда запускается</b><pre>name: API contract
+
+on:
+  push:
+    branches: [main]
+  pull_request:</pre></div>
+
+<div class="fork">
+<div><b>При push в main</b><p>Проверка того, что в основной ветке всё в порядке. Значок состояния в README показывает именно её.</p></div>
+<div><b>При каждом pull request</b><p>Главный случай: изменение проверяется <b>до</b> того, как попадёт в основную ветку.</p></div>
+</div>
+
+<p>Разница принципиальная. Проверка после объединения сообщает, что контракт уже сломан; проверка до — не даёт сломать.</p>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Задача contract: четыре проверки</h2>
+<div class="code"><b>.github/workflows/ci.yml · задача contract</b><pre>jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: <span class="s">"3.12"</span>
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Contract and behaviour tests
+        run: pytest
+
+      - name: OpenAPI files match the code
+        run: python scripts/export_openapi.py --check
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: <span class="s">"22"</span>
+
+      - name: Spectral lint
+        run: npx --yes @stoplight/spectral-cli@6.16.3 lint openapi/openapi.yaml --fail-severity=warn</pre></div>
+
+<div class="ops">
+<div><b>pytest</b><span>31 тест из главы 6.3: описание, поведение, механизмы. Падает — контракт разошёлся с обещаниями.</span><i>поведение</i></div>
+<div><b>export_openapi.py --check</b><span>Сверяет выгруженный файл с описанием из кода и падает, если они разошлись. Та же беда из главы 3.1, пойманная в сборке.</span><i>совпадение</i></div>
+<div><b>Spectral lint</b><span>Правила стиля из главы 6.2, порог — предупреждение.</span><i>стиль</i></div>
+<div><b>Закреплённые версии</b><span><code>python 3.12</code>, <code>node 22</code>, <code>spectral 6.16.3</code>, действия по номеру. Сборка не должна падать из-за чужого выпуска.</span><i>предсказуемость</i></div>
+</div>
+
+<p>Порядок шагов выбран не случайно: сначала быстрые тесты, потом сверка файла, и только затем установка Node.js для линтера. Если контракт сломан, сборка сообщит об этом через несколько секунд, не тратя время на установку лишнего.</p>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Задача breaking-changes</h2>
+<p>Вторая задача сравнивает контракт из pull request с контрактом в основной ветке — тем самым oasdiff, который мы запускали вручную в главе 5.2.</p>
+
+<div class="code"><b>.github/workflows/ci.yml · задача breaking-changes</b><pre>  breaking-changes:
+    <span class="k">if</span>: github.event_name == <span class="s">'pull_request'</span>
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - run: git fetch --depth=1 origin ${{ github.base_ref }}
+
+      - name: oasdiff breaking
+        uses: oasdiff/oasdiff-action/breaking@v0.1.17
+        with:
+          base: <span class="s">"origin/${{ github.base_ref }}:openapi/openapi.yaml"</span>
+          revision: <span class="s">"HEAD:openapi/openapi.yaml"</span>
+          fail-on: ERR
+          review: <span class="k">false</span></pre></div>
+
+<div class="ops">
+<div><b>if: pull_request</b><span>При push в основную ветку сравнивать не с чем: она и есть точка отсчёта.</span><i>когда</i></div>
+<div><b>base</b><span>Описание в целевой ветке — то, что клиенты видят сегодня.</span><i>было</i></div>
+<div><b>revision</b><span>Описание в изменении — то, что они увидят после объединения.</span><i>станет</i></div>
+<div><b>fail-on: ERR</b><span>Падать на несовместимых изменениях. Предупреждения не роняют сборку.</span><i>порог</i></div>
+<div><b>permissions: contents: read</b><span>Задаче нужно только чтение. Права выдаются минимальные — принцип из модуля 7.</span><i>права</i></div>
+</div>
+
+<div class="note"><b>Зачем нужен файл описания в репозитории</b><p>Вот ответ на вопрос из главы 3.1: сравнивать «то, что было» и «то, что стало», можно только если обе версии лежат в истории. Если описание существует лишь в памяти запущенного сервиса, сравнить его в pull request не с чем.</p></div>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>Как сравниваются две версии контракта</h2>
+<ol class="steps">
+<li><b>Разработчик меняет код</b> и заново выгружает описание: <code>python scripts/export_openapi.py</code>.</li>
+<li><b>Открывает pull request.</b> В изменении видны и код, и новое описание — рядом, одним списком правок.</li>
+<li><b>Сборка достаёт две версии</b> файла <code>openapi/openapi.yaml</code>: из основной ветки и из изменения.</li>
+<li><b>oasdiff сравнивает</b> их по своему набору правил и печатает список несовместимых изменений.</li>
+<li><b>Есть ошибки — задача красная</b>, и объединить изменение нельзя, пока автор не вернёт совместимость или не выпустит новую мажорную версию.</li>
+</ol>
+
+<p>Обратите внимание на шаг 2: описание попадает в pull request как обычный текстовый файл, и его правки видны так же, как правки кода. Ревьюер читает не «добавлено поле в модель», а «в ответе появилось поле <code>priority</code> типа <code>string</code>» — и может обсуждать контракт, а не реализацию.</p>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>Зелёная сборка</h2>
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/g-actions-main-green.png" alt="Вкладка Actions репозитория: успешные запуски сборки API contract в основной ветке" loading="lazy">
+<figcaption><b>История запусков.</b> Каждая строка — одно изменение основной ветки. Зелёная отметка означает, что на тот момент контракт проходил все проверки: тесты, сверку файла и линтер.</figcaption></figure>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/g-pr-checks.png" alt="Блок проверок в pull request: задачи contract и breaking-changes с их состоянием" loading="lazy">
+<figcaption><b>Проверки в pull request.</b> Обе задачи видны прямо в обсуждении изменения, рядом с кнопкой объединения. Это и есть точка, в которой стандарт начинает работать сам: ревьюеру не нужно ничего запускать вручную.</figcaption></figure>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Красная сборка: настоящий случай</h2>
+<p>Проверим, что защита работает. В учебном репозитории было открыто изменение, в котором из схемы обращения убрано обязательное поле <code>title</code> — то самое несовместимое изменение из главы 5.2.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/g-actions-breaking-failed.png" alt="Вкладка Actions: задача breaking-changes завершилась с ошибкой на демонстрационном pull request" loading="lazy">
+<figcaption><b>Задача упала.</b> Красный крест у <code>breaking-changes</code>: сравнение нашло несовместимые изменения. Задача <code>contract</code> при этом может быть зелёной — тесты и линтер о совместимости с прошлой версией ничего не знают.</figcaption></figure>
+
+<div class="code code--out"><b>что было в журнале задачи</b><pre>4 changes: 4 error, 0 warning, 0 info
+
+error [response-required-property-removed]
+  in API GET /api/v1/tickets
+    removed the required property `items/items/title` from the response with the `200` status
+…</pre></div>
+
+<p>Разработчик видит это в самом pull request, до объединения. Дальше у него три пути: вернуть поле, признать изменение мажорным и выпускать <code>/api/v2</code>, либо переделать в устаревание из главы 5.3. Ни один из путей не включает «объединить и посмотреть, что будет».</p>
+
+<div class="note note--warn"><b>Красная сборка — это хорошая новость</b><p>Она означает, что проверка сработала до того, как что-то сломалось у клиентов. Плохая новость — это зелёная сборка на сломанном контракте, и как раз её предотвращают, дописывая тесты и правила.</p></div>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>Защита ветки</h2>
+<p>Сборка сама по себе ничего не запрещает — она только сообщает. Запрещает настройка репозитория: защита основной ветки.</p>
+
+<div class="ops">
+<div><b>Запрет прямой записи в main</b><span>Изменения попадают только через pull request. Нельзя обойти проверки, записав напрямую.</span><i>только через PR</i></div>
+<div><b>Обязательные проверки</b><span>Кнопка объединения заблокирована, пока задачи <code>contract</code> и <code>breaking-changes</code> не зелёные.</span><i>зелёное или ничего</i></div>
+<div><b>Обязательное одобрение</b><span>Нужен просмотр человеком. Машина проверяет соблюдение правил, человек — смысл изменения.</span><i>ревью</i></div>
+<div><b>Владельцы кода</b><span>Файл <code>CODEOWNERS</code> назначает обязательного ревьюера на изменения контракта. Подробно — глава 7.2.</span><i>кто смотрит</i></div>
+</div>
+
+<p>Все четыре настройки вместе дают простое свойство: <b>нельзя изменить контракт, не пройдя проверок и не показав изменение человеку</b>. Без защиты ветки всё предыдущее — добровольное упражнение.</p>
+</section>
+
+<section class="sec" id="s8">
+<h2><i>§8</i>Сколько это стоит по времени</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Проверка</th><th>Время</th><th>Что ловит</th></tr></thead>
+<tbody>
+<tr><td><code>pytest</code></td><td>доли секунды</td><td>Расхождение поведения и обещаний</td></tr>
+<tr><td><code>export_openapi.py --check</code></td><td>доли секунды</td><td>Устаревший файл описания</td></tr>
+<tr><td>Spectral</td><td>секунды плюс установка Node.js</td><td>Нарушения стиля в описании</td></tr>
+<tr><td>oasdiff</td><td>секунды</td><td>Несовместимые изменения</td></tr>
+</tbody>
+</table></div>
+
+<p>Дороже всего обходится не выполнение проверок, а установка окружения. Отсюда обычный приём: тесты и сверку файла запускают и локально перед отправкой изменения, а полный набор — в сборке. Чем раньше проверка сработала, тем дешевле исправление: замечание линтера в своём редакторе стоит минуту, то же замечание после объединения — час чужого времени.</p>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s9">
+<h2><i>§9</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Сборка есть, защиты ветки нет</b>Проверки можно обойти прямой записью в основную ветку — и однажды обойдут.</div>
+<div><b>Проверки запускаются только после объединения</b>Сообщают о поломке вместо того, чтобы её предотвратить.</div>
+<div><b>Незакреплённые версии инструментов</b>Сборка падает сама по себе, команда перестаёт доверять красному цвету.</div>
+<div><b>Описание не лежит в репозитории</b>Сравнивать в pull request нечего, и <code>breaking-changes</code> становится невозможен.</div>
+<div><b>Отключить упавшую проверку, чтобы «разблокировать» изменение</b>Единственный способ гарантированно потерять пользу от всего построенного.</div>
+<div><b>Считать зелёную сборку одобрением</b>Машина проверяет правила, человек — смысл. Нужны оба.</div>
+</div>
+</section>
+
+<section class="sec" id="s10">
+<h2><i>§10</i>Проверьте себя</h2>
+<ol class="check">
+<li>Чем проверка при pull request принципиально отличается от проверки после объединения?</li>
+<li>Назовите четыре шага задачи <code>contract</code> и скажите, что ловит каждый.</li>
+<li>Почему задача <code>breaking-changes</code> не запускается при push в основную ветку?</li>
+<li>Почему для сравнения версий контракта файл описания обязан лежать в репозитории?</li>
+<li>Задача <code>contract</code> зелёная, а <code>breaking-changes</code> красная. Что это означает и что делать автору?</li>
+<li>Какие четыре настройки защиты ветки нужны, чтобы контракт нельзя было изменить в обход?</li>
+</ol>
+
+<div class="cheat">
+<div><b>Две задачи</b><code>contract — при каждом изменении</code><code>breaking-changes — только в PR</code></div>
+<div><b>В задаче contract</b><code>pytest</code><code>export_openapi.py --check</code><code>spectral lint</code></div>
+<div><b>Сравнение</b><code>base — целевая ветка</code><code>revision — изменение</code><code>fail-on: ERR</code></div>
+<div><b>Защита ветки</b><code>только через PR</code><code>обязательные проверки</code><code>обязательное одобрение</code><code>CODEOWNERS</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../6-3-testy/index.html">← Глава 6.3. Контрактные тесты</a>
+<a href="../../index.html">К списку модулей →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 6 · глава 6.4</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>
