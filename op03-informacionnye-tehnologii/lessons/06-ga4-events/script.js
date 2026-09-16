@@ -41,6 +41,13 @@
   document.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => {
     try { await navigator.clipboard.writeText(b.closest('figure').querySelector('code').textContent); b.textContent = 'Скопировано'; } catch { b.textContent = 'Выделите код вручную'; }
   });
+  document.querySelectorAll('.codewalk').forEach(walk => {
+    const body = walk.querySelector('.cw-body'), lines = [...walk.querySelectorAll('[data-cw]')];
+    lines.forEach(btn => btn.onclick = () => {
+      lines.forEach(b => b.classList.toggle('active', b === btn));
+      body.innerHTML = walk.querySelector(`[data-cw-note="${btn.dataset.cw}"]`).innerHTML;
+    });
+  });
   document.querySelectorAll('[data-copy-file]').forEach(b => b.onclick = async () => {
     const text = new TextDecoder().decode(Uint8Array.from(atob(b.dataset.b64), c => c.charCodeAt(0)));
     try { await navigator.clipboard.writeText(text); b.textContent = 'Скопировано'; }
