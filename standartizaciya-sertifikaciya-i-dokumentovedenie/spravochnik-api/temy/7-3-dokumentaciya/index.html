@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 7.3 справочника: публикация документации API на GitHub Pages — сборка ReDoc, страницы видов ошибок для поля type и автоматическая выкладка при каждом изменении.">
+<title>7.3 Опубликованная документация · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 7 · Репозиторий API</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 7 · Репозиторий API</p><p class="folio">Глава 7.3</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">7.3</span>
+<h1>Опубликованная<br>документация</h1>
+<p class="lead">Документация, которая живёт только на локальном порту, не документация: клиент не может её открыть. Разберём, как описание превращается в сайт — с ReDoc, страницами видов ошибок и автоматической выкладкой при каждом изменении контракта.</p>
+<p class="pull">«Ссылка на документацию должна работать у того, кто никогда не запускал ваш сервис.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Репозиторий</dd></div>
+<div><dt>Уровень</dt><dd>Средний</dd></div>
+<div><dt>Связанные главы</dt><dd>3.4 Swagger UI и ReDoc · 4.1 Problem Details · 6.4 CI</dd></div>
+<div><dt>Зачем это знать</dt><dd>Чтобы контракт был доступен клиенту без вашего участия</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Три способа отдать документацию</a></li>
+<li><a href="#s2">Сборка страницы ReDoc</a></li>
+<li><a href="#s3">Страницы видов ошибок</a></li>
+<li><a href="#s4">Что на такой странице пишут</a></li>
+<li><a href="#s5">Выкладка при каждом изменении</a></li>
+<li><a href="#s6">Права сборки и очередь</a></li>
+<li><a href="#s7">Результат</a></li>
+<li><a href="#s8">Частые ошибки</a></li>
+<li><a href="#s9">Проверьте себя</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Три способа отдать документацию</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Способ</th><th>Кому доступно</th><th>Когда годится</th></tr></thead>
+<tbody>
+<tr><td><code>/docs</code> и <code>/redoc</code> у запущенного сервиса</td><td>Тому, кто дотянулся до сервиса по сети</td><td>Разработка, внутренний контур</td></tr>
+<tr><td>Файл <code>openapi.yaml</code> в репозитории</td><td>Тому, у кого есть доступ к репозиторию</td><td>Инструменты, сравнение версий, ревью</td></tr>
+<tr><td>Статический сайт документации</td><td>Всем, у кого есть ссылка</td><td>Публичный или межкомандный API</td></tr>
+</tbody>
+</table></div>
+
+<p>Третий способ нужен потому, что первые два требуют доступа, которого у читателя может не быть. Статический сайт не нуждается ни в запущенном сервисе, ни в правах на репозиторий: это обычные HTML-страницы.</p>
+
+<p>Есть и вторая причина, специфическая для нашего контракта. Поле <code>type</code> в Problem Details содержит адрес, по которому RFC 9457 требует открывать документацию о виде проблемы. Пока страницы не опубликованы, это требование не выполнено — ссылка ведёт в никуда.</p>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Сборка страницы ReDoc</h2>
+<p>ReDoc из главы 3.4 умеет работать не только в браузере у запущенного сервиса: та же документация собирается в один самодостаточный HTML-файл.</p>
+
+<div class="code"><b>.github/workflows/docs.yml · шаг сборки</b><pre>      - name: Build ReDoc page
+        run: npx --yes @redocly/cli@2 build-docs openapi/openapi.yaml --output site/index.html</pre></div>
+
+<div class="ops">
+<div><b>Вход</b><span>Файл описания из репозитория — тот самый, что сверяется с кодом тестом из главы 6.3.</span><i>openapi.yaml</i></div>
+<div><b>Выход</b><span>Одна страница <code>site/index.html</code>. Всё нужное внутри: ни сервера, ни сборщика для показа не требуется.</span><i>index.html</i></div>
+<div><b>Версия закреплена</b><span><code>@redocly/cli@2</code>. То же правило, что и в главах 3.4, 5.2 и 6.2.</span><i>предсказуемость</i></div>
+</div>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Страницы видов ошибок</h2>
+<p>Второй шаг собирает то, чего ReDoc не делает: отдельную страницу для каждого вида проблемы. Их создаёт небольшой скрипт проекта.</p>
+
+<div class="code"><b>scripts/build_docs.py · назначение</b><pre>Поле type в Problem Details содержит адрес вида
+https://…/api-standard-template/problems/http-404.
+RFC 9457 (раздел 3.1.1) требует, чтобы по такому адресу открывалась документация
+о виде проблемы. Скрипт создаёт site/problems/http-&lt;код&gt;.html для каждого кода,
+который возвращает API, и копирует openapi.yaml в site/.</pre></div>
+
+<div class="code"><b>scripts/build_docs.py · источник содержимого</b><pre>PROBLEMS = {
+    <span class="n">401</span>: (<span class="s">"Authentication required"</span>, <span class="s">"Нет заголовка Authorization или токен неизвестен."</span>,
+          <span class="s">"Передайте действующий токен: Authorization: Bearer &lt;token&gt;."</span>),
+    <span class="n">412</span>: (<span class="s">"Precondition failed"</span>,
+          <span class="s">"ETag из If-Match не совпадает с текущей версией обращения:"</span>
+          <span class="s">" его изменили после того, как вы его прочитали."</span>,
+          <span class="s">"Получите обращение заново, возьмите новый ETag и повторите изменение."</span>),
+    <span class="n">429</span>: (<span class="s">"Too many requests"</span>, <span class="s">"Превышен лимит операций записи для токена."</span>,
+          <span class="s">"Повторите запрос через число секунд из заголовка Retry-After."</span>),
+    …
+}</pre></div>
+
+<p>Семь видов ошибок — <code>401</code>, <code>403</code>, <code>404</code>, <code>412</code>, <code>422</code>, <code>429</code>, <code>500</code> — и у каждого три строки: название, когда возникает и что делать. Ровно те три вопроса из главы 4.1.</p>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>Что на такой странице пишут</h2>
+<p>Третья строка — самая ценная, и её проще всего написать плохо. Сравните:</p>
+
+<div class="compare">
+<div><b>Описание симптома</b><ul><li>«Предусловие не выполнено.»</li><li>«Запрос отклонён.»</li><li>«Слишком много запросов.»</li></ul></div>
+<div><b>Инструкция</b><ul><li>«Получите обращение заново, возьмите новый <code>ETag</code> и повторите изменение.»</li><li>«Исправьте поля из массива <code>errors</code>.»</li><li>«Повторите запрос через число секунд из <code>Retry-After</code>.»</li></ul></div>
+</div>
+
+<p>Левый столбец повторяет то, что клиент уже знает из кода ответа. Правый говорит, что делать дальше, — и именно за этим человек перешёл по ссылке из поля <code>type</code>.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/g-pages-problem-412.png" alt="Опубликованная страница вида проблемы http-412 с описанием причины и порядка действий" loading="lazy">
+<figcaption><b>Страница <code>problems/http-412</code>.</b> Открывается по адресу из поля <code>type</code> любого ответа <code>412</code>. Разработчик клиента копирует адрес из ответа в браузер и получает инструкцию — без переписки с командой API.</figcaption></figure>
+
+<div class="note"><b>Связь с чек-листом</b><p>В шаблоне pull request из главы 7.1 есть пункт: «у новых ответов с ошибкой есть страница вида проблемы в <code>scripts/build_docs.py</code>». Это тот случай, когда сборка проверить не может, а человек обязан помнить: новый код ошибки без страницы даёт ссылку в никуда.</p></div>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>Выкладка при каждом изменении</h2>
+<p>Собранные страницы выкладываются автоматически: отдельная сборка <code>docs.yml</code> запускается при каждом изменении основной ветки.</p>
+
+<div class="code"><b>.github/workflows/docs.yml · когда и что</b><pre>name: Publish docs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+      - name: Build ReDoc page
+        run: npx --yes @redocly/cli@2 build-docs openapi/openapi.yaml --output site/index.html
+      - name: Build problem type pages
+        run: python3 scripts/build_docs.py
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    steps:
+      - uses: actions/deploy-pages@v4</pre></div>
+
+<ol class="steps">
+<li><b>Изменение попало в основную ветку</b> — после зелёной сборки контракта и одобрения владельца.</li>
+<li><b>Собирается ReDoc</b> из описания, которое тестом сверено с кодом.</li>
+<li><b>Собираются страницы ошибок</b> и копируется <code>openapi.yaml</code> — чтобы файл можно было скачать по ссылке.</li>
+<li><b>Папка <code>site</code> выкладывается</b> как готовый сайт.</li>
+</ol>
+
+<p>Выкладка <b>отдельной сборкой, а не шагом основной</b> — осознанное решение: у публикации другие права и другой повод для запуска. Сломается публикация — контракт всё равно проверен; сломается проверка — публиковать нечего.</p>
+
+<p>Пункт <code>workflow_dispatch</code> добавляет кнопку ручного запуска. Она нужна редко, но выручает: например, когда правки коснулись только текста страниц ошибок.</p>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Права сборки и очередь</h2>
+<div class="code"><b>.github/workflows/docs.yml · права и очередь</b><pre>permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: <span class="k">true</span></pre></div>
+
+<div class="ops">
+<div><b>contents: read</b><span>Читать репозиторий. Писать в него публикации не нужно — принцип наименьших прав.</span><i>чтение</i></div>
+<div><b>pages: write</b><span>Единственное право на запись: выложить сайт.</span><i>публикация</i></div>
+<div><b>concurrency</b><span>Одновременно публикуется только одна сборка; начатая ранее отменяется.</span><i>очередь</i></div>
+</div>
+
+<p>Настройка очереди решает конкретную беду: два изменения подряд запускают две публикации, и порядок их завершения не гарантирован — на сайте может оказаться более старая версия. Группа <code>pages</code> с отменой предыдущей сборки исключает этот случай.</p>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>Результат</h2>
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/g-pages-redoc.png" alt="Опубликованная документация ReDoc учебного проекта на GitHub Pages" loading="lazy">
+<figcaption><b>Опубликованная документация.</b> Тот же ReDoc, что и на локальном порту, но по постоянному адресу и без запущенного сервиса. Ссылку можно дать кому угодно — в том числе поставить в поле <code>contact</code> раздела <code>info</code>.</figcaption></figure>
+
+<div class="tree">
+<p class="tree__head">что опубликовано</p>
+<div class="tree__row tree__row--hot"><b>index.html</b><span>документация ReDoc по всему контракту</span></div>
+<div class="tree__row"><b>openapi.yaml</b><span>сам файл описания — для инструментов и генераторов клиентов</span></div>
+<div class="tree__row tree__row--hot"><b>problems/http-401 … http-500</b><span>семь страниц видов ошибок, адреса из поля <code>type</code></span></div>
+</div>
+
+<p>Три вида содержимого закрывают три разные потребности: человеку — читаемая документация, программе — файл описания, клиенту в момент ошибки — инструкция по конкретной проблеме.</p>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s8">
+<h2><i>§8</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Документация только на локальном порту</b>Клиент не может её открыть, и вопросы идут в переписку.</div>
+<div><b>Публиковать вручную</b>Через месяц на сайте окажется описание позапрошлой версии.</div>
+<div><b>Адрес в поле type без опубликованной страницы</b>Требование RFC 9457 не выполнено, ссылка ведёт в никуда.</div>
+<div><b>На странице ошибки — только симптом</b>Клиент пришёл за инструкцией, а получил пересказ кода ответа.</div>
+<div><b>Новый код ошибки без новой страницы</b>Проверяется человеком по чек-листу: сборка этого не поймает.</div>
+<div><b>Публикация без очереди</b>Две сборки подряд могут выложить версии не в том порядке.</div>
+</div>
+</section>
+
+<section class="sec" id="s9">
+<h2><i>§9</i>Проверьте себя</h2>
+<ol class="check">
+<li>Назовите три способа отдать документацию и скажите, кому доступен каждый.</li>
+<li>Почему для нашего контракта публикация — не удобство, а требование стандарта?</li>
+<li>Что делает <code>build-docs</code> и почему полученный файл можно открыть без сервера?</li>
+<li>Какие три строки описывают каждый вид проблемы и какая из них важнее?</li>
+<li>Почему публикация вынесена в отдельную сборку, а не добавлена шагом в основную?</li>
+<li>Какую беду предотвращает настройка <code>concurrency</code> с группой <code>pages</code>?</li>
+</ol>
+
+<div class="cheat">
+<div><b>Что публикуется</b><code>index.html — ReDoc</code><code>openapi.yaml — описание</code><code>problems/http-NNN</code></div>
+<div><b>Сборка</b><code>@redocly/cli@2 build-docs</code><code>scripts/build_docs.py</code><code>deploy-pages@v4</code></div>
+<div><b>Страница ошибки</b><code>название</code><code>когда возникает</code><code>что делать</code></div>
+<div><b>Настройки</b><code>pages: write</code><code>concurrency: pages</code><code>workflow_dispatch</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../7-2-vladelcy/index.html">← Глава 7.2. Владельцы кода и безопасность</a>
+<a href="../7-4-standarty-kompaniy/index.html">Глава 7.4. Стандарты компаний →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 7 · глава 7.3</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>
