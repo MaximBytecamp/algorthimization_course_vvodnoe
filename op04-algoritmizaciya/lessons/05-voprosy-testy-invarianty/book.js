@@ -151,7 +151,7 @@ document.querySelectorAll('[data-switch]').forEach(box => {
   }));
 });
 
-// Тренажёр: охота на контрпример.
+// Тренажёр: поиск контрпримера.
 document.querySelectorAll('[data-hunt]').forEach(box => {
   const total = Number(box.dataset.total);
   const score = box.querySelector('.hunt-score');
@@ -217,3 +217,49 @@ document.querySelectorAll('[data-quiz]').forEach(quiz => {
   });
   sync();
 });
+
+// Разбор открывается не сразу: отсчёт идёт, пока блок на экране, и даёт время на свой ответ.
+// Без JavaScript details открывается как обычно, поэтому материал остаётся доступным.
+const gated = [...document.querySelectorAll('details[data-wait]')].map(box => {
+  const summary = box.querySelector('summary');
+  const left = document.createElement('span');
+  left.className = 'wait';
+  left.setAttribute('aria-hidden', 'true');
+  const announce = document.createElement('span');
+  announce.className = 'sr-only';
+  announce.setAttribute('role', 'status');
+  summary.append(left, announce);
+  box.classList.add('locked');
+  const item = {box, summary, left, announce, rest: Number(box.dataset.wait), visible: false};
+  summary.addEventListener('click', event => {
+    if (!item.box.classList.contains('locked')) return;
+    event.preventDefault();
+    item.left.classList.remove('nudge'); void item.left.offsetWidth; item.left.classList.add('nudge');
+  });
+  return item;
+});
+function showWait(item) {
+  const minutes = Math.floor(item.rest / 60);
+  item.left.textContent = ` · ещё ${minutes}:${String(item.rest % 60).padStart(2, '0')}`;
+}
+if (gated.length) {
+  gated.forEach(showWait);
+  if ('IntersectionObserver' in window) {
+    const seen = new IntersectionObserver(items => items.forEach(entry => {
+      const item = gated.find(g => g.box === entry.target);
+      if (item) item.visible = entry.isIntersecting;
+    }), {threshold: 0.25});
+    gated.forEach(item => seen.observe(item.box));
+  } else gated.forEach(item => item.visible = true);
+  setInterval(() => {
+    if (document.hidden) return;
+    gated.forEach(item => {
+      if (!item.visible || item.rest === 0) return;
+      item.rest -= 1;
+      if (item.rest > 0) return showWait(item);
+      item.box.classList.remove('locked');
+      item.left.textContent = '';
+      item.announce.textContent = 'Разбор открыт.';
+    });
+  }, 1000);
+}
