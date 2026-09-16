@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 1.4 справочника: запуск учебного проекта Service Desk API, структура репозитория, пять операций, токены, первый запрос и диагностика типичных проблем.">
+<title>1.4 Учебный стенд Service Desk API · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 1 · API как контракт</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 1 · API как контракт</p><p class="folio">Глава 1.4</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">1.4</span>
+<h1>Учебный стенд<br>Service Desk API</h1>
+<p class="lead">Дальше каждая глава опирается на один работающий сервис. Здесь мы его запустим, разберём, из чего состоит репозиторий, отправим первый запрос из браузера и из терминала и научимся отличать поломку стенда от ошибки в запросе.</p>
+<p class="pull">«Пока сервис не запущен на вашем компьютере, все правила остаются чужими словами.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Рабочее место</dd></div>
+<div><dt>Уровень</dt><dd>Начальный</dd></div>
+<div><dt>Что понадобится</dt><dd>Python 3.12, терминал, браузер; Node.js — только для линтера в модуле 6</dd></div>
+<div><dt>Результат</dt><dd>Запущенный сервис, открытый Swagger UI и первый успешный запрос</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Что это за сервис</a></li>
+<li><a href="#s2">Запуск за четыре шага</a></li>
+<li><a href="#s3">Что внутри репозитория</a></li>
+<li><a href="#s4">Пять операций и два токена</a></li>
+<li><a href="#s5">Первый запрос</a></li>
+<li><a href="#s6">Что проект проверяет о себе сам</a></li>
+<li><a href="#s7">Если что-то не работает</a></li>
+<li><a href="#s8">Частые ошибки</a></li>
+<li><a href="#s9">Проверьте себя</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Что это за сервис</h2>
+<p>Service Desk API — учебный сервис регистрации обращений в службу поддержки. Сотрудник сообщает о проблеме: «не работает VPN», «принтер в 312 печатает пустые листы». Каждое сообщение становится обращением с заголовком, описанием, статусом и временем создания. Специалист поддержки меняет статус: <code>open</code> → <code>in_progress</code> → <code>closed</code>.</p>
+<p>Область выбрана так, чтобы в ней было всё, ради чего существуют правила API, и ничего лишнего. Здесь есть коллекция и отдельный объект, фильтрация и постраничный вывод, создание, частичное изменение, удаление, ошибки «не найдено», «нет прав» и «данные не по схеме». При этом нет сложной бизнес-логики, которая отвлекала бы от контракта.</p>
+<p>Данные живут в памяти процесса: после перезапуска остаются три демонстрационных обращения. База данных здесь не нужна — контракт API от способа хранения не зависит, и это само по себе полезное наблюдение.</p>
+
+<div class="note"><b>Где лежит проект</b><p>Репозиторий: <a href="https://github.com/MaximBytecamp/api-standard-template">github.com/MaximBytecamp/api-standard-template</a>. Он помечен как шаблон: кнопка <b>Use this template</b> создаёт вашу копию — она понадобится в модуле 8. Копия проекта есть и в репозитории курса: <code>standartizaciya-sertifikaciya-i-dokumentovedenie/api-standard-template/</code>.</p></div>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Запуск за четыре шага</h2>
+<ol class="steps">
+<li><b>Получите проект</b>Скачайте архив по ссылке выше (Code → Download ZIP) или выполните <code>git clone https://github.com/MaximBytecamp/api-standard-template.git</code>. Откройте папку в терминале.</li>
+<li><b>Создайте окружение</b>Виртуальное окружение изолирует библиотеки проекта от системного Python.</li>
+<li><b>Установите зависимости</b>Версии закреплены в <code>requirements.txt</code>: у всех участников курса будет одинаковое поведение.</li>
+<li><b>Запустите сервер</b>Флаг <code>--reload</code> перезапускает сервис при сохранении файла — это пригодится, когда вы начнёте менять код.</li>
+</ol>
+
+<div class="code"><b>терминал · шаги 2–4</b><pre>python -m venv .venv
+source .venv/bin/activate        <span class="c"># Windows: .venv\Scripts\activate</span>
+pip install -r requirements.txt
+uvicorn app.main:app --reload</pre></div>
+
+<div class="code code--out"><b>вывод uvicorn</b><pre>INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process using WatchFiles
+INFO:     Application startup complete.</pre></div>
+
+<p>Откройте в браузере <code>http://127.0.0.1:8000/docs</code>. Должна появиться страница Swagger UI: название сервиса, его версия и список операций, сгруппированных тегом <code>Tickets</code>.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/55-swagger-ui.png" alt="Swagger UI учебного проекта: заголовок Service Desk API, версия, ссылка на openapi.json, выбор сервера, группа Tickets и раскрытая операция GET /api/v1/tickets" loading="lazy">
+<figcaption><b>Swagger UI после запуска.</b> В шапке — название и версия контракта, ссылка на <code>/openapi.json</code> и кнопка <b>Authorize</b>. Ниже — группа <code>Tickets</code> и пять операций. Кадр снят на версии 1.0.0; в 1.1.0 у операций появились дополнительные заголовки.</figcaption></figure>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Что внутри репозитория</h2>
+<p>Кода в проекте меньше, чем правил и проверок. Это не случайность: тема называется «стандартизация», и репозиторий устроен так, чтобы правила было видно.</p>
+
+<div class="tree">
+<p class="tree__head">api-standard-template/</p>
+<div class="tree__row tree__row--hot"><b>app/</b><span>сервис: <code>main.py</code> — метаданные и сборка описания, <code>schemas.py</code> — схемы запросов и ответов, <code>problems.py</code> — формат ошибок, <code>api/v1/endpoints/tickets.py</code> — пять операций</span></div>
+<div class="tree__row tree__row--hot"><b>docs/</b><span><code>API_STYLE_GUIDE.md</code> — правила проекта, <code>STANDARDS.md</code> — источник каждого правила с цитатой и переводом, <code>VERSIONING.md</code>, <code>ERRORS.md</code>, <code>SECURITY.md</code>, <code>QUICKSTART.md</code>, <code>adr/</code></span></div>
+<div class="tree__row"><b>openapi/</b><span>выгруженный контракт: <code>openapi.json</code> и <code>openapi.yaml</code> — то, что читают инструменты и другие команды</span></div>
+<div class="tree__row"><b>tests/</b><span><code>test_tickets.py</code> — поведение операций, <code>test_http_features.py</code> — заголовки контракта, <code>test_contract.py</code> — правила описания</span></div>
+<div class="tree__row"><b>scripts/</b><span><code>export_openapi.py</code> — выгрузка и сверка контракта с кодом, <code>build_docs.py</code> — страницы видов ошибок</span></div>
+<div class="tree__row"><b>.github/</b><span><code>workflows/ci.yml</code> — проверки, <code>workflows/docs.yml</code> — публикация документации, <code>CODEOWNERS</code>, шаблон pull request, формы issue</span></div>
+<div class="tree__row"><b>.spectral.yaml</b><span>правила линтера: встроенный набор для OpenAPI плюс три собственных правила проекта</span></div>
+<div class="tree__row"><b>CHANGELOG.md</b><span>история изменений контракта для потребителей API</span></div>
+</div>
+
+<p>К каждой из этих папок мы вернёмся: <code>openapi/</code> — в модуле 3, <code>docs/</code> — в модуле 6, <code>.github/</code> — в модуле 7.</p>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>Пять операций и два токена</h2>
+<p>Чтение открыто всем. Операции записи требуют токен — так в учебном сервисе показана разница между «сервер не знает, кто вы» и «сервер знает и не разрешает».</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Токен</th><th>Чтение</th><th>Создание, изменение, удаление</th></tr></thead>
+<tbody>
+<tr><td>не передан</td><td>да</td><td><code>401 Unauthorized</code></td></tr>
+<tr><td><code>demo-token</code></td><td>да</td><td>да</td></tr>
+<tr><td><code>viewer-token</code></td><td>да</td><td><code>403 Forbidden</code></td></tr>
+</tbody>
+</table></div>
+
+<p>В Swagger UI токен вводится один раз: кнопка <b>Authorize</b> в шапке, поле <b>Value</b>, затем <b>Authorize</b> и <b>Close</b>. После этого интерфейс сам добавляет заголовок <code>Authorization</code> к запросам, у которых в контракте объявлена схема безопасности — у них в списке стоит значок замка.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/84-swagger-authorize.png" alt="Окно Available authorizations в Swagger UI: схема BearerAuth типа http, поле Value с введённым demo-token, кнопки Authorize и Close" loading="lazy">
+<figcaption><b>Окно Authorize.</b> Схема называется <code>BearerAuth</code>, её тип — <code>http</code>, механизм — <code>bearer</code>. Это не настройка интерфейса, а часть описания API: Swagger UI построил окно по разделу <code>components.securitySchemes</code>.</figcaption></figure>
+
+<div class="note note--warn"><b>Учебное упрощение</b><p>Два статических токена в переменных окружения — не то, как работает production. Там токен выдаёт сервер авторизации по OAuth 2.0 или OpenID Connect, а сервис проверяет подпись и срок действия. Но разницу между <code>401</code> и <code>403</code> удобнее увидеть на простом стенде.</p></div>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>Первый запрос</h2>
+<p>Прочитаем список обращений. Чтение токена не требует, поэтому команда короткая:</p>
+
+<div class="code"><b>терминал</b><pre>curl -i <span class="s">"http://127.0.0.1:8000/api/v1/tickets?limit=2"</span></pre></div>
+
+<div class="code code--out"><b>ответ</b><pre>HTTP/1.1 200 OK
+content-type: application/json
+x-request-id: 0b6f3c1e-2a9d-4a4f-9d7e-3f4a1c2b5d6e
+
+{<span class="s">"items"</span>: [ … ], <span class="s">"total"</span>: <span class="n">3</span>, <span class="s">"limit"</span>: <span class="n">2</span>, <span class="s">"offset"</span>: <span class="n">0</span>}</pre></div>
+
+<p>Теперь создадим обращение. Здесь уже нужен токен, а вместе с ним — заголовок формата и тело:</p>
+
+<div class="code"><b>терминал</b><pre>curl -i -X POST http://127.0.0.1:8000/api/v1/tickets \
+  -H <span class="s">"Authorization: Bearer demo-token"</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{"title": "Не работает VPN", "description": "После обновления клиента"}'</span></pre></div>
+
+<p>В ответе придёт код <code>201</code>, заголовок <code>location</code> с адресом нового обращения и его тело. Попробуйте повторить ту же команду без строки с <code>Authorization</code> — сервер ответит <code>401</code> и телом в формате Problem Details. С токеном <code>viewer-token</code> ответ будет <code>403</code>: клиент известен, но записывать ему нельзя.</p>
+
+<p class="takeaway">Три ответа — <code>201</code>, <code>401</code>, <code>403</code> — на один и тот же запрос с разными токенами. Это и есть контракт в действии: поведение предсказуемо и описано заранее.</p>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Что проект проверяет о себе сам</h2>
+<p>В репозитории лежат три проверки. Запустите их сразу после установки: так вы убедитесь, что окружение собрано правильно, и заодно увидите, что именно проверяется.</p>
+
+<div class="code"><b>терминал</b><pre>pytest
+python scripts/export_openapi.py --check
+npx @stoplight/spectral-cli lint openapi/openapi.yaml</pre></div>
+
+<div class="code code--out"><b>вывод</b><pre>...............................                                          [100%]
+31 passed in 0.08s
+
+<span class="c"># файлы описания совпадают с кодом — команда завершилась без сообщений</span>
+
+No results with a severity of 'warn' or higher found!</pre></div>
+
+<div class="ops">
+<div><b>pytest</b><span>Проверяет поведение операций и правила контракта: коды ответов, заголовки, наличие <code>operationId</code>, формат ошибок.</span><i>31 тест</i></div>
+<div><b>export --check</b><span>Сверяет <code>openapi/openapi.yaml</code> с описанием, которое генерирует код. Разошлись — значит, кто-то изменил код и забыл выгрузить контракт.</span><i>против расхождения</i></div>
+<div><b>Spectral</b><span>Проверяет стиль описания по правилам <code>.spectral.yaml</code>: контакты, теги, snake_case, формат ошибок, отсутствие глаголов в адресах.</span><i>линтер</i></div>
+</div>
+
+<p>Те же три шага выполняет GitHub Actions при каждом изменении — об этом модуль 6. Запуск их локально до push экономит время: ошибку видно сразу, а не через две минуты в интерфейсе GitHub.</p>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>Если что-то не работает</h2>
+<p>Ниже — проблемы, которые встречаются чаще всего, и признак, по которому каждую из них узнают.</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Что видно</th><th>Причина</th><th>Что сделать</th></tr></thead>
+<tbody>
+<tr><td><code>Address already in use</code> при запуске</td><td>порт 8000 занят другим процессом</td><td>запустить на другом порту: <code>uvicorn app.main:app --port 8001</code></td></tr>
+<tr><td><code>ModuleNotFoundError: No module named 'app'</code></td><td>сервер запущен не из папки проекта</td><td>перейти в папку <code>api-standard-template</code> или добавить <code>--app-dir</code></td></tr>
+<tr><td><code>/docs</code> открывается, <code>/redoc</code> пустой</td><td>браузер не смог загрузить скрипт ReDoc с CDN</td><td>проверить подключение к сети; в проекте версия ReDoc закреплена явно</td></tr>
+<tr><td><code>401</code> на создание</td><td>не передан заголовок <code>Authorization</code></td><td>в Swagger UI нажать <b>Authorize</b>, в curl добавить <code>-H "Authorization: Bearer demo-token"</code></td></tr>
+<tr><td><code>422</code> на создание</td><td>тело не соответствует схеме: нет <code>title</code>, он короче трёх символов или передано лишнее поле</td><td>посмотреть массив <code>errors</code> в теле ответа: там указано поле и причина</td></tr>
+<tr><td>Изменения в коде не видны</td><td>сервер запущен без <code>--reload</code></td><td>перезапустить с флагом или вручную</td></tr>
+</tbody>
+</table></div>
+
+<div class="note"><b>Правило разбора</b><p>Сначала смотрите на код ответа, потом на тело, потом в лог сервера. Код <code>4xx</code> означает, что исправлять нужно запрос, <code>5xx</code> — что смотреть надо в лог сервера. Идентификатор из заголовка <code>x-request-id</code> есть и в ответе, и в записи лога: по нему находят нужный запрос.</p></div>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s8">
+<h2><i>§8</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Установка библиотек без окружения</b>Без <code>venv</code> версии библиотек смешиваются с другими проектами, и поведение перестаёт совпадать с описанным в справочнике.</div>
+<div><b>Запуск не из папки проекта</b><code>uvicorn</code> ищет пакет <code>app</code> относительно текущей папки. Сообщение <code>ModuleNotFoundError</code> означает именно это, а не поломку проекта.</div>
+<div><b>Правка кода без выгрузки контракта</b>После изменения схем нужно выполнить <code>python scripts/export_openapi.py</code>, иначе проверка <code>--check</code> найдёт расхождение.</div>
+<div><b>Считать данные постоянными</b>Обращения хранятся в памяти процесса. Перезапуск возвращает три демонстрационных обращения — это ожидаемо.</div>
+</div>
+</section>
+
+<section class="sec" id="s9">
+<h2><i>§9</i>Проверьте себя</h2>
+<ol class="check">
+<li>Запустите сервис и откройте <code>/docs</code>. Какая версия контракта указана в шапке?</li>
+<li>Создайте обращение из Swagger UI и найдите в ответе заголовок <code>location</code>. Откройте этот адрес в браузере.</li>
+<li>Повторите создание без токена и с токеном <code>viewer-token</code>. Какие коды вернул сервер и чем отличаются тела ответов?</li>
+<li>Запустите три проверки проекта. Что именно сообщает каждая из них?</li>
+<li>Измените в <code>app/main.py</code> название сервиса, обновите <code>/docs</code>, затем выполните <code>python scripts/export_openapi.py --check</code>. Что произойдёт и почему?</li>
+</ol>
+
+<div class="cheat">
+<div><b>Запуск</b><code>python -m venv .venv</code><code>pip install -r requirements.txt</code><code>uvicorn app.main:app --reload</code></div>
+<div><b>Адреса</b><code>/docs — Swagger UI</code><code>/redoc — ReDoc</code><code>/openapi.json — контракт</code></div>
+<div><b>Токены</b><code>demo-token — запись</code><code>viewer-token — только чтение</code></div>
+<div><b>Проверки</b><code>pytest</code><code>export_openapi.py --check</code><code>spectral lint openapi/openapi.yaml</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../1-3-resursy/index.html">← Глава 1.3. Ресурсы и адреса</a>
+<a href="../../index.html">Содержание справочника →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 1 · глава 1.4</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>

@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 1.2 справочника: из чего состоит HTTP-запрос и HTTP-ответ, что означает каждый заголовок и как посмотреть обмен своими глазами.">
+<title>1.2 Один обмен: запрос и ответ · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 1 · API как контракт</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 1 · API как контракт</p><p class="folio">Глава 1.2</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">1.2</span>
+<h1>Один обмен:<br>запрос и ответ</h1>
+<p class="lead">Все правила темы описывают одно и то же событие — обмен двумя сообщениями. В этой главе разберём каждое из них по частям: из чего собран запрос, из чего ответ, что означает каждый заголовок и как увидеть весь обмен целиком на своём компьютере.</p>
+<p class="pull">«Запрос говорит, что сделать и с чем. Ответ говорит, чем дело кончилось, и только потом — что получилось.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Основы HTTP</dd></div>
+<div><dt>Уровень</dt><dd>Начальный</dd></div>
+<div><dt>Связанные главы</dt><dd>1.3 Ресурсы и адреса · 2.2 Методы · 2.3 Коды ответов · 4.3 Заголовки контракта</dd></div>
+<div><dt>Зачем это знать</dt><dd>Чтобы читать чужой запрос и составлять свой, не угадывая смысл частей</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Обмен — это два сообщения</a></li>
+<li><a href="#s2">Первая строка запроса: метод и адрес</a></li>
+<li><a href="#s3">Заголовки запроса</a></li>
+<li><a href="#s4">Тело запроса</a></li>
+<li><a href="#s5">Ответ: код, заголовки, тело</a></li>
+<li><a href="#s6">Заголовки ответа в учебном проекте</a></li>
+<li><a href="#s7">Как посмотреть обмен своими глазами</a></li>
+<li><a href="#s8">Частые ошибки</a></li>
+<li><a href="#s9">Проверьте себя</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Обмен — это два сообщения</h2>
+<p>HTTP устроен как переписка, а не как разговор по телефону. Клиент отправляет одно сообщение — запрос. Сервер отвечает одним сообщением — ответом. После этого обмен закончен: сервер не помнит клиента, а клиент не ждёт продолжения. Следующий запрос того же клиента начинается для сервера с чистого листа.</p>
+<p>Из этого свойства следует практическое правило, к которому мы вернёмся в главе 2.1: всё необходимое для обработки должно приходить в самом запросе. Нельзя построить контракт «сначала вызови A, сервер запомнит, потом вызови B»: между A и B клиента может обслужить другой экземпляр сервиса, который ничего не запоминал.</p>
+
+<div class="term-box"><b>Определение</b><dfn>HTTP-сообщение</dfn>
+<p>Текстовая по форме единица обмена: стартовая строка, набор заголовков, пустая строка и необязательное тело. У запроса стартовая строка содержит метод и адрес, у ответа — код состояния.</p></div>
+
+<p>Обе стороны собирают сообщение по одинаковым правилам, поэтому запрос и ответ читаются похоже. Разница — в первой строке и в назначении заголовков: в запросе они описывают отправляемое, в ответе — возвращаемое.</p>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Первая строка запроса: метод и адрес</h2>
+<p>Первая строка запроса отвечает на два вопроса: что сделать и с чем. Первое слово — метод, второе — адрес ресурса.</p>
+
+<div class="code"><b>первая строка запроса</b><pre><span class="k">POST</span> /api/v1/tickets HTTP/1.1</pre></div>
+
+<p>Метод <code>POST</code> означает «создай», адрес <code>/api/v1/tickets</code> — «в коллекции обращений». Ни одно из этих слов не повторяет другое: адрес называет ресурс, метод называет действие. Поэтому адреса вида <code>/createTicket</code> считаются ошибкой — действие в них сказано дважды, причём вторая формулировка не проверяется ничем.</p>
+<p>В учебном сервисе используются пять сочетаний метода и адреса. Они и составляют контракт Service Desk API:</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Запрос</th><th>Что делает</th><th>Успешный код</th></tr></thead>
+<tbody>
+<tr><td><code>GET /api/v1/tickets</code></td><td>страница обращений с фильтром и пагинацией</td><td><code>200</code></td></tr>
+<tr><td><code>POST /api/v1/tickets</code></td><td>создать обращение</td><td><code>201</code> + <code>Location</code></td></tr>
+<tr><td><code>GET /api/v1/tickets/{ticket_id}</code></td><td>одно обращение</td><td><code>200</code> + <code>ETag</code></td></tr>
+<tr><td><code>PATCH /api/v1/tickets/{ticket_id}</code></td><td>изменить переданные поля</td><td><code>200</code></td></tr>
+<tr><td><code>DELETE /api/v1/tickets/{ticket_id}</code></td><td>удалить обращение</td><td><code>204</code></td></tr>
+</tbody>
+</table></div>
+
+<p>Часть адреса <code>/api/v1</code> — не украшение. Это мажорная версия контракта: когда понадобится несовместимое изменение, рядом появится <code>/api/v2</code>, и старые клиенты продолжат работать со своей версией. Подробно — в модуле 5.</p>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Заголовки запроса</h2>
+<p>Заголовки — это сведения о сообщении: кто отправил, в каком формате тело, что клиент готов принять, при каких условиях выполнять операцию. Каждый заголовок решает одну задачу, и путать их нельзя.</p>
+
+<div class="ops">
+<div><b>Authorization</b><span>Кто отправил запрос. В учебном проекте — <code>Bearer demo-token</code>. Без него операции записи отвечают <code>401</code>.</span><i>кто это</i></div>
+<div><b>Content-Type</b><span>В каком формате тело запроса. Для наших операций — <code>application/json</code>. Без него сервер видит байты и не знает, как их разбирать.</span><i>как читать тело</i></div>
+<div><b>Accept</b><span>Что клиент готов принять в ответ. Позволяет одному ресурсу иметь несколько представлений.</span><i>что вернуть</i></div>
+<div><b>If-Match</b><span>Условие: выполнить изменение, только если ресурс не менялся с указанной версии. Иначе <code>412</code>.</span><i>условие</i></div>
+<div><b>Idempotency-Key</b><span>Ключ повтора: если ответ потерялся и клиент повторил запрос, второе обращение не создастся.</span><i>защита от дублей</i></div>
+<div><b>X-Request-Id</b><span>Идентификатор запроса для логов. Клиент может прислать свой, сервер вернёт его в ответе.</span><i>поиск в логах</i></div>
+</div>
+
+<p>Первые три заголовка стандартны и встречаются в любом HTTP API. Три последних — часть контракта конкретного сервиса: их нужно объявить в описании, иначе клиент о них не узнает. Разбор каждого — в главе 4.3.</p>
+
+<div class="note"><b>Регистр имён</b><p>Имена заголовков не чувствительны к регистру: <code>Content-Type</code> и <code>content-type</code> — один и тот же заголовок. В примерах справочника запросы записаны с заглавных букв, а ответы — так, как их печатает сервер, строчными.</p></div>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>Тело запроса</h2>
+<p>Тело содержит данные, которые клиент передаёт серверу. Оно есть не у каждого запроса: <code>GET</code> и <code>DELETE</code> обходятся методом и адресом, а <code>POST</code> и <code>PATCH</code> без тела бессмысленны.</p>
+
+<div class="code"><b>POST /api/v1/tickets · тело запроса</b><pre>{
+  <span class="s">"title"</span>: <span class="s">"Не работает VPN"</span>,
+  <span class="s">"description"</span>: <span class="s">"Ошибка подключения после обновления клиента"</span>
+}</pre></div>
+
+<p>В теле нет ни идентификатора, ни статуса, ни времени создания — их заполняет сервер. Это часть контракта: схема <code>TicketCreate</code> запрещает лишние поля, и запрос с <code>id</code> получит <code>422</code> ещё до того, как дойдёт до кода обработчика.</p>
+
+<div class="code code--out"><b>ответ на попытку прислать свой id</b><pre>HTTP/1.1 422
+content-type: application/problem+json
+
+{
+  <span class="s">"type"</span>: <span class="s">"…/problems/http-422"</span>,
+  <span class="s">"title"</span>: <span class="s">"Validation error"</span>,
+  <span class="s">"status"</span>: <span class="n">422</span>,
+  <span class="s">"detail"</span>: <span class="s">"Request does not match the API contract"</span>
+}</pre></div>
+
+<p>При изменении тело содержит только те поля, которые нужно изменить. Остальные остаются прежними — в этом смысл метода <code>PATCH</code>:</p>
+
+<div class="code"><b>PATCH /api/v1/tickets/{ticket_id} · тело запроса</b><pre>{
+  <span class="s">"status"</span>: <span class="s">"closed"</span>
+}</pre></div>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>Ответ: код, заголовки, тело</h2>
+<p>Ответ начинается не с данных, а с трёхзначного кода состояния. Это сделано для программ: по коду клиент решает, что делать дальше, не разбирая тело. Ниже — настоящий ответ учебного сервиса на создание обращения.</p>
+
+<div class="code code--out"><b>ответ на POST /api/v1/tickets</b><pre>HTTP/1.1 201
+etag: <span class="s">"72d232d249fabd6e"</span>
+location: /api/v1/tickets/6dfeb4e3-497b-4d62-8270-40dace132b9f
+x-request-id: 9073c15c-ea8a-409d-b492-5315e909a71b
+x-ratelimit-limit: <span class="n">60</span>
+x-ratelimit-remaining: <span class="n">57</span>
+x-ratelimit-reset: <span class="n">60</span>
+content-type: application/json
+
+{
+  <span class="s">"id"</span>: <span class="s">"6dfeb4e3-497b-4d62-8270-40dace132b9f"</span>,
+  <span class="s">"title"</span>: <span class="s">"Не работает VPN"</span>,
+  <span class="s">"description"</span>: <span class="s">""</span>,
+  <span class="s">"status"</span>: <span class="s">"open"</span>,
+  <span class="s">"created_at"</span>: <span class="s">"2026-09-15T21:27:59.538567Z"</span>,
+  <span class="s">"updated_at"</span>: <span class="s">"2026-09-15T21:27:59.538567Z"</span>
+}</pre></div>
+
+<p>Разберём этот ответ по частям. Код <code>201</code> означает: запрос выполнен, появился новый ресурс. Заголовок <code>location</code> сообщает его адрес — идентификатор выдал сервер, и клиент заранее его не знал. Заголовок <code>etag</code> содержит версию представления: он понадобится, когда обращение будут изменять. Тело содержит созданный объект целиком, включая поля, которые заполнил сервер.</p>
+
+<p class="takeaway">Код отвечает на вопрос «чем кончилось», заголовки — «что с этим делать дальше», тело — «что именно получилось». Клиент, который читает только тело, теряет две трети ответа.</p>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Заголовки ответа в учебном проекте</h2>
+<p>Часть заголовков ответа появляется всегда, часть — только у некоторых операций. Контракт должен описывать и те, и другие: клиент не обязан угадывать.</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Заголовок</th><th>Когда появляется</th><th>Что с ним делает клиент</th></tr></thead>
+<tbody>
+<tr><td><code>x-request-id</code></td><td>в каждом ответе</td><td>сохраняет в лог, называет в обращении в поддержку</td></tr>
+<tr><td><code>location</code></td><td><code>201</code> при создании</td><td>запоминает адрес созданного обращения</td></tr>
+<tr><td><code>etag</code></td><td>ответ с одним обращением</td><td>передаёт обратно в <code>If-None-Match</code> или <code>If-Match</code></td></tr>
+<tr><td><code>x-ratelimit-*</code></td><td>операции записи</td><td>следит за остатком лимита</td></tr>
+<tr><td><code>retry-after</code></td><td><code>429</code></td><td>ждёт указанное число секунд</td></tr>
+<tr><td><code>deprecation</code>, <code>sunset</code></td><td>устаревшие операции</td><td>планирует переход на замену</td></tr>
+</tbody>
+</table></div>
+
+<div class="note note--warn"><b>Браузерный клиент видит не всё</b><p>Если клиент работает в браузере на другом домене, JavaScript прочитает только те заголовки ответа, которые сервер перечислил в <code>Access-Control-Expose-Headers</code>. Сервер может отправить <code>ETag</code>, а скрипт его не увидит. Разбор — в главе 4.3.</p></div>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>Как посмотреть обмен своими глазами</h2>
+<p>Читать про заголовки полезно, но пока вы не увидели их на своём экране, знание остаётся чужим. Есть два способа посмотреть обмен целиком.</p>
+
+<div class="fork">
+<div><small>способ 1</small><b>Терминал</b>
+<ul><li>виден весь ответ, включая заголовки;</li>
+<li>легко повторить и вставить в отчёт;</li>
+<li>флаг <code>-i</code> добавляет заголовки к выводу.</li></ul></div>
+<div><small>способ 2</small><b>Swagger UI</b>
+<ul><li>не нужно набирать адрес и заголовки руками;</li>
+<li>рядом показаны схема и примеры;</li>
+<li>кнопка <b>Authorize</b> подставляет токен.</li></ul></div>
+</div>
+
+<ol class="steps">
+<li><b>Запустите учебный проект</b>В папке <code>api-standard-template</code> выполните <code>pip install -r requirements.txt</code>, затем <code>uvicorn app.main:app --reload</code>.</li>
+<li><b>Отправьте запрос из терминала</b>Команда ниже читает список обращений и печатает заголовки ответа.</li>
+<li><b>Повторите тот же запрос в Swagger UI</b>Откройте <code>http://127.0.0.1:8000/docs</code>, раскройте <code>GET /api/v1/tickets</code>, нажмите <b>Try it out</b>, затем <b>Execute</b>.</li>
+<li><b>Сравните</b>В обоих случаях вы увидите один и тот же код, одинаковые заголовки и одинаковое тело: Swagger UI отправляет обычный HTTP-запрос.</li>
+</ol>
+
+<div class="code"><b>терминал</b><pre>curl -i <span class="s">"http://127.0.0.1:8000/api/v1/tickets?limit=1"</span></pre></div>
+
+<div class="code code--out"><b>вывод</b><pre>HTTP/1.1 200 OK
+content-type: application/json
+x-request-id: 0b6f3c1e-2a9d-4a4f-9d7e-3f4a1c2b5d6e
+
+{<span class="s">"items"</span>:[{<span class="s">"id"</span>:<span class="s">"a8d04cb9-…"</span>,<span class="s">"title"</span>:<span class="s">"Не работает VPN"</span>,…}],
+ <span class="s">"total"</span>:<span class="n">3</span>,<span class="s">"limit"</span>:<span class="n">1</span>,<span class="s">"offset"</span>:<span class="n">0</span>}</pre></div>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/64-swagger-404.png" alt="Swagger UI после нажатия Execute: строка Request URL, код ответа 404, тело Problem Details и заголовки ответа" loading="lazy">
+<figcaption><b>Swagger UI, вкладка после Execute.</b> Сверху — адрес, который ушёл на сервер. Ниже — код ответа, тело и, отдельным блоком, заголовки. Это тот же обмен, что и в терминале, только показан по частям.</figcaption></figure>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s8">
+<h2><i>§8</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Читать только тело ответа</b>Код состояния и заголовки — часть ответа. Клиент, который смотрит только в тело, не заметит ни <code>Location</code>, ни <code>Retry-After</code>, ни предупреждения об устаревании.</div>
+<div><b>Отправлять тело в GET</b>Запрос на чтение описывается методом и адресом. Тело в нём не передают: часть посредников его отбрасывает, и поведение становится непредсказуемым.</div>
+<div><b>Забыть Content-Type</b>Без заголовка сервер не знает, как читать тело, и отвечает ошибкой, которая выглядит как «сервер сломался».</div>
+<div><b>Считать Swagger UI отдельным протоколом</b>Swagger UI отправляет обычный HTTP-запрос. Всё, что он показывает, можно повторить в терминале — и наоборот.</div>
+</div>
+</section>
+
+<section class="sec" id="s9">
+<h2><i>§9</i>Проверьте себя</h2>
+<ol class="check">
+<li>Назовите пять частей запроса и три части ответа. Что из этого может отсутствовать?</li>
+<li>Почему при создании обращения сервер возвращает заголовок <code>Location</code>, хотя тело и так содержит созданный объект?</li>
+<li>Какие заголовки в ответе учебного сервиса появляются всегда, а какие — только у некоторых операций?</li>
+<li>Отправьте <code>POST /api/v1/tickets</code> без заголовка <code>Authorization</code>. Какой код вернёт сервер и что будет в теле?</li>
+<li>Повторите один и тот же запрос из терминала и из Swagger UI. Чем отличаются ответы?</li>
+</ol>
+
+<div class="cheat">
+<div><b>Запрос</b><code>METHOD /путь HTTP/1.1</code><code>Authorization · Content-Type</code><code>пустая строка</code><code>тело (JSON)</code></div>
+<div><b>Ответ</b><code>HTTP/1.1 201</code><code>location · etag · x-request-id</code><code>пустая строка</code><code>тело (JSON)</code></div>
+<div><b>Посмотреть обмен</b><code>curl -i URL</code><code>/docs → Try it out → Execute</code></div>
+<div><b>Дальше</b><code>1.3 — ресурсы и адреса</code><code>2.2 — методы</code><code>4.3 — заголовки контракта</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../1-1-kontrakt/index.html">← Глава 1.1. Контракт и проверка соответствия</a>
+<a href="../1-3-resursy/index.html">Глава 1.3. Ресурсы и адреса →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 1 · глава 1.2</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>
