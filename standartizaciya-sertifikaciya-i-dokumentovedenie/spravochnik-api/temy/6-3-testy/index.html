@@ -14,7 +14,7 @@
 <header class="chapter-head">
 <span class="chapter-num">6.3</span>
 <h1>Контрактные<br>тесты</h1>
-<p class="lead">Линтер проверил описание и молчит. Это ещё не значит, что сервис ведёт себя так, как обещает: описание и поведение задаются в разных местах и совпадают только тогда, когда совпадение проверено. Такую проверку и выполняют тесты — при каждом изменении кода.</p>
+<p class="lead">Чистый вывод линтера означает, что правильно составлено описание, но не что сервис ведёт себя так, как в нём обещано: описание и поведение задаются в разных местах и совпадают только тогда, когда совпадение проверено. Такую проверку и выполняют тесты — при каждом изменении кода.</p>
 </header>
 
 <dl class="passport">
@@ -66,7 +66,7 @@
             <span class="k">if</span> method <span class="k">in</span> HTTP_METHODS:
                 <span class="k">yield</span> path, method, operation</pre></div>
 
-<p>Вспомогательная функция важнее, чем кажется: она отбрасывает то, что лежит рядом с операциями, но операциями не является — например, общие параметры пути. Дальше каждый тест — один цикл по всем операциям сразу, и новая операция автоматически попадает под все проверки.</p>
+<p>Вспомогательная функция отбрасывает то, что лежит рядом с операциями, но операциями не является, — например, общие параметры пути. Дальше каждый тест — один цикл по всем операциям сразу, и новая операция автоматически попадает под все проверки.</p>
 
 <div class="code"><b>девять правил, записанных тестами</b><pre>test_openapi_contract_has_required_metadata   <span class="c"># title, version, description, contact</span>
 test_every_operation_has_operation_id          <span class="c"># operationId задан</span>
@@ -78,7 +78,7 @@ test_write_operations_require_bearer_token     <span class="c"># у операц
 test_paths_use_major_version_prefix            <span class="c"># все пути начинаются с /api/v1</span>
 test_committed_openapi_matches_code            <span class="c"># файл в репозитории равен описанию из кода</span></pre></div>
 
-<div class="note"><b>Зачем дублировать линтер</b><p>Часть этих правил проверяет и Spectral. Дублирование намеренное: тесты запускаются на каждом изменении кода и не требуют Node.js, а линтер ловит то, что удобнее выразить через JSONPath. Две проверки одного правила стоят дёшево, а пропущенное нарушение — дорого.</p></div>
+<div class="note"><b>Зачем дублировать линтер</b><p>Часть этих правил проверяет и Spectral. Дублирование намеренное: тесты запускаются на каждом изменении кода и не требуют Node.js, а линтер ловит то, что удобнее выразить через JSONPath. Затраты на две проверки одного правила невелики, а пропущенное нарушение попадает в контракт.</p></div>
 </section>
 
 <section class="sec" id="s3">
@@ -106,13 +106,13 @@ test_committed_openapi_matches_code            <span class="c"># файл в р�
     <span class="k">assert</span> response.status_code == <span class="n">403</span>
     <span class="k">assert</span> response.json()[<span class="s">"title"</span>] == <span class="s">"Operation forbidden"</span></pre></div>
 
-<p>Два теста рядом — и разница из главы 4.2 перестаёт быть теорией: её невозможно нечаянно сломать, не уронив сборку.</p>
+<p>Эти два теста закрепляют разницу кодов из главы 4.2: если операции начнут отвечать одинаково, сборка упадёт.</p>
 
 <div class="code"><b>«Клиент не передаёт поля, которые формирует сервер»</b><pre><span class="k">def</span> <span class="f">test_client_cannot_send_id</span>(client, writer):
     response = client.post(<span class="s">"/api/v1/tickets"</span>, json={<span class="s">"id"</span>: <span class="k">str</span>(uuid4()), <span class="s">"title"</span>: <span class="s">"VPN"</span>}, headers=writer)
     <span class="k">assert</span> response.status_code == <span class="n">422</span></pre></div>
 
-<p>Этот тест сторожит настройку <code>extra="forbid"</code> из главы 3.3. Уберите её — и сервис молча примет чужой <code>id</code>, а тест это заметит.</p>
+<p>Этот тест закрепляет настройку <code>extra="forbid"</code> из главы 3.3: если её убрать, сервис примет присланный клиентом <code>id</code>, и тест упадёт.</p>
 </section>
 
 <section class="sec" id="s4">
@@ -129,7 +129,7 @@ test_committed_openapi_matches_code            <span class="c"># файл в р�
     <span class="k">assert</span> response.headers[<span class="s">"content-type"</span>] == PROBLEM
     <span class="k">assert</span> client.get(url).json()[<span class="s">"status"</span>] == <span class="s">"in_progress"</span>        <span class="c"># 4. ничего не изменилось</span></pre></div>
 
-<p>Обратите внимание на последнюю строку. Мало вернуть <code>412</code>: нужно ещё и <b>не изменить</b> ресурс. Тест проверяет именно это, а значит, обещание «при несовпадении сервер MUST ответить 412 и не менять ресурс» выполнено целиком, а не наполовину.</p>
+<p>Обратите внимание на последнюю строку. Мало вернуть <code>412</code>: нужно ещё и <b>не изменить</b> ресурс. Тест проверяет и то, и другое, поэтому требование «при несовпадении сервер MUST ответить 412 и не менять ресурс» проверено полностью.</p>
 
 <div class="code"><b>двенадцать механизмов под проверкой</b><pre>test_request_id_is_generated                      test_idempotency_key_prevents_duplicate
 test_request_id_from_client_is_returned           test_idempotency_key_with_other_body_is_422
@@ -138,7 +138,7 @@ test_get_returns_etag_and_304_for_same_version    test_deprecated_operation_send
 test_patch_with_stale_if_match_is_412             test_cors_exposes_contract_headers
 test_patch_with_current_if_match_succeeds         test_every_response_documents_request_id</pre></div>
 
-<p>Названия читаются как список обещаний API — это не совпадение, а приём: имя теста пишут так, чтобы по одному только списку было видно, что сервис гарантирует.</p>
+<p>Имена тестов составлены так, чтобы по одному их списку было видно, что именно сервис гарантирует.</p>
 </section>
 
 <section class="sec" id="s5">
@@ -149,7 +149,7 @@ test_patch_with_current_if_match_succeeds         test_every_response_documents_
     committed = json.loads((ROOT / <span class="s">"openapi"</span> / <span class="s">"openapi.json"</span>).read_text(encoding=<span class="s">"utf-8"</span>))
     <span class="k">assert</span> committed == app.openapi(), <span class="s">"run: python scripts/export_openapi.py"</span></pre></div>
 
-<p>Файл описания лежит в репозитории, чтобы его было видно в pull request и чтобы с ним мог работать oasdiff. Но файл — копия, а источник правды — код. Тест не даёт копии устареть, и в сообщении об ошибке сразу написано, что делать: запустить выгрузку.</p>
+<p>Файл описания лежит в репозитории, чтобы его было видно в pull request и чтобы с ним мог работать oasdiff. Этот файл — копия, а источником остаётся код. Тест не даёт копии устареть; в сообщении об ошибке указано, что нужно сделать, — запустить выгрузку.</p>
 
 </section>
 
@@ -185,9 +185,9 @@ test_patch_with_current_if_match_succeeds         test_every_response_documents_
 <div class="code code--out"><b>вывод</b><pre>...............................                                          [100%]
 31 passed in 0.07s</pre></div>
 
-<p>Тридцать одна проверка за семь сотых секунды — потому что сервис не поднимается по сети: <code>TestClient</code> обращается к приложению напрямую. Отсюда практический вывод: такие тесты можно запускать при каждом сохранении файла, а не только в сборке.</p>
+<p>Тридцать одна проверка выполняется за семь сотых секунды, потому что сервис не поднимается по сети: <code>TestClient</code> обращается к приложению напрямую. Поэтому такие тесты запускают при каждом сохранении файла, а не только в сборке.</p>
 
-<p>И обратная сторона: раз сеть не участвует, эти тесты не заметят ошибок, которые возникают только при работе по сети — неверную настройку сервера, обратный прокси, срезающий заголовки, или CORS в рабочем контуре. Для них нужна проверка на живом стенде, и это уже другой разговор.</p>
+<p>У этого есть обратная сторона: раз сеть не участвует, такие тесты не заметят ошибок настройки сервера, обратного прокси, срезающего заголовки, или CORS в рабочем контуре. Их проверяют на развёрнутом стенде.</p>
 </section>
 
 <section class="sec" id="s8">
