@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#172335">
+<meta name="description" content="Контракт вместе с ошибками готов. Следующий вопрос — как его менять, не ломая клиентов.">
+<title>Часть 9. Версии и изменения · API как контракт</title>
+<link rel="stylesheet" href="lecture.css">
+<script defer src="../interactive.js"></script><script defer src="lecture.js"></script></head>
+<body class="lec" style="--c:#4a7a45"><a class="skip" href="#main">К тексту части</a>
+<header class="lec-top">
+<a class="lec-brand" href="../../../index.html"><b>API</b><span>Стандартизация<br>тема 1</span></a>
+<nav class="lec-gauge" aria-label="Части темы"><a href="01-chto-standartiziruem.html" style="--c:#2d6fd0"  title="Часть 1. Что стандартизируем"><span>1</span></a><a href="02-zapros-otvet-resurs.html" style="--c:#2a72c4"  title="Часть 2. Запрос, ответ, ресурс"><span>2</span></a><a href="03-rest.html" style="--c:#2575b8"  title="Часть 3. Архитектурный стиль REST"><span>3</span></a><a href="04-pravila-http-api.html" style="--c:#1f7aa6"  title="Часть 4. Правила HTTP API"><span>4</span></a><a href="05-praktika-kontrakt.html" style="--c:#1a7d93"  title="Часть 5. Практика: контракт"><span>5</span></a><a href="06-openapi.html" style="--c:#177f80"  title="Часть 6. OpenAPI"><span>6</span></a><a href="07-fastapi-dokumentaciya.html" style="--c:#1a7f6b"  title="Часть 7. FastAPI и документация"><span>7</span></a><a href="08-oshibki.html" style="--c:#2b7d57"  title="Часть 8. Единый формат ошибок"><span>8</span></a><a href="09-versii.html" style="--c:#4a7a45" aria-current="page" title="Часть 9. Версии и изменения"><span>9</span></a><a href="10-standart-i-proverka.html" style="--c:#6d7340"  title="Часть 10. Стандарт и его проверка"><span>10</span></a><a href="11-standarty-kompaniy.html" style="--c:#8a6a3d"  title="Часть 11. Стандарты реальных команд"><span>11</span></a><a href="12-repozitoriy-api.html" style="--c:#97583f"  title="Часть 12. Репозиторий API на GitHub"><span>12</span></a><a href="13-zagolovki-sovmestimost.html" style="--c:#8f4550"  title="Часть 13. Заголовки и совместимость"><span>13</span></a><a href="14-prakticheskaya-rabota.html" style="--c:#7a3a5d"  title="Часть 14. Практическая работа"><span>14</span></a><a href="15-itog.html" style="--c:#5c3159"  title="Часть 15. Итог темы"><span>15</span></a></nav>
+<a class="lec-mode" href="../index.html#66" title="Те же материалы слайдами для показа на проекторе">Открыть слайдами →</a>
+</header>
+<main id="main">
+<section class="lec-hero"><div class="lec-wrap">
+<p class="lec-kicker">Часть 9 из 15 · слайды 66–75</p>
+<h1>Версии и изменения</h1>
+<p class="lec-bridge">Контракт вместе с ошибками готов. Следующий вопрос — как его менять, не ломая клиентов.</p>
+<ol class="lec-toc"><li><a href="#s66"><span>66</span>API нельзя бесконечно менять без правил</a></li><li><a href="#s67"><span>67</span>Не путайте четыре разных номера</a></li><li><a href="#s68"><span>68</span>Версию контракта удобно вести как MAJOR.MINOR.PATCH</a></li><li><a href="#s69"><span>69</span>Что может сломать существующего клиента</a></li><li><a href="#s70"><span>70</span>Не каждое изменение требует новой major version</a></li><li><a href="#s71"><span>71</span>Наш учебный API использует major version в path</a></li><li><a href="#s72"><span>72</span>URL path — не единственный вариант</a></li><li><a href="#s73"><span>73</span>Старое API сначала объявляется устаревшим</a></li><li><a href="#s74"><span>74</span>Изменения публичного контракта должны иметь историю</a></li><li><a href="#s75"><span>75</span>Архитектурное решение тоже является документом</a></li></ol>
+</div></section>
+<div class="lec-wrap lec-page">
+<section class="lec-stage" id="s66">
+<h2><span class="lec-num">66</span>API нельзя бесконечно менять без правил</h2>
+<p class="lead">Изменение, безобидное для сервера, может сломать клиента, о котором разработчик не знает.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>сегодня</b></div><pre><code>{
+  &quot;id&quot;: 10,
+  &quot;title&quot;: &quot;...&quot;
+}</code></pre></div><div class="text"><p>Завтра разработчик решает переименовать <code>title → subject</code>. Старый клиент продолжает искать <code>title</code>, получает пустое значение, и интеграция ломается.</p></div><p class="takeaway">Для этого нужны правила совместимости и versioning.</p></div><div class="stack"><ol class="chain "><li class="">API v1<small>title</small></li><li class="key">rename</li><li class="">API changed<small>subject</small></li><li class="">OLD CLIENT ✕</li></ol></div></div></div>
+</section>
+<section class="lec-stage" id="s67">
+<h2><span class="lec-num">67</span>Не путайте четыре разных номера</h2>
+<p class="lead">В одном проекте одновременно живут четыре независимых номера версии.</p>
+<div class="slide-body"><div class="versions">
+      <div><small>OpenAPI Specification version</small><strong>3.1.0</strong><p>редакция формата, которым описан контракт</p></div>
+      <div><small>API contract version</small><strong>1.4.2</strong><p>состояние публичного контракта, <code>info.version</code></p></div>
+      <div><small>Runtime major API version</small><strong>/api/v1</strong><p>несовместимая редакция, с которой работает клиент</p></div>
+      <div><small>Deployment version</small><strong>4ab219…</strong><p>commit, из которого собран запущенный код</p></div></div><p class="takeaway">Это независимые сущности. <code>openapi: 3.1.0</code> не означает API version 3.1.</p></div>
+</section>
+<section class="lec-stage" id="s68">
+<h2><span class="lec-num">68</span>Версию контракта удобно вести как MAJOR.MINOR.PATCH</h2>
+<p class="lead">Semantic Versioning по номеру сразу сообщает, насколько опасно обновление.</p>
+<div class="slide-body"><div class="split "><div class="stack"><pre class="tree"><b>1 . 4 . 2</b>
+│   │   └ PATCH
+│   └──── MINOR
+└──────── MAJOR</pre></div><div class="stack"><div class="table-wrap "><table><thead><tr><th>Часть</th><th>Когда увеличивается</th></tr></thead><tbody><tr><td>MAJOR</td><td>несовместимое изменение</td></tr><tr><td>MINOR</td><td>совместимая новая функциональность</td></tr><tr><td>PATCH</td><td>совместимое исправление</td></tr></tbody></table></div><p class="note">Zalando API Guidelines прямо требуют Semantic Versioning для <code>info.version</code>.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s69">
+<h2><span class="lec-num">69</span>Что может сломать существующего клиента</h2>
+<p class="lead">Breaking change — изменение, после которого клиент, написанный по старому контракту, перестаёт работать.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="card bad"><small>breaking</small><ul class="list "><li>удалить endpoint;</li><li>переименовать endpoint;</li><li>удалить response field;</li><li>переименовать field;</li><li>изменить тип field;</li><li>добавить обязательный parameter;</li><li>изменить authentication requirements.</li></ul></div></div><div class="stack"><div class="card good"><small>non-breaking</small><ul class="list "><li>добавить endpoint;</li><li>добавить optional parameter;</li><li>добавить response field;</li><li>добавить response header.</li></ul></div><p class="note">GitHub относит именно такие изменения к breaking changes своего REST API — список виден на кадре слайда 72.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s70">
+<h2><span class="lec-num">70</span>Не каждое изменение требует новой major version</h2>
+<p class="lead">Additive changes только добавляют возможности и не отнимают существующие.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="table-wrap "><table><thead><tr><th>Additive change</th><th>Почему старый клиент не ломается</th></tr></thead><tbody><tr><td>новый endpoint</td><td>старый клиент его не вызывает</td></tr><tr><td>новый optional parameter</td><td>без него запрос работает как раньше</td></tr><tr><td>новый response field</td><td>клиент читает только известные ему поля</td></tr><tr><td>новый response header</td><td>неизвестные заголовки игнорируются</td></tr></tbody></table></div><p class="warn-box">Добавление поля безопасно, только если клиенты игнорируют неизвестные поля. Поэтому конкретная организация должна сама формально определить свою compatibility policy.</p></div><div class="stack"><ol class="chain "><li class="">OLD CLIENT</li><li class="">NEW API</li><li class="key">✓</li></ol></div></div></div>
+</section>
+<section class="lec-stage" id="s71">
+<h2><span class="lec-num">71</span>Наш учебный API использует major version в path</h2>
+<p class="lead">Мажорная версия записана прямо в адресе.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><pre><code>/api/v1/tickets</code></pre></div><div class="text"><p>При действительно несовместимом redesign может появиться:</p></div><div class="code-block "><pre><code>/api/v2/tickets</code></pre></div><div class="text"><p>Это простой и хорошо заметный клиенту способ versioning: версия видна в любом логе и ссылке. Так же поступает Microsoft Graph (<code>/v1.0</code>, <code>/beta</code>), а Azure в той же компании передаёт версию query-параметром <code>api-version</code> — это разобрано на слайде 105.</p></div></div><div class="stack"><div class="table-wrap "><table><thead><tr><th>Адрес</th><th>Кто работает</th></tr></thead><tbody><tr><td><code>/api/v1</code></td><td>OLD CLIENTS</td></tr><tr><td><code>/api/v2</code></td><td>NEW CLIENTS</td></tr></tbody></table></div><p class="note">Обе редакции работают одновременно, пока старые клиенты не перейдут на новую.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s72">
+<h2><span class="lec-num">72</span>URL path — не единственный вариант</h2>
+<p class="lead">GitHub REST API использует версии, названные по дате выпуска, и передаёт их в заголовке.</p>
+<div class="slide-body"><div class="split wide-right"><div class="stack"><div class="code-block "><div class="code-head"><b>заголовок запроса</b></div><pre><code>X-GitHub-Api-Version: 2026-03-10</code></pre></div><div class="text"><p>Breaking changes выходят только в новой API version, а совместимые изменения попадают во все поддерживаемые версии. Если заголовка нет, GitHub использует версию по умолчанию.</p></div><p class="takeaway">Versioning strategy — инженерное решение конкретной системы, а не обязательный <code>/v1</code> для всех API.</p></div><div class="stack"><figure class="shot "><div class="shot-bar"><b>docs.github.com · API Versions</b><span>СКРИНШОТ · 15.09.2026</span></div><button class="shot-view" aria-label="Увеличить кадр: docs.github.com · API Versions"><img src="../shots/72-github-api-versions.png" alt="GitHub Docs: текущая версия 2026-03-10 и список изменений, которые GitHub считает breaking. Пример с заголовком — ниже, в разделе «Specifying an API version»." loading="lazy"></button><figcaption>GitHub Docs: текущая версия 2026-03-10 и список изменений, которые GitHub считает breaking. Пример с заголовком — ниже, в разделе «Specifying an API version». Клик — увеличить.</figcaption></figure></div></div></div>
+</section>
+<section class="lec-stage" id="s73">
+<h2><span class="lec-num">73</span>Старое API сначала объявляется устаревшим</h2>
+<p class="lead">Нельзя просто удалить endpoint, который используют клиенты. Удаление проходит несколько стадий.</p>
+<div class="slide-body"><div class="timeline"><div>ACTIVE<small>работает</small></div><div>DEPRECATED<small>объявлен устаревшим</small></div><div>MIGRATION PERIOD<small>клиенты переходят</small></div><div>SUNSET<small>дата отключения</small></div><div>REMOVED<small>удалён</small></div></div><div class="split "><div class="stack"><div class="text"><p>OpenAPI позволяет отметить operation:</p></div><div class="code-block "><pre><code>get:
+  operationId: listTicketsOld
+  <span class="hl">deprecated: true</span>
+  description: Используйте GET /api/v2/tickets</code></pre></div></div><div class="stack"><div class="text"><p>Swagger UI зачёркивает такую операцию. Zalando API Guidelines требуют отражать deprecation непосредственно в API specification и описывать путь миграции. Как сообщить об этом в каждом ответе — слайд 106.</p></div></div></div></div>
+</section>
+<section class="lec-stage" id="s74">
+<h2><span class="lec-num">74</span>Изменения публичного контракта должны иметь историю</h2>
+<p class="lead">Файл CHANGELOG.md перечисляет изменения, которые касаются потребителей API.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>CHANGELOG.md</b></div><pre><code>## [1.1.0]
+
+### Added
+
+- GET /api/v1/tickets/{id}/comments
+- optional status filter
+
+### Deprecated
+
+- field old_status</code></pre></div></div><div class="stack"><div class="text"><p>Разделы <code>Added</code>, <code>Changed</code>, <code>Deprecated</code>, <code>Removed</code>, <code>Fixed</code>, <code>Security</code> взяты из соглашения Keep a Changelog.</p></div><p class="takeaway">Changelog предназначен для потребителя API, а не только для разработчика. Рефакторинг, который не меняет контракт, туда не пишут.</p><p class="note">Как журнал ведут Stripe и Kubernetes — слайд 100.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s75">
+<h2><span class="lec-num">75</span>Архитектурное решение тоже является документом</h2>
+<p class="lead">ADR (Architecture Decision Record) — короткий документ об одном принятом решении.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><pre><code>docs/adr/0001-api-versioning.md</code></pre></div><pre class="tree"><b>ADR</b>
+├─ Context       <em>что вынудило решать</em>
+├─ Decision      <em>что решили</em>
+└─ Consequences  <em>чем за это платим</em></pre><div class="text"><p>Например: <strong>почему мы выбрали <code>/api/v1</code>, а не custom header?</strong> Через год разработчик увидит не только решение, но и причину его появления.</p></div></div><div class="stack"><div class="code-block small"><div class="code-head"><b>docs/adr/0001-api-versioning.md (фрагмент)</b></div><pre><code>## Decision
+
+Мажорная версия указывается в пути: /api/v1.
+Версия контракта ведётся по Semantic
+Versioning в info.version.
+
+## Consequences
+
+- Версия видна в любом логе и ссылке.
+- Нельзя выпустить несовместимое изменение
+  одной операции, не выпуская /api/v2 целиком.</code></pre></div></div></div></div>
+</section>
+<nav class="lec-nav"><a class="lec-prev" href="08-oshibki.html">← Часть 8. Единый формат ошибок</a><a class="lec-next" href="10-standart-i-proverka.html">Часть 10. Стандарт и его проверка →</a></nav>
+</div>
+</main>
+<footer class="lec-foot"><div class="lec-wrap">
+<p>Учебный проект темы: <a href="https://github.com/MaximBytecamp/api-standard-template">api-standard-template</a> · <a href="https://maximbytecamp.github.io/api-standard-template/">документация API</a> · <a href="../../../api-standard-template/docs/STANDARDS.md">источники правил с цитатами</a>.</p>
+<p class="lec-credits"><span>Стандартизация, сертификация и техническое документоведение · 4 курс</span><span>Макаров Максим Николаевич</span></p>
+</div></footer>
+<div id="toast" role="status" hidden></div>
+<dialog id="visual"><div class="dialog-head"><h2 id="visual-title">Кадр крупным планом</h2><button data-close aria-label="Закрыть изображение">✕</button></div><div id="visual-content"></div></dialog>
+</body></html>

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#172335">
+<meta name="description" content="Ресурс, метод и код ответа пришли в HTTP API из архитектурного стиля REST. Разберём его ограничения.">
+<title>Часть 3. Архитектурный стиль REST · API как контракт</title>
+<link rel="stylesheet" href="lecture.css">
+<script defer src="../interactive.js"></script><script defer src="lecture.js"></script></head>
+<body class="lec" style="--c:#2575b8"><a class="skip" href="#main">К тексту части</a>
+<header class="lec-top">
+<a class="lec-brand" href="../../../index.html"><b>API</b><span>Стандартизация<br>тема 1</span></a>
+<nav class="lec-gauge" aria-label="Части темы"><a href="01-chto-standartiziruem.html" style="--c:#2d6fd0"  title="Часть 1. Что стандартизируем"><span>1</span></a><a href="02-zapros-otvet-resurs.html" style="--c:#2a72c4"  title="Часть 2. Запрос, ответ, ресурс"><span>2</span></a><a href="03-rest.html" style="--c:#2575b8" aria-current="page" title="Часть 3. Архитектурный стиль REST"><span>3</span></a><a href="04-pravila-http-api.html" style="--c:#1f7aa6"  title="Часть 4. Правила HTTP API"><span>4</span></a><a href="05-praktika-kontrakt.html" style="--c:#1a7d93"  title="Часть 5. Практика: контракт"><span>5</span></a><a href="06-openapi.html" style="--c:#177f80"  title="Часть 6. OpenAPI"><span>6</span></a><a href="07-fastapi-dokumentaciya.html" style="--c:#1a7f6b"  title="Часть 7. FastAPI и документация"><span>7</span></a><a href="08-oshibki.html" style="--c:#2b7d57"  title="Часть 8. Единый формат ошибок"><span>8</span></a><a href="09-versii.html" style="--c:#4a7a45"  title="Часть 9. Версии и изменения"><span>9</span></a><a href="10-standart-i-proverka.html" style="--c:#6d7340"  title="Часть 10. Стандарт и его проверка"><span>10</span></a><a href="11-standarty-kompaniy.html" style="--c:#8a6a3d"  title="Часть 11. Стандарты реальных команд"><span>11</span></a><a href="12-repozitoriy-api.html" style="--c:#97583f"  title="Часть 12. Репозиторий API на GitHub"><span>12</span></a><a href="13-zagolovki-sovmestimost.html" style="--c:#8f4550"  title="Часть 13. Заголовки и совместимость"><span>13</span></a><a href="14-prakticheskaya-rabota.html" style="--c:#7a3a5d"  title="Часть 14. Практическая работа"><span>14</span></a><a href="15-itog.html" style="--c:#5c3159"  title="Часть 15. Итог темы"><span>15</span></a></nav>
+<a class="lec-mode" href="../index.html#09" title="Те же материалы слайдами для показа на проекторе">Открыть слайдами →</a>
+</header>
+<main id="main">
+<section class="lec-hero"><div class="lec-wrap">
+<p class="lec-kicker">Часть 3 из 15 · слайды 9–15</p>
+<h1>Архитектурный стиль REST</h1>
+<p class="lec-bridge">Ресурс, метод и код ответа пришли в HTTP API из архитектурного стиля REST. Разберём его ограничения.</p>
+<ol class="lec-toc"><li><a href="#s9"><span>9</span>REST — архитектурный стиль</a></li><li><a href="#s10"><span>10</span>Клиент и сервер имеют разные обязанности</a></li><li><a href="#s11"><span>11</span>Каждый запрос должен быть самодостаточным</a></li><li><a href="#s12"><span>12</span>Ответ может иметь правила кэширования</a></li><li><a href="#s13"><span>13</span>Между клиентом и сервером могут быть промежуточные слои</a></li><li><a href="#s14"><span>14</span>Одинаковые правила взаимодействия</a></li><li><a href="#s15"><span>15</span>Не каждый JSON API полностью RESTful</a></li></ol>
+</div></section>
+<div class="lec-wrap lec-page">
+<section class="lec-stage" id="s9">
+<h2><span class="lec-num">9</span>REST — архитектурный стиль</h2>
+<p class="lead">REST не является языком программирования, библиотекой или форматом JSON.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="text"><p><strong>REST</strong> (Representational State Transfer) — архитектурный стиль для распределённых систем. Его сформулировал Рой Филдинг в диссертации 2000 года.</p><p>Стиль задан набором архитектурных ограничений. Если система их соблюдает, клиент и сервер можно развивать относительно независимо: менять интерфейс, не трогая базу, или переносить сервер, не переписывая клиентов.</p></div><p class="takeaway">REST = набор архитектурных ограничений</p></div><div class="stack"><div class="table-wrap "><table><thead><tr><th>Ограничение</th><th>Суть</th></tr></thead><tbody><tr><td>Client–Server</td><td>разделение обязанностей клиента и сервера</td></tr><tr><td>Stateless</td><td>каждый запрос содержит всё нужное для обработки</td></tr><tr><td>Cacheable</td><td>ответ сообщает, можно ли его повторно использовать</td></tr><tr><td>Layered System</td><td>между клиентом и сервером могут быть промежуточные слои</td></tr><tr><td>Uniform Interface</td><td>единые правила взаимодействия с любым ресурсом</td></tr><tr><td>Code on Demand</td><td>необязательное: сервер может передать клиенту исполняемый код</td></tr></tbody></table></div><p class="note">Следующие пять слайдов разбирают обязательные ограничения.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s10">
+<h2><span class="lec-num">10</span>Клиент и сервер имеют разные обязанности</h2>
+<p class="lead">Клиент отвечает за использование данных. Сервер отвечает за их предоставление и изменение.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="row-chain"><span class="">React / Mobile App</span><i>→</i><span class="">HTTP</span><i>→</i><span class="key">FastAPI</span></div><div class="text"><p>Благодаря этому разделению изменение интерфейса мобильного приложения не требует изменения базы данных сервера. А перенос базы на другую СУБД не требует обновлять приложение у пользователей.</p></div></div><div class="stack"><div class="table-wrap "><table><thead><tr><th>Client</th><th>Server</th></tr></thead><tbody><tr><td>UI</td><td>Business logic</td></tr><tr><td>Navigation</td><td>Database</td></tr><tr><td>Display</td><td>Authorization</td></tr></tbody></table></div></div></div></div>
+</section>
+<section class="lec-stage" id="s11">
+<h2><span class="lec-num">11</span>Каждый запрос должен быть самодостаточным</h2>
+<p class="lead">Сервер не должен рассчитывать на то, что предыдущий HTTP request объяснил следующий. Запрос сам содержит необходимые данные.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="text"><p>Поэтому токен доступа передаётся в каждом защищённом запросе:</p></div><div class="code-block "><div class="code-head"><b>заголовок каждого запроса</b></div><pre><code>Authorization: Bearer ey...</code></pre></div><div class="text"><p>Не следует строить контракт вида «сначала вызови A, сервер это запомнит, потом вызови B», если состояние можно явно передать в запросе.</p></div><div class="compare"><div class="bad-side"><b>Так не надо</b><pre>сначала вызови A
+потом сервер запомнит это
+после этого вызови B</pre></div><div class="good-side"><b>Так надо</b><pre>B + всё, что нужно
+    для его обработки</pre></div></div></div><div class="stack"><ol class="chain "><li class="">REQUEST 1 → SERVER</li><li class="">REQUEST 2 → SERVER</li><li class="">REQUEST 3 → SERVER</li><li class="key">Каждый request самодостаточен<small>любой из них может обработать любой экземпляр сервера</small></li></ol></div></div></div>
+</section>
+<section class="lec-stage" id="s12">
+<h2><span class="lec-num">12</span>Ответ может иметь правила кэширования</h2>
+<p class="lead">HTTP позволяет серверу сообщить, можно ли повторно использовать ранее полученный response.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>заголовок ответа</b></div><pre><code>Cache-Control: max-age=300</code></pre></div><div class="text"><p>Этот заголовок разрешает клиентам и промежуточным системам использовать сохранённый ответ в течение 300 секунд, не обращаясь к серверу снова.</p></div><p class="takeaway">Кэширование — часть архитектуры HTTP API, а не особенность Swagger.</p></div><div class="stack"><ol class="chain "><li class="">CLIENT</li><li class="key">CACHE<small>сохранённый response</small></li><li class="">SERVER<small>получает запрос, только если в кэше нет годного ответа</small></li></ol></div></div></div>
+</section>
+<section class="lec-stage" id="s13">
+<h2><span class="lec-num">13</span>Между клиентом и сервером могут быть промежуточные слои</h2>
+<p class="lead">Клиент не обязан знать, отвечает ему непосредственно приложение или запрос проходит через другие компоненты.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="text"><p>Каждый слой решает свою задачу:</p></div><div class="table-wrap "><table><thead><tr><th>Слой</th><th>Задача</th></tr></thead><tbody><tr><td>CDN</td><td>отдаёт кэшированные ответы ближе к пользователю</td></tr><tr><td>API Gateway</td><td>проверяет токены, ограничивает частоту запросов</td></tr><tr><td>Load Balancer</td><td>распределяет запросы между экземплярами сервиса</td></tr></tbody></table></div><p class="takeaway">Инфраструктуру можно менять без изменения клиентского контракта.</p></div><div class="stack"><ol class="chain travel"><li class="">CLIENT</li><li class="">CDN</li><li class="">API GATEWAY</li><li class="">LOAD BALANCER</li><li class="key">FASTAPI</li></ol></div></div></div>
+</section>
+<section class="lec-stage" id="s14">
+<h2><span class="lec-num">14</span>Одинаковые правила взаимодействия</h2>
+<p class="lead">REST стремится к единообразному интерфейсу: с любым ресурсом работают по одним и тем же правилам.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="table-wrap "><table><thead><tr><th>Элемент HTTP</th><th>Что делает</th></tr></thead><tbody><tr><td>URI</td><td>идентифицирует ресурс</td></tr><tr><td>HTTP method</td><td>задаёт действие</td></tr><tr><td>status code</td><td>сообщает результат</td></tr><tr><td>representation</td><td>передаёт состояние ресурса, например JSON</td></tr></tbody></table></div><div class="text"><p>Поэтому вместо отдельной команды <code>deleteTicket()</code> используется стандартная HTTP-семантика:</p></div><div class="code-block "><pre><code>DELETE /tickets/42</code></pre></div></div><div class="stack"><div class="card accent"><small>правило</small><h3 class="big">RESOURCE + HTTP METHOD = OPERATION</h3><p>Клиент, который умеет удалять заказ в одном API, по той же схеме удалит обращение в другом.</p></div></div></div></div>
+</section>
+<section class="lec-stage" id="s15">
+<h2><span class="lec-num">15</span>Не каждый JSON API полностью RESTful</h2>
+<p class="lead">На практике термин «REST API» часто применяют к любому HTTP API, которое использует ресурсы, методы и JSON.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="text"><p>Обычно так называют API, которое использует:</p></div><ul class="list "><li>ресурсы;</li><li>HTTP methods;</li><li>HTTP status codes;</li><li>JSON;</li><li>stateless-взаимодействие.</li></ul><div class="text"><p>Полное соответствие всем ограничениям REST, включая hypermedia (ссылки на следующие действия прямо в ответе), встречается значительно реже.</p></div></div><div class="stack"><div class="card accent"><small>пересечение</small><h3 class="big">HTTP API ∩ REST principles</h3></div><p class="takeaway">Для нашей дисциплины важно не спорить о названии, а понимать, какие конкретно правила выполняет API.</p></div></div></div>
+</section>
+<nav class="lec-nav"><a class="lec-prev" href="02-zapros-otvet-resurs.html">← Часть 2. Запрос, ответ, ресурс</a><a class="lec-next" href="04-pravila-http-api.html">Часть 4. Правила HTTP API →</a></nav>
+</div>
+</main>
+<footer class="lec-foot"><div class="lec-wrap">
+<p>Учебный проект темы: <a href="https://github.com/MaximBytecamp/api-standard-template">api-standard-template</a> · <a href="https://maximbytecamp.github.io/api-standard-template/">документация API</a> · <a href="../../../api-standard-template/docs/STANDARDS.md">источники правил с цитатами</a>.</p>
+<p class="lec-credits"><span>Стандартизация, сертификация и техническое документоведение · 4 курс</span><span>Макаров Максим Николаевич</span></p>
+</div></footer>
+<div id="toast" role="status" hidden></div>
+<dialog id="visual"><div class="dialog-head"><h2 id="visual-title">Кадр крупным планом</h2><button data-close aria-label="Закрыть изображение">✕</button></div><div id="visual-content"></div></dialog>
+</body></html>

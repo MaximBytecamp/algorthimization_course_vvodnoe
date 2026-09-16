@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#172335">
+<meta name="description" content="REST задаёт принципы, но не говорит, как назвать адрес и какой код вернуть. Это решают правила HTTP API.">
+<title>Часть 4. Правила HTTP API · API как контракт</title>
+<link rel="stylesheet" href="lecture.css">
+<script defer src="../interactive.js"></script><script defer src="lecture.js"></script></head>
+<body class="lec" style="--c:#1f7aa6"><a class="skip" href="#main">К тексту части</a>
+<header class="lec-top">
+<a class="lec-brand" href="../../../index.html"><b>API</b><span>Стандартизация<br>тема 1</span></a>
+<nav class="lec-gauge" aria-label="Части темы"><a href="01-chto-standartiziruem.html" style="--c:#2d6fd0"  title="Часть 1. Что стандартизируем"><span>1</span></a><a href="02-zapros-otvet-resurs.html" style="--c:#2a72c4"  title="Часть 2. Запрос, ответ, ресурс"><span>2</span></a><a href="03-rest.html" style="--c:#2575b8"  title="Часть 3. Архитектурный стиль REST"><span>3</span></a><a href="04-pravila-http-api.html" style="--c:#1f7aa6" aria-current="page" title="Часть 4. Правила HTTP API"><span>4</span></a><a href="05-praktika-kontrakt.html" style="--c:#1a7d93"  title="Часть 5. Практика: контракт"><span>5</span></a><a href="06-openapi.html" style="--c:#177f80"  title="Часть 6. OpenAPI"><span>6</span></a><a href="07-fastapi-dokumentaciya.html" style="--c:#1a7f6b"  title="Часть 7. FastAPI и документация"><span>7</span></a><a href="08-oshibki.html" style="--c:#2b7d57"  title="Часть 8. Единый формат ошибок"><span>8</span></a><a href="09-versii.html" style="--c:#4a7a45"  title="Часть 9. Версии и изменения"><span>9</span></a><a href="10-standart-i-proverka.html" style="--c:#6d7340"  title="Часть 10. Стандарт и его проверка"><span>10</span></a><a href="11-standarty-kompaniy.html" style="--c:#8a6a3d"  title="Часть 11. Стандарты реальных команд"><span>11</span></a><a href="12-repozitoriy-api.html" style="--c:#97583f"  title="Часть 12. Репозиторий API на GitHub"><span>12</span></a><a href="13-zagolovki-sovmestimost.html" style="--c:#8f4550"  title="Часть 13. Заголовки и совместимость"><span>13</span></a><a href="14-prakticheskaya-rabota.html" style="--c:#7a3a5d"  title="Часть 14. Практическая работа"><span>14</span></a><a href="15-itog.html" style="--c:#5c3159"  title="Часть 15. Итог темы"><span>15</span></a></nav>
+<a class="lec-mode" href="../index.html#16" title="Те же материалы слайдами для показа на проекторе">Открыть слайдами →</a>
+</header>
+<main id="main">
+<section class="lec-hero"><div class="lec-wrap">
+<p class="lec-kicker">Часть 4 из 15 · слайды 16–33</p>
+<h1>Правила HTTP API</h1>
+<p class="lec-bridge">REST задаёт принципы, но не говорит, как назвать адрес и какой код вернуть. Это решают правила HTTP API.</p>
+<ol class="lec-toc"><li><a href="#s16"><span>16</span>Без правил каждый разработчик создаёт свой язык</a></li><li><a href="#s17"><span>17</span>API регулируется не одним документом</a></li><li><a href="#s18"><span>18</span>Метод нельзя выбирать случайно</a></li><li><a href="#s19"><span>19</span>URI описывает существительное</a></li><li><a href="#s20"><span>20</span>Один ресурс и набор ресурсов</a></li><li><a href="#s21"><span>21</span>Path parameter идентифицирует ресурс</a></li><li><a href="#s22"><span>22</span>Query parameter изменяет выборку</a></li><li><a href="#s23"><span>23</span>GET получает представление ресурса</a></li><li><a href="#s24"><span>24</span>POST создаёт ресурс или запускает операцию</a></li><li><a href="#s25"><span>25</span>PUT заменяет состояние ресурса</a></li><li><a href="#s26"><span>26</span>PATCH изменяет часть ресурса</a></li><li><a href="#s27"><span>27</span>DELETE удаляет ресурс</a></li><li><a href="#s28"><span>28</span>Два разных свойства HTTP-методов</a></li><li><a href="#s29"><span>29</span>2xx — запрос обработан успешно</a></li><li><a href="#s30"><span>30</span>4xx — проблема находится на стороне запроса</a></li><li><a href="#s31"><span>31</span>5xx — сервер не смог выполнить корректный запрос</a></li><li><a href="#s32"><span>32</span>Формат body тоже является частью контракта</a></li><li><a href="#s33"><span>33</span>Стиль JSON необходимо зафиксировать</a></li></ol>
+</div></section>
+<div class="lec-wrap lec-page">
+<section class="lec-stage" id="s16">
+<h2><span class="lec-num">16</span>Без правил каждый разработчик создаёт свой язык</h2>
+<p class="lead">Три команды независимо написали свои части одного API. Все три endpoint работают.</p>
+<div class="slide-body"><div class="compare"><div class="bad-side"><b>До стандартизации</b><pre>GET  /getUsers
+
+POST /user/create
+
+POST /delete-user?id=10</pre></div><div class="good-side"><b>После стандартизации</b><pre>GET    /users
+POST   /users
+DELETE /users/{user_id}</pre></div></div><div class="text"><p>Вместе первые три адреса создают непоследовательный контракт: действие то в имени, то в методе, коллекция то во множественном числе, то в единственном, идентификатор то в пути, то в query. Клиенту приходится читать документацию к каждому адресу.</p></div><p class="takeaway">После стандартизации клиент может предугадать поведение API.</p></div>
+</section>
+<section class="lec-stage" id="s17">
+<h2><span class="lec-num">17</span>API регулируется не одним документом</h2>
+<p class="lead">Для реального API существует несколько уровней правил. Каждый следующий уровень уточняет предыдущий и не может ему противоречить.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="table-wrap "><table><thead><tr><th>Уровень</th><th>Что определяет</th></tr></thead><tbody><tr><td>IETF RFC</td><td>семантику HTTP: методы, коды, заголовки</td></tr><tr><td>OpenAPI Specification</td><td>способ машинного описания API</td></tr><tr><td>Company API Guidelines</td><td>правила именования и совместимости в компании</td></tr><tr><td>Project API Style Guide</td><td>договорённости конкретной команды</td></tr><tr><td>OpenAPI contract</td><td>контракт одного сервиса</td></tr></tbody></table></div></div><div class="stack"><ol class="chain "><li class="">IETF RFC</li><li class="">OpenAPI Specification</li><li class="">Company API Guidelines</li><li class="">Project API Style Guide</li><li class="key">OpenAPI contract конкретного сервиса</li></ol></div></div></div>
+</section>
+<section class="lec-stage" id="s18">
+<h2><span class="lec-num">18</span>Метод нельзя выбирать случайно</h2>
+<p class="lead">Начнём с нижнего уровня пирамиды — стандартов IETF. HTTP уже определяет назначение стандартных методов.</p>
+<div class="slide-body"><div class="split wide-right"><div class="stack"><div class="text"><p>RFC 9110 «HTTP Semantics» описывает, в частности, методы:</p></div><div class="code-block "><pre><code>GET
+HEAD
+POST
+PUT
+DELETE
+OPTIONS</code></pre></div><div class="text"><p>и их свойства — например, safe и idempotent.</p></div><p class="takeaway">Значение <code>GET</code>, <code>POST</code> или <code>DELETE</code> является частью контракта.</p></div><div class="stack"><figure class="shot "><div class="shot-bar"><b>rfc-editor.org · RFC 9110</b><span>СКРИНШОТ · 15.09.2026</span></div><button class="shot-view" aria-label="Увеличить кадр: rfc-editor.org · RFC 9110"><img src="../shots/18-rfc9110-methods.png" alt="RFC 9110, раздел 9 «Methods»: обзор и таблица стандартных методов со ссылками на подразделы." loading="lazy"></button><figcaption>RFC 9110, раздел 9 «Methods»: обзор и таблица стандартных методов со ссылками на подразделы. Клик — увеличить.</figcaption></figure></div></div></div>
+</section>
+<section class="lec-stage" id="s19">
+<h2><span class="lec-num">19</span>URI описывает существительное</h2>
+<p class="lead">Действие уже выражается HTTP method. Если записать его ещё и в адрес, оно окажется в контракте дважды.</p>
+<div class="slide-body"><div class="compare"><div class="bad-side"><b>Плохо</b><pre>/getTickets
+/createTicket
+/deleteTicket</pre></div><div class="good-side"><b>Хорошо</b><pre>/tickets
+/users
+/orders
+/products</pre></div></div><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>лучше</b></div><pre><code>POST /tickets</code></pre></div></div><div class="stack"><div class="code-block "><div class="code-head"><b>хуже</b></div><pre><code>POST /createTicket</code></pre></div></div></div></div>
+</section>
+<section class="lec-stage" id="s20">
+<h2><span class="lec-num">20</span>Один ресурс и набор ресурсов</h2>
+<p class="lead">Коллекция и элемент коллекции имеют разные адреса, но общий корень.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="table-wrap "><table><thead><tr><th>Что</th><th>Запрос</th></tr></thead><tbody><tr><td>Коллекция</td><td><code>GET /tickets</code></td></tr><tr><td>Конкретный ресурс</td><td><code>GET /tickets/{ticket_id}</code></td></tr><tr><td>Вложенный ресурс</td><td><code>GET /users/{user_id}/tickets</code></td></tr></tbody></table></div><div class="text"><p>Вложенный адрес читается как «обращения пользователя с этим идентификатором».</p></div><p class="warn-box">Чрезмерно глубокие URI усложняют контракт: <code>/companies/{id}/departments/{id}/users/{id}/tickets</code> заставляет клиента знать всю цепочку, чтобы получить одно обращение.</p></div><div class="stack"><pre class="tree"><b>/tickets</b>
+   │
+   ├─ /1
+   ├─ /2
+   └─ /3</pre></div></div></div>
+</section>
+<section class="lec-stage" id="s21">
+<h2><span class="lec-num">21</span>Path parameter идентифицирует ресурс</h2>
+<p class="lead">Часть пути, которая меняется от ресурса к ресурсу, называется path parameter.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><pre><code>GET /tickets/42</code></pre></div><pre class="tree">/tickets/42
+         ↑
+    <b>ticket_id</b></pre><div class="text"><p><code>42</code> — часть адреса конкретного ресурса. Без неё запрос обращён уже к коллекции.</p></div></div><div class="stack"><div class="code-block "><div class="code-head"><b>FastAPI</b></div><pre><code>@app.get(&quot;/tickets/{ticket_id}&quot;)
+def get_ticket(<span class="hl">ticket_id: int</span>):
+    ...</code></pre></div><p class="note">FastAPI берёт значение из пути, приводит его к <code>int</code> и передаёт в функцию. Если в пути <code>abc</code>, клиент получит ошибку валидации, а функция не будет вызвана.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s22">
+<h2><span class="lec-num">22</span>Query parameter изменяет выборку</h2>
+<p class="lead">Query parameters записываются после знака «?» и уточняют запрос к тому же ресурсу.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="text"><p>Их удобно использовать для:</p></div><ul class="list "><li>фильтрации;</li><li>сортировки;</li><li>поиска;</li><li>пагинации.</li></ul><div class="code-block "><pre><code>GET /tickets?status=open&amp;limit=20</code></pre></div></div><div class="stack"><div class="text"><p>Основной ресурс остаётся тем же — <code>/tickets</code>, а параметры уточняют, какую часть коллекции вернуть:</p></div><div class="table-wrap "><table><thead><tr><th>Параметр</th><th>Смысл</th></tr></thead><tbody><tr><td><code>status=open</code></td><td>только открытые обращения</td></tr><tr><td><code>limit=20</code></td><td>не больше 20 штук</td></tr></tbody></table></div></div></div></div>
+</section>
+<section class="lec-stage" id="s23">
+<h2><span class="lec-num">23</span>GET получает представление ресурса</h2>
+<p class="lead">GET используется для чтения. Он не должен менять состояние сервера.</p>
+<div class="slide-body"><div class="split "><div class="stack"><ul class="endpoints"><li><span class="m get">GET</span><span>/tickets</span><span>коллекция</span></li><li><span class="m get">GET</span><span>/tickets/42</span><span>один ресурс</span></li></ul><div class="text"><p>Запрос <code>GET /api/v1/tickets/42</code> может вернуть:</p></div><div class="status-grid"><div class="status s2"><b>200</b><span>OK</span><p>обращение найдено, оно в теле ответа</p></div><div class="status s2"><b>404</b><span>Not Found</span><p>обращения с таким идентификатором нет</p></div></div></div><div class="stack"><div class="card accent"><small>свойство метода</small><h3>GET относится к safe HTTP methods</h3><p>Клиент может повторить его, браузер может предзагрузить ссылку, кэш может сохранить ответ — ничего в системе от этого не изменится.</p></div><div class="row-chain"><span class="">CLIENT</span><i>→</i><span class="">← DATA ←</span><i>→</i><span class="key">SERVER</span></div></div></div></div>
+</section>
+<section class="lec-stage" id="s24">
+<h2><span class="lec-num">24</span>POST создаёт ресурс или запускает операцию</h2>
+<p class="lead">Для создания обращения клиент отправляет POST на коллекцию.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>request</b></div><pre><code>POST /tickets</code></pre></div><div class="code-block "><div class="code-head"><b>body</b></div><pre><code>{
+  &quot;title&quot;: &quot;Не работает VPN&quot;,
+  &quot;description&quot;: &quot;Ошибка подключения&quot;
+}</code></pre></div></div><div class="stack"><div class="text"><p>При успешном создании сервер отвечает:</p></div><div class="code-block "><div class="code-head"><b>response</b></div><pre><code>201 Created
+Location: /tickets/{new_id}</code></pre></div><div class="text"><p>Идентификатор нового ресурса формирует сервер, поэтому клиент узнаёт адрес созданного обращения из заголовка <code>Location</code>.</p></div><div class="row-chain"><span class="">POST /tickets</span><i>→</i><span class="key">NEW TICKET</span></div></div></div></div>
+</section>
+<section class="lec-stage" id="s25">
+<h2><span class="lec-num">25</span>PUT заменяет состояние ресурса</h2>
+<p class="lead">PUT используется, когда клиент передаёт полное новое представление ресурса.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>request</b></div><pre><code>PUT /tickets/42
+
+{
+  &quot;title&quot;: &quot;Не работает VPN&quot;,
+  &quot;description&quot;: &quot;Ошибка подключения&quot;,
+  &quot;status&quot;: &quot;closed&quot;
+}</code></pre></div><p class="note">Поле, которое клиент не передал, по смыслу PUT должно исчезнуть или получить значение по умолчанию: ресурс заменяется целиком.</p></div><div class="stack"><ol class="chain "><li class="">OLD RESOURCE</li><li class="key">PUT<small>новое представление целиком</small></li><li class="">NEW RESOURCE</li></ol><p class="takeaway">По HTTP semantics PUT идемпотентен: повторение идентичного PUT даёт тот же предполагаемый эффект, что и один вызов.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s26">
+<h2><span class="lec-num">26</span>PATCH изменяет часть ресурса</h2>
+<p class="lead">Если требуется изменить только статус, клиенту не нужно повторять остальные свойства.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>request</b></div><pre><code>PATCH /tickets/42
+
+{
+  &quot;status&quot;: &quot;closed&quot;
+}</code></pre></div><p class="takeaway">В нашем учебном API для редактирования Ticket используем PATCH.</p></div><div class="stack"><pre class="tree"><b>Ticket</b>
+├── title
+├── description
+└── status  ← PATCH</pre><p class="note">Так клиент не затрёт поле, которое за это время изменил другой пользователь, и отправляет меньше данных.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s27">
+<h2><span class="lec-num">27</span>DELETE удаляет ресурс</h2>
+<p class="lead">После успешного удаления возвращать нечего, поэтому ответ не содержит тела.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>request</b></div><pre><code>DELETE /tickets/42</code></pre></div><div class="code-block "><div class="code-head"><b>response</b></div><pre><code>204 No Content</code></pre></div><div class="text"><p>HTTP определяет DELETE как идемпотентный по предполагаемому эффекту: после первого и после пятого одинакового запроса ресурса нет.</p></div><p class="note">Код ответа при повторе может отличаться: второй DELETE вернёт <code>404</code>, потому что удалять уже нечего. Идемпотентность говорит о состоянии сервера, а не о коде ответа.</p></div><div class="stack"><ol class="chain "><li class="">RESOURCE</li><li class="key">DELETE</li><li class="">∅</li></ol></div></div></div>
+</section>
+<section class="lec-stage" id="s28">
+<h2><span class="lec-num">28</span>Два разных свойства HTTP-методов</h2>
+<p class="lead">Safe и idempotent часто путают. Нажимайте одну кнопку несколько раз подряд и следите за состоянием сервера.</p>
+<div class="slide-body"><div class="split wide-right"><div class="stack"><div class="text"><p><strong>Safe</strong> — клиент не просит изменить состояние сервера: <code>GET</code>, <code>HEAD</code>, <code>OPTIONS</code>.</p><p><strong>Idempotent</strong> — повтор идентичной операции даёт тот же предполагаемый эффект, что один вызов: <code>PUT</code>, <code>DELETE</code>, <code>GET</code>.</p></div><div class="table-wrap"><table><thead><tr><th>Method</th><th>Safe</th><th>Idempotent</th></tr></thead><tbody>
+      <tr><td><span class="m get">GET</span></td><td class="yes">YES</td><td class="yes">YES</td></tr>
+      <tr><td><span class="m post">POST</span></td><td class="no">NO</td><td class="no">NO</td></tr>
+      <tr><td><span class="m put">PUT</span></td><td class="no">NO</td><td class="yes">YES</td></tr>
+      <tr><td><span class="m delete">DELETE</span></td><td class="no">NO</td><td class="yes">YES</td></tr></tbody></table></div><p class="note">POST в общем случае не идемпотентен: каждый повтор создаёт ещё одно обращение.</p></div><div class="stack"><div class="replay"><div class="stack"><label>Отправить запрос</label><div class="buttons"><button data-run="get">GET /tickets/42</button><button data-run="post">POST /tickets</button><button data-run="put">PUT /tickets/42</button><button data-run="delete">DELETE /tickets/42</button></div><label>Состояние сервера</label><div data-state></div><button data-reset>Вернуть исходное состояние</button></div><div class="stack"><label>Последние ответы, новые сверху</label><ul data-log></ul></div></div></div></div></div>
+</section>
+<section class="lec-stage" id="s29">
+<h2><span class="lec-num">29</span>2xx — запрос обработан успешно</h2>
+<p class="lead">В нашем проекте понадобятся три успешных кода.</p>
+<div class="slide-body"><div class="status-grid"><div class="status s2"><b>200</b><span>OK</span><p>Запрос выполнен, результат в теле. GET, PATCH.</p></div><div class="status s2"><b>201</b><span>Created</span><p>Создан новый ресурс, адрес в Location. POST.</p></div><div class="status s2"><b>204</b><span>No Content</span><p>Выполнено, тело не нужно. DELETE.</p></div></div><div class="split "><div class="stack"><div class="text"><p>Не следует автоматически возвращать <code>200</code> из любого endpoint. Status code должен описывать фактический результат операции: клиент по нему решает, что делать дальше, не разбирая тело.</p></div></div><div class="stack"><div class="table-wrap "><table><thead><tr><th>Метод</th><th>Успешный код</th></tr></thead><tbody><tr><td><span class="m get">GET</span></td><td>200</td></tr><tr><td><span class="m post">POST</span></td><td>201</td></tr><tr><td><span class="m delete">DELETE</span></td><td>204</td></tr></tbody></table></div></div></div></div>
+</section>
+<section class="lec-stage" id="s30">
+<h2><span class="lec-num">30</span>4xx — проблема находится на стороне запроса</h2>
+<p class="lead">Коды 4xx сообщают клиенту: повторять тот же запрос бесполезно, его нужно исправить.</p>
+<div class="slide-body"><div class="status-grid"><div class="status undefined"><b>400</b><span>Bad Request</span><p>Запрос нельзя разобрать: например, сломанный JSON.</p></div><div class="status undefined"><b>401</b><span>Unauthorized</span><p>Требуется корректная аутентификация: токена нет или он недействителен.</p></div><div class="status undefined"><b>403</b><span>Forbidden</span><p>Клиент известен, но эта операция ему запрещена.</p></div><div class="status undefined"><b>404</b><span>Not Found</span><p>Ресурса с таким адресом нет.</p></div><div class="status undefined"><b>409</b><span>Conflict</span><p>Запрос противоречит текущему состоянию ресурса.</p></div><div class="status undefined"><b>422</b><span>Unprocessable Content</span><p>JSON корректен, но данные не проходят проверку схемы.</p></div><div class="status undefined"><b>429</b><span>Too Many Requests</span><p>Клиент превысил допустимую частоту запросов.</p></div></div><p class="takeaway"><code>401</code> и <code>403</code> имеют разный смысл: в первом случае сервер не знает, кто перед ним, во втором знает и отказывает.</p></div>
+</section>
+<section class="lec-stage" id="s31">
+<h2><span class="lec-num">31</span>5xx — сервер не смог выполнить корректный запрос</h2>
+<p class="lead">Коды 5xx означают, что запрос был корректным, но сервер не справился.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><pre><code>500 Internal Server Error</code></pre></div><div class="text"><p>Этот код не должен заменять любое исключение, которое можно корректно классифицировать. Если ресурса нет, это <code>404</code>, а не падение сервера.</p><p>Клиент также не должен получать:</p></div><ul class="list "><li>Python traceback;</li><li>SQL query;</li><li>пароль;</li><li>filesystem path.</li></ul></div><div class="stack"><ol class="chain "><li class="">CLIENT<small>получает 500 и публичное описание ошибки</small></li><li class="key">SERVER</li><li class="inner">LOGS<small>traceback и технические подробности</small></li></ol><p class="takeaway">Внутренние детали должны оставаться на сервере: по ним злоумышленник узнаёт устройство системы.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s32">
+<h2><span class="lec-num">32</span>Формат body тоже является частью контракта</h2>
+<p class="lead">Одни и те же байты можно прочитать по-разному. Заголовок Content-Type сообщает, как интерпретировать тело.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>в request</b></div><pre><code>Content-Type: application/json</code></pre></div><p class="note">Сообщает серверу формат отправленного тела.</p><div class="code-block "><div class="code-head"><b>в response</b></div><pre><code>Content-Type: application/json</code></pre></div><p class="note">Сообщает клиенту формат ответа.</p><div class="code-block "><div class="code-head"><b>для ошибок</b></div><pre><code>Content-Type: application/problem+json</code></pre></div><p class="note">Этот формат стандартизированных ошибок разберём позже в этой теме.</p></div><div class="stack"><ol class="chain "><li class="">BODY</li><li class="key">MEDIA TYPE</li><li class="">INTERPRETABLE MESSAGE<small>сообщение, которое программа может разобрать</small></li></ol></div></div></div>
+</section>
+<section class="lec-stage" id="s33">
+<h2><span class="lec-num">33</span>Стиль JSON необходимо зафиксировать</h2>
+<p class="lead">Команда выбирает единый стиль имён и применяет его последовательно во всех ресурсах.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>наш проект: snake_case</b></div><pre><code>{
+  &quot;ticket_id&quot;: 42,
+  &quot;created_at&quot;: &quot;2026-09-15T17:30:00Z&quot;
+}</code></pre></div><div class="text"><p>Другая организация может стандартизировать <code>camelCase</code>. Ошибкой будет не выбор стиля, а смешение: <code>created_at</code> в одном ответе и <code>updatedAt</code> в соседнем.</p></div></div><div class="stack"><div class="table-wrap "><table><thead><tr><th>Стиль</th><th>Пример</th></tr></thead><tbody><tr><td>snake_case</td><td><code>created_at</code></td></tr><tr><td>camelCase</td><td><code>createdAt</code></td></tr></tbody></table></div><p class="takeaway">Выбрать один стиль. Главное — единообразие внутри API ecosystem.</p></div></div></div>
+</section>
+<nav class="lec-nav"><a class="lec-prev" href="03-rest.html">← Часть 3. Архитектурный стиль REST</a><a class="lec-next" href="05-praktika-kontrakt.html">Часть 5. Практика: контракт →</a></nav>
+</div>
+</main>
+<footer class="lec-foot"><div class="lec-wrap">
+<p>Учебный проект темы: <a href="https://github.com/MaximBytecamp/api-standard-template">api-standard-template</a> · <a href="https://maximbytecamp.github.io/api-standard-template/">документация API</a> · <a href="../../../api-standard-template/docs/STANDARDS.md">источники правил с цитатами</a>.</p>
+<p class="lec-credits"><span>Стандартизация, сертификация и техническое документоведение · 4 курс</span><span>Макаров Максим Николаевич</span></p>
+</div></footer>
+<div id="toast" role="status" hidden></div>
+<dialog id="visual"><div class="dialog-head"><h2 id="visual-title">Кадр крупным планом</h2><button data-close aria-label="Закрыть изображение">✕</button></div><div id="visual-content"></div></dialog>
+</body></html>

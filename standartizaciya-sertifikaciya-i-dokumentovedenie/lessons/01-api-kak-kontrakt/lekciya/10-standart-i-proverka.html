@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#172335">
+<meta name="description" content="Правила именования, ошибок и версий уже есть. Их нужно собрать в один стандарт и проверять автоматически.">
+<title>Часть 10. Стандарт и его проверка · API как контракт</title>
+<link rel="stylesheet" href="lecture.css">
+<script defer src="../interactive.js"></script><script defer src="lecture.js"></script></head>
+<body class="lec" style="--c:#6d7340"><a class="skip" href="#main">К тексту части</a>
+<header class="lec-top">
+<a class="lec-brand" href="../../../index.html"><b>API</b><span>Стандартизация<br>тема 1</span></a>
+<nav class="lec-gauge" aria-label="Части темы"><a href="01-chto-standartiziruem.html" style="--c:#2d6fd0"  title="Часть 1. Что стандартизируем"><span>1</span></a><a href="02-zapros-otvet-resurs.html" style="--c:#2a72c4"  title="Часть 2. Запрос, ответ, ресурс"><span>2</span></a><a href="03-rest.html" style="--c:#2575b8"  title="Часть 3. Архитектурный стиль REST"><span>3</span></a><a href="04-pravila-http-api.html" style="--c:#1f7aa6"  title="Часть 4. Правила HTTP API"><span>4</span></a><a href="05-praktika-kontrakt.html" style="--c:#1a7d93"  title="Часть 5. Практика: контракт"><span>5</span></a><a href="06-openapi.html" style="--c:#177f80"  title="Часть 6. OpenAPI"><span>6</span></a><a href="07-fastapi-dokumentaciya.html" style="--c:#1a7f6b"  title="Часть 7. FastAPI и документация"><span>7</span></a><a href="08-oshibki.html" style="--c:#2b7d57"  title="Часть 8. Единый формат ошибок"><span>8</span></a><a href="09-versii.html" style="--c:#4a7a45"  title="Часть 9. Версии и изменения"><span>9</span></a><a href="10-standart-i-proverka.html" style="--c:#6d7340" aria-current="page" title="Часть 10. Стандарт и его проверка"><span>10</span></a><a href="11-standarty-kompaniy.html" style="--c:#8a6a3d"  title="Часть 11. Стандарты реальных команд"><span>11</span></a><a href="12-repozitoriy-api.html" style="--c:#97583f"  title="Часть 12. Репозиторий API на GitHub"><span>12</span></a><a href="13-zagolovki-sovmestimost.html" style="--c:#8f4550"  title="Часть 13. Заголовки и совместимость"><span>13</span></a><a href="14-prakticheskaya-rabota.html" style="--c:#7a3a5d"  title="Часть 14. Практическая работа"><span>14</span></a><a href="15-itog.html" style="--c:#5c3159"  title="Часть 15. Итог темы"><span>15</span></a></nav>
+<a class="lec-mode" href="../index.html#76" title="Те же материалы слайдами для показа на проекторе">Открыть слайдами →</a>
+</header>
+<main id="main">
+<section class="lec-hero"><div class="lec-wrap">
+<p class="lec-kicker">Часть 10 из 15 · слайды 76–86</p>
+<h1>Стандарт и его проверка</h1>
+<p class="lec-bridge">Правила именования, ошибок и версий уже есть. Их нужно собрать в один стандарт и проверять автоматически.</p>
+<ol class="lec-toc"><li><a href="#s76"><span>76</span>Команда должна формально записать свои правила</a></li><li><a href="#s77"><span>77</span>У правил должна быть сила требования</a></li><li><a href="#s78"><span>78</span>Style Guide недостаточно просто написать</a></li><li><a href="#s79"><span>79</span>Linter для OpenAPI</a></li><li><a href="#s80"><span>80</span>Часть правил переносим в код</a></li><li><a href="#s81"><span>81</span>Контракт можно проверять обычным тестом</a></li><li><a href="#s82"><span>82</span>Каждый endpoint обязан иметь operationId</a></li><li><a href="#s83"><span>83</span>Проверка выполняется до объединения изменений</a></li><li><a href="#s84"><span>84</span>Документация должна показывать, какие операции защищены</a></li><li><a href="#s85"><span>85</span>Правильный Swagger ещё не делает API безопасным</a></li><li><a href="#s86"><span>86</span>Теперь документация становится частью разработки</a></li></ol>
+</div></section>
+<div class="lec-wrap lec-page">
+<section class="lec-stage" id="s76">
+<h2><span class="lec-num">76</span>Команда должна формально записать свои правила</h2>
+<p class="lead">API Style Guide — внутренний стандарт проекта, файл docs/API_STYLE_GUIDE.md.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>примеры правил</b></div><pre><code>URI MUST use nouns.
+
+GET MUST NOT change business state.
+
+Public operations MUST define operationId.
+
+Errors SHOULD use application/problem+json.
+
+Collections MUST support pagination
+when their size is unbounded.</code></pre></div></div><div class="stack"><pre class="tree"><b>API_STYLE_GUIDE.md</b>
+├─ URI
+├─ HTTP
+├─ JSON
+├─ Errors
+├─ Versioning
+└─ Security</pre><p class="note">В учебном проекте после каждого правила указано, чем оно проверяется автоматически: правилом Spectral или тестом.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s77">
+<h2><span class="lec-num">77</span>У правил должна быть сила требования</h2>
+<p class="lead">В инженерных спецификациях сила требования обозначается ключевыми словами из RFC 2119.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="strength"><div><b>MUST</b><span>обязательно; MUST NOT — обязательно не делать</span></div><div><b>SHOULD</b><span>рекомендуется; отступление нужно обосновать</span></div><div><b>MAY</b><span>допускается по выбору команды</span></div></div></div><div class="stack"><div class="code-block "><pre><code>Every operation MUST have operationId.
+
+Endpoints SHOULD provide examples.
+
+Clients MAY request up to 100 items.</code></pre></div><div class="text"><p>Так документ становится менее двусмысленным: «желательно добавить пример» и «нужно добавить operationId» больше не читаются одинаково.</p></div><p class="note">Zalando и adidas используют этот подход в своих API guidelines.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s78">
+<h2><span class="lec-num">78</span>Style Guide недостаточно просто написать</h2>
+<p class="lead">Если в компании 100 API, человек не сможет вручную проверять каждую строку каждого OpenAPI.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="text"><p>Правило, которое проверяют только на review, рано или поздно пропустят. Поэтому часть правил переводится в форму, понятную программе.</p></div><p class="takeaway">Один из популярных инструментов — Spectral.</p></div><div class="stack"><ol class="chain "><li class="">API STYLE GUIDE<small>.md для людей</small></li><li class="key">MACHINE RULES<small>.yaml для программы</small></li><li class="">LINTER<small>проверяет каждый коммит</small></li></ol></div></div></div>
+</section>
+<section class="lec-stage" id="s79">
+<h2><span class="lec-num">79</span>Linter для OpenAPI</h2>
+<p class="lead">Spectral анализирует описания API в YAML и JSON и сообщает о нарушениях правил.</p>
+<div class="slide-body"><div class="split wide-right"><div class="stack"><div class="text"><p>У Spectral есть встроенный ruleset для OpenAPI:</p></div><div class="code-block "><div class="code-head"><b>.spectral.yaml</b></div><pre><code>extends:
+  - spectral:oas</code></pre></div><div class="text"><p>Он проверяет корректность документа и базовые рекомендации. Поверх него команда добавляет собственные правила.</p></div><div class="code-block "><div class="code-head"><b>запуск</b></div><pre><code>npx @stoplight/spectral-cli lint openapi/openapi.yaml</code></pre></div></div><div class="stack"><figure class="shot "><div class="shot-bar"><b>github.com · stoplightio/spectral</b><span>СКРИНШОТ · 15.09.2026</span></div><button class="shot-view" aria-label="Увеличить кадр: github.com · stoplightio/spectral"><img src="../shots/79-spectral-repo.png" alt="Репозиторий Spectral: описание «JSON/YAML linter … with baked in support for OpenAPI»." loading="lazy"></button><figcaption>Репозиторий Spectral: описание «JSON/YAML linter … with baked in support for OpenAPI». Клик — увеличить.</figcaption></figure></div></div></div>
+</section>
+<section class="lec-stage" id="s80">
+<h2><span class="lec-num">80</span>Часть правил переносим в код</h2>
+<p class="lead">Файл .spectral.yaml учебного проекта: встроенные правила с повышенной строгостью и три собственных.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block small"><div class="code-head"><b>.spectral.yaml (сокращено)</b></div><pre><code>extends:
+  - spectral:oas
+
+rules:
+  info-contact: error
+  info-description: error
+  operation-operationId: error
+  operation-tags: error
+  path-params: error
+
+  <span class="hl">paths-no-verbs</span>:
+    description: URI MUST описывать ресурс
+      существительным, а не действием.
+    severity: error
+    given: &quot;$.paths&quot;
+    then:
+      field: &quot;@key&quot;
+      function: pattern
+      functionOptions:
+        notMatch: &quot;/(get|create|update|delete...)&quot;</code></pre></div></div><div class="stack"><div class="code-block small"><div class="code-head"><b>вывод Spectral на плохом контракте (фрагмент)</b></div><pre><code> 2:6    error  info-contact           Info object must have &quot;contact&quot; object.
+10:22   error  <span class="hl">paths-no-verbs</span>         URI MUST описывать ресурс существительным
+11:9    error  operation-operationId  Operation must have &quot;operationId&quot;.
+36:19   error  error-responses-use-problem-json
+47:19   error  json-properties-snake-case
+
+<span class="err">✖ 9 problems (7 errors, 2 warnings)</span></code></pre></div><p class="takeaway">Отсутствие <code>operationId</code> теперь не рекомендация преподавателя, а автоматически обнаруживаемая проблема.</p><div class="row-chain"><span class="">API_STYLE_GUIDE.md</span><i>→</i><span class="">.spectral.yaml</span><i>→</i><span class="key">openapi.yaml</span></div></div></div></div>
+</section>
+<section class="lec-stage" id="s81">
+<h2><span class="lec-num">81</span>Контракт можно проверять обычным тестом</h2>
+<p class="lead">app.openapi() возвращает контракт как словарь Python, и тест проверяет его, как любые другие данные.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>tests/test_contract.py</b></div><pre><code>from app.main import app
+
+
+def test_openapi_contract_has_required_metadata():
+    schema = app.openapi()
+
+    assert schema[&quot;info&quot;][&quot;title&quot;]
+    assert schema[&quot;info&quot;][&quot;version&quot;]
+    assert schema[&quot;info&quot;][&quot;description&quot;]
+    assert schema[&quot;info&quot;][&quot;contact&quot;][&quot;name&quot;]</code></pre></div></div><div class="stack"><ol class="chain "><li class="">CODE</li><li class="">app.openapi()</li><li class="key">TEST ASSERTIONS</li></ol><div class="text"><p>Если кто-то удалит <code>contact</code> из <code>app/main.py</code>, тест упадёт с указанием строки. Правило проверяется автоматически при каждом запуске <code>pytest</code>.</p></div></div></div></div>
+</section>
+<section class="lec-stage" id="s82">
+<h2><span class="lec-num">82</span>Каждый endpoint обязан иметь operationId</h2>
+<p class="lead">Тест проходит по всем операциям схемы и проверяет правило для каждой.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>tests/test_contract.py</b></div><pre><code>def test_every_operation_has_operation_id():
+    schema = app.openapi()
+    for path, method, operation in operations(schema):
+        assert operation.get(&quot;operationId&quot;), (
+            f&quot;{method.upper()} {path} has no operationId&quot;
+        )</code></pre></div><p class="note">Вспомогательная функция <code>operations()</code> в том же файле перебирает <code>schema["paths"]</code> и отбрасывает ключи, которые не являются HTTP-методами.</p></div><div class="stack"><ol class="chain "><li class="">OpenAPI paths</li><li class="">for each operation</li><li class="key">CHECK</li></ol><div class="text"><p>Так стандартизация превращается из просьбы «пожалуйста, не забудьте» в проверяемое требование. В учебном проекте девять таких тестов, включая сверку <code>openapi/openapi.json</code> с кодом.</p></div></div></div></div>
+</section>
+<section class="lec-stage" id="s83">
+<h2><span class="lec-num">83</span>Проверка выполняется до объединения изменений</h2>
+<p class="lead">GitHub Actions запускает проверки на каждый push и pull request.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block small"><div class="code-head"><b>.github/workflows/ci.yml (сокращено)</b></div><pre><code>name: API contract
+on:
+  push:
+  pull_request:
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: &quot;3.12&quot;
+      - run: pip install -r requirements.txt
+      - run: <span class="hl">pytest</span>
+      - run: <span class="hl">python scripts/export_openapi.py --check</span>
+      - uses: actions/setup-node@v4
+      - run: <span class="hl">npx --yes @stoplight/spectral-cli@6.16.3 lint openapi/openapi.yaml</span></code></pre></div></div><div class="stack"><ol class="chain compact"><li class="">Push / Pull request</li><li class="">GitHub</li><li class="">CI</li><li class="">Tests · export --check · Spectral</li><li class="">oasdiff · только в pull request</li><li class="key">PASS / FAIL</li></ol><p class="takeaway">Ошибочный API contract обнаруживается ещё до deployment.</p><details class="answer"><summary>Доказательство: первый прогон в репозитории учебного проекта</summary><div><figure class="shot "><div class="shot-bar"><b>github.com · MaximBytecamp/api-standard-template</b><span>СКРИНШОТ · 16.09.2026</span></div><button class="shot-view" aria-label="Увеличить кадр: github.com · MaximBytecamp/api-standard-template"><img src="../shots/g-actions-main-green.png" alt="Прогон ci.yml после push в main: job contract прошёл за 19 с, breaking-changes пропущен, потому что это не pull request. Логи шагов GitHub показывает только после входа." loading="lazy"></button><figcaption>Прогон ci.yml после push в main: job contract прошёл за 19 с, breaking-changes пропущен, потому что это не pull request. Логи шагов GitHub показывает только после входа. Клик — увеличить.</figcaption></figure></div></details></div></div></div>
+</section>
+<section class="lec-stage" id="s84">
+<h2><span class="lec-num">84</span>Документация должна показывать, какие операции защищены</h2>
+<p class="lead">Недостаточно написать в README «нужен токен». OpenAPI формально описывает security scheme.</p>
+<div class="slide-body"><div class="split wide-right"><div class="stack"><div class="text"><p>В нашем проекте write operations требуют Bearer token:</p></div><div class="table-wrap "><table><thead><tr><th>Токен</th><th>Чтение</th><th>Запись</th></tr></thead><tbody><tr><td>нет</td><td>да</td><td>401</td></tr><tr><td><code>demo-token</code></td><td>да</td><td>да</td></tr><tr><td><code>viewer-token</code></td><td>да</td><td>403</td></tr></tbody></table></div><ol class="chain compact"><li class="">Swagger UI · Authorize</li><li class="key">Bearer token</li><li class="">Protected operation</li></ol><p class="note">В production реальный механизм может использовать OAuth 2.0 / OpenID Connect: токен выдаёт сервер авторизации, а сервис проверяет его подпись и срок действия.</p></div><div class="stack"><figure class="shot "><div class="shot-bar"><b>Swagger UI · Authorize</b><span>СКРИНШОТ · 15.09.2026</span></div><button class="shot-view" aria-label="Увеличить кадр: Swagger UI · Authorize"><img src="../shots/84-swagger-authorize.png" alt="Окно Available authorizations: схема BearerAuth (http, Bearer) и поле для токена. Операции записи отмечены замком." loading="lazy"></button><figcaption>Окно Available authorizations: схема BearerAuth (http, Bearer) и поле для токена. Операции записи отмечены замком. Клик — увеличить.</figcaption></figure></div></div></div>
+</section>
+<section class="lec-stage" id="s85">
+<h2><span class="lec-num">85</span>Правильный Swagger ещё не делает API безопасным</h2>
+<p class="lead">OWASP API Security Top 10 описывает риски, характерные именно для API.</p>
+<div class="slide-body"><div class="split wide-right"><div class="stack"><div class="table-wrap "><table><thead><tr><th>Риск</th><th>Как выглядит в Service Desk</th></tr></thead><tbody><tr><td>Broken Object Level Authorization</td><td>сотрудник подставляет чужой <code>ticket_id</code> и читает чужое обращение</td></tr><tr><td>Broken Authentication</td><td>сервер принимает просроченный или поддельный токен</td></tr><tr><td>Broken Object Property Level Authorization</td><td>клиент меняет поле, которое ему менять нельзя</td></tr></tbody></table></div><p class="takeaway">Наличие <code>/docs</code> и OpenAPI schema не является доказательством безопасности API.</p></div><div class="stack"><figure class="shot "><div class="shot-bar"><b>github.com · OWASP/API-Security</b><span>СКРИНШОТ · 15.09.2026</span></div><button class="shot-view" aria-label="Увеличить кадр: github.com · OWASP/API-Security"><img src="../shots/85-owasp-api-top10.png" alt="OWASP Top 10 API Security Risks – 2023: первый риск — API1:2023 Broken Object Level Authorization." loading="lazy"></button><figcaption>OWASP Top 10 API Security Risks – 2023: первый риск — API1:2023 Broken Object Level Authorization. Клик — увеличить.</figcaption></figure></div></div></div>
+</section>
+<section class="lec-stage" id="s86">
+<h2><span class="lec-num">86</span>Теперь документация становится частью разработки</h2>
+<p class="lead">Итоговая цепочка: каждое звено проверяет предыдущее.</p>
+<div class="slide-body"><div class="split "><div class="stack"><ol class="chain compact travel"><li class="">API STYLE GUIDE</li><li class="">FASTAPI CODE</li><li class="key">OPENAPI SCHEMA</li><li class="">SWAGGER UI / REDOC</li><li class="">LINTER</li><li class="">CONTRACT TESTS</li><li class="">CI</li></ol></div><div class="stack"><div class="text"><p>Style guide задаёт правила. Код реализует контракт, из кода получается схема. По схеме строится документация, её проверяют линтер и тесты, а CI не даёт объединить изменение, которое нарушает правила.</p></div><p class="takeaway">API больше не является только набором функций Python.</p></div></div></div>
+</section>
+<nav class="lec-nav"><a class="lec-prev" href="09-versii.html">← Часть 9. Версии и изменения</a><a class="lec-next" href="11-standarty-kompaniy.html">Часть 11. Стандарты реальных команд →</a></nav>
+</div>
+</main>
+<footer class="lec-foot"><div class="lec-wrap">
+<p>Учебный проект темы: <a href="https://github.com/MaximBytecamp/api-standard-template">api-standard-template</a> · <a href="https://maximbytecamp.github.io/api-standard-template/">документация API</a> · <a href="../../../api-standard-template/docs/STANDARDS.md">источники правил с цитатами</a>.</p>
+<p class="lec-credits"><span>Стандартизация, сертификация и техническое документоведение · 4 курс</span><span>Макаров Максим Николаевич</span></p>
+</div></footer>
+<div id="toast" role="status" hidden></div>
+<dialog id="visual"><div class="dialog-head"><h2 id="visual-title">Кадр крупным планом</h2><button data-close aria-label="Закрыть изображение">✕</button></div><div id="visual-content"></div></dialog>
+</body></html>

@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#172335">
+<meta name="description" content="Контракт спроектирован. Теперь его нужно записать так, чтобы документ не разошёлся с кодом.">
+<title>Часть 6. OpenAPI · API как контракт</title>
+<link rel="stylesheet" href="lecture.css">
+<script defer src="../interactive.js"></script><script defer src="lecture.js"></script></head>
+<body class="lec" style="--c:#177f80"><a class="skip" href="#main">К тексту части</a>
+<header class="lec-top">
+<a class="lec-brand" href="../../../index.html"><b>API</b><span>Стандартизация<br>тема 1</span></a>
+<nav class="lec-gauge" aria-label="Части темы"><a href="01-chto-standartiziruem.html" style="--c:#2d6fd0"  title="Часть 1. Что стандартизируем"><span>1</span></a><a href="02-zapros-otvet-resurs.html" style="--c:#2a72c4"  title="Часть 2. Запрос, ответ, ресурс"><span>2</span></a><a href="03-rest.html" style="--c:#2575b8"  title="Часть 3. Архитектурный стиль REST"><span>3</span></a><a href="04-pravila-http-api.html" style="--c:#1f7aa6"  title="Часть 4. Правила HTTP API"><span>4</span></a><a href="05-praktika-kontrakt.html" style="--c:#1a7d93"  title="Часть 5. Практика: контракт"><span>5</span></a><a href="06-openapi.html" style="--c:#177f80" aria-current="page" title="Часть 6. OpenAPI"><span>6</span></a><a href="07-fastapi-dokumentaciya.html" style="--c:#1a7f6b"  title="Часть 7. FastAPI и документация"><span>7</span></a><a href="08-oshibki.html" style="--c:#2b7d57"  title="Часть 8. Единый формат ошибок"><span>8</span></a><a href="09-versii.html" style="--c:#4a7a45"  title="Часть 9. Версии и изменения"><span>9</span></a><a href="10-standart-i-proverka.html" style="--c:#6d7340"  title="Часть 10. Стандарт и его проверка"><span>10</span></a><a href="11-standarty-kompaniy.html" style="--c:#8a6a3d"  title="Часть 11. Стандарты реальных команд"><span>11</span></a><a href="12-repozitoriy-api.html" style="--c:#97583f"  title="Часть 12. Репозиторий API на GitHub"><span>12</span></a><a href="13-zagolovki-sovmestimost.html" style="--c:#8f4550"  title="Часть 13. Заголовки и совместимость"><span>13</span></a><a href="14-prakticheskaya-rabota.html" style="--c:#7a3a5d"  title="Часть 14. Практическая работа"><span>14</span></a><a href="15-itog.html" style="--c:#5c3159"  title="Часть 15. Итог темы"><span>15</span></a></nav>
+<a class="lec-mode" href="../index.html#37" title="Те же материалы слайдами для показа на проекторе">Открыть слайдами →</a>
+</header>
+<main id="main">
+<section class="lec-hero"><div class="lec-wrap">
+<p class="lec-kicker">Часть 6 из 15 · слайды 37–53</p>
+<h1>OpenAPI</h1>
+<p class="lec-bridge">Контракт спроектирован. Теперь его нужно записать так, чтобы документ не разошёлся с кодом.</p>
+<ol class="lec-toc"><li><a href="#s37"><span>37</span>README может перестать соответствовать коду</a></li><li><a href="#s38"><span>38</span>Машиночитаемое описание HTTP API</a></li><li><a href="#s39"><span>39</span>OpenAPI 3.2 и OpenAPI 3.1 — не одно и то же</a></li><li><a href="#s40"><span>40</span>Swagger и OpenAPI нельзя считать синонимами</a></li><li><a href="#s41"><span>41</span>Что входит в экосистему Swagger</a></li><li><a href="#s42"><span>42</span>OpenAPI document имеет стандартную структуру</a></li><li><a href="#s43"><span>43</span>API должно представиться</a></li><li><a href="#s44"><span>44</span>Где доступен API</a></li><li><a href="#s45"><span>45</span>Endpoints необходимо группировать</a></li><li><a href="#s46"><span>46</span>paths описывает ресурсы</a></li><li><a href="#s47"><span>47</span>Каждый method внутри path — отдельная operation</a></li><li><a href="#s48"><span>48</span>OpenAPI различает расположение параметров</a></li><li><a href="#s49"><span>49</span>Body тоже имеет формальную схему</a></li><li><a href="#s50"><span>50</span>Документируется не только успешный ответ</a></li><li><a href="#s51"><span>51</span>Повторяющиеся схемы следует переиспользовать</a></li><li><a href="#s52"><span>52</span>Механизм авторизации должен быть описан</a></li><li><a href="#s53"><span>53</span>Схема отвечает «что допустимо», example — «как это выглядит»</a></li></ol>
+</div></section>
+<div class="lec-wrap lec-page">
+<section class="lec-stage" id="s37">
+<h2><span class="lec-num">37</span>README может перестать соответствовать коду</h2>
+<p class="lead">Документация, которую пишут вручную, отстаёт от кода при первом же изменении, о котором забыли.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="text"><p>Документация говорит, что <code>POST /tickets</code> принимает:</p></div><div class="code-block "><div class="code-head"><b>README.md</b></div><pre><code>{
+  &quot;title&quot;: &quot;...&quot;
+}</code></pre></div><div class="text"><p>Разработчик добавляет обязательное поле <code>description</code>, но README не обновляет. Клиенты отправляют запрос по документации и получают <code>422</code>.</p></div></div><div class="stack"><div class="card bad"><small>результат</small><h3 class="big">CODE ≠ DOCUMENTATION</h3><p>Такое состояние называется <strong>API documentation drift</strong> — расхождение документации и реализации.</p></div><ol class="chain "><li class="">CODE<small>description обязателен</small></li><li class="key">mismatch</li><li class="">DOCS<small>только title</small></li></ol></div></div></div>
+</section>
+<section class="lec-stage" id="s38">
+<h2><span class="lec-num">38</span>Машиночитаемое описание HTTP API</h2>
+<p class="lead">OpenAPI Specification определяет стандартный формат описания HTTP API.</p>
+<div class="slide-body"><div class="split wide-right"><div class="stack"><div class="text"><p>В документе OpenAPI можно описать:</p></div><ul class="list cols"><li>endpoints и operations;</li><li>parameters;</li><li>request bodies;</li><li>responses;</li><li>schemas;</li><li>authentication;</li><li>metadata.</li></ul><p class="takeaway">OpenAPI предназначен одновременно для людей и программ: по нему строится документация, генерируется клиентский код и проверяются запросы.</p></div><div class="stack"><figure class="shot "><div class="shot-bar"><b>spec.openapis.org · OAS 3.2.0</b><span>СКРИНШОТ · 15.09.2026</span></div><button class="shot-view" aria-label="Увеличить кадр: spec.openapis.org · OAS 3.2.0"><img src="../shots/38-openapi-specification.png" alt="OpenAPI Specification v3.2.0: определение — «programming language-agnostic interface description for HTTP APIs»." loading="lazy"></button><figcaption>OpenAPI Specification v3.2.0: определение — «programming language-agnostic interface description for HTTP APIs». Клик — увеличить.</figcaption></figure></div></div></div>
+</section>
+<section class="lec-stage" id="s39">
+<h2><span class="lec-num">39</span>OpenAPI 3.2 и OpenAPI 3.1 — не одно и то же</h2>
+<p class="lead">Спецификация развивается, а фреймворки поддерживают её редакции с задержкой.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="versions" style="grid-template-columns:1fr 1fr"><div><small>последняя редакция OAS</small><strong>3.2.1</strong><p>опубликована 10 сентября 2026 года</p></div><div><small>генерирует FastAPI 0.115</small><strong>3.1.0</strong><p>поле <code>openapi</code> в <code>/openapi.json</code></p></div></div><div class="text"><p>Минорная версия 3.2 вышла 19 сентября 2025 года (3.2.0), а 10 сентября 2026 года опубликовано исправление 3.2.1. При этом FastAPI по умолчанию генерирует:</p></div><div class="code-block "><pre><code>{
+  &quot;openapi&quot;: &quot;3.1.0&quot;
+}</code></pre></div><p class="takeaway">Это не означает, что API «неправильный». Framework может поддерживать не самую новую опубликованную версию спецификации.</p></div><div class="stack"><figure class="shot "><div class="shot-bar"><b>spec.openapis.org · latest</b><span>СКРИНШОТ · 15.09.2026</span></div><button class="shot-view" aria-label="Увеличить кадр: spec.openapis.org · latest"><img src="../shots/38b-openapi-latest.png" alt="Страница последней редакции: OpenAPI Specification v3.2.1, Published 10 September 2026." loading="lazy"></button><figcaption>Страница последней редакции: OpenAPI Specification v3.2.1, Published 10 September 2026. Клик — увеличить.</figcaption></figure></div></div></div>
+</section>
+<section class="lec-stage" id="s40">
+<h2><span class="lec-num">40</span>Swagger и OpenAPI нельзя считать синонимами</h2>
+<p class="lead">Путаница историческая: до 2016 года спецификация называлась Swagger Specification.</p>
+<div class="slide-body"><div class="cards two"><article class="card accent"><small>формат</small><h3>OpenAPI Specification</h3><p>Стандарт описания API. Развивается OpenAPI Initiative. Файл <code>openapi.json</code> или <code>openapi.yaml</code> — документ в этом формате.</p></article><article class="card good"><small>инструменты</small><h3>Swagger</h3><p>Набор инструментов компании SmartBear, которые работают с документами OpenAPI: редактор, интерфейс документации, генераторы кода.</p></article></div><p class="takeaway">Документация Swagger прямо разделяет эти понятия: OpenAPI — спецификация, Swagger — инструменты для работы с ней.</p></div>
+</section>
+<section class="lec-stage" id="s41">
+<h2><span class="lec-num">41</span>Что входит в экосистему Swagger</h2>
+<p class="lead">Каждый инструмент решает свою задачу, и все читают один и тот же документ OpenAPI.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="table-wrap "><table><thead><tr><th>Инструмент</th><th>Назначение</th></tr></thead><tbody><tr><td>Swagger Editor</td><td>редактирование описания с проверкой в реальном времени</td></tr><tr><td><strong>Swagger UI</strong></td><td>интерактивная документация в браузере</td></tr><tr><td>Swagger Codegen</td><td>генерация клиентов и заготовок сервера</td></tr><tr><td>Swagger Core</td><td>получение описания из Java-кода</td></tr><tr><td>Swagger Parser</td><td>разбор и валидация документа OpenAPI</td></tr></tbody></table></div><p class="note">Для нашего занятия особенно важен Swagger UI: он читает OpenAPI schema и строит страницу, с которой можно отправлять запросы.</p></div><div class="stack"><ol class="chain "><li class="">openapi.json</li><li class="key">Swagger UI</li><li class="">interactive documentation</li></ol></div></div></div>
+</section>
+<section class="lec-stage" id="s42">
+<h2><span class="lec-num">42</span>OpenAPI document имеет стандартную структуру</h2>
+<p class="lead">Каждая часть верхнего уровня отвечает за отдельный слой API contract.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>упрощённо</b></div><pre><code>openapi:
+info:
+servers:
+tags:
+paths:
+components:
+security:</code></pre></div></div><div class="stack"><div class="table-wrap "><table><thead><tr><th>Раздел</th><th>Что описывает</th></tr></thead><tbody><tr><td><code>openapi</code></td><td>редакцию спецификации</td></tr><tr><td><code>info</code></td><td>название, версию, владельца API</td></tr><tr><td><code>servers</code></td><td>адреса, где API доступен</td></tr><tr><td><code>tags</code></td><td>группы операций</td></tr><tr><td><code>paths</code></td><td>адреса и операции</td></tr><tr><td><code>components</code></td><td>переиспользуемые схемы</td></tr><tr><td><code>security</code></td><td>требования аутентификации</td></tr></tbody></table></div><p class="note">Далее разбираем разделы по отдельности.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s43">
+<h2><span class="lec-num">43</span>API должно представиться</h2>
+<p class="lead">Раздел info отвечает на вопросы, что это за API, какая версия контракта и кто его поддерживает.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>openapi.yaml</b></div><pre><code>info:
+  <span class="hl">title</span>: Service Desk API
+  <span class="hl">version</span>: 1.0.0
+  <span class="hl">description</span>: API для работы с обращениями
+  <span class="hl">contact</span>:
+    name: API Team</code></pre></div></div><div class="stack"><div class="table-wrap "><table><thead><tr><th>Поле</th><th>Отвечает на вопрос</th></tr></thead><tbody><tr><td>title</td><td>что это за API</td></tr><tr><td>version</td><td>какая версия контракта</td></tr><tr><td>description</td><td>для чего он нужен</td></tr><tr><td>contact</td><td>кто его поддерживает</td></tr></tbody></table></div><p class="note">Zalando API Guidelines требуют указывать в спецификации title, version, description и контакты владельца API.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s44">
+<h2><span class="lec-num">44</span>Где доступен API</h2>
+<p class="lead">В OpenAPI можно зафиксировать адреса серверов.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>openapi.yaml</b></div><pre><code>servers:
+  - url: https://api.example.com/api/v1
+    description: Production
+
+  - url: https://stage-api.example.com/api/v1
+    description: Staging</code></pre></div></div><div class="stack"><pre class="tree"><b>OPENAPI</b>
+├─ Production
+└─ Staging</pre><div class="text"><p>Это особенно важно при разделении production и test environments: Swagger UI покажет список серверов, и тестовый запрос не уйдёт случайно в боевую систему.</p></div></div></div></div>
+</section>
+<section class="lec-stage" id="s45">
+<h2><span class="lec-num">45</span>Endpoints необходимо группировать</h2>
+<p class="lead">Большой API нельзя оставлять одной длинной лентой операций.</p>
+<div class="slide-body"><div class="split wide-right"><div class="stack"><div class="text"><p>Группы называются по предметной области:</p></div><div class="code-block "><pre><code>Tickets
+Users
+Authentication
+Reports</code></pre></div><div class="text"><p>В FastAPI группа задаётся параметром <code>tags</code> роутера:</p></div><div class="code-block "><div class="code-head"><b>app/api/v1/endpoints/tickets.py</b></div><pre><code>router = APIRouter(
+    prefix=&quot;/tickets&quot;,
+    <span class="hl">tags=[&quot;Tickets&quot;]</span>,
+)</code></pre></div></div><div class="stack"><figure class="shot "><div class="shot-bar"><b>Swagger UI · /docs</b><span>СКРИНШОТ · 15.09.2026</span></div><button class="shot-view" aria-label="Увеличить кадр: Swagger UI · /docs"><img src="../shots/45-swagger-tags.png" alt="Swagger UI группирует операции по tag: заголовок группы Tickets с описанием из openapi_tags." loading="lazy"></button><figcaption>Swagger UI группирует операции по tag: заголовок группы Tickets с описанием из openapi_tags. Клик — увеличить.</figcaption></figure></div></div></div>
+</section>
+<section class="lec-stage" id="s46">
+<h2><span class="lec-num">46</span>paths описывает ресурсы</h2>
+<p class="lead">Раздел paths перечисляет адреса, а внутри каждого адреса — допустимые методы.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>openapi.yaml</b></div><pre><code>paths:
+  /tickets:
+    get:
+    post:
+
+  /tickets/{ticket_id}:
+    get:
+    patch:
+    delete:</code></pre></div></div><div class="stack"><pre class="tree"><b>paths</b>
+├── /tickets
+│   ├── GET
+│   └── POST
+└── /tickets/{ticket_id}
+    ├── GET
+    ├── PATCH
+    └── DELETE</pre><p class="note">По <code>paths</code> видна вся структура HTTP interface: какие ресурсы есть и что с каждым можно сделать.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s47">
+<h2><span class="lec-num">47</span>Каждый method внутри path — отдельная operation</h2>
+<p class="lead">Operation — это описание одного метода на одном адресе.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>operation</b></div><pre><code>post:
+  summary: Создать обращение
+  description: Регистрирует новое обращение
+  <span class="hl">operationId: createTicket</span>
+  tags: [Tickets]
+  parameters: []
+  requestBody: ...
+  responses: ...</code></pre></div></div><div class="stack"><div class="table-wrap "><table><thead><tr><th>Поле</th><th>Назначение</th></tr></thead><tbody><tr><td>summary</td><td>короткое название в списке</td></tr><tr><td>description</td><td>подробное объяснение</td></tr><tr><td>operationId</td><td>уникальный идентификатор операции</td></tr><tr><td>tags</td><td>группа</td></tr><tr><td>parameters</td><td>параметры пути, query, заголовков</td></tr><tr><td>requestBody</td><td>тело запроса</td></tr><tr><td>responses</td><td>возможные ответы</td></tr></tbody></table></div><p class="note"><code>operationId</code> должен быть уникальным и желательно стабильным: генераторы SDK превращают его в имя метода, например <code>client.createTicket()</code>.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s48">
+<h2><span class="lec-num">48</span>OpenAPI различает расположение параметров</h2>
+<p class="lead">Параметр может находиться в одном из четырёх мест HTTP-запроса. Поле in указывает, в каком.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>HTTP request</b></div><pre><code>GET /api/v1/tickets/<span class="hl">{ticket_id}</span>?<span class="hl">limit=20</span>
+<span class="hl">Authorization: Bearer TOKEN</span>
+<span class="hl">Cookie: session=abc</span></code></pre></div></div><div class="stack"><div class="table-wrap "><table><thead><tr><th>in</th><th>Пример</th></tr></thead><tbody><tr><td><code>path</code></td><td><code>ticket_id</code></td></tr><tr><td><code>query</code></td><td><code>limit</code></td></tr><tr><td><code>header</code></td><td><code>Authorization</code> — в OpenAPI описывается через security</td></tr><tr><td><code>cookie</code></td><td><code>session</code></td></tr></tbody></table></div><p class="note">Зная место параметра, Swagger UI и сгенерированные клиенты сами собирают правильный запрос.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s49">
+<h2><span class="lec-num">49</span>Body тоже имеет формальную схему</h2>
+<p class="lead">Для POST /tickets контракт описывает, какое тело клиент обязан прислать.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>POST /tickets</b></div><pre><code>{
+  &quot;title&quot;: &quot;Не работает VPN&quot;,
+  &quot;description&quot;: &quot;Ошибка подключения&quot;
+}</code></pre></div><div class="text"><p>OpenAPI описывает:</p></div><ul class="list cols"><li>media type;</li><li>schema;</li><li>required fields;</li><li>types;</li><li>validation;</li><li>examples.</li></ul></div><div class="stack"><ol class="chain "><li class="">requestBody</li><li class="">application/json</li><li class="key">TicketCreate<small>схема в components</small></li></ol><p class="note">В учебном проекте <code>title</code> обязателен и содержит от 3 до 120 символов. Запрос без него получит <code>422</code> ещё до вызова функции.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s50">
+<h2><span class="lec-num">50</span>Документируется не только успешный ответ</h2>
+<p class="lead">Клиенту нужно знать все ответы, которые он может получить, иначе он не напишет их обработку.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="text"><p>Для <code>GET /tickets/{ticket_id}</code> недостаточно описать только <code>200</code>. Контракт должен учитывать:</p></div><div class="status-grid"><div class="status undefined"><b>200</b><span>OK</span></div><div class="status undefined"><b>404</b><span>Not Found</span></div><div class="status undefined"><b>422</b><span>Validation Error</span></div></div><div class="text"><p>Для защищённого endpoint также:</p></div><div class="status-grid"><div class="status undefined"><b>401</b><span>Unauthorized</span></div><div class="status undefined"><b>403</b><span>Forbidden</span></div></div></div><div class="stack"><pre class="tree"><b>REQUEST</b>
+├─ 200
+├─ 401
+├─ 404
+└─ 422</pre></div></div></div>
+</section>
+<section class="lec-stage" id="s51">
+<h2><span class="lec-num">51</span>Повторяющиеся схемы следует переиспользовать</h2>
+<p class="lead">Вместо копирования одной модели во все operations OpenAPI позволяет создать reusable components.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>openapi.yaml</b></div><pre><code>components:
+  schemas:
+    Ticket:
+    TicketCreate:
+    TicketUpdate:
+    ProblemDetails:</code></pre></div><div class="code-block "><div class="code-head"><b>operation</b></div><pre><code>responses:
+  &quot;200&quot;:
+    content:
+      application/json:
+        schema:
+          <span class="hl">$ref: &quot;#/components/schemas/Ticket&quot;</span></code></pre></div></div><div class="stack"><ol class="chain "><li class="">GET · POST · PATCH</li><li class="key">$ref</li><li class="">Ticket schema<small>описана один раз</small></li></ol><p class="note">Если в <code>Ticket</code> появится поле, оно сразу окажется во всех ответах, которые на неё ссылаются.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s52">
+<h2><span class="lec-num">52</span>Механизм авторизации должен быть описан</h2>
+<p class="lead">Схема безопасности объявляется один раз в components и подключается к операциям.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>Bearer authentication</b></div><pre><code>components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer</code></pre></div><div class="text"><p>После этого документация показывает кнопку <strong>Authorize</strong>, и Swagger UI сам передаёт заголовок <code>Authorization</code> в запросах.</p></div><p class="note">Zalando API Guidelines показывают Bearer security scheme в OpenAPI как основной способ защиты endpoints.</p></div><div class="stack"><ol class="chain "><li class="">CLIENT</li><li class="key">Authorization: Bearer TOKEN</li><li class="">API</li></ol></div></div></div>
+</section>
+<section class="lec-stage" id="s53">
+<h2><span class="lec-num">53</span>Схема отвечает «что допустимо», example — «как это выглядит»</h2>
+<p class="lead">Описание типа полезно, но пример с настоящими данными понимается быстрее.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="code-block "><div class="code-head"><b>schema</b></div><pre><code>title:
+  type: string
+  minLength: 3</code></pre></div><div class="code-block "><div class="code-head"><b>example</b></div><pre><code>{
+  &quot;title&quot;: &quot;Не работает VPN&quot;
+}</code></pre></div></div><div class="stack"><div class="table-wrap "><table><thead><tr><th>Schema</th><th>Example</th></tr></thead><tbody><tr><td>string</td><td>"Не работает VPN"</td></tr><tr><td>string, format: date-time</td><td>"2026-09-15T17:30:00Z"</td></tr><tr><td>enum: open, in_progress, closed</td><td>"open"</td></tr></tbody></table></div><p class="takeaway">Хороший контракт содержит реальные и осмысленные examples, а не <code>"string"</code> в каждом поле.</p></div></div></div>
+</section>
+<nav class="lec-nav"><a class="lec-prev" href="05-praktika-kontrakt.html">← Часть 5. Практика: контракт</a><a class="lec-next" href="07-fastapi-dokumentaciya.html">Часть 7. FastAPI и документация →</a></nav>
+</div>
+</main>
+<footer class="lec-foot"><div class="lec-wrap">
+<p>Учебный проект темы: <a href="https://github.com/MaximBytecamp/api-standard-template">api-standard-template</a> · <a href="https://maximbytecamp.github.io/api-standard-template/">документация API</a> · <a href="../../../api-standard-template/docs/STANDARDS.md">источники правил с цитатами</a>.</p>
+<p class="lec-credits"><span>Стандартизация, сертификация и техническое документоведение · 4 курс</span><span>Макаров Максим Николаевич</span></p>
+</div></footer>
+<div id="toast" role="status" hidden></div>
+<dialog id="visual"><div class="dialog-head"><h2 id="visual-title">Кадр крупным планом</h2><button data-close aria-label="Закрыть изображение">✕</button></div><div id="visual-content"></div></dialog>
+</body></html>

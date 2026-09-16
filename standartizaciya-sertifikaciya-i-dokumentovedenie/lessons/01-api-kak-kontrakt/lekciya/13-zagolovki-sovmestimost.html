@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#172335">
+<meta name="description" content="Репозиторий оформлен. Остались правила, которые клиент видит в каждом ответе: заголовки версии, лимитов и совместимости.">
+<title>Часть 13. Заголовки и совместимость · API как контракт</title>
+<link rel="stylesheet" href="lecture.css">
+<script defer src="../interactive.js"></script><script defer src="lecture.js"></script></head>
+<body class="lec" style="--c:#8f4550"><a class="skip" href="#main">К тексту части</a>
+<header class="lec-top">
+<a class="lec-brand" href="../../../index.html"><b>API</b><span>Стандартизация<br>тема 1</span></a>
+<nav class="lec-gauge" aria-label="Части темы"><a href="01-chto-standartiziruem.html" style="--c:#2d6fd0"  title="Часть 1. Что стандартизируем"><span>1</span></a><a href="02-zapros-otvet-resurs.html" style="--c:#2a72c4"  title="Часть 2. Запрос, ответ, ресурс"><span>2</span></a><a href="03-rest.html" style="--c:#2575b8"  title="Часть 3. Архитектурный стиль REST"><span>3</span></a><a href="04-pravila-http-api.html" style="--c:#1f7aa6"  title="Часть 4. Правила HTTP API"><span>4</span></a><a href="05-praktika-kontrakt.html" style="--c:#1a7d93"  title="Часть 5. Практика: контракт"><span>5</span></a><a href="06-openapi.html" style="--c:#177f80"  title="Часть 6. OpenAPI"><span>6</span></a><a href="07-fastapi-dokumentaciya.html" style="--c:#1a7f6b"  title="Часть 7. FastAPI и документация"><span>7</span></a><a href="08-oshibki.html" style="--c:#2b7d57"  title="Часть 8. Единый формат ошибок"><span>8</span></a><a href="09-versii.html" style="--c:#4a7a45"  title="Часть 9. Версии и изменения"><span>9</span></a><a href="10-standart-i-proverka.html" style="--c:#6d7340"  title="Часть 10. Стандарт и его проверка"><span>10</span></a><a href="11-standarty-kompaniy.html" style="--c:#8a6a3d"  title="Часть 11. Стандарты реальных команд"><span>11</span></a><a href="12-repozitoriy-api.html" style="--c:#97583f"  title="Часть 12. Репозиторий API на GitHub"><span>12</span></a><a href="13-zagolovki-sovmestimost.html" style="--c:#8f4550" aria-current="page" title="Часть 13. Заголовки и совместимость"><span>13</span></a><a href="14-prakticheskaya-rabota.html" style="--c:#7a3a5d"  title="Часть 14. Практическая работа"><span>14</span></a><a href="15-itog.html" style="--c:#5c3159"  title="Часть 15. Итог темы"><span>15</span></a></nav>
+<a class="lec-mode" href="../index.html#104" title="Те же материалы слайдами для показа на проекторе">Открыть слайдами →</a>
+</header>
+<main id="main">
+<section class="lec-hero"><div class="lec-wrap">
+<p class="lec-kicker">Часть 13 из 15 · слайды 104–113</p>
+<h1>Заголовки и совместимость</h1>
+<p class="lec-bridge">Репозиторий оформлен. Остались правила, которые клиент видит в каждом ответе: заголовки версии, лимитов и совместимости.</p>
+<ol class="lec-toc"><li><a href="#s104"><span>104</span>Совместимость каждая компания определяет сама</a></li><li><a href="#s105"><span>105</span>Четыре места для версии API</a></li><li><a href="#s106"><span>106</span>Deprecation и Sunset в каждом ответе</a></li><li><a href="#s107"><span>107</span>429: одинаковое имя заголовка — разный смысл</a></li><li><a href="#s108"><span>108</span>ETag и If-Match: не потерять чужую правку</a></li><li><a href="#s109"><span>109</span>Idempotency-Key: распространённая практика без стандарта</a></li><li><a href="#s110"><span>110</span>Идентификатор запроса: имя выбирает компания</a></li><li><a href="#s111"><span>111</span>CORS: заголовок пришёл, а скрипт его не видит</a></li><li><a href="#s112"><span>112</span>OAuth 2.0 описывают вместе с сервером авторизации</a></li><li><a href="#s113"><span>113</span>Что изменилось в учебном API 1.1.0</a></li></ol>
+</div></section>
+<div class="lec-wrap lec-page">
+<section class="lec-stage" id="s104">
+<h2><span class="lec-num">104</span>Совместимость каждая компания определяет сама</h2>
+<p class="lead">Одно и то же изменение — новое поле в ответе — GitHub считает совместимым, а Azure нет.</p>
+<div class="slide-body"><div class="split wide-right"><div class="stack"><figure class="quote"><blockquote lang="en">Breaking changes are changes that can potentially break an integration.</blockquote><p class="ru"><b>Перевод:</b> breaking changes — это изменения, которые потенциально могут сломать интеграцию.</p><figcaption><a href="https://docs.github.com/en/rest/about-the-rest-api/api-versions" target="_blank" rel="noopener noreferrer">GitHub Docs · API Versions ↗</a></figcaption></figure><div class="text"><p>В списке совместимых изменений GitHub есть «Adding a response field» — добавление поля в ответ.</p></div><figure class="quote"><blockquote lang="en">Teams MAY define backwards compatibility as their business needs require. For example, Azure defines the addition of a new JSON field in a response to be not backwards compatible.</blockquote><p class="ru"><b>Перевод:</b> команды MAY определять обратную совместимость так, как требует их бизнес. Например, Azure считает добавление нового поля JSON в ответ обратно несовместимым изменением.</p><figcaption><a href="https://github.com/Azure/azure-rest-api-specs/blob/main/documentation/Breaking%20changes%20guidelines.md" target="_blank" rel="noopener noreferrer">Azure REST API Specs · Breaking changes guidelines ↗</a></figcaption></figure></div><div class="stack"><figure class="shot compact"><div class="shot-bar"><b>github.com · Azure/azure-rest-api-specs</b><span>СКРИНШОТ · 16.09.2026</span></div><button class="shot-view" aria-label="Увеличить кадр: github.com · Azure/azure-rest-api-specs"><img src="../shots/e-azure-new-field-breaking.png" alt="Документ Azure о breaking changes: добавление нового поля в ответ названо несовместимым. Документ помечен как устаревший и ссылается на актуальную политику." loading="lazy"></button><figcaption>Документ Azure о breaking changes: добавление нового поля в ответ названо несовместимым. Документ помечен как устаревший и ссылается на актуальную политику. Клик — увеличить.</figcaption></figure><p class="note">Поэтому политика совместимости записывается явно. В учебном проекте принято правило GitHub, и клиенты обязаны игнорировать неизвестные поля: <code>docs/VERSIONING.md</code>. Список breaking changes GitHub разобран на слайде 69.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s105">
+<h2><span class="lec-num">105</span>Четыре места для версии API</h2>
+<p class="lead">Слайд 71 показал версию в пути. У Microsoft внутри одной компании два разных решения.</p>
+<div class="slide-body"><div class="split wide-right"><div class="stack"><div class="table-wrap "><table><thead><tr><th>Кто</th><th>Где версия</th><th>Пример</th></tr></thead><tbody><tr><td><a href="https://docs.github.com/en/rest/about-the-rest-api/api-versions" target="_blank" rel="noopener noreferrer">GitHub ↗</a></td><td>заголовок, версия названа датой</td><td><code>X-GitHub-Api-Version: 2026-03-10</code></td></tr><tr><td><a href="https://github.com/microsoft/api-guidelines/blob/vNext/graph/GuidelinesGraph.md" target="_blank" rel="noopener noreferrer">Microsoft Graph ↗</a></td><td>путь</td><td><code>/v1.0/users</code>, <code>/beta/users</code></td></tr><tr><td><a href="https://github.com/microsoft/api-guidelines/blob/vNext/azure/Guidelines.md" target="_blank" rel="noopener noreferrer">Azure ↗</a></td><td>query-параметр</td><td><code>?api-version=2024-05-01</code></td></tr><tr><td><a href="https://github.com/box/box-openapi/tree/main/openapi" target="_blank" rel="noopener noreferrer">Box ↗</a></td><td>отдельный файл описания на версию</td><td><code>openapi-v2025.0.json</code></td></tr><tr><td>Учебный проект</td><td>путь</td><td><code>/api/v1/tickets</code></td></tr></tbody></table></div><figure class="quote"><blockquote lang="en">`version` can be v1.0 or beta.</blockquote><p class="ru"><b>Перевод:</b> сегмент <code>version</code> может быть v1.0 или beta.</p><figcaption><a href="https://github.com/microsoft/api-guidelines/blob/vNext/graph/GuidelinesGraph.md" target="_blank" rel="noopener noreferrer">Microsoft Graph REST API Guidelines ↗</a></figcaption></figure><figure class="quote"><blockquote lang="en">The api-version query parameter (?api-version=) is required for all requests</blockquote><p class="ru"><b>Перевод:</b> query-параметр api-version обязателен во всех запросах.</p><figcaption><a href="https://github.com/microsoft/api-guidelines/blob/vNext/azure/Guidelines.md" target="_blank" rel="noopener noreferrer">Azure REST API Guidelines · текст ошибки, который требуется возвращать ↗</a></figcaption></figure></div><div class="stack"><figure class="shot compact"><div class="shot-bar"><b>github.com · microsoft/api-guidelines</b><span>СКРИНШОТ · 16.09.2026</span></div><button class="shot-view" aria-label="Увеличить кадр: github.com · microsoft/api-guidelines"><img src="../shots/e-graph-versioning.png" alt="GuidelinesGraph.md, строки 134–138, подсвечены GitHub по ссылке на строки: структура URL и «`version` can be v1.0 or beta»." loading="lazy"></button><figcaption>GuidelinesGraph.md, строки 134–138, подсвечены GitHub по ссылке на строки: структура URL и «`version` can be v1.0 or beta». Клик — увеличить.</figcaption></figure></div></div></div>
+</section>
+<section class="lec-stage" id="s106">
+<h2><span class="lec-num">106</span>Deprecation и Sunset в каждом ответе</h2>
+<p class="lead">Пометку deprecated в OpenAPI увидит тот, кто читает документацию. Заголовок в ответе увидит программа, которая всё ещё вызывает устаревшую операцию.</p>
+<div class="slide-body"><div class="split wide-right"><div class="stack"><figure class="quote"><blockquote lang="en">During the deprecation phase, the producer should add a Deprecation: &lt;timestamp&gt; (see RFC 9745 section 2) and - if also planned - a Sunset: &lt;date-time&gt; (see RFC 8594 section 3) header on each response affected by a deprecated element</blockquote><p class="ru"><b>Перевод:</b> на этапе устаревания владелец API должен добавлять заголовок Deprecation со временем (RFC 9745, раздел 2) и, если отключение запланировано, заголовок Sunset с датой (RFC 8594, раздел 3) в каждый ответ, который затрагивает устаревший элемент.</p><figcaption><a href="https://opensource.zalando.com/restful-api-guidelines/#189" target="_blank" rel="noopener noreferrer">Zalando · правило 189 ↗</a></figcaption></figure><div class="code-block small"><div class="code-head"><b>настоящий ответ учебного API</b></div><pre><code>GET /api/v1/tickets/open?limit=1
+
+HTTP/1.1 200
+deprecation: @1789516800
+sunset: Mon, 01 Mar 2027 00:00:00 GMT</code></pre></div><div class="table-wrap "><table><thead><tr><th>Заголовок</th><th>Документ</th><th>Статус</th></tr></thead><tbody><tr><td><code>Deprecation</code></td><td><a href="https://www.rfc-editor.org/rfc/rfc9745.html" target="_blank" rel="noopener noreferrer">RFC 9745 ↗</a></td><td><span class="status-tag std">Standards Track</span></td></tr><tr><td><code>Sunset</code></td><td><a href="https://www.rfc-editor.org/rfc/rfc8594.html" target="_blank" rel="noopener noreferrer">RFC 8594 ↗</a></td><td><span class="status-tag">Informational</span></td></tr></tbody></table></div></div><div class="stack"><figure class="shot compact"><div class="shot-bar"><b>Swagger UI · listOpenTickets</b><span>СКРИНШОТ · 16.09.2026</span></div><button class="shot-view" aria-label="Увеличить кадр: Swagger UI · listOpenTickets"><img src="../shots/e-swagger-deprecated.png" alt="Устаревшая операция: путь зачёркнут, в ответе 200 описаны заголовки Deprecation и Sunset." loading="lazy"></button><figcaption>Устаревшая операция: путь зачёркнут, в ответе 200 описаны заголовки Deprecation и Sunset. Клик — увеличить.</figcaption></figure></div></div></div>
+</section>
+<section class="lec-stage" id="s107">
+<h2><span class="lec-num">107</span>429: одинаковое имя заголовка — разный смысл</h2>
+<p class="lead">Код 429 и Retry-After определены в RFC. Заголовки X-RateLimit-* стандартом не являются, и компании понимают их по-разному.</p>
+<div class="slide-body"><div class="split "><div class="stack"><figure class="quote"><blockquote lang="en">The response representations SHOULD include details explaining the condition, and MAY include a Retry-After header indicating how long to wait before making a new request.</blockquote><p class="ru"><b>Перевод:</b> ответ SHOULD объяснять причину и MAY содержать заголовок Retry-After, который показывает, сколько ждать перед новым запросом.</p><figcaption><a href="https://www.rfc-editor.org/rfc/rfc6585.html#section-4" target="_blank" rel="noopener noreferrer">RFC 6585 · раздел 4 · Standards Track ↗</a></figcaption></figure><figure class="quote"><blockquote lang="en">X-RateLimit-Reset: The relative time in seconds when the rate limit window will be reset. Beware that this is different to Github and Twitter’s usage of a header with the same name which is using UTC epoch seconds instead.</blockquote><p class="ru"><b>Перевод:</b> X-RateLimit-Reset — относительное время в секундах до сброса окна лимита. Учтите, что GitHub и Twitter используют заголовок с тем же именем иначе: там время в секундах UTC epoch.</p><figcaption><a href="https://opensource.zalando.com/restful-api-guidelines/#153" target="_blank" rel="noopener noreferrer">Zalando · правило 153 ↗</a></figcaption></figure><p class="note">Стандарт в работе — <a href="https://datatracker.ietf.org/doc/draft-ietf-httpapi-ratelimit-headers/" target="_blank" rel="noopener noreferrer">draft-ietf-httpapi-ratelimit-headers ↗</a>, активный черновик, версия 11. Он вводит заголовки <code>RateLimit</code> и <code>RateLimit-Policy</code>.</p></div><div class="stack"><div class="code-block small"><div class="code-head"><b>настоящий ответ учебного API</b></div><pre><code>POST /api/v1/tickets   # третий запрос при лимите 2 в минуту
+
+HTTP/1.1 429
+retry-after: 60
+x-ratelimit-limit: 2
+x-ratelimit-remaining: 0
+x-ratelimit-reset: 60
+content-type: application/problem+json
+
+{
+  &quot;type&quot;: &quot;.../problems/http-429&quot;,
+  &quot;title&quot;: &quot;Too many requests&quot;,
+  &quot;status&quot;: 429,
+  &quot;detail&quot;: &quot;Write limit of 2 requests per minute exceeded&quot;
+}</code></pre></div><details class="answer"><summary>Доказательство: как GitHub описывает x-ratelimit-reset</summary><div><figure class="shot "><div class="shot-bar"><b>docs.github.com · Rate limits</b><span>СКРИНШОТ · 16.09.2026</span></div><button class="shot-view" aria-label="Увеличить кадр: docs.github.com · Rate limits"><img src="../shots/e-github-ratelimit-headers.png" alt="GitHub Docs: x-ratelimit-reset — время сброса в секундах UTC epoch." loading="lazy"></button><figcaption>GitHub Docs: x-ratelimit-reset — время сброса в секундах UTC epoch. Клик — увеличить.</figcaption></figure></div></details></div></div></div>
+</section>
+<section class="lec-stage" id="s108">
+<h2><span class="lec-num">108</span>ETag и If-Match: не потерять чужую правку</h2>
+<p class="lead">Два оператора открыли одно обращение. Первый закрыл его, второй через минуту меняет описание по старой копии. Условный запрос не даёт второму затереть изменение первого.</p>
+<div class="slide-body"><div class="split "><div class="stack"><figure class="quote"><blockquote lang="en">The "If-Match" header field makes the request method conditional on the recipient origin server either having at least one current representation of the target resource, when the field value is "*", or having a current representation of the target resource that has an entity tag matching a member of the list of entity tags provided in the field value.</blockquote><p class="ru"><b>Перевод:</b> заголовок If-Match делает метод запроса условным: сервер выполняет его, только если у ресурса есть текущее представление (при значении «*») или если entity tag текущего представления совпадает с одним из перечисленных в заголовке.</p><figcaption><a href="https://www.rfc-editor.org/rfc/rfc9110.html#name-if-match" target="_blank" rel="noopener noreferrer">RFC 9110 · раздел 13.1.1 · Standards Track ↗</a></figcaption></figure><div class="table-wrap "><table><thead><tr><th>Кто</th><th>Сила правила</th></tr></thead><tbody><tr><td><a href="https://opensource.zalando.com/restful-api-guidelines/#182" target="_blank" rel="noopener noreferrer">Zalando, правило 182 ↗</a></td><td>MAY</td></tr><tr><td><a href="https://github.com/microsoft/api-guidelines/blob/vNext/azure/Guidelines.md" target="_blank" rel="noopener noreferrer">Azure ↗</a></td><td>DO — поддерживать If-Match и If-None-Match, возвращать ETag</td></tr><tr><td><a href="https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api" target="_blank" rel="noopener noreferrer">GitHub ↗</a></td><td>большинство endpoints отдают etag; 304 не расходует лимит</td></tr></tbody></table></div></div><div class="stack"><div class="code-block small"><div class="code-head"><b>1. копия не изменилась — тело не передаётся</b></div><pre><code>GET /api/v1/tickets/a8d04cb9-…
+If-None-Match: &quot;4fec2a976840743a&quot;
+
+HTTP/1.1 304
+etag: &quot;4fec2a976840743a&quot;</code></pre></div><div class="code-block small"><div class="code-head"><b>2. обращение уже изменили — сервер отказывает</b></div><pre><code>PATCH /api/v1/tickets/a8d04cb9-…
+If-Match: &quot;4fec2a976840743a&quot;      # версия до чужой правки
+
+HTTP/1.1 412
+content-type: application/problem+json
+
+{
+  &quot;title&quot;: &quot;Precondition failed&quot;,
+  &quot;detail&quot;: &quot;Ticket was changed after the version in If-Match was read&quot;
+}</code></pre></div></div></div></div>
+</section>
+<section class="lec-stage" id="s109">
+<h2><span class="lec-num">109</span>Idempotency-Key: распространённая практика без стандарта</h2>
+<p class="lead">POST не идемпотентен. Если ответ потерялся в сети и клиент повторил запрос, появится второе обращение. Ключ идемпотентности позволяет серверу узнать повтор.</p>
+<div class="slide-body"><div class="split "><div class="stack"><figure class="shot compact"><div class="shot-bar"><b>datatracker.ietf.org</b><span>СКРИНШОТ · 16.09.2026</span></div><button class="shot-view" aria-label="Увеличить кадр: datatracker.ietf.org"><img src="../shots/e-ietf-idempotency-expired.png" alt="Черновик draft-ietf-httpapi-idempotency-key-header: статус Expired Internet-Draft." loading="lazy"></button><figcaption>Черновик draft-ietf-httpapi-idempotency-key-header: статус Expired Internet-Draft. Клик — увеличить.</figcaption></figure><figure class="quote"><blockquote lang="en">If there is an attempt to reuse an idempotency key with a different request payload, the resource SHOULD reply with a HTTP 422 status code with body containing a link pointing to relevant documentation.</blockquote><p class="ru"><b>Перевод:</b> при попытке повторно использовать ключ с другим телом запроса ресурс SHOULD ответить кодом 422 с телом, в котором есть ссылка на документацию.</p><figcaption><a href="https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-idempotency-key-header" target="_blank" rel="noopener noreferrer">IETF draft-07 · срок действия истёк ↗</a></figcaption></figure></div><div class="stack"><figure class="quote"><blockquote lang="en">Idempotency keys are up to 255 characters long. … You can remove keys from the system automatically after they’re at least 24 hours old.</blockquote><p class="ru"><b>Перевод:</b> ключ идемпотентности занимает до 255 символов… Ключи можно автоматически удалять, когда им не меньше 24 часов.</p><figcaption><a href="https://docs.stripe.com/api/idempotent_requests" target="_blank" rel="noopener noreferrer">Stripe API · Idempotent requests ↗</a></figcaption></figure><div class="code-block small"><div class="code-head"><b>настоящие ответы учебного API, сокращено</b></div><pre><code>POST /api/v1/tickets  Idempotency-Key: 8e03978e-…  {&quot;title&quot;: &quot;Не работает VPN&quot;}
+HTTP/1.1 201   id: 6dfeb4e3-…
+
+POST /api/v1/tickets  Idempotency-Key: 8e03978e-…  {&quot;title&quot;: &quot;Не работает VPN&quot;}
+HTTP/1.1 201   id: 6dfeb4e3-…   # тот же id, обращений по-прежнему 4
+
+POST /api/v1/tickets  Idempotency-Key: 8e03978e-…  {&quot;title&quot;: &quot;Не работает почта&quot;}
+HTTP/1.1 422   &quot;Idempotency-Key was already used with a different request body&quot;</code></pre></div><p class="note">Длина ключа и срок хранения взяты из Stripe и <a href="https://opensource.zalando.com/restful-api-guidelines/#230" target="_blank" rel="noopener noreferrer">Zalando, правило 230 ↗</a>, код 422 — из черновика IETF.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s110">
+<h2><span class="lec-num">110</span>Идентификатор запроса: имя выбирает компания</h2>
+<p class="lead">Одна операция проходит через клиент, gateway и сервис. Общий идентификатор позволяет найти её записи во всех логах. Стандартного имени у этого заголовка нет.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="table-wrap "><table><thead><tr><th>Кто</th><th>Заголовок</th></tr></thead><tbody><tr><td><a href="https://opensource.zalando.com/restful-api-guidelines/#233" target="_blank" rel="noopener noreferrer">Zalando, правило 233 ↗</a></td><td><code>X-Flow-ID</code></td></tr><tr><td><a href="https://github.com/microsoft/api-guidelines/blob/vNext/azure/Guidelines.md" target="_blank" rel="noopener noreferrer">Azure ↗</a></td><td><code>x-ms-client-request-id</code></td></tr><tr><td>Учебный проект</td><td><code>X-Request-Id</code></td></tr></tbody></table></div><figure class="quote"><blockquote lang="en">If the caller provides this header the service **must** include this in their log entries to facilitate correlation of log entries for a single request. Because this header can be client-generated, it should not …</blockquote><p class="ru"><b>Перевод:</b> если вызывающая сторона передала этот заголовок, сервис <b>must</b> записывать его в логи, чтобы связать записи одного запроса. Поскольку значение может сформировать клиент, оно не должно… (дальше Azure ограничивает его использование).</p><figcaption><a href="https://github.com/microsoft/api-guidelines/blob/vNext/azure/Guidelines.md" target="_blank" rel="noopener noreferrer">Azure REST API Guidelines · correlation headers ↗</a></figcaption></figure></div><div class="stack"><div class="code-block small"><div class="code-head"><b>клиент передал свой идентификатор</b></div><pre><code>GET /api/v1/tickets/a8d04cb9-…
+X-Request-Id: support-case-1842
+
+HTTP/1.1 200
+x-request-id: support-case-1842</code></pre></div><div class="code-block small"><div class="code-head"><b>значение не прошло проверку формата (тест test_unsafe_request_id_is_replaced)</b></div><pre><code>GET /api/v1/tickets
+X-Request-Id: bad value; drop table
+
+HTTP/1.1 200
+x-request-id: 3c1f…            # UUID сервера</code></pre></div><details class="answer"><summary>Доказательство: правило Zalando 233</summary><div><figure class="shot "><div class="shot-bar"><b>opensource.zalando.com · rule 233</b><span>СКРИНШОТ · 16.09.2026</span></div><button class="shot-view" aria-label="Увеличить кадр: opensource.zalando.com · rule 233"><img src="../shots/e-zalando-233-flow-id.png" alt="Правило Zalando 233: MUST support X-Flow-ID." loading="lazy"></button><figcaption>Правило Zalando 233: MUST support X-Flow-ID. Клик — увеличить.</figcaption></figure></div></details></div></div></div>
+</section>
+<section class="lec-stage" id="s111">
+<h2><span class="lec-num">111</span>CORS: заголовок пришёл, а скрипт его не видит</h2>
+<p class="lead">Браузерный клиент на другом домене получает от сервера ETag и Location, но JavaScript прочитает их, только если сервер явно разрешил.</p>
+<div class="slide-body"><div class="split "><div class="stack"><figure class="quote"><blockquote lang="en">`Access-Control-Expose-Headers` Indicates which headers can be exposed as part of the response by listing their names.</blockquote><p class="ru"><b>Перевод:</b> Access-Control-Expose-Headers перечисляет имена заголовков, которые можно открыть скрипту как часть ответа.</p><figcaption><a href="https://fetch.spec.whatwg.org/#http-responses" target="_blank" rel="noopener noreferrer">Fetch Standard · CORS protocol ↗</a></figcaption></figure><div class="code-block small"><div class="code-head"><b>app/main.py (фрагмент)</b></div><pre><code>app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    expose_headers=[
+        &quot;ETag&quot;, &quot;Location&quot;, &quot;X-Request-Id&quot;, &quot;Retry-After&quot;,
+        &quot;Deprecation&quot;, &quot;Sunset&quot;,
+        &quot;X-RateLimit-Limit&quot;, &quot;X-RateLimit-Remaining&quot;, &quot;X-RateLimit-Reset&quot;,
+    ],
+)</code></pre></div></div><div class="stack"><div class="code-block small"><div class="code-head"><b>настоящий ответ учебного API</b></div><pre><code>GET /api/v1/tickets/open
+Origin: http://localhost:5173
+
+HTTP/1.1 200
+access-control-allow-origin: http://localhost:5173
+access-control-expose-headers: ETag, Location, X-Request-Id, Retry-After, Deprecation, Sunset, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset</code></pre></div><p class="takeaway">Добавили в контракт новый заголовок ответа — добавьте его в <code>expose_headers</code>, иначе браузерный клиент его не получит.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s112">
+<h2><span class="lec-num">112</span>OAuth 2.0 описывают вместе с сервером авторизации</h2>
+<p class="lead">OpenAPI позволяет описать OAuth 2.0 со схемами authorizationCode и clientCredentials. Но схема в контракте — обещание клиенту, и обещать можно только то, что работает.</p>
+<div class="slide-body"><div class="split "><div class="stack"><div class="table-wrap "><table><thead><tr><th>Что сравниваем</th><th>Учебный стенд</th><th>Production</th></tr></thead><tbody><tr><td>Кто выдаёт токен</td><td>токены заданы переменными окружения</td><td>сервер авторизации по OAuth 2.0 / OpenID Connect</td></tr><tr><td>Схема в OpenAPI</td><td><code>BearerAuth: type: http, scheme: bearer</code></td><td><code>type: oauth2</code> с flows и scopes</td></tr><tr><td>Что проверяет сервис</td><td>совпадение строки токена</td><td>подпись, срок действия, scopes</td></tr></tbody></table></div><div class="text"><p><a href="https://spec.openapis.org/oas/v3.2.0.html#oauth-flows-object" target="_blank" rel="noopener noreferrer">OpenAPI 3.2.0, OAuth Flows Object ↗</a> описывает адреса авторизации и выдачи токена. <a href="https://opensource.zalando.com/restful-api-guidelines/#104" target="_blank" rel="noopener noreferrer">Zalando, правило 104 ↗</a> требует защищать все endpoints.</p></div></div><div class="stack"><p class="warn-box">Если описать в учебном контракте <code>oauth2</code> без сервера авторизации, Swagger UI покажет кнопку входа, которая никуда не ведёт. Такое описание нарушает главное свойство контракта: он должен совпадать с поведением API.</p><p class="takeaway">Схему OAuth 2.0 добавляют в тот же pull request, что и подключение сервера авторизации.</p></div></div></div>
+</section>
+<section class="lec-stage" id="s113">
+<h2><span class="lec-num">113</span>Что изменилось в учебном API 1.1.0</h2>
+<p class="lead">Все механизмы этой части добавлены в учебный проект как совместимое изменение: версия 1.0.0 стала 1.1.0.</p>
+<div class="slide-body"><div class="split wide-right"><div class="stack"><div class="code-block small"><div class="code-head"><b>CHANGELOG.md (сокращено)</b></div><pre><code>## [1.1.0] - 2026-09-16
+
+### Added
+
+- Заголовок X-Request-Id в каждом ответе.
+- ETag, 304 Not Modified на совпавший If-None-Match.
+- If-Match в PATCH, ответ 412 при устаревшей версии.
+- Idempotency-Key в POST /api/v1/tickets.
+- Лимит операций записи: 429 с Retry-After, X-RateLimit-*.
+- CORS с открытыми заголовками контракта.
+- Поле type в Problem Details ведёт на страницы видов ошибок.
+
+### Deprecated
+
+- GET /api/v1/tickets/open — используйте GET /api/v1/tickets?status=open.</code></pre></div><p class="note">31 тест проходит, <code>export_openapi.py --check</code> подтверждает совпадение контракта с кодом, Spectral замечаний не выдаёт. Проверено 16 сентября 2026 года.</p></div><div class="stack"><figure class="shot "><div class="shot-bar"><b>Swagger UI · updateTicket</b><span>СКРИНШОТ · 16.09.2026</span></div><button class="shot-view" aria-label="Увеличить кадр: Swagger UI · updateTicket"><img src="../shots/e-swagger-headers.png" alt="PATCH /api/v1/tickets/{ticket_id}: параметр If-Match в списке параметров операции." loading="lazy"></button><figcaption>PATCH /api/v1/tickets/{ticket_id}: параметр If-Match в списке параметров операции. Клик — увеличить.</figcaption></figure></div></div></div>
+</section>
+<nav class="lec-nav"><a class="lec-prev" href="12-repozitoriy-api.html">← Часть 12. Репозиторий API на GitHub</a><a class="lec-next" href="14-prakticheskaya-rabota.html">Часть 14. Практическая работа →</a></nav>
+</div>
+</main>
+<footer class="lec-foot"><div class="lec-wrap">
+<p>Учебный проект темы: <a href="https://github.com/MaximBytecamp/api-standard-template">api-standard-template</a> · <a href="https://maximbytecamp.github.io/api-standard-template/">документация API</a> · <a href="../../../api-standard-template/docs/STANDARDS.md">источники правил с цитатами</a>.</p>
+<p class="lec-credits"><span>Стандартизация, сертификация и техническое документоведение · 4 курс</span><span>Макаров Максим Николаевич</span></p>
+</div></footer>
+<div id="toast" role="status" hidden></div>
+<dialog id="visual"><div class="dialog-head"><h2 id="visual-title">Кадр крупным планом</h2><button data-close aria-label="Закрыть изображение">✕</button></div><div id="visual-content"></div></dialog>
+</body></html>
