@@ -49,8 +49,18 @@
   });
   document.querySelector('[data-demo-clear]').onclick = () => { events = []; log.textContent = 'Журнал пуст. В GA4 ничего не отправляется.'; };
   document.querySelectorAll('.scroll-model').forEach(model => {
-    const input = model.querySelector('input'); let fired = false;
-    input.oninput = () => { model.querySelector('output').value = `${input.value}%`; model.querySelector('.depth i').style.width = `${input.value}%`; if (+input.value >= 90) fired = true; model.querySelector('[role=status]').textContent = fired ? 'scroll: 1 событие за просмотр. Повторная прокрутка не добавит второе.' : 'Событие ещё не возникло.'; };
+    const input = model.querySelector('input'), fill = model.querySelector('.depth i'), status = model.querySelector('[role=status]');
+    let fired = false;
+    input.oninput = () => {
+      const depth = +input.value;
+      model.querySelector('output').value = `${depth}%`;
+      fill.style.height = `${depth}%`;
+      if (depth >= 90) fired = true;
+      model.classList.toggle('fired', fired);
+      status.textContent = fired
+        ? `Глубина ${depth}%. Порог 90% пройден, событий scroll: 1. Повторная прокрутка второе не добавит.`
+        : `Глубина ${depth}%. Порог не пройден, событий scroll: 0.`;
+    };
     model.querySelector('button').onclick = () => { fired = false; input.value = 0; input.oninput(); };
   });
   addEventListener('beforeprint', () => slides.forEach(s => s.hidden = false));
