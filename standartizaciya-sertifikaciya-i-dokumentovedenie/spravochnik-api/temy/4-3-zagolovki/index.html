@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 4.3 справочника: заголовки, которые делают API устойчивым — ETag и If-Match, Idempotency-Key, X-Request-Id, заголовки лимитов и Retry-After, настройка CORS expose_headers.">
+<title>4.3 Заголовки контракта · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 4 · Ошибки и устойчивость</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 4 · Ошибки и устойчивость</p><p class="folio">Глава 4.3</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">4.3</span>
+<h1>Заголовки<br>контракта</h1>
+<p class="lead">Три беды случаются в любом сетевом приложении: двое правят одну запись, ответ теряется по дороге, клиент запрашивает слишком часто. Все три решаются заголовками, и все три уже описаны стандартами — придумывать ничего не нужно. В этой главе — пять заголовков, которые превращают работающий API в устойчивый.</p>
+<p class="pull">«Тело отвечает на вопрос „что“. Заголовки отвечают на вопросы „когда“, „повторно ли“ и „кто спрашивал“.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Устойчивость</dd></div>
+<div><dt>Уровень</dt><dd>Средний</dd></div>
+<div><dt>Связанные главы</dt><dd>4.2 Диагностика ответа · 2.2 Методы · 7.4 Стандарты компаний</dd></div>
+<div><dt>Зачем это знать</dt><dd>Чтобы API переживал гонки, потерянные ответы и наплыв запросов</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Три беды и три заголовка</a></li>
+<li><a href="#s2">ETag: версия представления</a></li>
+<li><a href="#s3">If-None-Match: не присылать то же самое</a></li>
+<li><a href="#s4">If-Match: потерянное изменение</a></li>
+<li><a href="#s5">Idempotency-Key: потерянный ответ</a></li>
+<li><a href="#s6">Лимиты и Retry-After</a></li>
+<li><a href="#s7">X-Request-Id: сшивка журналов</a></li>
+<li><a href="#s8">Почему браузер не видит заголовки</a></li>
+<li><a href="#s9">Частые ошибки</a></li>
+<li><a href="#s10">Проверьте себя</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Три беды и три заголовка</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Беда</th><th>Как выглядит</th><th>Чем лечится</th></tr></thead>
+<tbody>
+<tr><td>Потерянное изменение</td><td>Двое открыли обращение, оба сохранили, правка первого исчезла</td><td><code>ETag</code> + <code>If-Match</code> → <code>412</code></td></tr>
+<tr><td>Потерянный ответ</td><td>Клиент не дождался ответа, повторил <code>POST</code>, получил два обращения</td><td><code>Idempotency-Key</code></td></tr>
+<tr><td>Наплыв запросов</td><td>Клиент в цикле, сервис отвечает всем медленно</td><td><code>X-RateLimit-*</code> + <code>Retry-After</code> → <code>429</code></td></tr>
+<tr><td>Лишний трафик</td><td>Клиент раз в секунду скачивает то же самое</td><td><code>ETag</code> + <code>If-None-Match</code> → <code>304</code></td></tr>
+<tr><td>Неразбираемая жалоба</td><td>«Вчера что-то не сохранилось» и никаких подробностей</td><td><code>X-Request-Id</code></td></tr>
+</tbody>
+</table></div>
+
+<p>Обратите внимание: ни одна из бед не решается в теле ответа. Всё это — договорённости о заголовках, и они одинаковы для любого API, который их поддерживает.</p>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>ETag: версия представления</h2>
+<p><span class="term">ETag</span> — короткая строка, которая меняется при каждом изменении ресурса. Клиенту не важно, как она вычисляется; важно, что <b>одинаковый ETag означает одинаковое содержимое</b>. Учебный сервис считает его от полей обращения.</p>
+
+<div class="code code--out"><b>настоящий ответ на GET</b><pre>HTTP/1.1 200
+etag: <span class="s">"4fec2a976840743a"</span>
+x-request-id: support-case-1842
+content-type: application/json</pre></div>
+
+<p>ETag отдаётся с каждым чтением и с каждой записью — в том числе при создании. Дальше клиент использует его двумя способами, и это два разных заголовка запроса.</p>
+
+<div class="fork">
+<div><b>If-None-Match</b><p>«Пришли, только если изменилось.» Экономит трафик при чтении. Ответ — <code>304</code> без тела.</p></div>
+<div><b>If-Match</b><p>«Изменяй, только если не изменилось с моего прошлого чтения.» Защищает от потерянных правок. Ответ при расхождении — <code>412</code>.</p></div>
+</div>
+
+<div class="cite">
+<p class="cite__head"><a href="https://opensource.zalando.com/restful-api-guidelines/#182" target="_blank" rel="noopener">Zalando RESTful API Guidelines, правило 182 «MAY consider to support Etag together with If-Match/If-None-Match header»</a><em>правила компании</em></p>
+<p class="cite__en">«MAY consider to support ETag together with If-Match / If-None-Match header to allow the server to react on stricter demands that expose conflicts and prevent lost updates.»</p>
+<p class="cite__ru"><b>Перевод.</b> MAY: можно предусмотреть поддержку <code>ETag</code> вместе с заголовками <code>If-Match</code> и <code>If-None-Match</code>, чтобы сервер мог отвечать на более строгие требования, обнаруживающие конфликты и предотвращающие потерянные изменения.</p>
+</div>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/e-github-etag.png" alt="Документация GitHub REST API о заголовках ETag и If-None-Match" loading="lazy">
+<figcaption><b>Тот же механизм у GitHub.</b> В своей документации GitHub прямо просит клиентов присылать <code>If-None-Match</code>: ответ <code>304</code> не расходует квоту запросов. Приём не учебный — на нём держится работа крупных API.</figcaption></figure>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>If-None-Match: не присылать то же самое</h2>
+<p>Сценарий: список обращений на экране обновляется раз в несколько секунд, но меняется редко. Без условного запроса клиент каждый раз скачивает одно и то же.</p>
+
+<ol class="steps">
+<li><b>Первое чтение.</b> Клиент получает <code>200</code>, тело и <code>ETag: "4fec2a976840743a"</code>. Значение он запоминает.</li>
+<li><b>Следующее чтение.</b> Клиент шлёт <code>If-None-Match: "4fec2a976840743a"</code>.</li>
+<li><b>Ничего не изменилось.</b> Сервис отвечает <code>304 Not Modified</code> — без тела. Клиент рисует то, что уже держит в памяти.</li>
+<li><b>Что-то изменилось.</b> Сервис отвечает <code>200</code>, новым телом и новым <code>ETag</code>.</li>
+</ol>
+
+<div class="code code--out"><b>настоящий ответ 304</b><pre>HTTP/1.1 304
+etag: <span class="s">"4fec2a976840743a"</span>
+x-request-id: d1992782-8a1d-444f-b2ba-1cf8891806b6</pre></div>
+
+<p>Тела нет вовсе, и это не ошибка: по стандарту у <code>304</code> тела быть не должно. Выигрыш тем заметнее, чем больше ресурс и чаще опрос; у GitHub такой ответ вдобавок не списывается из лимита запросов.</p>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>If-Match: потерянное изменение</h2>
+<p>Беда «потерянное изменение» выглядит так. Двое открыли одно обращение. Первый дописал описание и сохранил. Второй, ничего не зная, сохранил свою версию — и правка первого исчезла бесследно, без единой ошибки.</p>
+
+<div class="code"><b>сценарий без If-Match</b><pre>Аня  GET  /tickets/42   -> status: open, description: <span class="s">"…"</span>
+Борис GET  /tickets/42   -> то же самое
+Аня  PATCH /tickets/42  -> description дописан        <span class="c"># 200</span>
+Борис PATCH /tickets/42  -> status: closed             <span class="c"># 200, правка Ани затёрта</span></pre></div>
+
+<p>С условным запросом второе сохранение не проходит: сервис видит, что версия изменилась.</p>
+
+<div class="code"><b>сценарий с If-Match</b><pre>Борис PATCH /tickets/42
+      If-Match: <span class="s">"4fec2a976840743a"</span>    <span class="c"># версия, прочитанная до правки Ани</span>
+      -> 412 Precondition Failed</pre></div>
+
+<div class="code code--out"><b>настоящий ответ учебного сервиса</b><pre>HTTP/1.1 412
+x-request-id: 8952af24-1c19-4801-8f28-181a89f6265f
+content-type: application/problem+json
+
+{
+  <span class="s">"type"</span>: <span class="s">"https://…/problems/http-412"</span>,
+  <span class="s">"title"</span>: <span class="s">"Precondition failed"</span>,
+  <span class="s">"status"</span>: <span class="n">412</span>,
+  <span class="s">"detail"</span>: <span class="s">"Ticket was changed after the version in If-Match was read"</span>,
+  <span class="s">"instance"</span>: <span class="s">"/api/v1/tickets/a8d04cb9-87ea-49b9-8ef6-ba10bbbad82b"</span>
+}</pre></div>
+
+<p>Дальше дело клиента: перечитать обращение, показать человеку, что изменилось, и предложить сохранить поверх. Главное — изменение больше не теряется молча, а превращается в разговор.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/e-site-problem-412.png" alt="Страница вида проблемы http-412 с описанием причины и порядка действий клиента" loading="lazy">
+<figcaption><b>Страница вида проблемы.</b> Адрес из поля <code>type</code> ведёт сюда: когда возникает <code>412</code>, что это значит и что делать. Это и есть требование RFC 9457 из главы 4.1, выполненное на практике.</figcaption></figure>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>Idempotency-Key: потерянный ответ</h2>
+<p>Метод <code>POST</code> не идемпотентен: два одинаковых запроса создают два ресурса. Обычно это правильно, но не тогда, когда второй запрос — повтор первого, ответ на который потерялся в сети.</p>
+
+<div class="compare">
+<div><b>Без ключа</b><ul><li>клиент не дождался ответа</li><li>повторил <code>POST</code></li><li>создано два обращения</li><li>разбирать придётся вручную</li></ul></div>
+<div><b>С ключом</b><ul><li>клиент шлёт <code>Idempotency-Key</code></li><li>повторяет тот же запрос с тем же ключом</li><li>сервис возвращает <b>тот же</b> результат</li><li>обращение одно</li></ul></div>
+</div>
+
+<p>Проверка на учебном сервисе: два запроса с одинаковым ключом дали одно и то же обращение — <code>id</code> совпал, общее число выросло на единицу, а не на две.</p>
+
+<div class="code code--out"><b>первый запрос с ключом</b><pre>HTTP/1.1 201
+etag: <span class="s">"72d232d249fabd6e"</span>
+location: /api/v1/tickets/6dfeb4e3-497b-4d62-8270-40dace132b9f
+x-ratelimit-limit: 60
+x-ratelimit-remaining: 57</pre></div>
+
+<div class="code code--out"><b>повтор с тем же ключом</b><pre>тот же id: True        <span class="c"># 6dfeb4e3-…-40dace132b9f</span>
+всего обращений: 4      <span class="c"># не 5</span></pre></div>
+
+<p>Важная тонкость: ключ связан с телом запроса. Если прислать тот же ключ с другим телом, это не повтор, а ошибка клиента — и сервис прямо об этом говорит:</p>
+
+<div class="code code--out"><b>тот же ключ, другое тело</b><pre>HTTP/1.1 422
+{
+  <span class="s">"title"</span>: <span class="s">"Validation error"</span>,
+  <span class="s">"status"</span>: <span class="n">422</span>,
+  <span class="s">"detail"</span>: <span class="s">"Idempotency-Key was already used with a different request body"</span>,
+  <span class="s">"instance"</span>: <span class="s">"/api/v1/tickets"</span>
+}</pre></div>
+
+<div class="note"><b>Статус механизма</b><p>Единого утверждённого RFC на <code>Idempotency-Key</code> нет: черновик IETF <code>draft-ietf-httpapi-idempotency-key-header-07</code> истёк. Заголовок при этом давно живёт на практике: его использует Stripe, а свод Zalando описывает его правилом уровня MAY — «можно предусмотреть», а не «обязательно». Это ровно тот случай, когда порядок складывается из практики крупных API раньше, чем из документа, и потому в своём API Style Guide такое решение описывают особенно подробно: раз общего стандарта нет, единственным источником правды становится ваше собственное описание.</p></div>
+
+<div class="cite">
+<p class="cite__head"><a href="https://opensource.zalando.com/restful-api-guidelines/#230" target="_blank" rel="noopener">Zalando RESTful API Guidelines, правило 230 «MAY consider to support Idempotency-Key header»</a><em>правила компании</em></p>
+<p class="cite__en">«The unique request key is stored temporarily, e.g. for 24 hours, together with the response and the request hash (optionally) of the first request in a key cache, regardless of whether it succeeded or failed.»</p>
+<p class="cite__ru"><b>Перевод.</b> Уникальный ключ запроса хранится некоторое время, например 24 часа, вместе с ответом и (необязательно) хешом первого запроса в хранилище ключей — независимо от того, завершился тот запрос успешно или нет.</p>
+</div>
+
+<p>Отсюда и два решения учебного проекта: срок хранения 24 часа и сверка тела запроса. Оба взяты из этого правила, а не придуманы.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/e-stripe-idempotency.png" alt="Документация Stripe о заголовке Idempotency-Key и хранении результата запроса" loading="lazy">
+<figcaption><b>Как это описывает Stripe.</b> Ключ хранится ограниченное время, и повтор в пределах этого срока возвращает сохранённый результат. В учебном проекте срок хранения — 24 часа.</figcaption></figure>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Лимиты и Retry-After</h2>
+<p>Ограничение частоты защищает сервис от одного невнимательного клиента, из-за которого плохо становится всем. Но отказ должен быть понятным: клиент обязан узнать, сколько ему осталось и когда можно снова. Сам код <code>429 Too Many Requests</code> описан в <a href="https://www.rfc-editor.org/rfc/rfc6585.html#section-4" target="_blank" rel="noopener">RFC 6585, раздел 4</a>, а набор сопровождающих заголовков стандартом не закреплён — его берут из практики.</p>
+
+<div class="code code--out"><b>ответ в пределах лимита</b><pre>HTTP/1.1 201
+x-ratelimit-limit: 2
+x-ratelimit-remaining: 0
+x-ratelimit-reset: 60</pre></div>
+
+<div class="code code--out"><b>следующий запрос — за пределом</b><pre>HTTP/1.1 429
+retry-after: 60
+x-ratelimit-limit: 2
+x-ratelimit-remaining: 0
+x-ratelimit-reset: 60
+
+{ <span class="s">"title"</span>: <span class="s">"Too many requests"</span>, <span class="s">"status"</span>: <span class="n">429</span>,
+  <span class="s">"detail"</span>: <span class="s">"Write limit of 2 requests per minute exceeded"</span> }</pre></div>
+
+<div class="ops">
+<div><b>X-RateLimit-Limit</b><span>Сколько запросов разрешено в окне. Клиент видит потолок заранее, а не узнаёт о нём по отказу.</span><i>потолок</i></div>
+<div><b>X-RateLimit-Remaining</b><span>Сколько осталось. Аккуратный клиент притормаживает, не дожидаясь <code>429</code>.</span><i>остаток</i></div>
+<div><b>X-RateLimit-Reset</b><span>Когда окно обнулится. Здесь — через 60 секунд.</span><i>сброс</i></div>
+<div><b>Retry-After</b><span>Сколько ждать до повтора. Единственный из четырёх, описанный в RFC как часть ответа <code>429</code>.</span><i>пауза</i></div>
+</div>
+
+<div class="cite">
+<p class="cite__head"><a href="https://opensource.zalando.com/restful-api-guidelines/#153" target="_blank" rel="noopener">Zalando RESTful API Guidelines, правило 153 «MUST use code 429 with headers for rate limits»</a><em>правила компании</em></p>
+<p class="cite__en">«X-RateLimit-Reset: The relative time in seconds when the rate limit window will be reset. Beware that this is different to Github and Twitter's usage of a header with the same name which is using UTC epoch seconds instead.»</p>
+<p class="cite__ru"><b>Перевод.</b> <code>X-RateLimit-Reset</code> — относительное время в секундах до сброса окна ограничения. Учтите, что это отличается от того, как заголовок с тем же именем используют GitHub и Twitter: там указываются секунды UTC epoch.</p>
+</div>
+
+<div class="note note--warn"><b>Секунды или момент времени?</b><p>Различие настолько известное, что свод Zalando предупреждает о нём прямо в тексте правила. Клиент, написанный под одно прочтение, сломается на другом: «60» он поймёт как «через минуту», а «1789516800» — как «через полвека». Единицу измерения нужно указывать в описании операции явно; действующий черновик IETF <code>draft-ietf-httpapi-ratelimit-headers</code> как раз пытается свести оба варианта к одному.</p></div>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/e-github-ratelimit-headers.png" alt="Документация GitHub о заголовках x-ratelimit-limit, remaining, used и reset" loading="lazy">
+<figcaption><b>Заголовки лимитов у GitHub.</b> Тот же набор имён, но <code>x-ratelimit-reset</code> — момент времени, а не число секунд. Наглядный пример того, почему одинаковые имена заголовков ещё не означают одинакового поведения.</figcaption></figure>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>X-Request-Id: сшивка журналов</h2>
+<p>Заголовок, который стоит почти ничего и окупается при первой же жалобе. Учебный сервис добавляет его к каждому ответу, а если клиент прислал свой — сохраняет присланный.</p>
+
+<div class="code"><b>app/middleware.py · проверка присланного значения</b><pre>VALID_REQUEST_ID = re.compile(<span class="s">r"^[A-Za-z0-9._-]{1,128}$"</span>)
+
+incoming = request.headers.get(<span class="s">"X-Request-Id"</span>)
+request_id = incoming <span class="k">if</span> incoming <span class="k">and</span> VALID_REQUEST_ID.match(incoming) <span class="k">else</span> <span class="k">str</span>(uuid4())</pre></div>
+
+<p>Проверка обязательна: чужое значение уходит в журнал, и без ограничения длины и набора символов в журнал можно записать что угодно. Не подошло — сервис выдаёт своё значение, а не отказывает в запросе.</p>
+
+<div class="code code--out"><b>клиент прислал свой идентификатор</b><pre>HTTP/1.1 200
+etag: <span class="s">"4fec2a976840743a"</span>
+x-request-id: support-case-1842</pre></div>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Кто</th><th>Имя заголовка</th><th>Особенность</th></tr></thead>
+<tbody>
+<tr><td>Учебный проект</td><td><code>X-Request-Id</code></td><td>Принимает значение клиента, иначе выдаёт своё</td></tr>
+<tr><td>Zalando (правило 233)</td><td><code>X-Flow-ID</code></td><td>Один идентификатор на всю цепочку вызовов между сервисами</td></tr>
+<tr><td>Azure</td><td><code>x-ms-client-request-id</code></td><td>Отдельно клиентский идентификатор и отдельно серверный</td></tr>
+</tbody>
+</table></div>
+
+<p>Имена разные, идея одна: у каждого запроса есть метка, по которой его находят в журналах всех участников. Выбирать можно любое имя — нельзя только не выбрать никакого.</p>
+</section>
+
+<section class="sec" id="s8">
+<h2><i>§8</i>Почему браузер не видит заголовки</h2>
+<p>Ловушка, на которой спотыкаются все: в терминале заголовки есть, а страница их не видит. Причина не в сервисе, а в правилах браузера: со страницы другого источника доступны только простые заголовки плюс те, что сервис разрешил явно.</p>
+
+<div class="code"><b>app/main.py · настройка CORS</b><pre>app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[<span class="s">"http://localhost:5173"</span>],
+    expose_headers=[<span class="s">"ETag"</span>, <span class="s">"Location"</span>, <span class="s">"X-Request-Id"</span>, <span class="s">"Retry-After"</span>,
+                    <span class="s">"Deprecation"</span>, <span class="s">"Sunset"</span>,
+                    <span class="s">"X-RateLimit-Limit"</span>, <span class="s">"X-RateLimit-Remaining"</span>, <span class="s">"X-RateLimit-Reset"</span>],
+)</pre></div>
+
+<div class="code code--out"><b>как это выглядит в ответе</b><pre>access-control-allow-origin: http://localhost:5173
+access-control-expose-headers: ETag, Location, X-Request-Id, Retry-After, Deprecation,
+                               Sunset, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset</pre></div>
+
+<p>Вывод практический: всякий раз, добавляя в контракт новый заголовок ответа, задайте себе вопрос — нужен ли он веб-клиенту? Если да, впишите его в <code>expose_headers</code> тем же изменением, иначе заголовок будет существовать для <code>curl</code> и не существовать для страницы.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/e-swagger-headers.png" alt="Блок Response headers в Swagger UI с etag, location и x-request-id" loading="lazy">
+<figcaption><b>Проверка из браузера.</b> Swagger UI — тоже страница, и он видит ровно те заголовки, которые сервис разрешил показывать. Если заголовок есть в <code>curl</code>, но не виден здесь, дело в настройке CORS.</figcaption></figure>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s9">
+<h2><i>§9</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>ETag есть, а If-Match не проверяется</b>Заголовок отдаётся «для галочки», потерянные изменения продолжаются. Механизм работает только целиком.</div>
+<div><b>Ключ идемпотентности без привязки к телу</b>Тогда другой запрос с тем же ключом молча вернёт чужой результат вместо честной ошибки.</div>
+<div><b>429 без Retry-After</b>Клиент не знает, сколько ждать, и продолжает опрашивать сервис — ровно то, от чего защищались.</div>
+<div><b>Единица измерения лимита не описана</b>«60» — это секунды или момент времени? Клиент угадает неправильно.</div>
+<div><b>Чужой X-Request-Id без проверки</b>В журнал попадает произвольная строка клиента. Нужны ограничение длины и набор символов.</div>
+<div><b>Новый заголовок не добавлен в expose_headers</b>В терминале работает, на странице — нет, и разбор занимает полдня.</div>
+</div>
+</section>
+
+<section class="sec" id="s10">
+<h2><i>§10</i>Проверьте себя</h2>
+<ol class="check">
+<li>Что означает совпадение <code>ETag</code> у двух ответов?</li>
+<li>Чем отличаются <code>If-None-Match</code> и <code>If-Match</code> по смыслу и по коду ответа?</li>
+<li>Опишите словами, как <code>412</code> предотвращает потерянное изменение.</li>
+<li>Почему <code>Idempotency-Key</code> связывают с телом запроса, а не только с адресом?</li>
+<li>Какие четыре заголовка сопровождают ограничение частоты и что говорит каждый?</li>
+<li>Клиент видит <code>x-ratelimit-reset: 1789516800</code>. Как понять, секунды это или момент времени?</li>
+<li>Заголовок виден в <code>curl</code>, но не виден на странице. В чём причина и где это чинится?</li>
+</ol>
+
+<div class="cheat">
+<div><b>Версия ресурса</b><code>ETag — версия</code><code>If-None-Match → 304</code><code>If-Match → 412</code></div>
+<div><b>Повторы</b><code>Idempotency-Key</code><code>ключ + тело</code><code>хранение 24 часа</code></div>
+<div><b>Частота</b><code>X-RateLimit-Limit</code><code>X-RateLimit-Remaining</code><code>X-RateLimit-Reset</code><code>Retry-After → 429</code></div>
+<div><b>Поиск в журнале</b><code>X-Request-Id</code><code>проверять присланное</code></div>
+<div><b>Для браузера</b><code>expose_headers</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../4-2-diagnostika/index.html">← Глава 4.2. Диагностика ответа</a>
+<a href="../../index.html">К списку модулей →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 4 · глава 4.3</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>

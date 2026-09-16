@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 4.1 справочника: единый формат ошибок Problem Details по RFC 9457 — поля type, title, status, detail, instance, свои поля, страницы видов ошибок и обработчики в коде.">
+<title>4.1 Problem Details · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 4 · Ошибки и устойчивость</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 4 · Ошибки и устойчивость</p><p class="folio">Глава 4.1</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">4.1</span>
+<h1>Problem<br>Details</h1>
+<p class="lead">Кода состояния мало. <code>404</code> говорит «не найдено», но не говорит что именно, почему и что делать дальше. Ответ на этот вопрос описан стандартом: у ошибки есть свой формат тела, одинаковый для всех операций сервиса. В этой главе разберём его поля и посмотрим, как он устроен в учебном проекте.</p>
+<p class="pull">«Ошибка — такой же ответ, как успешный. Её формат — такая же часть контракта.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Ошибки</dd></div>
+<div><dt>Уровень</dt><dd>Базовый</dd></div>
+<div><dt>Связанные главы</dt><dd>2.3 Коды ответов · 4.2 Диагностика ответа · 3.3 FastAPI и OpenAPI</dd></div>
+<div><dt>Зачем это знать</dt><dd>Чтобы клиент разбирал ошибки одним кодом, а не по-разному для каждой операции</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Что не так с самодельными ошибками</a></li>
+<li><a href="#s2">Стандарт: RFC 9457</a></li>
+<li><a href="#s3">Пять полей</a></li>
+<li><a href="#s4">Media type application/problem+json</a></li>
+<li><a href="#s5">Свои поля: ошибки проверки</a></li>
+<li><a href="#s6">Страница вида проблемы</a></li>
+<li><a href="#s7">Как это устроено в коде</a></li>
+<li><a href="#s8">Чего в ошибке быть не должно</a></li>
+<li><a href="#s9">Как делают другие</a></li>
+<li><a href="#s10">Частые ошибки</a></li>
+<li><a href="#s11">Проверьте себя</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Что не так с самодельными ошибками</h2>
+<p>В сервисе, где формат ошибки не задан, он складывается сам — и по-разному в каждом обработчике. Через год в одном API живут все четыре варианта сразу:</p>
+
+<div class="code code--out"><b>четыре ответа на одну и ту же беду</b><pre>{<span class="s">"error"</span>: <span class="s">"not found"</span>}
+{<span class="s">"message"</span>: <span class="s">"Ticket 42 does not exist"</span>, <span class="s">"code"</span>: <span class="n">1204</span>}
+{<span class="s">"ok"</span>: <span class="k">false</span>, <span class="s">"errors"</span>: [<span class="s">"ticket_not_found"</span>]}
+Ticket not found          <span class="c"># просто текст, без JSON</span></pre></div>
+
+<p>Клиенту приходится писать разбор под каждую операцию, а при добавлении новой — выяснять опытным путём, какой из вариантов ему достался. Стандарт убирает этот разговор: формат один, и он описан заранее.</p>
+
+<div class="takeaway"><b>Мысль главы</b><p>Единый формат ошибки экономит не сервер, а клиента: один разбор на весь API вместо разбора на каждую операцию.</p></div>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Стандарт: RFC 9457</h2>
+<p><span class="term">Problem Details for HTTP APIs</span> — документ RFC 9457, статус Standards Track. Он описывает формат тела ответа для случая, когда что-то пошло не так, и набор полей этого тела.</p>
+
+<div class="cite">
+<p class="cite__head"><a href="https://www.rfc-editor.org/rfc/rfc9457.html#name-type" target="_blank" rel="noopener">RFC 9457, раздел 3.1.1</a><em>Standards Track</em></p>
+<p class="cite__en">«If the type URI is a locator (e.g., those with an "http" or "https" scheme), dereferencing it SHOULD provide human-readable documentation for the problem type (e.g., using HTML).»</p>
+<p class="cite__ru"><b>Перевод.</b> Если URI в поле <code>type</code> является адресом (например, со схемой <code>http</code> или <code>https</code>), то по этому адресу SHOULD открываться понятная человеку документация о виде проблемы, например HTML-страница.</p>
+</div>
+
+<p>Обратите внимание на ключевое слово SHOULD: это не «желательно, если будет время», а требование, от которого отступают осознанно и с объяснением. Про уровни MUST, SHOULD и MAY — глава 6.1; здесь достаточно того, что выдуманный адрес в поле <code>type</code> стандарт не приветствует.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/62-rfc9457-problem-details.png" alt="Страница RFC 9457 на сайте rfc-editor.org: заголовок Problem Details for HTTP APIs и оглавление документа" loading="lazy">
+<figcaption><b>Источник.</b> Документ открыт на <code>rfc-editor.org</code>. Ссылку на конкретный раздел стандарта полезно класть прямо в свой API Style Guide — тогда спор о формате заканчивается открытием ссылки.</figcaption></figure>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Пять полей</h2>
+<p>Вот настоящий ответ учебного сервиса на изменение обращения с устаревшей версией:</p>
+
+<div class="code code--out"><b>HTTP/1.1 412 · Content-Type: application/problem+json</b><pre>{
+  <span class="s">"type"</span>: <span class="s">"https://maximbytecamp.github.io/api-standard-template/problems/http-412"</span>,
+  <span class="s">"title"</span>: <span class="s">"Precondition failed"</span>,
+  <span class="s">"status"</span>: <span class="n">412</span>,
+  <span class="s">"detail"</span>: <span class="s">"Ticket was changed after the version in If-Match was read"</span>,
+  <span class="s">"instance"</span>: <span class="s">"/api/v1/tickets/a8d04cb9-87ea-49b9-8ef6-ba10bbbad82b"</span>
+}</pre></div>
+
+<div class="ops">
+<div><b>type</b><span>Кто виноват — <b>вид</b> проблемы. Это опознавательный знак для программы: по нему клиент решает, как поступить. Значение постоянно и не меняется от случая к случаю.</span><i>для программы</i></div>
+<div><b>title</b><span>Короткое название вида проблемы, одинаковое для всех ошибок этого типа. Меняться от случая к случаю не должно.</span><i>для человека</i></div>
+<div><b>status</b><span>Тот же код, что в строке ответа. Дублируется в теле, чтобы ошибку можно было сохранить в журнал или переслать отдельно от ответа.</span><i>дубль кода</i></div>
+<div><b>detail</b><span>Что именно случилось в этом конкретном случае. Здесь допустимы подробности, но только те, которые клиенту можно знать.</span><i>этот случай</i></div>
+<div><b>instance</b><span>Адрес, на котором произошла беда. По нему ошибку находят в журнале и отличают один ресурс от другого.</span><i>где</i></div>
+</div>
+
+<div class="note"><b>Разница между title и detail</b><p><code>title</code> — про вид проблемы: «Precondition failed». <code>detail</code> — про случай: «версия в <code>If-Match</code> устарела». Если <code>title</code> у вас каждый раз разный, поля перепутаны местами, и клиент не сможет по нему группировать ошибки.</p></div>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>Media type application/problem+json</h2>
+<p>Тело ошибки отдаётся не с обычным <code>application/json</code>, а с особым типом <code>application/problem+json</code>. Смысл в том, что клиент понимает формат ещё до разбора тела: суффикс <code>+json</code> говорит «это JSON», а основа <code>problem</code> — «это ошибка по RFC 9457».</p>
+
+<div class="compare">
+<div><b>Успешный ответ</b><ul><li><code>Content-Type: application/json</code></li><li>тело — схема ресурса</li><li>разбирается моделью ресурса</li></ul></div>
+<div><b>Ответ с ошибкой</b><ul><li><code>Content-Type: application/problem+json</code></li><li>тело — схема ProblemDetails</li><li>разбирается одной общей моделью</li></ul></div>
+</div>
+
+<p>В учебном проекте это правило доведено до конца: <b>все</b> ответы <code>4xx</code> и <code>5xx</code> используют этот media type, и за этим следит тест из главы 3.3. Правило взято не с потолка — того же требует свод правил Zalando.</p>
+
+<div class="cite">
+<p class="cite__head"><a href="https://opensource.zalando.com/restful-api-guidelines/#176" target="_blank" rel="noopener">Zalando RESTful API Guidelines, правило 176 «MUST support problem JSON»</a><em>правила компании</em></p>
+<p class="cite__en">«every endpoints must be capable of returning a Problem JSON on client usage errors (4xx status codes) as well as server side processing errors (5xx status codes).»</p>
+<p class="cite__ru"><b>Перевод.</b> Каждый endpoint должен уметь возвращать Problem JSON как при ошибках использования со стороны клиента (коды 4xx), так и при ошибках обработки на сервере (коды 5xx).</p>
+</div>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>Свои поля: ошибки проверки</h2>
+<p>Пяти полей хватает не всегда. Когда клиент прислал тело, не подходящее под схему, ему нужно знать не только «проверка не прошла», но и какое поле виновато. Стандарт это предусматривает: к пяти полям разрешено добавлять свои.</p>
+
+<div class="code code--out"><b>HTTP/1.1 422 · ответ на пустой title</b><pre>{
+  <span class="s">"type"</span>: <span class="s">"…/problems/http-422"</span>,
+  <span class="s">"title"</span>: <span class="s">"Validation error"</span>,
+  <span class="s">"status"</span>: <span class="n">422</span>,
+  <span class="s">"detail"</span>: <span class="s">"Request does not match the API contract"</span>,
+  <span class="s">"instance"</span>: <span class="s">"/api/v1/tickets"</span>,
+  <span class="s">"errors"</span>: [
+    {<span class="s">"loc"</span>: [<span class="s">"body"</span>, <span class="s">"title"</span>], <span class="s">"msg"</span>: <span class="s">"String should have at least 3 characters"</span>, <span class="s">"type"</span>: <span class="s">"string_too_short"</span>}
+  ]
+}</pre></div>
+
+<p>Поле <code>errors</code> — собственное расширение проекта, и в этом нет нарушения: базовые пять полей на месте, клиент, который о расширении не знает, просто его не заметит. Внутри каждой записи — путь до поля (<code>loc</code>), человеческое пояснение (<code>msg</code>) и машинный код вида ошибки (<code>type</code>). Формы в интерфейсе подсвечивают проблемное поле именно по <code>loc</code>.</p>
+
+<div class="note"><b>Правило расширений</b><p>Добавлять поля можно, переопределять смысл базовых — нельзя. Если положить в <code>status</code> свой внутренний код ошибки вместо кода HTTP, ответ перестанет быть Problem Details, хотя внешне будет на него похож.</p></div>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Страница вида проблемы</h2>
+<p>Вернёмся к требованию из §2: по адресу в поле <code>type</code> должна открываться документация. В учебном проекте такие страницы собираются из описания и публикуются на GitHub Pages — по одной на каждый вид проблемы.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/g-pages-problem-412.png" alt="Опубликованная страница вида проблемы http-412: название, код, когда возникает и что делать клиенту" loading="lazy">
+<figcaption><b>Страница <code>problems/http-412</code>.</b> Открывается по тому самому адресу, что стоит в поле <code>type</code> ответа из §3. Разработчик клиента копирует адрес из ответа в браузер и читает, что делать, — без переписки с командой API.</figcaption></figure>
+
+<p>Такая страница отвечает на три вопроса: когда эта ошибка возникает, что она значит и что делать клиенту. Третий пункт важнее первых двух: для <code>412</code> ответ «перечитайте ресурс, возьмите новый <code>ETag</code> и повторите запрос», и это готовая инструкция, а не описание симптома.</p>
+
+<div class="note"><b>Почему не выдуманный домен</b><p>Часто в поле <code>type</code> пишут что-нибудь вроде <code>https://example.com/errors/not-found</code> — адрес, которого не существует. Формально это допустимо (стандарт разрешает URI-идентификатор), но тогда теряется вся польза: разработчик клиента открывает адрес и попадает в никуда. Если публиковать страницы пока нечем, честнее использовать значение <code>about:blank</code>, которое стандарт прямо предусматривает для случая «дополнительной документации нет».</p></div>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>Как это устроено в коде</h2>
+<p>Формат задаётся в одном месте — модуль <code>app/problems.py</code>. Ни один обработчик операций не собирает тело ошибки сам.</p>
+
+<div class="code"><b>app/problems.py · сборка тела</b><pre>PROBLEM_MEDIA_TYPE = <span class="s">"application/problem+json"</span>
+PROBLEM_TYPE_BASE = os.getenv(<span class="s">"API_PROBLEM_TYPE_BASE"</span>, <span class="s">"https://…/problems/"</span>)
+
+TITLES = {<span class="n">400</span>: <span class="s">"Bad request"</span>, <span class="n">401</span>: <span class="s">"Authentication required"</span>, <span class="n">403</span>: <span class="s">"Operation forbidden"</span>,
+          <span class="n">404</span>: <span class="s">"Resource not found"</span>, <span class="n">412</span>: <span class="s">"Precondition failed"</span>, <span class="n">422</span>: <span class="s">"Validation error"</span>,
+          <span class="n">429</span>: <span class="s">"Too many requests"</span>, <span class="n">500</span>: <span class="s">"Internal server error"</span>, …}
+
+<span class="k">def</span> <span class="f">problem</span>(status, detail, instance, headers=<span class="k">None</span>, **extra) -> JSONResponse:
+    body = {<span class="s">"type"</span>: <span class="s">f"{PROBLEM_TYPE_BASE}http-{status}"</span>, <span class="s">"title"</span>: TITLES[status], <span class="s">"status"</span>: status}
+    <span class="k">if</span> detail:
+        body[<span class="s">"detail"</span>] = detail
+    body[<span class="s">"instance"</span>] = instance
+    body.update(extra)
+    <span class="k">return</span> JSONResponse(body, status_code=status, headers=headers, media_type=PROBLEM_MEDIA_TYPE)</pre></div>
+
+<p>Дальше три обработчика перехватывают всё, что может случиться, и прогоняют через эту функцию:</p>
+
+<div class="ops">
+<div><b>http_exception_handler</b><span>Ловит <code>HTTPException</code> — то есть все ошибки, которые обработчики операций поднимают намеренно: <code>404</code>, <code>403</code>, <code>412</code>.</span><i>намеренные</i></div>
+<div><b>validation_exception_handler</b><span>Ловит несоответствие схеме и добавляет поле <code>errors</code> со списком проблемных полей.</span><i>422</i></div>
+<div><b>unhandled_exception_handler</b><span>Ловит всё остальное — ошибки, которых никто не ждал. Отдаёт <code>500</code> с общей формулировкой.</span><i>500</i></div>
+</div>
+
+<p>Третий обработчик — самый важный с точки зрения контракта: без него необработанное исключение вернуло бы страницу с трассировкой и другим media type, то есть нарушило бы собственное описание в самый неудачный момент.</p>
+</section>
+
+<section class="sec" id="s8">
+<h2><i>§8</i>Чего в ошибке быть не должно</h2>
+<p>Ошибка уходит наружу, и её содержимое видит кто угодно, включая того, кто ищет слабое место. Поэтому у обработчика <code>500</code> формулировка нарочно общая:</p>
+
+<div class="code"><b>app/problems.py · обработчик необработанных исключений</b><pre><span class="k">async def</span> <span class="f">unhandled_exception_handler</span>(request, exc) -> JSONResponse:
+    <span class="c"># Traceback остаётся в логах сервера, клиент получает только публичное описание.</span>
+    request_id = getattr(request.state, <span class="s">"request_id"</span>, <span class="s">"-"</span>)
+    logger.exception(<span class="s">"Unhandled error on %s %s, request id %s"</span>, request.method, request.url.path, request_id)
+    <span class="k">return</span> problem(<span class="n">500</span>, <span class="s">"Unexpected server error. The incident has been logged."</span>, request.url.path)</pre></div>
+
+<div class="fork">
+<div><b>Остаётся в журнале сервера</b><p>Трассировка, SQL-запрос, имена внутренних сервисов, значения переменных. Всё, что нужно для разбора, и всё, чего не должен видеть посторонний.</p></div>
+<div><b>Уходит клиенту</b><p>Код <code>500</code>, общая формулировка и заголовок <code>X-Request-Id</code>. По этому идентификатору запись в журнале находится за секунды.</p></div>
+</div>
+
+<p>Связка «общий текст наружу — подробности внутрь — идентификатор для сшивки» и есть смысл заголовка <code>X-Request-Id</code>. Подробно о нём — в главе 4.3.</p>
+
+<div class="note note--warn"><b>Типичная утечка</b><p>Сообщение вида «duplicate key value violates unique constraint "users_email_key"» рассказывает постороннему и про СУБД, и про имя таблицы, и про наличие такого адреса в базе. Наружу должно уйти «Conflict», подробности — в журнал.</p></div>
+</section>
+
+<section class="sec" id="s9">
+<h2><i>§9</i>Как делают другие</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Кто</th><th>Формат ошибки</th><th>Особенность</th></tr></thead>
+<tbody>
+<tr><td>Zalando</td><td><code>application/problem+json</code></td><td>Правило 176 требует Problem JSON от каждой операции</td></tr>
+<tr><td>Azure</td><td>Своя структура <code>{"error": {"code", "message"}}</code></td><td>Плюс заголовок <code>x-ms-error-code</code> с машинным кодом ошибки</td></tr>
+<tr><td>GitHub</td><td>Своя структура <code>{"message", "documentation_url"}</code></td><td>Ссылка на документацию прямо в теле — та же идея, что <code>type</code> в RFC 9457</td></tr>
+<tr><td>Учебный проект</td><td><code>application/problem+json</code></td><td>Плюс поле <code>errors</code> для ошибок проверки схемы</td></tr>
+</tbody>
+</table></div>
+
+<p>Общее у всех четверых — формат один на весь API и в нём есть машиночитаемый признак вида ошибки. Расходятся только в написании. Поэтому при выборе формата важнее не «какой лучше», а «записан ли он в правилах проекта и соблюдают ли его все операции».</p>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s10">
+<h2><i>§10</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Код 200 с признаком ошибки в теле</b>Ответ <code>200 {"ok": false}</code> ломает всё: кэш считает ответ успешным, клиентские библиотеки не поднимают исключение, мониторинг не видит сбоя.</div>
+<div><b>Разный формат у разных операций</b>Клиент пишет разбор под каждую, а при добавлении операции узнаёт формат опытным путём.</div>
+<div><b>Меняющийся title</b>Если название вида проблемы каждый раз новое, по нему нельзя группировать ошибки. Подробности конкретного случая — в <code>detail</code>.</div>
+<div><b>Несуществующий адрес в type</b>Разработчик открывает ссылку из ответа и попадает в никуда. Либо публикуйте страницы, либо ставьте <code>about:blank</code>.</div>
+<div><b>Трассировка в теле ответа</b>Подробности внутренней ошибки — в журнал сервера, наружу — общая формулировка и идентификатор запроса.</div>
+</div>
+</section>
+
+<section class="sec" id="s11">
+<h2><i>§11</i>Проверьте себя</h2>
+<ol class="check">
+<li>Назовите пять полей Problem Details и скажите, какое из них читает программа, а какое — человек.</li>
+<li>Чем <code>title</code> отличается от <code>detail</code>? Придумайте пару значений для ошибки «обращение уже закрыто».</li>
+<li>Зачем нужен отдельный media type, если тело и так JSON?</li>
+<li>Что требует RFC 9457 от адреса в поле <code>type</code> и какое значение поставить, если документации ещё нет?</li>
+<li>Почему поле <code>errors</code> не нарушает стандарт, а замена смысла поля <code>status</code> — нарушает?</li>
+<li>Что должно попасть в ответ с кодом <code>500</code>, а что — только в журнал сервера?</li>
+</ol>
+
+<div class="cheat">
+<div><b>Пять полей</b><code>type — вид проблемы</code><code>title — название вида</code><code>status — код HTTP</code><code>detail — этот случай</code><code>instance — где</code></div>
+<div><b>Media type</b><code>application/problem+json</code><code>для всех 4xx и 5xx</code></div>
+<div><b>Расширения</b><code>свои поля — можно</code><code>менять смысл базовых — нельзя</code></div>
+<div><b>Источники</b><code>RFC 9457</code><code>Zalando 176</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../3-4-swagger-redoc/index.html">← Глава 3.4. Swagger UI и ReDoc</a>
+<a href="../4-2-diagnostika/index.html">Глава 4.2. Диагностика ответа →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 4 · глава 4.1</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>

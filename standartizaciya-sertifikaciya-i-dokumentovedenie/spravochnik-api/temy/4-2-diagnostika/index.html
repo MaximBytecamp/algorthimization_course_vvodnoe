@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 4.2 справочника: что делать, когда ответ API не тот — порядок проверок по коду состояния, разбор 401, 403, 404, 405, 415, 422, 429 и 500 и поиск запроса в журнале.">
+<title>4.2 Диагностика ответа · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 4 · Ошибки и устойчивость</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 4 · Ошибки и устойчивость</p><p class="folio">Глава 4.2</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">4.2</span>
+<h1>Диагностика<br>ответа</h1>
+<p class="lead">«Не работает» — не диагноз. У неудачного запроса всегда есть код состояния, тело ошибки и заголовки, и по ним причина определяется за минуту, если знать порядок проверок. В этой главе — этот порядок, разбор восьми частых кодов и способ найти конкретный запрос в журнале сервера.</p>
+<p class="pull">«Сначала прочитайте ответ целиком. В девяти случаях из десяти в нём уже написано, что не так.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Ошибки</dd></div>
+<div><dt>Уровень</dt><dd>Базовый</dd></div>
+<div><dt>Связанные главы</dt><dd>4.1 Problem Details · 2.3 Коды ответов · 4.3 Заголовки контракта</dd></div>
+<div><dt>Зачем это знать</dt><dd>Чтобы находить причину самому, а не писать «у вас API сломался»</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Посмотреть весь ответ, а не тело</a></li>
+<li><a href="#s2">Первая развилка: чья ошибка</a></li>
+<li><a href="#s3">401 и 403: доступ</a></li>
+<li><a href="#s4">404 и 405: адрес и метод</a></li>
+<li><a href="#s5">415 и 422: формат и содержание</a></li>
+<li><a href="#s6">429 и 5xx: нагрузка и сбой</a></li>
+<li><a href="#s7">Когда ответа нет вовсе</a></li>
+<li><a href="#s8">Найти запрос в журнале</a></li>
+<li><a href="#s9">Порядок проверок целиком</a></li>
+<li><a href="#s10">Частые ошибки</a></li>
+<li><a href="#s11">Проверьте себя</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Посмотреть весь ответ, а не тело</h2>
+<p>Первая ошибка при разборе — смотреть только на тело. Половина сведений живёт в строке состояния и заголовках. В терминале их показывает ключ <code>-i</code>:</p>
+
+<div class="code"><b>терминал</b><pre>curl -i http://127.0.0.1:8000/api/v1/tickets/00000000-0000-0000-0000-000000000000</pre></div>
+
+<div class="code code--out"><b>ответ целиком</b><pre>HTTP/1.1 404 Not Found
+x-request-id: 3f1c8a77-0a16-4e18-9a3b-9e33c0b7b6a1
+content-type: application/problem+json
+
+{
+  <span class="s">"type"</span>: <span class="s">"https://…/problems/http-404"</span>,
+  <span class="s">"title"</span>: <span class="s">"Resource not found"</span>,
+  <span class="s">"status"</span>: <span class="n">404</span>,
+  <span class="s">"detail"</span>: <span class="s">"Ticket 00000000-0000-0000-0000-000000000000 does not exist"</span>,
+  <span class="s">"instance"</span>: <span class="s">"/api/v1/tickets/00000000-0000-0000-0000-000000000000"</span>
+}</pre></div>
+
+<div class="ops">
+<div><b>Строка состояния</b><span>Код и его название. Отвечает на вопрос «что за исход», и с него начинается любой разбор.</span><i>что</i></div>
+<div><b>Заголовки</b><span><code>content-type</code> подсказывает формат тела, <code>x-request-id</code> — ключ к журналу, <code>retry-after</code> и <code>x-ratelimit-*</code> объясняют отказ по нагрузке.</span><i>контекст</i></div>
+<div><b>Тело</b><span>Problem Details: вид проблемы, подробности случая и адрес, на котором это произошло.</span><i>почему</i></div>
+</div>
+
+<p>Те же три части видны в Swagger UI после кнопки Execute, и это удобнее, когда терминала под рукой нет.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/64-swagger-404.png" alt="Swagger UI: ответ 404 с телом Problem Details и блоком заголовков ответа" loading="lazy">
+<figcaption><b>Ответ <code>404</code> в интерфейсе.</b> Код слева, тело в формате Problem Details под ним, заголовки — ниже. Тот же набор сведений, что даёт <code>curl -i</code>.</figcaption></figure>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Первая развилка: чья ошибка</h2>
+<p>Первая цифра кода отвечает на главный вопрос разбора — где чинить.</p>
+
+<div class="fork">
+<div><b>4xx — чинит клиент</b><p>Сервис работает правильно и отказывает осознанно: не тот адрес, нет токена, тело не подходит под схему, превышен лимит. Повтор того же запроса даст тот же ответ.</p></div>
+<div><b>5xx — чинит сервер</b><p>Запрос мог быть верным, но обработать его не удалось. Повтор иногда помогает, но это не решение: причина на стороне сервиса, и её разбирают по журналу.</p></div>
+</div>
+
+<p>Различие не формальное: оно определяет, кому заводить задачу. Отправлять команде API запрос с кодом <code>422</code> со словами «у вас не работает» — значит терять время обеих сторон, потому что в теле ответа уже написано, какое поле не подошло.</p>
+
+<div class="takeaway"><b>Мысль главы</b><p>Код состояния — это адресат задачи. <code>4xx</code> — задача себе, <code>5xx</code> — задача команде сервиса, и к ней прикладывают <code>X-Request-Id</code>.</p></div>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>401 и 403: доступ</h2>
+<p>Оба кода про доступ, но означают разное, и путать их дорого: клиент по ним решает, что показать пользователю.</p>
+
+<div class="compare">
+<div><b>401 — «я вас не узнал»</b><ul><li>токен не передан</li><li>токен просрочен или испорчен</li><li>что делать: получить токен и повторить</li><li>интерфейс: показать вход</li></ul></div>
+<div><b>403 — «узнал, но нельзя»</b><ul><li>токен верный</li><li>прав на эту операцию нет</li><li>что делать: повтор не поможет</li><li>интерфейс: сообщить об отсутствии прав</li></ul></div>
+</div>
+
+<div class="code"><b>проверка обоих случаев</b><pre>curl -i -X POST http://127.0.0.1:8000/api/v1/tickets \
+  -H <span class="s">'Content-Type: application/json'</span> -d <span class="s">'{"title":"Проверка"}'</span>
+<span class="c"># -> 401 "Provide a valid Bearer token in the Authorization header"</span>
+
+curl -i -X POST http://127.0.0.1:8000/api/v1/tickets \
+  -H <span class="s">'Authorization: Bearer viewer-token'</span> \
+  -H <span class="s">'Content-Type: application/json'</span> -d <span class="s">'{"title":"Проверка"}'</span>
+<span class="c"># -> 403 "This token can only read tickets"</span></pre></div>
+
+<p>Признак, по которому их различают в чужом API: если после получения нового токена ответ не изменился — это <code>403</code> по сути, даже если сервис возвращает <code>401</code>. Такое встречается, и тогда в свой стандарт записывают правило различать коды явно.</p>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>404 и 405: адрес и метод</h2>
+<p><code>404</code> двусмысленно по своей природе: непонятно, нет такого адреса или нет такого ресурса. Разводит их поле <code>detail</code>.</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Что видно</th><th>Что произошло</th><th>Что проверить</th></tr></thead>
+<tbody>
+<tr><td><code>detail: "Ticket … does not exist"</code></td><td>Адрес верный, ресурса с таким идентификатором нет</td><td>Идентификатор; возможно, ресурс удалён</td></tr>
+<tr><td><code>detail: "Not Found"</code></td><td>Такого адреса в API нет</td><td>Префикс <code>/api/v1</code>, опечатку в имени коллекции</td></tr>
+<tr><td>HTML вместо JSON</td><td>Ответил не сервис, а что-то перед ним</td><td>Порт, адрес сервера, обратный прокси</td></tr>
+</tbody>
+</table></div>
+
+<p>Код <code>405 Method Not Allowed</code> честнее: адрес существует, но этот метод к нему неприменим. По стандарту вместе с ним обязателен заголовок <code>Allow</code> со списком доступных методов — по нему сразу видно, чем заменить.</p>
+
+<div class="code code--out"><b>настоящий ответ на PUT /api/v1/tickets/{id}</b><pre>HTTP/1.1 405 Method Not Allowed
+allow: GET
+content-type: application/problem+json</pre></div>
+
+<div class="note"><b>Заголовку Allow верить с оглядкой</b><p>В этом ответе перечислен только <code>GET</code>, хотя у адреса есть ещё <code>PATCH</code> и <code>DELETE</code>: так их считает библиотека, на которой построен сервис. Полный список методов всегда есть в описании OpenAPI — и это ровно тот случай, когда описание надёжнее заголовка.</p></div>
+
+<p>Частая причина <code>405</code> — попытка отправить <code>PUT</code> туда, где реализован только <code>PATCH</code>, или <code>POST</code> на адрес элемента вместо адреса коллекции. Разницу между этими адресами разбирали в главе 1.3.</p>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>415 и 422: формат и содержание</h2>
+<p>Тело запроса проверяется в три этапа, и стандарт разрешает отвечать на них разными кодами: <code>415 Unsupported Media Type</code> — не тот <code>Content-Type</code>, <code>400 Bad Request</code> — текст не является JSON, <code>422</code> — JSON разобран, но не подходит под схему.</p>
+<p>Разрешает — не значит обязывает. Учебный сервис на все три случая отвечает <code>422</code>, и различает их поле <code>errors</code>. Вот три настоящих ответа на три разных запроса:</p>
+
+<div class="code code--out"><b>1 · тело послано формой, а не JSON</b><pre><span class="s">"errors"</span>: [{<span class="s">"loc"</span>: [<span class="s">"body"</span>],
+             <span class="s">"msg"</span>: <span class="s">"Input should be a valid dictionary or object to extract fields from"</span>,
+             <span class="s">"type"</span>: <span class="s">"model_attributes_type"</span>}]</pre></div>
+
+<div class="code code--out"><b>2 · JSON оборван на середине</b><pre><span class="s">"errors"</span>: [{<span class="s">"loc"</span>: [<span class="s">"body"</span>, <span class="s">"9"</span>], <span class="s">"msg"</span>: <span class="s">"JSON decode error"</span>, <span class="s">"type"</span>: <span class="s">"json_invalid"</span>}]</pre></div>
+
+<div class="code code--out"><b>3 · JSON верный, но не по схеме</b><pre><span class="s">"errors"</span>: [
+  {<span class="s">"loc"</span>: [<span class="s">"body"</span>, <span class="s">"title"</span>], <span class="s">"msg"</span>: <span class="s">"String should have at least 3 characters"</span>, <span class="s">"type"</span>: <span class="s">"string_too_short"</span>},
+  {<span class="s">"loc"</span>: [<span class="s">"body"</span>, <span class="s">"priority"</span>], <span class="s">"msg"</span>: <span class="s">"Extra inputs are not permitted"</span>, <span class="s">"type"</span>: <span class="s">"extra_forbidden"</span>}
+]</pre></div>
+
+<p>Читается это так. Первый: прислана форма, а ожидался объект. Второй: разбор JSON споткнулся на девятом символе. Третий: поле <code>title</code> короче трёх символов, и вдобавок прислано поле <code>priority</code>, которого в контракте нет, — почти всегда это опечатка в имени поля или код клиента, написанный под другую версию контракта.</p>
+
+<div class="note"><b>Забытый Content-Type</b><p>Частая причина первого случая — запрос из терминала без заголовка. <code>curl</code> с ключом <code>-d</code> ставит <code>application/x-www-form-urlencoded</code>, а не JSON. Заголовок <code>-H 'Content-Type: application/json'</code> нужно указывать явно.</p></div>
+
+<div class="note note--warn"><b>Это решение, а не случайность</b><p>Один код на три случая проще для клиента, но менее точен: отличить «не тот формат» от «не та схема» можно только заглянув в <code>errors</code>. Если такая точность нужна, различие кодов прописывают в правилах проекта и добавляют обработчик. Главное — чтобы выбранное поведение было записано в описании и одинаково работало во всех операциях.</p></div>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>429 и 5xx: нагрузка и сбой</h2>
+<p><code>429 Too Many Requests</code> — не поломка, а защита сервиса. Ответ сообщает, сколько ждать, и повторять запрос раньше бессмысленно.</p>
+
+<div class="code code--out"><b>настоящий ответ учебного сервиса</b><pre>HTTP/1.1 429
+retry-after: 60
+x-ratelimit-limit: 2
+x-ratelimit-remaining: 0
+x-ratelimit-reset: 60
+content-type: application/problem+json
+
+{
+  <span class="s">"type"</span>: <span class="s">"https://…/problems/http-429"</span>,
+  <span class="s">"title"</span>: <span class="s">"Too many requests"</span>,
+  <span class="s">"status"</span>: <span class="n">429</span>,
+  <span class="s">"detail"</span>: <span class="s">"Write limit of 2 requests per minute exceeded"</span>,
+  <span class="s">"instance"</span>: <span class="s">"/api/v1/tickets"</span>
+}</pre></div>
+
+<p>Здесь всё сказано числами: предел — 2 запроса, осталось 0, окно закроется через 60 секунд. Клиент, который это читает, ждёт указанное время; клиент, который не читает, будет долбиться в закрытую дверь и получать то же самое. Заголовки лимитов разбираются в главе 4.3.</p>
+
+<p>Коды <code>5xx</code> — другой разговор. Тело такой ошибки намеренно не содержит подробностей, поэтому разбор идёт не по ответу, а по журналу сервера.</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Код</th><th>Что обычно значит</th><th>Помогает ли повтор</th></tr></thead>
+<tbody>
+<tr><td><code>500</code></td><td>Необработанное исключение в сервисе</td><td>Нет, пока не исправят</td></tr>
+<tr><td><code>502</code></td><td>Прокси не получил ответа от сервиса</td><td>Иногда: сервис мог перезапускаться</td></tr>
+<tr><td><code>503</code></td><td>Сервис временно недоступен, часто с <code>Retry-After</code></td><td>Да, после указанной паузы</td></tr>
+<tr><td><code>504</code></td><td>Ответ не успел прийти за отведённое время</td><td>Осторожно: операция могла выполниться</td></tr>
+</tbody>
+</table></div>
+
+<div class="note note--warn"><b>504 и повторы</b><p>Истёкшее время ожидания не означает, что запрос не выполнен: ответ мог потеряться уже после записи. Повторять <code>POST</code> вслепую здесь опасно — появится дубль. Именно для этого случая существует <code>Idempotency-Key</code> из главы 4.3.</p></div>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>Когда ответа нет вовсе</h2>
+<p>Отдельный класс случаев: кода состояния нет, потому что ответа не было. Тогда разбор идёт не по HTTP, а по сети.</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Что видно</th><th>Причина</th><th>Что делать</th></tr></thead>
+<tbody>
+<tr><td><code>Connection refused</code></td><td>По этому адресу и порту никто не слушает</td><td>Проверить, запущен ли сервис и тот ли порт</td></tr>
+<tr><td>Запрос висит и обрывается</td><td>Адрес недоступен, мешает сеть или фильтр</td><td>Проверить адрес хоста, доступность сети</td></tr>
+<tr><td>В браузере CORS-ошибка в консоли</td><td>Сервис не разрешил запрос с этого источника</td><td>Настройка CORS на сервере, см. главу 4.3</td></tr>
+<tr><td>Ответ пришёл, но заголовков не видно</td><td>Браузер скрывает заголовки, не перечисленные в <code>expose_headers</code></td><td>Добавить нужные заголовки в настройку CORS</td></tr>
+</tbody>
+</table></div>
+
+<p>Последние два случая коварны тем, что в терминале всё работает, а в браузере — нет. Проверяя чужую жалобу, всегда уточняйте, откуда шёл запрос: из <code>curl</code> или со страницы.</p>
+</section>
+
+<section class="sec" id="s8">
+<h2><i>§8</i>Найти запрос в журнале</h2>
+<p>Каждый ответ учебного сервиса несёт заголовок <code>X-Request-Id</code>. Это ключ, по которому конкретный запрос находится в журнале сервера — среди тысяч похожих.</p>
+
+<div class="code code--out"><b>заголовок ответа</b><pre>x-request-id: 8952af24-1c19-4801-8f28-181a89f6265f</pre></div>
+
+<div class="code"><b>поиск в журнале</b><pre>grep 8952af24-1c19-4801-8f28-181a89f6265f uvicorn.log</pre></div>
+
+<p>Клиент может прислать свой идентификатор — тогда сервис его сохранит и вернёт обратно. В захваченном ответе учебного сервиса это видно прямо:</p>
+
+<div class="code code--out"><b>клиент прислал свой идентификатор</b><pre>HTTP/1.1 200
+etag: <span class="s">"4fec2a976840743a"</span>
+x-request-id: support-case-1842</pre></div>
+
+<p>Приём простой и очень полезный: служба поддержки ставит в идентификатор номер обращения, и запрос конкретного пользователя находится в журнале по номеру его заявки. Подробности — в главе 4.3.</p>
+
+<div class="takeaway"><b>Что прикладывать к задаче</b><p>Метод и полный адрес, код ответа, тело Problem Details и значение <code>X-Request-Id</code>. Этих четырёх строк хватает, чтобы разбор начался сразу, без переписки «а что именно вы отправляли».</p></div>
+</section>
+
+<section class="sec" id="s9">
+<h2><i>§9</i>Порядок проверок целиком</h2>
+<ol class="steps">
+<li><b>Повторите запрос с <code>-i</code>.</b> Нужен весь ответ: код, заголовки, тело.</li>
+<li><b>Посмотрите на первую цифру кода.</b> <code>4xx</code> — разбираетесь сами, <code>5xx</code> — идёте к команде сервиса с <code>X-Request-Id</code>.</li>
+<li><b>Прочитайте <code>detail</code> и <code>errors</code>.</b> В большинстве случаев причина написана прямо там.</li>
+<li><b>Откройте адрес из поля <code>type</code>.</b> На странице вида проблемы написано, что делать.</li>
+<li><b>Сверьтесь с описанием операции</b> в Swagger UI: тот ли метод, тот ли адрес, те ли обязательные поля.</li>
+<li><b>Выполните ту же операцию через Swagger UI.</b> Если там получается, дело в вашем запросе, а не в сервисе.</li>
+<li><b>Только теперь заводите задачу</b> — с четырьмя строками из §8.</li>
+</ol>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s10">
+<h2><i>§10</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Смотреть только на тело</b>Код, <code>Retry-After</code>, <code>Allow</code>, <code>X-Request-Id</code> часто содержат ответ целиком.</div>
+<div><b>Повторять запрос после 4xx</b>Сервис отказал осознанно. Повтор даст тот же результат, кроме случая <code>429</code> — но и его повторяют не сразу, а после указанной паузы.</div>
+<div><b>Слепо повторять POST после 504</b>Операция могла выполниться. Нужен <code>Idempotency-Key</code>.</div>
+<div><b>Заводить задачу без X-Request-Id</b>Разбор превращается в поиск иголки в журнале за сутки.</div>
+<div><b>Проверять в curl жалобу из браузера</b>CORS и скрытые заголовки в терминале не воспроизводятся.</div>
+</div>
+</section>
+
+<section class="sec" id="s11">
+<h2><i>§11</i>Проверьте себя</h2>
+<ol class="check">
+<li>По какому признаку решают, кому заводить задачу — себе или команде сервиса?</li>
+<li>Клиент получил <code>401</code>, обновил токен и получил <code>401</code> снова. О чём это говорит?</li>
+<li>Какие три проверки проходит тело запроса и каким кодом учебный сервис отвечает на каждую? Как отличить случаи друг от друга?</li>
+<li>Что обязательно должно быть в ответе <code>405</code>, кроме кода?</li>
+<li>Почему после <code>504</code> опасно повторять <code>POST</code> и что решает эту задачу?</li>
+<li>В терминале запрос проходит, а на странице — нет. Где искать причину?</li>
+</ol>
+
+<div class="cheat">
+<div><b>Смотреть</b><code>curl -i</code><code>код + заголовки + тело</code></div>
+<div><b>Первая цифра</b><code>4xx — чинит клиент</code><code>5xx — чинит сервер</code></div>
+<div><b>Пары, которые путают</b><code>401 / 403</code><code>404 / 405</code><code>422: формат / схема</code></div>
+<div><b>В задачу приложить</b><code>метод и адрес</code><code>код ответа</code><code>тело Problem Details</code><code>X-Request-Id</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../4-1-problem-details/index.html">← Глава 4.1. Problem Details</a>
+<a href="../4-3-zagolovki/index.html">Глава 4.3. Заголовки контракта →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 4 · глава 4.2</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>
