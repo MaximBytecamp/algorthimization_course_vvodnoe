@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 8.1 справочника: практическая работа — выбрать предметную область, спроектировать контракт по правилам, реализовать пять операций и настроить проверки.">
+<title>8.1 Свой API по правилам · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 8 · Практика</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 8 · Практика</p><p class="folio">Глава 8.1</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">8.1</span>
+<h1>Свой API<br>по правилам</h1>
+<p class="lead">Семь модулей разбирали чужой контракт. Пора сделать свой: выбрать предметную область, описать операции, реализовать их и поставить проверки, которые не дадут контракту разойтись с кодом. Работа рассчитана на несколько занятий и выполняется по шагам — каждый шаг опирается на конкретную главу справочника.</p>
+<p class="pull">«Контракт, который никто не проверяет, ничем не отличается от обещания на словах.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Практика</dd></div>
+<div><dt>Уровень</dt><dd>Итоговый</dd></div>
+<div><dt>Связанные главы</dt><dd>весь справочник · 8.2 Отчёт и критерии</dd></div>
+<div><dt>Что получится</dt><dd>Репозиторий с работающим API, описанием, проверками и документацией</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Что нужно сделать</a></li>
+<li><a href="#s2">Шаг 1. Предметная область</a></li>
+<li><a href="#s3">Шаг 2. Ресурсы и адреса</a></li>
+<li><a href="#s4">Шаг 3. Операции и коды</a></li>
+<li><a href="#s5">Шаг 4. Схемы и ошибки</a></li>
+<li><a href="#s6">Шаг 5. Реализация</a></li>
+<li><a href="#s7">Шаг 6. Проверки</a></li>
+<li><a href="#s8">Шаг 7. Документы репозитория</a></li>
+<li><a href="#s9">Порядок работы с Git</a></li>
+<li><a href="#s10">Частые ошибки</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Что нужно сделать</h2>
+<p>Собрать репозиторий со своим HTTP API: не копию учебного, а свой — по своей предметной области, но по тем же правилам.</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Часть работы</th><th>Минимум</th><th>Где разбиралось</th></tr></thead>
+<tbody>
+<tr><td>Ресурс и адреса</td><td>Одна коллекция и её элементы</td><td>глава 1.3</td></tr>
+<tr><td>Операции</td><td>Пять: список, создание, чтение, изменение, удаление</td><td>главы 2.2, 2.3</td></tr>
+<tr><td>Описание OpenAPI</td><td>Выгружено в файл, в репозитории</td><td>главы 3.1–3.3</td></tr>
+<tr><td>Ошибки</td><td>Problem Details, не меньше четырёх кодов</td><td>глава 4.1</td></tr>
+<tr><td>Заголовки</td><td><code>X-Request-Id</code> обязательно, дальше по выбору</td><td>глава 4.3</td></tr>
+<tr><td>Версия</td><td>Путь <code>/api/v1</code> и <code>info.version</code> по SemVer</td><td>глава 5.1</td></tr>
+<tr><td>Стандарт</td><td>Свой <code>API_STYLE_GUIDE.md</code> с уровнями требований</td><td>глава 6.1</td></tr>
+<tr><td>Проверки</td><td>Тесты и линтер, запускаются в сборке</td><td>главы 6.2–6.4</td></tr>
+<tr><td>Документы</td><td>README, CHANGELOG, один ADR</td><td>главы 5.4, 7.1</td></tr>
+</tbody>
+</table></div>
+
+<p>Учебный проект <code>api-standard-template</code> — образец, а не заготовка для копирования. Смотреть в него можно и нужно; переносить целиком — нельзя, потому что предметная область у вас другая, а вместе с ней другими будут ресурсы, поля и ошибки.</p>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Шаг 1. Предметная область</h2>
+<p>Выберите область, которую понимаете без объяснений. Хорошая область — та, где легко назвать сущность, её состояния и операции над ней.</p>
+
+<div class="fork">
+<div><b>Подходит</b><p>Заявки на оборудование, бронирование аудиторий, читательские формуляры, заказы в столовой, задачи в личном планировщике, записи в очередь к врачу.</p></div>
+<div><b>Не подходит</b><p>«Соцсеть», «маркетплейс», «CRM» — слишком крупно: за занятие не получится ни описать, ни реализовать, ни проверить.</p></div>
+</div>
+
+<p>Признак удачного выбора: вы можете за минуту устно описать, что происходит с одной записью от создания до конца её жизни. Не можете — область слишком большая, сузьте.</p>
+
+<div class="code code--out"><b>пример формулировки</b><pre>Предметная область: бронирование аудиторий.
+Сущность: бронь аудитории на дату и пару.
+Состояния: requested → confirmed → cancelled.
+Кто пользуется: староста (создаёт), диспетчер (подтверждает), все (читают).</pre></div>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Шаг 2. Ресурсы и адреса</h2>
+<p>Из описания области выделите ресурс и назовите адреса по правилам главы 1.3.</p>
+
+<ol class="steps">
+<li><b>Существительное во множественном числе</b> для коллекции: <code>/bookings</code>, а не <code>/booking</code> и не <code>/createBooking</code>.</li>
+<li><b>Идентификатор в пути</b> для элемента: <code>/bookings/{booking_id}</code>.</li>
+<li><b>Фильтры и пагинация — параметрами запроса</b>: <code>?status=confirmed&amp;limit=20&amp;offset=0</code>.</li>
+<li><b>Префикс версии впереди</b>: <code>/api/v1/bookings</code>.</li>
+<li><b>Не глубже двух уровней вложенности.</b> Нужен третий — скорее всего, там прячется отдельный ресурс.</li>
+</ol>
+
+<div class="code code--out"><b>получившийся список адресов</b><pre>GET    /api/v1/bookings                 список, фильтр по status, пагинация
+POST   /api/v1/bookings                 создать бронь
+GET    /api/v1/bookings/{booking_id}    прочитать одну
+PATCH  /api/v1/bookings/{booking_id}    изменить состояние или примечание
+DELETE /api/v1/bookings/{booking_id}    отменить и удалить запись</pre></div>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>Шаг 3. Операции и коды</h2>
+<p>Для каждой операции выпишите все исходы — успешные и нет. Удобно делать это таблицей: она потом прямо превращается в раздел <code>responses</code> описания.</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Операция</th><th>Успех</th><th>Ошибки</th></tr></thead>
+<tbody>
+<tr><td><code>GET /bookings</code></td><td><code>200</code></td><td><code>422</code> — неверный <code>limit</code></td></tr>
+<tr><td><code>POST /bookings</code></td><td><code>201</code> + <code>Location</code></td><td><code>401</code>, <code>403</code>, <code>422</code></td></tr>
+<tr><td><code>GET /bookings/{id}</code></td><td><code>200</code> + <code>ETag</code></td><td><code>404</code></td></tr>
+<tr><td><code>PATCH /bookings/{id}</code></td><td><code>200</code></td><td><code>401</code>, <code>403</code>, <code>404</code>, <code>412</code>, <code>422</code></td></tr>
+<tr><td><code>DELETE /bookings/{id}</code></td><td><code>204</code></td><td><code>401</code>, <code>403</code>, <code>404</code></td></tr>
+</tbody>
+</table></div>
+
+<p>Проверьте себя тремя вопросами из главы 2.3: возвращаете ли вы <code>201</code> именно при создании, <code>204</code> именно при удалении, и различаете ли <code>401</code> и <code>403</code>. Три самых частых упрощения — и три самых заметных на проверке.</p>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>Шаг 4. Схемы и ошибки</h2>
+<p>Опишите данные. Схем должно быть не меньше трёх — по главе 3.3:</p>
+
+<div class="code"><b>schemas.py · заготовка</b><pre><span class="k">class</span> <span class="f">BookingCreate</span>(BaseModel):   <span class="c"># что присылает клиент</span>
+<span class="k">class</span> <span class="f">BookingUpdate</span>(BaseModel):   <span class="c"># изменение, все поля необязательны</span>
+<span class="k">class</span> <span class="f">Booking</span>(BaseModel):         <span class="c"># что возвращает сервер</span>
+<span class="k">class</span> <span class="f">BookingPage</span>(BaseModel):     <span class="c"># страница списка: items, total, limit, offset</span></pre></div>
+
+<div class="ops">
+<div><b>Обязательность</b><span>Что клиент обязан прислать, а что нет. В модели создания — минимум обязательных полей.</span><i>required</i></div>
+<div><b>Ограничения</b><span>Длина строк, диапазоны чисел, перечисления состояний. Всё это попадёт в описание само.</span><i>Field</i></div>
+<div><b>Запрет лишнего</b><span><code>extra="forbid"</code>: клиент не присылает поля, которые формирует сервер.</span><i>строгость</i></div>
+<div><b>Примеры</b><span>Хотя бы один осмысленный пример на схему — он окажется в Swagger UI.</span><i>examples</i></div>
+</div>
+
+<p>Дальше — ошибки. Используйте формат Problem Details из главы 4.1 и не собирайте тело ошибки в каждом обработчике: один модуль, одна функция, три обработчика исключений.</p>
+
+<div class="note"><b>Не забудьте про страницы видов проблем</b><p>Если поле <code>type</code> ведёт на адрес, по нему должна открываться страница. Публиковать её на GitHub Pages (глава 7.3) — плюс к работе; если публикации не будет, используйте <code>about:blank</code>, а не выдуманный домен.</p></div>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Шаг 5. Реализация</h2>
+<p>Только теперь пишется код. Порядок такой же, как в учебном проекте.</p>
+
+<div class="tree">
+<p class="tree__head">структура репозитория</p>
+<div class="tree__row"><b>app/</b><span>приложение: <code>main.py</code>, <code>schemas.py</code>, <code>problems.py</code>, <code>storage.py</code>, операции</span></div>
+<div class="tree__row tree__row--hot"><b>openapi/</b><span>выгруженное описание — файл в репозитории, а не только в памяти сервиса</span></div>
+<div class="tree__row"><b>scripts/export_openapi.py</b><span>выгрузка описания и режим <code>--check</code> для сборки</span></div>
+<div class="tree__row tree__row--hot"><b>tests/</b><span>проверки описания и поведения</span></div>
+<div class="tree__row"><b>docs/</b><span>стандарт, политика версий, ADR</span></div>
+<div class="tree__row"><b>.github/workflows/</b><span>сборка контракта</span></div>
+</div>
+
+<p>Хранилище можно держать в памяти — база данных в этой работе не проверяется. Важно другое: чтобы поведение совпадало с описанием и чтобы состояние сбрасывалось между тестами.</p>
+
+<div class="code"><b>проверка на ходу</b><pre>uvicorn app.main:app --reload
+<span class="c"># откройте http://127.0.0.1:8000/docs и выполните каждую операцию кнопкой Execute</span></pre></div>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>Шаг 6. Проверки</h2>
+<div class="ops">
+<div><b>Тесты описания</b><span>У всех операций есть <code>operationId</code>, теги, описанные ответы; все пути с префиксом версии; ошибки — <code>application/problem+json</code>.</span><i>глава 6.3</i></div>
+<div><b>Тесты поведения</b><span>По одному на операцию плюс проверки кодов <code>401</code>, <code>403</code>, <code>404</code>, <code>422</code>. Минимум — двенадцать тестов.</span><i>глава 6.3</i></div>
+<div><b>Сверка файла</b><span><code>export_openapi.py --check</code>: выгруженное описание совпадает с кодом.</span><i>глава 3.1</i></div>
+<div><b>Линтер</b><span>Набор <code>spectral:oas</code> плюс минимум одно своё правило из вашего стандарта.</span><i>глава 6.2</i></div>
+<div><b>Сборка</b><span>Всё перечисленное запускается само при push и pull request.</span><i>глава 6.4</i></div>
+</div>
+
+<div class="takeaway"><b>Признак готовности</b><p>Склонируйте свой репозиторий в пустую папку, установите зависимости и запустите проверки. Если всё зелёное без единой правки «по месту» — работа собрана правильно.</p></div>
+</section>
+
+<section class="sec" id="s8">
+<h2><i>§8</i>Шаг 7. Документы репозитория</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Файл</th><th>Что в нём</th><th>Глава</th></tr></thead>
+<tbody>
+<tr><td><code>README.md</code></td><td>Что за API, как запустить, ссылка на документацию и стандарт</td><td>—</td></tr>
+<tr><td><code>docs/API_STYLE_GUIDE.md</code></td><td>Свои правила с MUST, SHOULD, MAY и способом проверки каждого</td><td>6.1</td></tr>
+<tr><td><code>docs/VERSIONING.md</code></td><td>Что считаете несовместимым изменением и почему</td><td>5.2</td></tr>
+<tr><td><code>docs/adr/0001-….md</code></td><td>Одно архитектурное решение с вариантами и последствиями</td><td>5.4</td></tr>
+<tr><td><code>CHANGELOG.md</code></td><td>Хотя бы одна запись версии по Keep a Changelog</td><td>5.4</td></tr>
+<tr><td><code>.github/PULL_REQUEST_TEMPLATE.md</code></td><td>Свой шаблон с типом изменения и чек-листом</td><td>7.1</td></tr>
+</tbody>
+</table></div>
+
+<p>Стандарт пишется <b>под ваш</b> API. Переписывать в него правила про <code>Idempotency-Key</code>, если вы этот заголовок не поддерживаете, не нужно: правило, которого нет в коде, — самая заметная ошибка в такой работе.</p>
+</section>
+
+<section class="sec" id="s9">
+<h2><i>§9</i>Порядок работы с Git</h2>
+<ol class="steps">
+<li><b>Отдельная ветка на изменение.</b> Не пишите в <code>main</code> напрямую — иначе не увидите, как работают проверки в pull request.</li>
+<li><b>Небольшие изменения.</b> «Добавил операцию + тесты + запись в CHANGELOG» — хороший размер. «Сделал всё» — плохой.</li>
+<li><b>Описание изменения по своему шаблону.</b> Заполняйте его честно, включая тип изменения.</li>
+<li><b>Дождитесь сборки.</b> Красная — читайте вывод, он написан для вас.</li>
+<li><b>Объединяйте только зелёное.</b> Это и есть привычка, ради которой строилась вся глава 6.4.</li>
+</ol>
+
+<p>Заведите хотя бы один pull request с намеренно несовместимым изменением и покажите, что проверка его поймала, — как это сделано в учебном репозитории. Такое изменение не объединяют: оно остаётся как свидетельство работающей защиты.</p>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s10">
+<h2><i>§10</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Скопировать учебный проект и переименовать</b>Видно сразу: в стандарте остаются правила про обращения, а операции — про бронирования.</div>
+<div><b>Слишком большая предметная область</b>Не хватит времени на проверки и документы — а именно они здесь главное.</div>
+<div><b>Писать код раньше контракта</b>Потом переделывать описание под то, что получилось, и терять смысл работы.</div>
+<div><b>Все ответы <code>200</code></b>Создание — <code>201</code>, удаление — <code>204</code>, ненайденное — <code>404</code>.</div>
+<div><b>Правила в стандарте без проверки</b>Каждое правило должно ссылаться на тест, правило линтера или пункт ревью.</div>
+<div><b>Описание только в памяти сервиса</b>Файл должен лежать в репозитории, иначе нечего сравнивать и нечего публиковать.</div>
+<div><b>Всё одним коммитом в последний день</b>История изменений — тоже часть работы, и по ней видно, как она делалась.</div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../7-4-standarty-kompaniy/index.html">← Глава 7.4. Стандарты компаний</a>
+<a href="../8-2-otchet/index.html">Глава 8.2. Отчёт и критерии →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 8 · глава 8.1</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>
