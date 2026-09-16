@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 2.4 справочника: четыре места параметра в запросе, пагинация и фильтрация коллекций, media type и стиль JSON, схемы запроса и ответа.">
+<title>2.4 Параметры, тело, форматы · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 2 · Правила HTTP</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 2 · правила HTTP</p><p class="folio">Глава 2.4</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">2.4</span>
+<h1>Параметры,<br>тело, форматы</h1>
+<p class="lead">Адрес и метод сказали, что делать. Остальное приходит параметрами и телом: фильтр, размер страницы, формат данных, имена полей. В этой главе разберём, где чему место, как устроена пагинация и почему стиль имён в JSON — часть контракта, а не вкус разработчика.</p>
+<p class="pull">«Коллекция без ограничения размера однажды вернёт всё сразу — и это заметят пользователи, а не разработчик.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Правила HTTP</dd></div>
+<div><dt>Уровень</dt><dd>Базовый</dd></div>
+<div><dt>Связанные главы</dt><dd>1.3 Ресурсы · 2.3 Коды ответов · 3.2 Разделы OpenAPI · 6.2 Линтер</dd></div>
+<div><dt>Зачем это знать</dt><dd>Чтобы клиент не выкачивал коллекцию целиком и не гадал, как называются поля</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Четыре места параметра</a></li>
+<li><a href="#s2">Пагинация: коллекция не бесконечна</a></li>
+<li><a href="#s3">Фильтрация и сортировка</a></li>
+<li><a href="#s4">Media type: как читать тело</a></li>
+<li><a href="#s5">Стиль JSON</a></li>
+<li><a href="#s6">Три схемы вместо одной</a></li>
+<li><a href="#s7">Стиль проверяется линтером</a></li>
+<li><a href="#s8">Частые ошибки</a></li>
+<li><a href="#s9">Проверьте себя</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Четыре места параметра</h2>
+<p>Значение может приехать в запросе четырьмя путями, и выбор пути — часть контракта. В описании OpenAPI у параметра есть поле <code>in</code>, которое прямо называет место.</p>
+
+<div class="ops">
+<div><b>in: path</b><span>Часть адреса, без которой ресурс не определён: <code>/tickets/{ticket_id}</code>. Всегда обязателен.</span><i>идентификатор</i></div>
+<div><b>in: query</b><span>Уточнение выборки после «?»: <code>status</code>, <code>limit</code>, <code>offset</code>. Обычно необязателен и имеет значение по умолчанию.</span><i>фильтр</i></div>
+<div><b>in: header</b><span>Сведения о сообщении и условия: <code>Content-Type</code>, <code>If-Match</code>, <code>Idempotency-Key</code>.</span><i>условия</i></div>
+<div><b>in: cookie</b><span>Значение, которое браузер хранит и посылает сам. В API для мобильных и серверных клиентов почти не используется.</span><i>редко</i></div>
+</div>
+
+<p>Смешение ролей ломает смысл запроса. Идентификатор в query (<code>/tickets?id=…</code>) превращает обращение к объекту в фильтрацию коллекции: вместо <code>404</code> клиент получит пустой список. Фильтр в пути (<code>/tickets/open</code>) выглядит как адрес объекта с идентификатором <code>open</code> — и ломается, как только у обращения появится такой идентификатор.</p>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Пагинация: коллекция не бесконечна</h2>
+<p>Учебная база содержит три обращения, и соблазн вернуть их одним массивом велик. Но контракт живёт дольше учебной базы: через год в системе будет двести тысяч обращений, и запрос <code>GET /tickets</code> без ограничения попробует вернуть их все.</p>
+<p>Поэтому правило: коллекции, размер которых не ограничен, MUST поддерживать постраничный вывод. В учебном сервисе он устроен параметрами <code>limit</code> и <code>offset</code>.</p>
+
+<div class="code"><b>запрос страницы</b><pre>GET /api/v1/tickets?limit=2&offset=0</pre></div>
+
+<div class="code code--out"><b>ответ</b><pre>HTTP/1.1 200
+content-type: application/json
+
+{
+  <span class="s">"items"</span>: [ { … }, { … } ],
+  <span class="s">"total"</span>: <span class="n">3</span>,
+  <span class="s">"limit"</span>: <span class="n">2</span>,
+  <span class="s">"offset"</span>: <span class="n">0</span>
+}</pre></div>
+
+<div class="ops">
+<div><b>limit</b><span>Сколько объектов вернуть. Значение по умолчанию — 20, максимум — 100: верхняя граница защищает сервер от запроса «дай миллион».</span><i>1…100</i></div>
+<div><b>offset</b><span>Сколько объектов пропустить от начала выборки. Вторая страница по 20 — это <code>offset=20</code>.</span><i>≥ 0</i></div>
+<div><b>total</b><span>Сколько объектов подходит под фильтр всего. Клиент рисует по нему число страниц.</span><i>в ответе</i></div>
+</div>
+
+<p>Запрос с <code>limit=500</code> не «подстроится» под максимум молча — он получит <code>422</code> и объяснение, какое значение допустимо. Молчаливое исправление хуже ошибки: клиент решит, что получил всё, и потеряет часть данных.</p>
+
+<div class="note"><b>Есть и другой способ</b><p>Крупные API часто используют курсорную пагинацию: вместо <code>offset</code> клиент передаёт метку последней полученной записи. Она устойчивее, когда данные добавляются во время листания: при <code>offset</code> новая запись сдвигает всю выборку, и объект может встретиться дважды. Для учебного сервиса выбран <code>offset</code> — он проще и виден целиком.</p></div>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Фильтрация и сортировка</h2>
+<p>Фильтр — это query-параметр с понятным именем и объявленным набором значений. В учебном сервисе фильтр один:</p>
+
+<div class="code"><b>только открытые обращения</b><pre>GET /api/v1/tickets?status=open</pre></div>
+
+<p>Значение <code>status</code> ограничено перечислением <code>open</code>, <code>in_progress</code>, <code>closed</code>. Опечатка вернёт <code>422</code>, а не пустой список: клиент узнает, что ошибся, а не решит, что обращений нет.</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Задача</th><th>Как выражают</th><th>На что обратить внимание</th></tr></thead>
+<tbody>
+<tr><td>Фильтр по значению</td><td><code>?status=open</code></td><td>перечислить допустимые значения в описании</td></tr>
+<tr><td>Фильтр по диапазону</td><td><code>?created_from=2026-09-01</code></td><td>единый формат даты — RFC 3339</td></tr>
+<tr><td>Сортировка</td><td><code>?sort=created_at</code>, <code>?sort=-created_at</code></td><td>договориться о знаке для убывания и зафиксировать в правилах</td></tr>
+<tr><td>Поиск по тексту</td><td><code>?q=vpn</code></td><td>описать, по каким полям идёт поиск</td></tr>
+</tbody>
+</table></div>
+
+<p>Общее требование: любой параметр, влияющий на выборку, должен быть описан в контракте. Скрытый параметр, о котором знают только свои, — источник неповторимых ошибок у остальных.</p>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>Media type: как читать тело</h2>
+<p>Тело запроса и ответа — набор байтов. Что это за байты, сообщает заголовок <code>Content-Type</code> с указанием media type.</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Media type</th><th>Где встречается</th><th>Что означает</th></tr></thead>
+<tbody>
+<tr><td><code>application/json</code></td><td>запросы и успешные ответы</td><td>обычный документ JSON</td></tr>
+<tr><td><code>application/problem+json</code></td><td>ответы <code>4xx</code> и <code>5xx</code></td><td>описание ошибки по RFC 9457 — разбор в главе 4.1</td></tr>
+<tr><td><code>application/x-www-form-urlencoded</code></td><td>формы браузера</td><td>пары «поле=значение», не JSON</td></tr>
+<tr><td><code>multipart/form-data</code></td><td>загрузка файлов</td><td>несколько частей в одном теле</td></tr>
+</tbody>
+</table></div>
+
+<p>Суффикс <code>+json</code> у <code>application/problem+json</code> говорит: формат основан на JSON, но имеет собственную структуру. Клиент, умеющий разбирать JSON, прочитает тело; клиент, знающий про Problem Details, поймёт смысл полей.</p>
+
+<div class="note note--warn"><b>Без Content-Type тело не читается</b><p>Отправив JSON без заголовка, вы получите ошибку, которая выглядит как «сервер не понял запрос». Сервер действительно не понял: он не обязан угадывать формат по первому символу.</p></div>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>Стиль JSON</h2>
+<p>Имена полей — часть контракта, и менять их потом нельзя. Поэтому стиль выбирают один раз и применяют ко всем ресурсам сразу.</p>
+
+<div class="fork">
+<div><small>наш выбор</small><b>snake_case</b>
+<ul><li><code>created_at</code>, <code>ticket_id</code>, <code>in_progress</code>;</li>
+<li>совпадает со стилем Python;</li>
+<li>проверяется правилом линтера.</li></ul></div>
+<div><small>другой вариант</small><b>camelCase</b>
+<ul><li><code>createdAt</code>, <code>ticketId</code>;</li>
+<li>привычен для клиентов на JavaScript;</li>
+<li>тоже допустим — если применяется везде.</li></ul></div>
+</div>
+
+<p>Ошибка не в выборе, а в смешении: <code>created_at</code> в одном ответе и <code>updatedAt</code> в соседнем заставляют клиента помнить исключения. Поэтому правило записывают в style guide и проверяют автоматически.</p>
+<p>То же касается времени. В учебном сервисе дата и время передаются строкой в формате RFC 3339 в зоне UTC:</p>
+
+<div class="code code--out"><b>фрагмент ответа</b><pre>{
+  <span class="s">"created_at"</span>: <span class="s">"2026-09-15T17:30:00Z"</span>,
+  <span class="s">"updated_at"</span>: <span class="s">"2026-09-15T17:30:00Z"</span>
+}</pre></div>
+
+<p>Буква <code>Z</code> означает нулевое смещение. Такой формат сортируется как строка, однозначно разбирается любой библиотекой и не зависит от настроек сервера.</p>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Три схемы вместо одной</h2>
+<p>Соблазн описать обращение одной моделью и использовать её везде велик, но контракт от этого становится неточным. У создания, изменения и ответа разные наборы полей.</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Схема</th><th>Где используется</th><th>Чем отличается</th></tr></thead>
+<tbody>
+<tr><td><code>TicketCreate</code></td><td>тело <code>POST</code></td><td>только <code>title</code> и <code>description</code>; лишние поля запрещены</td></tr>
+<tr><td><code>TicketUpdate</code></td><td>тело <code>PATCH</code></td><td>все поля необязательны: клиент присылает то, что меняет</td></tr>
+<tr><td><code>Ticket</code></td><td>ответы</td><td>плюс <code>id</code>, <code>status</code>, <code>created_at</code>, <code>updated_at</code> — их заполняет сервер</td></tr>
+<tr><td><code>TicketPage</code></td><td>ответ на список</td><td><code>items</code>, <code>total</code>, <code>limit</code>, <code>offset</code></td></tr>
+</tbody>
+</table></div>
+
+<div class="code"><b>app/schemas.py · запрет лишних полей</b><pre><span class="k">class</span> <span class="f">TicketCreate</span>(BaseModel):
+    model_config = ConfigDict(<span class="n">extra=</span><span class="s">"forbid"</span>)
+    title: <span class="k">str</span> = Field(min_length=<span class="n">3</span>, max_length=<span class="n">120</span>)
+    description: <span class="k">str</span> = <span class="s">""</span></pre></div>
+
+<p>Настройка <code>extra="forbid"</code> означает: поле, которого нет в схеме, — ошибка. Клиент, приславший свой <code>id</code>, получит <code>422</code> вместо тихого игнорирования. Это защищает от подмены серверных полей и от опечаток в именах.</p>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>Стиль проверяется линтером</h2>
+<p>Правило «свойства в snake_case» записано в <code>.spectral.yaml</code> проекта и применяется к описанию API целиком.</p>
+
+<div class="code"><b>.spectral.yaml · фрагмент</b><pre>  json-properties-snake-case:
+    description: Свойства JSON MUST быть записаны в snake_case.
+    severity: error
+    given: <span class="s">"$.components.schemas[*].properties"</span>
+    then:
+      field: <span class="s">"@key"</span>
+      function: casing
+      functionOptions:
+        type: snake</pre></div>
+
+<p>Вот что печатает линтер, если в схему попало поле <code>createdAt</code>:</p>
+
+<div class="code code--out"><b>npx @stoplight/spectral-cli lint openapi.yaml</b><pre>47:19    error  json-properties-snake-case  Свойства JSON MUST быть записаны
+                                           в snake_case.
+                                           components.schemas.Ticket.properties.createdAt
+
+✖ 9 problems (7 errors, 2 warnings, 0 infos, 0 hints)</pre></div>
+
+<p>Сообщение называет файл, строку и точный путь до нарушения. Спорить не о чем: правило записано заранее, проверка одинакова для всех.</p>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s8">
+<h2><i>§8</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Коллекция без ограничения</b>Пока данных мало, ответ быстрый. Проблема проявится на проде и сразу у всех.</div>
+<div><b>Молчаливое исправление параметра</b><code>limit=500</code> «подрезали» до 100 и вернули данные. Клиент уверен, что получил всё.</div>
+<div><b>Смешение стилей имён</b><code>created_at</code> рядом с <code>updatedAt</code>. Правило выбирают один раз и проверяют линтером.</div>
+<div><b>Локальный формат даты</b><code>16.09.2026 21:30</code> в JSON — это строка, которую каждый клиент разберёт по-своему. Нужен RFC 3339 и UTC.</div>
+<div><b>Одна схема на всё</b>Тогда в теле создания оказываются <code>id</code> и <code>created_at</code>, и непонятно, кто их заполняет.</div>
+</div>
+</section>
+
+<section class="sec" id="s9">
+<h2><i>§9</i>Проверьте себя</h2>
+<ol class="check">
+<li>Где должен находиться идентификатор обращения и почему не в query?</li>
+<li>Запросите <code>?limit=500</code>. Какой код вернёт сервис и что будет в теле?</li>
+<li>Зачем в ответе на список нужны поля <code>total</code>, <code>limit</code> и <code>offset</code>?</li>
+<li>Чем отличается <code>application/problem+json</code> от <code>application/json</code> и когда используется каждый?</li>
+<li>Что произойдёт, если в теле <code>POST /api/v1/tickets</code> передать поле <code>id</code>? Почему так сделано?</li>
+</ol>
+
+<div class="cheat">
+<div><b>Места параметров</b><code>path — идентификатор</code><code>query — фильтр, страница</code><code>header — условия</code></div>
+<div><b>Пагинация</b><code>?limit=20&offset=0</code><code>ответ: items, total,</code><code>limit, offset</code></div>
+<div><b>Форматы</b><code>application/json</code><code>application/problem+json</code><code>дата — RFC 3339, UTC</code></div>
+<div><b>Схемы</b><code>TicketCreate — вход</code><code>TicketUpdate — правка</code><code>Ticket — ответ</code><code>extra="forbid"</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../2-3-kody/index.html">← Глава 2.3. Коды ответов</a>
+<a href="../../index.html">Содержание справочника →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 2 · глава 2.4</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>

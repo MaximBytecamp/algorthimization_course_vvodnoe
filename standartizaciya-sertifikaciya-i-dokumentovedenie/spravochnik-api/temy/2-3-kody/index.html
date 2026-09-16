@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 2.3 справочника: коды состояния HTTP — 2xx, 4xx, 5xx, какой код описывает какой исход, чем 401 отличается от 403 и как коды проверяются тестами.">
+<title>2.3 Коды ответов · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 2 · Правила HTTP</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 2 · правила HTTP</p><p class="folio">Глава 2.3</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">2.3</span>
+<h1>Коды<br>ответов</h1>
+<p class="lead">Трёхзначное число в первой строке ответа — единственная часть сообщения, которую обязана понимать любая программа. В этой главе разберём, какой код описывает какой исход, чем <code>401</code> отличается от <code>403</code>, а <code>422</code> от <code>400</code>, и как проверить коды тестами.</p>
+<p class="pull">«Код отвечает на вопрос, что случилось. Тело объясняет подробности — но решение клиент принимает по коду.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Правила HTTP</dd></div>
+<div><dt>Уровень</dt><dd>Базовый</dd></div>
+<div><dt>Связанные главы</dt><dd>2.2 Методы · 4.1 Problem Details · 4.3 Заголовки контракта</dd></div>
+<div><dt>Зачем это знать</dt><dd>Чтобы клиент отличал «повторить позже» от «исправить запрос» без разбора текста</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Зачем нужен код</a></li>
+<li><a href="#s2">2xx: запрос выполнен</a></li>
+<li><a href="#s3">4xx: исправлять нужно запрос</a></li>
+<li><a href="#s4">401 и 403: две разные ситуации</a></li>
+<li><a href="#s5">5xx: сервер не справился</a></li>
+<li><a href="#s6">Какой код для какого исхода</a></li>
+<li><a href="#s7">Коды проверяются тестами</a></li>
+<li><a href="#s8">Частые ошибки</a></li>
+<li><a href="#s9">Проверьте себя</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Зачем нужен код</h2>
+<p>Представьте клиента, который получил ответ и должен решить: показать данные, попросить пользователя войти заново, исправить форму или повторить запрос через минуту. Разбирать ради этого текст ошибки — плохая идея: текст меняется, переводится, отличается у разных endpoint. Код состояния существует именно для такого решения.</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Класс</th><th>Смысл</th><th>Что делает клиент</th></tr></thead>
+<tbody>
+<tr><td><code>2xx</code></td><td>запрос выполнен</td><td>читает тело или заголовки</td></tr>
+<tr><td><code>3xx</code></td><td>нужно дополнительное действие</td><td>идёт по адресу из <code>Location</code> или использует кэш</td></tr>
+<tr><td><code>4xx</code></td><td>проблема в запросе</td><td>исправляет запрос; повтор без изменений бесполезен</td></tr>
+<tr><td><code>5xx</code></td><td>проблема на сервере</td><td>повторяет позже, сообщает об инциденте</td></tr>
+</tbody>
+</table></div>
+
+<p>Первая цифра задаёт общее поведение, остальные две уточняют случай. Даже незнакомый код <code>418</code> клиент отнесёт к ошибкам запроса, а <code>503</code> — к временным неполадкам сервера.</p>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>2xx: запрос выполнен</h2>
+<p>В учебном сервисе используются три кода успеха, и каждый описывает свой исход.</p>
+
+<div class="ops">
+<div><b>200 OK</b><span>Запрос выполнен, результат в теле. Возвращают <code>GET</code> и <code>PATCH</code>.</span><i>есть тело</i></div>
+<div><b>201 Created</b><span>Создан новый ресурс. Адрес — в заголовке <code>Location</code>, представление — в теле.</span><i>создание</i></div>
+<div><b>204 No Content</b><span>Выполнено, возвращать нечего. Ответ <code>DELETE</code>: тела нет совсем.</span><i>без тела</i></div>
+</div>
+
+<p>Рядом стоит код <code>304 Not Modified</code> — формально из класса <code>3xx</code>, но встречается он в обычной работе с API. Сервер отвечает им на условный запрос, когда представление не изменилось с версии, указанной клиентом:</p>
+
+<div class="code code--out"><b>условный запрос: копия у клиента актуальна</b><pre>GET /api/v1/tickets/a8d04cb9-…
+If-None-Match: <span class="s">"4fec2a976840743a"</span>
+
+HTTP/1.1 304
+etag: <span class="s">"4fec2a976840743a"</span>
+<span class="c"># тела нет: клиент использует то, что у него уже есть</span></pre></div>
+
+<p class="takeaway">Возвращать <code>200</code> на каждый успешный запрос — упущенная возможность. Код должен описывать фактический исход: создание, удаление и «ничего не изменилось» выглядят по-разному.</p>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>4xx: исправлять нужно запрос</h2>
+<p>Коды этого класса сообщают: сервер понял запрос, но выполнить его не может, и повтор без изменений ничего не даст. Ниже — те, что встречаются в учебном сервисе, с настоящими телами ответов.</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Код</th><th>Когда возникает</th><th>Что делает клиент</th></tr></thead>
+<tbody>
+<tr><td><code>400</code></td><td>сообщение нельзя разобрать: сломанный JSON</td><td>исправляет формат</td></tr>
+<tr><td><code>401</code></td><td>нет токена или он неизвестен</td><td>получает токен и повторяет</td></tr>
+<tr><td><code>403</code></td><td>токен известен, но операция запрещена</td><td>запрашивает права; повтор бесполезен</td></tr>
+<tr><td><code>404</code></td><td>ресурса с таким адресом нет</td><td>проверяет идентификатор</td></tr>
+<tr><td><code>409</code></td><td>запрос противоречит текущему состоянию</td><td>читает состояние и решает</td></tr>
+<tr><td><code>412</code></td><td>условие <code>If-Match</code> не выполнено</td><td>перечитывает ресурс и повторяет правку</td></tr>
+<tr><td><code>422</code></td><td>структура верна, данные не проходят проверку</td><td>исправляет поля из <code>errors</code></td></tr>
+<tr><td><code>429</code></td><td>превышен лимит запросов</td><td>ждёт <code>Retry-After</code> секунд</td></tr>
+</tbody>
+</table></div>
+
+<p>Разница между <code>400</code> и <code>422</code> сбивает с толку чаще прочих. <code>400</code> — сервер не смог разобрать сообщение: испорченный JSON, неверная кодировка. <code>422</code> — сообщение разобрано, но данные не соответствуют схеме: нет обязательного поля, значение вне допустимого диапазона, передано лишнее свойство.</p>
+
+<div class="code code--out"><b>422: limit больше допустимого</b><pre>GET /api/v1/tickets?limit=500
+
+HTTP/1.1 422
+content-type: application/problem+json
+
+{
+  <span class="s">"type"</span>: <span class="s">"…/problems/http-422"</span>,
+  <span class="s">"title"</span>: <span class="s">"Validation error"</span>,
+  <span class="s">"status"</span>: <span class="n">422</span>,
+  <span class="s">"detail"</span>: <span class="s">"Request does not match the API contract"</span>,
+  <span class="s">"errors"</span>: [{<span class="s">"loc"</span>: [<span class="s">"query"</span>, <span class="s">"limit"</span>], <span class="s">"msg"</span>: <span class="s">"Input should be less than or equal to 100"</span>}]
+}</pre></div>
+
+<p>Массив <code>errors</code> — расширение проекта поверх стандартного формата ошибок. Он называет место (<code>query</code>, поле <code>limit</code>) и причину, поэтому клиент может подсветить нужное поле формы, а не показывать общее «ошибка ввода».</p>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>401 и 403: две разные ситуации</h2>
+<p>Эти коды путают чаще всех остальных, а разница между ними простая: <code>401</code> — сервер не знает, кто перед ним; <code>403</code> — знает и отказывает.</p>
+
+<div class="code code--out"><b>401: токен не передан</b><pre>POST /api/v1/tickets   <span class="c"># без заголовка Authorization</span>
+
+HTTP/1.1 401
+www-authenticate: Bearer
+content-type: application/problem+json
+
+{<span class="s">"title"</span>: <span class="s">"Authentication required"</span>,
+ <span class="s">"detail"</span>: <span class="s">"Provide a valid Bearer token in the Authorization header"</span>}</pre></div>
+
+<div class="code code--out"><b>403: токен известен, прав не хватает</b><pre>DELETE /api/v1/tickets/a8d04cb9-…
+Authorization: Bearer viewer-token
+
+HTTP/1.1 403
+content-type: application/problem+json
+
+{<span class="s">"title"</span>: <span class="s">"Operation forbidden"</span>,
+ <span class="s">"detail"</span>: <span class="s">"This token can only read tickets"</span>}</pre></div>
+
+<p>Разница важна для поведения клиента. Получив <code>401</code>, приложение отправляет пользователя на вход: возможно, срок токена истёк. Получив <code>403</code>, оно показывает «недостаточно прав» — повторный вход ничего не изменит.</p>
+
+<div class="note"><b>Заголовок WWW-Authenticate</b><p>Ответ <code>401</code> по стандарту сопровождается заголовком <code>WWW-Authenticate</code>: он сообщает, какой способ аутентификации сервер ожидает. В учебном сервисе это <code>Bearer</code>.</p></div>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>5xx: сервер не справился</h2>
+<p>Коды <code>5xx</code> означают, что запрос был правильным, а проблема на стороне сервиса. Самый частый — <code>500 Internal Server Error</code>.</p>
+<p>Важно, чем этот ответ <em>не</em> должен быть. Во-первых, <code>500</code> не заменяет коды <code>4xx</code>: если обращения нет, это <code>404</code>, а не «внутренняя ошибка». Во-вторых, тело ответа не должно раскрывать устройство системы.</p>
+
+<div class="fork">
+<div><small>нельзя</small><b>Отдать клиенту</b>
+<ul><li>traceback с именами файлов;</li>
+<li>текст SQL-запроса;</li>
+<li>пути файловой системы;</li>
+<li>значения переменных окружения.</li></ul></div>
+<div><small>нужно</small><b>Оставить на сервере</b>
+<ul><li>подробности — в лог;</li>
+<li>клиенту — короткое описание;</li>
+<li>идентификатор запроса в ответе и в логе;</li>
+<li>по нему инцидент и находят.</li></ul></div>
+</div>
+
+<div class="code code--out"><b>500 в учебном сервисе</b><pre>HTTP/1.1 500
+content-type: application/problem+json
+x-request-id: d7641a75-7d6e-460e-be67-383efdc60d05
+
+{<span class="s">"title"</span>: <span class="s">"Internal server error"</span>,
+ <span class="s">"detail"</span>: <span class="s">"Unexpected server error. The incident has been logged."</span>}</pre></div>
+
+<p>В журнале сервера в этот момент записан полный traceback вместе с тем же <code>x-request-id</code>. Пользователь называет идентификатор в обращении в поддержку — инженер находит запись за секунды.</p>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Какой код для какого исхода</h2>
+<p>Таблица решений для типичных ситуаций. Её удобно держать перед глазами, пока проектируете свой контракт.</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Ситуация</th><th>Код</th><th>Почему не другой</th></tr></thead>
+<tbody>
+<tr><td>Список получен</td><td><code>200</code></td><td>есть тело с результатом</td></tr>
+<tr><td>Объект создан</td><td><code>201</code></td><td><code>200</code> не сообщает о появлении ресурса</td></tr>
+<tr><td>Объект удалён</td><td><code>204</code></td><td>тела нет, <code>200</code> с пустым телом вводит в заблуждение</td></tr>
+<tr><td>Копия клиента актуальна</td><td><code>304</code></td><td>передавать тело заново незачем</td></tr>
+<tr><td>Нет токена</td><td><code>401</code></td><td><code>403</code> означал бы, что клиент опознан</td></tr>
+<tr><td>Прав не хватает</td><td><code>403</code></td><td>повторный вход не поможет, <code>401</code> ввёл бы в заблуждение</td></tr>
+<tr><td>Объекта нет</td><td><code>404</code></td><td>пустой список с <code>200</code> прячет ошибку клиента</td></tr>
+<tr><td>Данные не по схеме</td><td><code>422</code></td><td><code>400</code> означает, что сообщение вообще не разобрано</td></tr>
+<tr><td>Слишком много запросов</td><td><code>429</code></td><td>клиенту нужен <code>Retry-After</code>, а не отказ без объяснения</td></tr>
+<tr><td>Упало внутри</td><td><code>500</code></td><td>класс <code>4xx</code> переложил бы вину на клиента</td></tr>
+</tbody>
+</table></div>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>Коды проверяются тестами</h2>
+<p>Код ответа — часть контракта, а значит, его проверяют автоматически. В учебном проекте для этого есть отдельные тесты: они вызывают операцию и сравнивают код и заголовки с обещанным.</p>
+
+<div class="code"><b>tests/test_tickets.py · фрагмент</b><pre><span class="k">def</span> <span class="f">test_create_without_token_is_401</span>(client):
+    response = client.post(<span class="s">"/api/v1/tickets"</span>, json={<span class="s">"title"</span>: <span class="s">"Не работает VPN"</span>})
+    <span class="k">assert</span> response.status_code == <span class="n">401</span>
+    <span class="k">assert</span> response.headers[<span class="s">"content-type"</span>] == <span class="s">"application/problem+json"</span>
+    <span class="k">assert</span> response.headers[<span class="s">"WWW-Authenticate"</span>] == <span class="s">"Bearer"</span>
+
+<span class="k">def</span> <span class="f">test_delete_is_204_and_repeat_gives_404</span>(client, writer):
+    ticket_id = client.get(<span class="s">"/api/v1/tickets"</span>).json()[<span class="s">"items"</span>][<span class="n">0</span>][<span class="s">"id"</span>]
+    first = client.delete(<span class="s">f"/api/v1/tickets/{ticket_id}"</span>, headers=writer)
+    <span class="k">assert</span> first.status_code == <span class="n">204</span>
+    <span class="k">assert</span> first.content == <span class="s">b""</span>
+    <span class="k">assert</span> client.delete(<span class="s">f"/api/v1/tickets/{ticket_id}"</span>, headers=writer).status_code == <span class="n">404</span></pre></div>
+
+<p>Второй тест заодно фиксирует то, о чём говорилось в главе 2.2: успешное удаление возвращает <code>204</code> без тела, а повтор — <code>404</code>. Если однажды кто-то решит отвечать на удаление кодом <code>200</code> с телом, тест упадёт, и изменение не попадёт в основную ветку незамеченным.</p>
+
+<div class="code code--out"><b>pytest</b><pre>...............................                                          [100%]
+31 passed in 0.08s</pre></div>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s8">
+<h2><i>§8</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>200 на ошибку</b>Ответ <code>200</code> с телом <code>{"success": false}</code> заставляет клиента разбирать текст и ломает поведение посредников.</div>
+<div><b>404 вместо 403</b>Иногда «прячут» чужие объекты кодом <code>404</code>. Это осознанное решение о безопасности, и его записывают в контракт — иначе клиент будет удивлён.</div>
+<div><b>422 и 400 как синонимы</b><code>400</code> — сообщение не разобрано, <code>422</code> — разобрано, но данные не по схеме. Клиенту нужны разные действия.</div>
+<div><b>Traceback в ответе</b>Удобно при отладке и опасно в production: раскрывает пути, имена файлов и версии библиотек.</div>
+<div><b>Пустой список вместо 404</b>Запрос одного объекта, который вернул <code>200</code> и пустой массив, лишает клиента простой проверки.</div>
+</div>
+</section>
+
+<section class="sec" id="s9">
+<h2><i>§9</i>Проверьте себя</h2>
+<ol class="check">
+<li>Клиент получил <code>403</code>. Поможет ли ему повторный вход? А если пришёл <code>401</code>?</li>
+<li>Чем <code>400</code> отличается от <code>422</code>? Приведите по одному запросу на каждый случай.</li>
+<li>Почему успешное удаление отвечает <code>204</code>, а не <code>200</code>?</li>
+<li>Какой код вернёт учебный сервис на <code>GET /api/v1/tickets?limit=500</code> и что будет в теле?</li>
+<li>Напишите тест, который проверяет, что создание без токена возвращает <code>401</code> и заголовок <code>WWW-Authenticate</code>.</li>
+</ol>
+
+<div class="cheat">
+<div><b>Успех</b><code>200 — есть тело</code><code>201 — создано + Location</code><code>204 — без тела</code><code>304 — не изменилось</code></div>
+<div><b>Ошибка клиента</b><code>400 — не разобрано</code><code>401 — кто вы?</code><code>403 — нельзя</code><code>404 — нет объекта</code><code>422 — данные не по схеме</code><code>429 — слишком часто</code></div>
+<div><b>Ошибка сервера</b><code>500 — упало внутри</code><code>подробности — в лог</code><code>клиенту — x-request-id</code></div>
+<div><b>Проверка</b><code>pytest: код + заголовки</code><code>контракт описывает все коды</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../2-2-metody/index.html">← Глава 2.2. Методы и их свойства</a>
+<a href="../2-4-parametry/index.html">Глава 2.4. Параметры, тело, форматы →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 2 · глава 2.3</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>

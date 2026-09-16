@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 2.2 справочника: HTTP-методы GET, POST, PUT, PATCH, DELETE, их свойства safe и idempotent на настоящих ответах учебного сервиса и правило выбора метода для операции.">
+<title>2.2 Методы и их свойства · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 2 · Правила HTTP</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 2 · правила HTTP</p><p class="folio">Глава 2.2</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">2.2</span>
+<h1>Методы<br>и их свойства</h1>
+<p class="lead">Метод — это глагол контракта, и выбрать его «как удобнее» нельзя: смысл каждого метода описан стандартом, и на этот смысл опираются браузеры, прокси и библиотеки. В этой главе разберём пять методов учебного сервиса и два свойства, которые чаще всего путают: safe и idempotent.</p>
+<p class="pull">«Идемпотентность — о состоянии сервера после повтора, а не о том, одинаковые ли пришли ответы.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Правила HTTP</dd></div>
+<div><dt>Уровень</dt><dd>Базовый</dd></div>
+<div><dt>Связанные главы</dt><dd>1.3 Ресурсы · 2.3 Коды ответов · 4.3 Заголовки контракта</dd></div>
+<div><dt>Зачем это знать</dt><dd>Чтобы повтор запроса после обрыва сети не создавал второе обращение</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Метод — глагол контракта</a></li>
+<li><a href="#s2">GET: чтение</a></li>
+<li><a href="#s3">POST: создание</a></li>
+<li><a href="#s4">PUT и PATCH: замена и правка</a></li>
+<li><a href="#s5">DELETE: удаление</a></li>
+<li><a href="#s6">Safe и idempotent</a></li>
+<li><a href="#s7">Как выбрать метод</a></li>
+<li><a href="#s8">Частые ошибки</a></li>
+<li><a href="#s9">Проверьте себя</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Метод — глагол контракта</h2>
+<p>Значение методов задаёт <span class="term">RFC 9110</span> — стандарт семантики HTTP. Это не рекомендация авторов фреймворков: на описанный смысл опираются кэши, прокси, браузеры и клиентские библиотеки. Если сервис использует метод вопреки стандарту, ломается не стиль, а поведение посредников.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/18-rfc9110-methods.png" alt="Раздел 9 RFC 9110: обзор методов и таблица со стандартными методами GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS" loading="lazy">
+<figcaption><b>RFC 9110, раздел 9 «Methods».</b> Таблица перечисляет стандартные методы и ссылается на подраздел с описанием каждого. Именно отсюда берутся определения, которыми мы пользуемся дальше.</figcaption></figure>
+
+<p>В учебном сервисе используются пять методов. Ниже — каждый из них с настоящими ответами: команды выполнены на запущенном Service Desk API, вывод не переписан.</p>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>GET: чтение</h2>
+<p><code>GET</code> просит представление ресурса. Он не должен менять состояние сервера — это свойство называется <em>safe</em>, и на него опираются: браузер может предзагрузить ссылку, кэш — сохранить ответ, прокси — повторить неудавшийся запрос.</p>
+
+<div class="code"><b>чтение коллекции и элемента</b><pre>GET /api/v1/tickets?status=open&limit=20
+GET /api/v1/tickets/{ticket_id}</pre></div>
+
+<p>Возможных исходов у чтения немного: обращение найдено — <code>200</code> и тело; не найдено — <code>404</code> и описание ошибки; параметры не прошли проверку — <code>422</code>.</p>
+
+<div class="note note--warn"><b>Чего не делает GET</b><p>Не принимает тело, не меняет данные, не «отмечает просмотренным». Счётчик просмотров, который увеличивается при <code>GET</code>, — известный источник странных цифр: их накручивают поисковые роботы и предзагрузка браузера.</p></div>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>POST: создание</h2>
+<p><code>POST</code> отправляет данные в коллекцию, и сервер создаёт новый ресурс. Главное свойство: <code>POST</code> <b>не идемпотентен</b>. Два одинаковых запроса создают два разных обращения — и это не ошибка реализации, а определение метода.</p>
+
+<div class="code"><b>два одинаковых запроса подряд</b><pre>POST /api/v1/tickets   {<span class="s">"title"</span>: <span class="s">"Не работает VPN"</span>}
+POST /api/v1/tickets   {<span class="s">"title"</span>: <span class="s">"Не работает VPN"</span>}</pre></div>
+
+<div class="code code--out"><b>ответы учебного сервиса</b><pre>HTTP/1.1 201
+location: /api/v1/tickets/d22cf098-4373-4bca-a643-5cca0a640a8a
+{<span class="s">"id"</span>: <span class="s">"d22cf098-…"</span>, <span class="s">"title"</span>: <span class="s">"Не работает VPN"</span>, <span class="s">"status"</span>: <span class="s">"open"</span>}
+
+HTTP/1.1 201
+location: /api/v1/tickets/b228d2d7-06ca-4eb9-8a72-386595ee39a9
+{<span class="s">"id"</span>: <span class="s">"b228d2d7-…"</span>, <span class="s">"title"</span>: <span class="s">"Не работает VPN"</span>, <span class="s">"status"</span>: <span class="s">"open"</span>}
+
+<span class="c"># идентификаторы разные, обращений в коллекции стало на два больше</span></pre></div>
+
+<p>Отсюда практическая проблема. Клиент отправил запрос, сеть оборвалась, ответ не дошёл. Клиент не знает, создалось обращение или нет. Повторит — рискует получить дубль; не повторит — рискует потерять заявку.</p>
+<p>Решение стандартом не описано, но практика сложилась: клиент присылает заголовок <code>Idempotency-Key</code>, а сервер запоминает ключ вместе с результатом. Повтор с тем же ключом возвращает первый результат и ничего не создаёт. Так делают Stripe и Zalando, так сделано в учебном проекте — подробный разбор в главе 4.3.</p>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>PUT и PATCH: замена и правка</h2>
+<p>Оба метода изменяют существующий ресурс, но по-разному. <code>PUT</code> передаёт полное новое представление: то, чего в теле нет, должно исчезнуть. <code>PATCH</code> передаёт только изменяемые поля, остальные остаются как были.</p>
+
+<div class="fork">
+<div><small>PUT</small><b>Замена целиком</b>
+<ul><li>тело содержит все поля ресурса;</li>
+<li>пропущенное поле означает «его больше нет»;</li>
+<li>идемпотентен: повтор даёт то же состояние.</li></ul></div>
+<div><small>PATCH</small><b>Частичное изменение</b>
+<ul><li>тело содержит только изменяемые поля;</li>
+<li>остальное сервер не трогает;</li>
+<li>идемпотентность зависит от смысла правки.</li></ul></div>
+</div>
+
+<p>В учебном сервисе выбран <code>PATCH</code>: чаще всего меняется один статус, и заставлять клиента присылать заголовок с описанием ради этого не нужно. Посмотрим, что происходит при повторе.</p>
+
+<div class="code"><b>две одинаковые правки подряд</b><pre>PATCH /api/v1/tickets/84bb7367-…   {<span class="s">"status"</span>: <span class="s">"closed"</span>}
+PATCH /api/v1/tickets/84bb7367-…   {<span class="s">"status"</span>: <span class="s">"closed"</span>}</pre></div>
+
+<div class="code code--out"><b>ответы учебного сервиса</b><pre>HTTP/1.1 200
+etag: <span class="s">"1497f09b08f7a9b5"</span>
+{<span class="s">"id"</span>: <span class="s">"84bb7367-…"</span>, <span class="s">"status"</span>: <span class="s">"closed"</span>}
+
+HTTP/1.1 200
+etag: <span class="s">"257551ee94925a8c"</span>
+{<span class="s">"id"</span>: <span class="s">"84bb7367-…"</span>, <span class="s">"status"</span>: <span class="s">"closed"</span>}</pre></div>
+
+<p>Обратите внимание на деталь, которую обычно не замечают: статус после второй правки тот же, а <code>etag</code> изменился. Причина в поле <code>updated_at</code> — сервер обновил время изменения. Состояние ресурса по смыслу прежнее, представление — другое.</p>
+
+<p class="takeaway">Идемпотентность говорит о состоянии ресурса после повтора, а не о совпадении байтов ответа. Второй <code>PATCH</code> не «закрыл обращение ещё раз» — оно уже было закрыто.</p>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>DELETE: удаление</h2>
+<p><code>DELETE</code> удаляет ресурс. Успешный ответ не содержит тела: возвращать больше нечего, поэтому код <code>204 No Content</code>.</p>
+
+<div class="code"><b>два одинаковых удаления подряд</b><pre>DELETE /api/v1/tickets/84bb7367-…
+DELETE /api/v1/tickets/84bb7367-…</pre></div>
+
+<div class="code code--out"><b>ответы учебного сервиса</b><pre>HTTP/1.1 204
+
+HTTP/1.1 404
+content-type: application/problem+json
+{
+  <span class="s">"type"</span>: <span class="s">"…/problems/http-404"</span>,
+  <span class="s">"title"</span>: <span class="s">"Resource not found"</span>,
+  <span class="s">"status"</span>: <span class="n">404</span>,
+  <span class="s">"detail"</span>: <span class="s">"Ticket 84bb7367-… does not exist"</span>
+}</pre></div>
+
+<p>Коды разные — <code>204</code> и <code>404</code>, — но <code>DELETE</code> остаётся идемпотентным: после первого и после второго запроса состояние сервера одинаково, обращения нет. Это самый наглядный пример того, почему идемпотентность определяют через состояние.</p>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Safe и idempotent</h2>
+<p>Два свойства, которые постоянно путают на собеседованиях. Различить их помогает вопрос: «что я прошу сделать?» и «что будет, если попросить дважды?».</p>
+
+<div class="ops">
+<div><b>safe</b><span>Клиент не просит изменить состояние. Такой запрос можно повторить, предзагрузить и закэшировать без последствий.</span><i>GET, HEAD, OPTIONS</i></div>
+<div><b>idempotent</b><span>Повтор идентичного запроса оставляет состояние таким же, как после первого. Коды ответов при этом могут различаться.</span><i>GET, PUT, DELETE</i></div>
+</div>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Метод</th><th>Safe</th><th>Idempotent</th><th>Что показывает учебный сервис</th></tr></thead>
+<tbody>
+<tr><td><code>GET</code></td><td>да</td><td>да</td><td>повтор возвращает то же обращение, данные не меняются</td></tr>
+<tr><td><code>POST</code></td><td>нет</td><td>нет</td><td>два запроса — два обращения с разными <code>id</code></td></tr>
+<tr><td><code>PUT</code></td><td>нет</td><td>да</td><td>повтор замены даёт то же состояние ресурса</td></tr>
+<tr><td><code>PATCH</code></td><td>нет</td><td>зависит от правки</td><td><code>{"status": "closed"}</code> — да; «увеличить счётчик на 1» — нет</td></tr>
+<tr><td><code>DELETE</code></td><td>нет</td><td>да</td><td><code>204</code>, затем <code>404</code>; обращения нет в обоих случаях</td></tr>
+</tbody>
+</table></div>
+
+<p>Свойства важны не теоретически. На них опираются механизмы повторов: клиентские библиотеки и балансировщики автоматически повторяют идемпотентные запросы при обрыве соединения и не повторяют <code>POST</code>.</p>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>Как выбрать метод</h2>
+<p>Метод выбирают по смыслу операции, а не по удобству клиента. Таблица ниже покрывает почти все случаи, которые встречаются в учебных и рабочих API.</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Что нужно сделать</th><th>Метод и адрес</th><th>Успешный ответ</th></tr></thead>
+<tbody>
+<tr><td>Получить список с фильтром</td><td><code>GET /tickets?status=open</code></td><td><code>200</code> + страница</td></tr>
+<tr><td>Получить один объект</td><td><code>GET /tickets/{id}</code></td><td><code>200</code> + <code>ETag</code></td></tr>
+<tr><td>Создать объект</td><td><code>POST /tickets</code></td><td><code>201</code> + <code>Location</code></td></tr>
+<tr><td>Изменить часть полей</td><td><code>PATCH /tickets/{id}</code></td><td><code>200</code> + новое представление</td></tr>
+<tr><td>Заменить объект целиком</td><td><code>PUT /tickets/{id}</code></td><td><code>200</code> или <code>204</code></td></tr>
+<tr><td>Удалить объект</td><td><code>DELETE /tickets/{id}</code></td><td><code>204</code> без тела</td></tr>
+<tr><td>Выполнить действие («закрыть», «отправить»)</td><td><code>PATCH</code> статуса или <code>POST</code> на подресурс</td><td>по смыслу действия</td></tr>
+</tbody>
+</table></div>
+
+<p>Последняя строка — та, где чаще всего появляются адреса с глаголами. Если действие меняет одно поле, это <code>PATCH</code>: «закрыть» — это <code>{"status": "closed"}</code>. Если действие создаёт новую сущность — например, отправку уведомления, — у неё есть своё имя, и тогда уместен <code>POST /tickets/{id}/notifications</code>.</p>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s8">
+<h2><i>§8</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>«Идемпотентный — значит одинаковый ответ»</b>Нет: речь о состоянии сервера. Повторный <code>DELETE</code> отвечает <code>404</code>, но остаётся идемпотентным.</div>
+<div><b>POST для чтения</b>«Сложный фильтр не помещается в query» — частое объяснение. Ответ на <code>POST</code> не кэшируется и не повторяется посредниками; прежде чем так делать, стоит упростить фильтр.</div>
+<div><b>GET, который меняет данные</b>Счётчики, отметки «прочитано», подтверждения по ссылке из письма. Любой предзагрузчик испортит такие данные.</div>
+<div><b>PUT вместо PATCH</b>Если клиент присылает не все поля, а сервер трактует это как <code>PUT</code>, недостающие поля обнуляются. Такую потерю данных замечают не сразу.</div>
+</div>
+</section>
+
+<section class="sec" id="s9">
+<h2><i>§9</i>Проверьте себя</h2>
+<ol class="check">
+<li>Выполните два одинаковых <code>POST</code> и сравните <code>id</code> в ответах. Сколько обращений стало в коллекции?</li>
+<li>Удалите обращение дважды. Какие коды вернул сервер и почему метод всё равно идемпотентен?</li>
+<li>Почему у двух одинаковых <code>PATCH</code> получились разные <code>etag</code>?</li>
+<li>Клиент потерял ответ на <code>POST</code> из-за обрыва сети. Что ему делать и что должен предложить контракт?</li>
+<li>Операция «закрыть обращение» — какой метод и какой адрес? Обоснуйте выбор.</li>
+</ol>
+
+<div class="cheat">
+<div><b>Свойства</b><code>safe: GET, HEAD, OPTIONS</code><code>idempotent: GET, PUT, DELETE</code><code>POST — ни то, ни другое</code></div>
+<div><b>Коды успеха</b><code>GET → 200</code><code>POST → 201 + Location</code><code>PATCH → 200</code><code>DELETE → 204</code></div>
+<div><b>Повтор POST</b><code>Idempotency-Key</code><code>тот же ключ → тот же результат</code></div>
+<div><b>Проверка смысла</b><code>что прошу сделать?</code><code>что будет, если дважды?</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../2-1-rest/index.html">← Глава 2.1. REST: ограничения стиля</a>
+<a href="../2-3-kody/index.html">Глава 2.3. Коды ответов →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 2 · глава 2.2</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>
