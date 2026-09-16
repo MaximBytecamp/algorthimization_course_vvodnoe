@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 3.3 справочника: как FastAPI собирает описание OpenAPI из кода — метаданные приложения, аргументы декоратора, схемы Pydantic, зависимости и доработка описания.">
+<title>3.3 FastAPI и OpenAPI · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 3 · OpenAPI</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 3 · OpenAPI</p><p class="folio">Глава 3.3</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">3.3</span>
+<h1>FastAPI<br>и OpenAPI</h1>
+<p class="lead">Описание учебного сервиса никто не писал руками: его собирает FastAPI из кода. В этой главе проследим путь от строки в Python до поля в документе и разберём, что делать, когда сгенерированное описание не совпадает с тем, что сервис отвечает на самом деле.</p>
+<p class="pull">«Каждая строка контракта откуда-то взялась. Если вы не знаете откуда — вы не управляете контрактом.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Описание контракта</dd></div>
+<div><dt>Уровень</dt><dd>Средний</dd></div>
+<div><dt>Связанные главы</dt><dd>3.2 Разделы документа · 2.4 Схемы · 4.1 Problem Details</dd></div>
+<div><dt>Зачем это знать</dt><dd>Чтобы менять контракт осознанно: правкой кода, а не правкой файла описания</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Откуда берётся описание</a></li>
+<li><a href="#s2">Метаданные приложения → info</a></li>
+<li><a href="#s3">Роутер и декоратор → операция</a></li>
+<li><a href="#s4">Ответы: response_model и responses</a></li>
+<li><a href="#s5">Схемы Pydantic → components</a></li>
+<li><a href="#s6">Разные модели для входа и выхода</a></li>
+<li><a href="#s7">Зависимости → security</a></li>
+<li><a href="#s8">Когда описание нужно доработать</a></li>
+<li><a href="#s9">Проверка описания тестом</a></li>
+<li><a href="#s10">Частые ошибки</a></li>
+<li><a href="#s11">Проверьте себя</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Откуда берётся описание</h2>
+<p>FastAPI читает три источника: параметры конструктора приложения, аргументы декораторов маршрутов и аннотации типов вместе с моделями Pydantic. Из них собирается документ OpenAPI, который отдаётся по адресу <code>/openapi.json</code>.</p>
+
+<div class="tree">
+<p class="tree__head">откуда что берётся</p>
+<div class="tree__row"><b>FastAPI(...)</b><span>раздел <code>info</code>: название, версия, описание, контакты, лицензия; список <code>servers</code>; описания тегов</span></div>
+<div class="tree__row"><b>APIRouter(prefix, tags)</b><span>общий префикс адресов и тег операций</span></div>
+<div class="tree__row"><b>@router.get(...)</b><span>операция в <code>paths</code>: <code>summary</code>, <code>description</code>, <code>operationId</code>, ответы</span></div>
+<div class="tree__row"><b>аннотации функции</b><span>параметры: <code>in: path</code>, <code>in: query</code>, <code>in: header</code>, их типы и ограничения</span></div>
+<div class="tree__row tree__row--hot"><b>модели Pydantic</b><span><code>components.schemas</code>: поля, типы, обязательность, примеры</span></div>
+<div class="tree__row"><b>Depends(...)</b><span><code>security</code> у операции, если зависимость использует схему безопасности</span></div>
+</div>
+
+<p>Ничего «магического» в этом нет: описание — результат чтения кода. Отсюда практическое следствие, которое стоит запомнить: <b>чтобы изменить контракт, меняют код</b>, а не файл в папке <code>openapi/</code>.</p>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Метаданные приложения → info</h2>
+<p>Раздел <code>info</code> задаётся параметрами конструктора. В учебном проекте это файл <code>app/main.py</code>.</p>
+
+<div class="code"><b>app/main.py</b><pre>app = FastAPI(
+    title=<span class="s">"Service Desk API"</span>,
+    version=<span class="s">"1.1.0"</span>,
+    summary=<span class="s">"Учебный стандартизированный REST API"</span>,
+    description=API_DESCRIPTION,
+    contact={<span class="s">"name"</span>: <span class="s">"API Team"</span>, <span class="s">"email"</span>: <span class="s">"api-team@example.edu"</span>, …},
+    license_info={<span class="s">"name"</span>: <span class="s">"MIT"</span>, <span class="s">"identifier"</span>: <span class="s">"MIT"</span>},
+    openapi_tags=[{<span class="s">"name"</span>: <span class="s">"Tickets"</span>, <span class="s">"description"</span>: <span class="s">"Обращения в службу поддержки…"</span>}],
+    servers=[{<span class="s">"url"</span>: <span class="s">"http://127.0.0.1:8000"</span>, <span class="s">"description"</span>: <span class="s">"Local development"</span>}],
+)</pre></div>
+
+<p>Всё это видно в шапке Swagger UI: название, версия, описание с разметкой Markdown, ссылка на контакт и лицензию, выпадающий список серверов.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/58-swagger-metadata.png" alt="Шапка Swagger UI: заголовок Service Desk API, версия, краткое описание, список пунктов из description, контакт и лицензия" loading="lazy">
+<figcaption><b>Метаданные в интерфейсе.</b> Каждая строка шапки соответствует параметру конструктора. Поле <code>version</code> — это версия контракта, а не версия FastAPI и не редакция OpenAPI.</figcaption></figure>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Роутер и декоратор → операция</h2>
+<p>Адрес операции складывается из префикса роутера и пути в декораторе. Остальные поля операции — аргументы декоратора.</p>
+
+<div class="code"><b>app/api/v1/endpoints/tickets.py</b><pre>router = APIRouter(prefix=<span class="s">"/tickets"</span>, tags=[<span class="s">"Tickets"</span>])
+
+@router.get(
+    <span class="s">""</span>,
+    response_model=TicketPage,
+    summary=<span class="s">"Получить список обращений"</span>,
+    description=<span class="s">"Возвращает страницу обращений. Размер страницы ограничен параметром limit."</span>,
+    operation_id=<span class="s">"listTickets"</span>,
+)
+<span class="k">def</span> <span class="f">list_tickets</span>(
+    status_filter: TicketStatus | <span class="k">None</span> = Query(<span class="k">None</span>, alias=<span class="s">"status"</span>, description=<span class="s">"Показать только обращения с этим статусом"</span>),
+    limit: <span class="k">int</span> = Query(<span class="n">20</span>, ge=<span class="n">1</span>, le=<span class="n">100</span>, description=<span class="s">"Сколько обращений вернуть, от 1 до 100"</span>),
+) -> TicketPage:
+    …</pre></div>
+
+<div class="ops">
+<div><b>prefix + путь</b><span>Роутер подключён с префиксом <code>/api/v1</code>, у роутера свой <code>/tickets</code>, у операции — пустой путь. Итог: <code>/api/v1/tickets</code>.</span><i>адрес</i></div>
+<div><b>response_model</b><span>Схема успешного ответа. Она же ограничивает, что функция вправе вернуть.</span><i>ответ 200</i></div>
+<div><b>operation_id</b><span>Имя операции в описании. Без него FastAPI придумает своё, длинное и зависящее от имени функции.</span><i>имя</i></div>
+<div><b>Query(...)</b><span>Место параметра, значение по умолчанию, ограничения и текст описания.</span><i>параметры</i></div>
+</div>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/59-swagger-operation.png" alt="Раскрытая операция в Swagger UI: summary рядом с адресом, описание, таблица параметров с ограничениями и блок ответов" loading="lazy">
+<figcaption><b>Та же операция в интерфейсе.</b> <code>summary</code> стоит рядом с адресом, <code>description</code> — под ним, ограничения <code>ge</code> и <code>le</code> превратились в подписи <code>minimum</code> и <code>maximum</code>.</figcaption></figure>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>Ответы: response_model и responses</h2>
+<p>Успешный ответ FastAPI описывает сам — по значению <code>response_model</code>. Об остальных ответах он не догадывается: то, что операция может вернуть <code>404</code> или <code>412</code>, известно только из кода обработчика, а туда FastAPI не заглядывает. Поэтому ошибки перечисляют явно.</p>
+
+<div class="code"><b>app/api/v1/endpoints/tickets.py · объявление ответов</b><pre>@router.patch(
+    <span class="s">"/{ticket_id}"</span>,
+    response_model=Ticket,
+    status_code=<span class="n">200</span>,
+    responses={
+        <span class="n">401</span>: {<span class="s">"description"</span>: <span class="s">"Токен не передан"</span>},
+        <span class="n">403</span>: {<span class="s">"description"</span>: <span class="s">"Недостаточно прав"</span>},
+        <span class="n">404</span>: {<span class="s">"description"</span>: <span class="s">"Обращение не найдено"</span>},
+        <span class="n">412</span>: {<span class="s">"description"</span>: <span class="s">"Версия ресурса изменилась: If-Match не совпал"</span>},
+    },
+    …
+)</pre></div>
+
+<div class="ops">
+<div><b>status_code</b><span>Код успешного ответа. По умолчанию <code>200</code>; для создания задают <code>201</code>, для удаления — <code>204</code>.</span><i>успех</i></div>
+<div><b>response_model</b><span>Схема тела успешного ответа. Заодно отсекает лишние поля: что не описано в модели, наружу не уйдёт.</span><i>тело</i></div>
+<div><b>responses</b><span>Все остальные коды с описаниями. Их набор — обещание клиенту: к этим случаям он готовится заранее.</span><i>ошибки</i></div>
+</div>
+
+<div class="note"><b>Проверка простая</b><p>Пройдите глазами по обработчику и выпишите каждый <code>raise</code>. Если код ошибки встречается в коде, но его нет в <code>responses</code>, — контракт неполный: клиент узнает об этом ответе в рабочем контуре, а не при чтении документации.</p></div>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>Схемы Pydantic → components</h2>
+<p>Каждая модель Pydantic, которая встречается в аннотациях, попадает в <code>components.schemas</code>. Имя схемы — имя класса, поля — поля модели, ограничения — параметры <code>Field</code>.</p>
+
+<div class="code"><b>app/schemas.py</b><pre><span class="k">class</span> <span class="f">TicketCreate</span>(BaseModel):
+    model_config = ConfigDict(
+        extra=<span class="s">"forbid"</span>,
+        json_schema_extra={<span class="s">"examples"</span>: [{<span class="s">"title"</span>: <span class="s">"Не работает VPN"</span>, …}]},
+    )
+    title: <span class="k">str</span> = Field(min_length=<span class="n">3</span>, max_length=<span class="n">120</span>, description=<span class="s">"Короткая суть обращения"</span>)
+    description: <span class="k">str</span> = Field(default=<span class="s">""</span>, max_length=<span class="n">2000</span>, description=<span class="s">"Что делали и что увидели"</span>)</pre></div>
+
+<div class="code code--out"><b>что получилось в описании</b><pre>TicketCreate:
+  type: object
+  required: [title]
+  additionalProperties: false
+  properties:
+    title:       { type: string, minLength: 3, maxLength: 120, description: … }
+    description: { type: string, maxLength: 2000, default: <span class="s">''</span>, description: … }
+  examples:
+    - { title: <span class="s">"Не работает VPN"</span>, description: <span class="s">"Ошибка подключения после обновления клиента"</span> }</pre></div>
+
+<p>Обратите внимание на <code>additionalProperties: false</code> — так в описании выглядит настройка <code>extra="forbid"</code>. Клиент видит не просто «поля такие-то», а прямой запрет присылать другие. Это тот случай, когда одна строка в коде становится проверяемым обещанием.</p>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Разные модели для входа и выхода</h2>
+<p>Соблазн описать ресурс одной моделью и использовать её и в запросе, и в ответе, велик. Так делать не стоит: у этих моделей разный состав полей, потому что часть значений заполняет сервер.</p>
+
+<div class="compare">
+<div><b>TicketCreate — что присылает клиент</b><ul><li><code>title</code> — обязательно</li><li><code>description</code> — необязательно</li></ul></div>
+<div><b>Ticket — что возвращает сервер</b><ul><li><code>id</code> — выдал сервер</li><li><code>status</code> — начальное значение <code>new</code></li><li><code>created_at</code>, <code>updated_at</code> — время сервера</li><li><code>title</code>, <code>description</code> — от клиента</li></ul></div>
+</div>
+
+<p>Если объединить их в одну модель, клиент увидит в теле запроса поля <code>id</code> и <code>created_at</code> и решит, что их нужно присылать. А сервер эти значения проигнорирует — расхождение между ожиданием и поведением возникнет на пустом месте, из-за формы описания.</p>
+
+<p>Отдельная модель нужна и для изменения. У <code>TicketUpdate</code> все поля необязательны: <code>PATCH</code> меняет только то, что прислали. Это ровно та разница между <code>PUT</code> и <code>PATCH</code>, о которой шла речь в главе 2.2, только выраженная в схемах.</p>
+
+<div class="code"><b>app/schemas.py · три модели одного ресурса</b><pre><span class="k">class</span> <span class="f">TicketCreate</span>(BaseModel):   <span class="c"># вход: создание</span>
+<span class="k">class</span> <span class="f">TicketUpdate</span>(BaseModel):   <span class="c"># вход: изменение, все поля Optional</span>
+<span class="k">class</span> <span class="f">Ticket</span>(BaseModel):         <span class="c"># выход: полное состояние ресурса</span>
+<span class="k">class</span> <span class="f">TicketPage</span>(BaseModel):     <span class="c"># выход: страница списка</span></pre></div>
+
+<p>Четыре класса вместо одного выглядят избыточно ровно до первого вопроса «а что мне присылать?». После него — нет.</p>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>Зависимости → security</h2>
+<p>Требование токена в FastAPI выражается зависимостью. Если зависимость использует схему безопасности, операция получает поле <code>security</code> автоматически.</p>
+
+<div class="code"><b>app/security.py и вызов в операции</b><pre>bearer_scheme = HTTPBearer(scheme_name=<span class="s">"BearerAuth"</span>, auto_error=<span class="k">False</span>)
+
+<span class="k">def</span> <span class="f">require_writer</span>(credentials = Depends(bearer_scheme)) -> <span class="k">str</span>:
+    …
+
+@router.post(<span class="s">""</span>, …)
+<span class="k">def</span> <span class="f">create_ticket</span>(data: TicketCreate, token: <span class="k">str</span> = Depends(write_rate_limit)):
+    …</pre></div>
+
+<div class="code code--out"><b>в описании операции</b><pre>  security:
+    - BearerAuth: []</pre></div>
+
+<p>Цепочка здесь длиннее, чем кажется: операция зависит от <code>write_rate_limit</code>, та — от <code>require_writer</code>, а та — от схемы <code>bearer_scheme</code>. FastAPI проходит цепочку целиком, поэтому <code>security</code> появляется даже при косвенной зависимости.</p>
+</section>
+
+<section class="sec" id="s8">
+<h2><i>§8</i>Когда описание нужно доработать</h2>
+<p>Автоматическая сборка не всесильна. FastAPI не знает, что обработчики ошибок в проекте возвращают Problem Details, и по умолчанию описывает ответ <code>422</code> своей моделью с media type <code>application/json</code>. Получилось бы расхождение: контракт обещает одно, сервис отвечает другим.</p>
+<p>Поэтому в учебном проекте описание дорабатывается после сборки — один раз, в одном месте:</p>
+
+<div class="code"><b>app/main.py · доработка описания</b><pre><span class="k">def</span> <span class="f">openapi_with_problem_details</span>() -> <span class="k">dict</span>:
+    <span class="k">if</span> app.openapi_schema:
+        <span class="k">return</span> app.openapi_schema
+    schema = _generate_openapi()
+    schemas = schema[<span class="s">"components"</span>][<span class="s">"schemas"</span>]
+    schemas.pop(<span class="s">"HTTPValidationError"</span>, <span class="k">None</span>)
+    schemas[<span class="s">"ProblemDetails"</span>] = ProblemDetails.model_json_schema()
+    <span class="k">for</span> path_item <span class="k">in</span> schema[<span class="s">"paths"</span>].values():
+        <span class="k">for</span> operation <span class="k">in</span> path_item.values():
+            <span class="k">for</span> code, response <span class="k">in</span> operation[<span class="s">"responses"</span>].items():
+                response.setdefault(<span class="s">"headers"</span>, {})[<span class="s">"X-Request-Id"</span>] = {…}
+                <span class="k">if</span> code.startswith((<span class="s">"4"</span>, <span class="s">"5"</span>)):
+                    response[<span class="s">"content"</span>] = {<span class="s">"application/problem+json"</span>: {…}}
+    <span class="k">return</span> schema</pre></div>
+
+<p>Функция делает две вещи: переводит все ответы <code>4xx</code> и <code>5xx</code> на единый формат ошибок и добавляет к каждому ответу заголовок <code>X-Request-Id</code>, который в действительности добавляет middleware. После этого описание совпадает с поведением.</p>
+
+<div class="note"><b>Признак, что доработка нужна</b><p>Сравните ответ сервиса и описание той же операции. Разошлись media type, заголовки или набор кодов — описание нужно поправить. Проверять это можно тестом, и в проекте такой тест есть: он требует, чтобы у каждой операции все ответы <code>4xx</code> и <code>5xx</code> были описаны как <code>application/problem+json</code>.</p></div>
+</section>
+
+<section class="sec" id="s9">
+<h2><i>§9</i>Проверка описания тестом</h2>
+<p>Описание — обычный словарь Python, который возвращает метод <code>app.openapi()</code>. Значит, его можно проверять так же, как любые данные.</p>
+
+<div class="code"><b>tests/test_contract.py · фрагмент</b><pre><span class="k">def</span> <span class="f">test_errors_use_problem_details</span>():
+    <span class="k">for</span> path, method, operation <span class="k">in</span> operations(app.openapi()):
+        <span class="k">for</span> code, response <span class="k">in</span> operation[<span class="s">"responses"</span>].items():
+            <span class="k">if</span> code.startswith((<span class="s">"4"</span>, <span class="s">"5"</span>)):
+                <span class="k">assert</span> <span class="k">list</span>(response[<span class="s">"content"</span>]) == [<span class="s">"application/problem+json"</span>], <span class="s">f"{method.upper()} {path} {code}"</span>
+
+<span class="k">def</span> <span class="f">test_committed_openapi_matches_code</span>():
+    committed = json.loads((ROOT / <span class="s">"openapi"</span> / <span class="s">"openapi.json"</span>).read_text(encoding=<span class="s">"utf-8"</span>))
+    <span class="k">assert</span> committed == app.openapi(), <span class="s">"run: python scripts/export_openapi.py"</span></pre></div>
+
+<p>Второй тест — тот самый механизм против расхождения из главы 3.1, но со стороны тестов: он не даст объединить изменение, в котором код и выгруженный файл разошлись.</p>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s10">
+<h2><i>§10</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Править файл в openapi/ вручную</b>При следующей выгрузке правка исчезнет. Контракт меняют кодом.</div>
+<div><b>Не задавать operation_id</b>FastAPI сгенерирует имя из имени функции и пути; переименование функции изменит контракт для генераторов клиентов.</div>
+<div><b>Одна модель для входа и выхода</b>Тогда клиент видит в теле запроса поля, которые заполняет сервер, и не понимает, что присылать.</div>
+<div><b>Забыть про несоответствие описания поведению</b>Если обработчик ошибок возвращает свой формат, а описание — чужой, клиент напишет разбор по описанию и получит другое.</div>
+</div>
+</section>
+
+<section class="sec" id="s11">
+<h2><i>§11</i>Проверьте себя</h2>
+<ol class="check">
+<li>Из каких трёх источников FastAPI собирает описание? Приведите пример поля для каждого.</li>
+<li>Как из <code>prefix</code> роутера и пути в декораторе получается адрес <code>/api/v1/tickets</code>?</li>
+<li>Что означает <code>additionalProperties: false</code> в схеме и какая строка кода его породила?</li>
+<li>Почему у операции <code>createTicket</code> появилось поле <code>security</code>, хотя схема безопасности не указана в декораторе?</li>
+<li>Зачем описание дорабатывается после автоматической сборки и что случилось бы без этого?</li>
+<li>Почему коды ошибок приходится перечислять вручную, а код успешного ответа — нет?</li>
+<li>Назовите две причины разделить модель запроса и модель ответа.</li>
+</ol>
+
+<div class="cheat">
+<div><b>Код → описание</b><code>FastAPI(...) → info</code><code>APIRouter → tags, префикс</code><code>@router.get(...) → operation</code><code>Pydantic → schemas</code><code>Depends → security</code></div>
+<div><b>Обязательно задавать</b><code>operation_id</code><code>summary, description</code><code>response_model</code><code>responses для ошибок</code><code>status_code для 201 и 204</code></div>
+<div><b>Модели ресурса</b><code>XCreate — вход</code><code>XUpdate — вход, всё Optional</code><code>X — выход</code><code>XPage — страница списка</code></div>
+<div><b>Правило</b><code>контракт меняют кодом</code><code>файл в openapi/ — снимок</code></div>
+<div><b>Проверки</b><code>pytest tests/test_contract.py</code><code>export_openapi.py --check</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../3-2-razdely/index.html">← Глава 3.2. Разделы документа</a>
+<a href="../3-4-swagger-redoc/index.html">Глава 3.4. Swagger UI и ReDoc →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 3 · глава 3.3</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>

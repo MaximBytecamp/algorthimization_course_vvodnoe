@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 3.2 справочника: разделы документа OpenAPI — openapi, info, servers, tags, paths, components, security — на описании учебного сервиса.">
+<title>3.2 Разделы документа · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 3 · OpenAPI</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 3 · OpenAPI</p><p class="folio">Глава 3.2</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">3.2</span>
+<h1>Разделы<br>документа</h1>
+<p class="lead">Документ OpenAPI собран из нескольких разделов верхнего уровня, и каждый отвечает за свой слой контракта. Разберём их по порядку на описании учебного сервиса: кто мы, где нас найти, какие есть операции, какие данные они принимают и чем защищены.</p>
+<p class="pull">«Описание читают инструменты, поэтому у каждого раздела есть точное место и точное имя.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Описание контракта</dd></div>
+<div><dt>Уровень</dt><dd>Базовый</dd></div>
+<div><dt>Связанные главы</dt><dd>3.1 Зачем описание · 3.3 FastAPI и OpenAPI · 6.2 Линтер</dd></div>
+<div><dt>Зачем это знать</dt><dd>Чтобы читать чужое описание и понимать, чего в вашем не хватает</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Карта документа</a></li>
+<li><a href="#s2">info: кто это и какая версия</a></li>
+<li><a href="#s3">servers: где доступен API</a></li>
+<li><a href="#s4">tags: группы операций</a></li>
+<li><a href="#s5">paths: адреса и операции</a></li>
+<li><a href="#s6">components: переиспользуемые части</a></li>
+<li><a href="#s7">security: чем защищено</a></li>
+<li><a href="#s8">Частые ошибки</a></li>
+<li><a href="#s9">Проверьте себя</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Карта документа</h2>
+<p>Файл описания — это один объект с несколькими полями верхнего уровня. Порядок в файле произвольный, но читать удобно в том порядке, в каком они перечислены ниже.</p>
+
+<div class="tree">
+<p class="tree__head">openapi.yaml</p>
+<div class="tree__row"><b>openapi</b><span>редакция формата описания: <code>3.1.0</code></span></div>
+<div class="tree__row tree__row--hot"><b>info</b><span>название, версия контракта, описание, контакты, лицензия</span></div>
+<div class="tree__row"><b>servers</b><span>адреса, по которым API доступен</span></div>
+<div class="tree__row"><b>tags</b><span>группы операций и их описания</span></div>
+<div class="tree__row tree__row--hot"><b>paths</b><span>адреса ресурсов, а внутри — операции по методам</span></div>
+<div class="tree__row tree__row--hot"><b>components</b><span>схемы, заголовки, схемы безопасности — всё, на что ссылаются операции</span></div>
+<div class="tree__row"><b>security</b><span>требования аутентификации: глобальные или у отдельных операций</span></div>
+</div>
+
+<p>Полный файл учебного сервиса открывается по адресу <code>http://127.0.0.1:8000/openapi.json</code>. Он большой — около тысячи строк — но состоит из повторяющихся кусков: разобрав один, вы прочитаете остальные.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/56-openapi-json.png" alt="Браузер с открытым /openapi.json: поля openapi 3.1.0, info с названием и версией, начало paths" loading="lazy">
+<figcaption><b>Описание в браузере.</b> Chrome умеет форматировать JSON: флажок «Автоформатировать» над текстом. Видны первые разделы — <code>openapi</code>, <code>info</code>, <code>servers</code>, начало <code>paths</code>.</figcaption></figure>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>info: кто это и какая версия</h2>
+<p>Раздел <code>info</code> отвечает на вопросы: что это за API, какая версия контракта, для чего он нужен и к кому идти с вопросами.</p>
+
+<div class="code"><b>openapi/openapi.yaml · info</b><pre>info:
+  title: Service Desk API
+  summary: Учебный стандартизированный REST API
+  description: |
+    Учебный API системы регистрации обращений в службу поддержки.
+    …
+  contact:
+    name: API Team
+    email: api-team@example.edu
+    url: https://github.com/MaximBytecamp/api-standard-template
+  license:
+    name: MIT
+    identifier: MIT
+  version: 1.1.0</pre></div>
+
+<p>Поля <code>title</code>, <code>version</code>, <code>description</code> и <code>contact</code> обязательны не по спецификации, а по правилам проекта — и это осознанное ужесточение. Zalando в своих правилах (рекомендация 218 «MUST contain API meta information») требует того же набора: название, версия по Semantic Versioning, описание и контакты владельца.</p>
+
+<div class="note"><b>Почему контакты важны</b><p>Через год после выпуска API вопросы задаёт человек, который не знает ни автора, ни команды. Поле <code>contact</code> — единственное место в контракте, где написано, куда идти. В учебном проекте оно проверяется правилом линтера <code>info-contact</code>, и его отсутствие роняет сборку.</p></div>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>servers: где доступен API</h2>
+<p>Раздел перечисляет адреса, по которым сервис работает. У каждого адреса — описание, чтобы человек не перепутал тестовый контур с рабочим.</p>
+
+<div class="code"><b>openapi/openapi.yaml · servers</b><pre>servers:
+  - url: http://127.0.0.1:8000
+    description: Local development</pre></div>
+
+<p>В рабочем API таких записей обычно несколько: production, staging, песочница. Swagger UI покажет их списком, и запрос уйдёт на выбранный. Ошибиться сложнее — а это как раз тот случай, когда ошибка дорогая.</p>
+
+<div class="code"><b>как это выглядит в реальном сервисе</b><pre>servers:
+  - url: https://api.example.com/api/v1
+    description: Production
+  - url: https://stage-api.example.com/api/v1
+    description: Staging</pre></div>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>tags: группы операций</h2>
+<p>Когда операций больше десятка, плоский список становится нечитаемым. Теги группируют операции по предметной области и задают порядок в документации.</p>
+
+<div class="code"><b>openapi/openapi.yaml · tags</b><pre>tags:
+  - name: Tickets
+    description: Обращения в службу поддержки: создание, просмотр, изменение и удаление</pre></div>
+
+<p>Каждая операция ссылается на тег своим полем <code>tags</code>. В учебном сервисе тег один — обращений всего один ресурс. В рабочем API теги обычно повторяют разделы предметной области: <code>Tickets</code>, <code>Users</code>, <code>Reports</code>, <code>Authentication</code>.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/45-swagger-tags.png" alt="Swagger UI: заголовок группы Tickets с описанием и список операций под ним" loading="lazy">
+<figcaption><b>Тег в Swagger UI.</b> Заголовок группы и описание под ним взяты прямо из раздела <code>tags</code>. Операции без тега попадают в общий раздел default — правило проекта это запрещает.</figcaption></figure>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>paths: адреса и операции</h2>
+<p>Главный раздел документа. Ключ — адрес ресурса, внутри — операции по методам, у каждой операции — параметры, тело и ответы.</p>
+
+<div class="code"><b>openapi/openapi.yaml · фрагмент paths</b><pre>paths:
+  /api/v1/tickets:
+    get:
+      tags: [Tickets]
+      summary: Получить список обращений
+      description: Возвращает страницу обращений. Размер страницы ограничен параметром limit.
+      operationId: listTickets
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: <span class="s">'#/components/schemas/TicketStatus'</span> }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        <span class="s">'200'</span>:
+          description: Successful Response
+          content:
+            application/json:
+              schema: { $ref: <span class="s">'#/components/schemas/TicketPage'</span> }
+        <span class="s">'422'</span>:
+          description: Validation Error
+          content:
+            application/problem+json:
+              schema: { $ref: <span class="s">'#/components/schemas/ProblemDetails'</span> }</pre></div>
+
+<div class="ops">
+<div><b>summary</b><span>Короткое название операции — его показывают в списке рядом с адресом.</span><i>одна строка</i></div>
+<div><b>description</b><span>Подробное объяснение: что делает, какие есть ограничения.</span><i>абзац</i></div>
+<div><b>operationId</b><span>Уникальное имя операции. Генераторы клиентов превращают его в имя метода: <code>client.listTickets()</code>.</span><i>стабильно</i></div>
+<div><b>parameters</b><span>Параметры с указанием места (<code>in: query</code>, <code>in: path</code>, <code>in: header</code>) и схемы значения.</span><i>вход</i></div>
+<div><b>responses</b><span>Все возможные ответы: код, описание, media type и схема тела.</span><i>выход</i></div>
+</div>
+
+<p>Обратите внимание: у ответа <code>422</code> media type другой — <code>application/problem+json</code>. Это не случайность, а требование правил проекта: все ошибки описываются единым форматом, и линтер это проверяет.</p>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>components: переиспользуемые части</h2>
+<p>Одна и та же схема нужна в нескольких операциях. Чтобы не копировать её, описание выносят в <code>components</code> и ссылаются через <code>$ref</code>.</p>
+
+<div class="code"><b>openapi/openapi.yaml · components</b><pre>components:
+  schemas:
+    Ticket: { … }
+    TicketCreate: { … }
+    TicketUpdate: { … }
+    TicketPage: { … }
+    ProblemDetails: { … }
+  headers:
+    XRequestId:
+      description: Идентификатор запроса: значение клиента или UUID, созданный сервером
+      schema: { type: string }
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer</pre></div>
+
+<p>Выгода не только в объёме файла. Схема, описанная один раз, меняется один раз: добавили в <code>Ticket</code> поле — оно появилось во всех ответах, которые на неё ссылаются. При копировании такое изменение неизбежно где-нибудь забудут.</p>
+
+<p class="takeaway">Правило простое: всё, что встречается в описании дважды, выносится в <code>components</code>.</p>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>security: чем защищено</h2>
+<p>Схема безопасности объявляется в <code>components.securitySchemes</code>, а операции ссылаются на неё полем <code>security</code>.</p>
+
+<div class="code"><b>операция, требующая токен</b><pre>  post:
+      tags: [Tickets]
+      summary: Создать обращение
+      operationId: createTicket
+      security:
+        - BearerAuth: []</pre></div>
+
+<p>Пустой массив рядом с именем схемы означает «никаких дополнительных разрешений не требуется» — он нужен для схем OAuth 2.0, где там перечисляют scopes. Для Bearer-токена массив остаётся пустым.</p>
+<p>Из этого объявления Swagger UI строит кнопку <b>Authorize</b> и добавляет заголовок к нужным запросам. Операции, у которых объявлена схема, помечаются значком замка. Если схема не объявлена, интерфейс не догадается: контракт молчит, и клиент узнает о необходимости токена только из ответа <code>401</code>.</p>
+
+<div class="note note--warn"><b>Не описывайте то, чего нет</b><p>OpenAPI позволяет объявить OAuth 2.0 с адресами авторизации. Если сервера авторизации нет, Swagger UI покажет кнопку, которая никуда не ведёт. Схема безопасности — такое же обещание, как и остальные части контракта.</p></div>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s8">
+<h2><i>§8</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Операция без operationId</b>Генератор клиента придумает имя сам, и при следующей выгрузке оно изменится. Имя задаётся явно и не меняется после релиза.</div>
+<div><b>Описан только успешный ответ</b>Клиент не напишет обработку <code>404</code> и <code>422</code>, если о них не сказано. Перечисляются все ответы, которые операция может вернуть.</div>
+<div><b>Схемы скопированы в каждую операцию</b>Изменение придётся вносить в нескольких местах; одно обязательно забудут.</div>
+<div><b>Нет контактов в info</b>Через год некому задать вопрос. Правило проекта требует <code>contact</code>, линтер проверяет.</div>
+<div><b>Единственный сервер — localhost</b>В рабочем API описание должно называть настоящие адреса, иначе Swagger UI отправит запрос не туда.</div>
+</div>
+</section>
+
+<section class="sec" id="s9">
+<h2><i>§9</i>Проверьте себя</h2>
+<ol class="check">
+<li>Откройте <code>/openapi.json</code> учебного сервиса и найдите в нём все семь разделов верхнего уровня.</li>
+<li>Какие поля <code>info</code> требуют правила проекта и что произойдёт, если убрать <code>contact</code>?</li>
+<li>Зачем операции нужен <code>operationId</code> и почему его не стоит менять после релиза?</li>
+<li>Найдите в описании ответ <code>422</code>. Какой у него media type и почему не <code>application/json</code>?</li>
+<li>Как из раздела <code>securitySchemes</code> появляется кнопка Authorize в Swagger UI?</li>
+</ol>
+
+<div class="cheat">
+<div><b>Разделы</b><code>openapi · info · servers</code><code>tags · paths</code><code>components · security</code></div>
+<div><b>Операция</b><code>summary · description</code><code>operationId · tags</code><code>parameters · requestBody</code><code>responses</code></div>
+<div><b>Ссылки</b><code>$ref: '#/components/schemas/Ticket'</code></div>
+<div><b>Безопасность</b><code>securitySchemes: BearerAuth</code><code>security: [{BearerAuth: []}]</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../3-1-opisanie/index.html">← Глава 3.1. Зачем машиночитаемое описание</a>
+<a href="../3-3-fastapi/index.html">Глава 3.3. FastAPI и OpenAPI →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 3 · глава 3.2</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>

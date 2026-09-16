@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 3.1 справочника: зачем API нужно машиночитаемое описание, что такое OpenAPI, какие у него редакции, кто его читает и как оно не расходится с кодом.">
+<title>3.1 Зачем машиночитаемое описание · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 3 · OpenAPI</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 3 · OpenAPI</p><p class="folio">Глава 3.1</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">3.1</span>
+<h1>Зачем<br>машиночитаемое описание</h1>
+<p class="lead">Документацию можно написать словами в README — и через месяц она разойдётся с кодом. В этой главе разберём, как выглядит это расхождение, что предлагает взамен OpenAPI, кто читает такое описание кроме человека и как сделать, чтобы файл описания не отставал от реализации.</p>
+<p class="pull">«Документация, которую нужно обновлять руками, отстаёт при первом же изменении, о котором забыли.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Описание контракта</dd></div>
+<div><dt>Уровень</dt><dd>Базовый</dd></div>
+<div><dt>Связанные главы</dt><dd>3.2 Разделы документа · 3.3 FastAPI и OpenAPI · 6.4 CI</dd></div>
+<div><dt>Зачем это знать</dt><dd>Чтобы описание API читали инструменты, а не только люди, и чтобы оно не устаревало</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Как README расходится с кодом</a></li>
+<li><a href="#s2">Что такое OpenAPI</a></li>
+<li><a href="#s3">Редакции: 3.1 и 3.2</a></li>
+<li><a href="#s4">Кто читает описание</a></li>
+<li><a href="#s5">Описание из кода</a></li>
+<li><a href="#s6">Проверка против расхождения</a></li>
+<li><a href="#s7">Частые ошибки</a></li>
+<li><a href="#s8">Проверьте себя</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Как README расходится с кодом</h2>
+<p>Ситуация знакома любому, кто подключался к чужому API. В README написано: чтобы создать обращение, отправьте <code>POST /tickets</code> с полем <code>title</code>. Вы отправляете — получаете <code>422</code>. Выясняется, что месяц назад добавили обязательное поле <code>description</code>, а README не поправили.</p>
+
+<div class="fork">
+<div><small>в документации</small><b>README.md</b>
+<ul><li><code>POST /tickets</code></li>
+<li>тело: <code>{"title": "…"}</code></li>
+<li>ответ: <code>200 OK</code></li></ul></div>
+<div><small>в коде</small><b>реализация</b>
+<ul><li><code>POST /api/v1/tickets</code></li>
+<li>тело: <code>title</code> и <code>description</code>, оба обязательны</li>
+<li>ответ: <code>201 Created</code> с <code>Location</code></li></ul></div>
+</div>
+
+<div class="term-box"><b>Определение</b><dfn>Documentation drift</dfn>
+<p>Расхождение документации и реализации, которое накапливается со временем, потому что документация обновляется вручную и не проверяется автоматически.</p></div>
+
+<p>Беда не в том, что кто-то поленился. Беда в том, что у README нет способа узнать о коде: это отдельный текст, который живёт своей жизнью. Пока связь между описанием и реализацией держится на дисциплине, она рвётся.</p>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Что такое OpenAPI</h2>
+<p><span class="term">OpenAPI Specification</span> — стандартный формат описания HTTP API. Это не программа и не библиотека: это договорённость, как записать контракт в файле JSON или YAML так, чтобы его понимали и человек, и инструменты.</p>
+
+<div class="note"><b>Определение из спецификации</b>
+<p><em>«The OpenAPI Specification (OAS) defines a standard, programming language-agnostic interface description for HTTP APIs, which allows both humans and computers to discover and understand the capabilities of a service without requiring access to source code, additional documentation, or inspection of network traffic.»</em></p>
+<p><b>Перевод.</b> OpenAPI Specification определяет стандартное, не зависящее от языка программирования описание интерфейса HTTP API. Оно позволяет и людям, и программам узнать возможности сервиса без доступа к исходному коду, дополнительной документации и без анализа сетевого трафика.</p></div>
+
+<p>Ключевые слова здесь — «не зависящее от языка» и «и людям, и программам». Описание учебного сервиса собирается из кода на Python, но читать его будут инструменты, написанные на TypeScript и Go, и разработчик клиента, который Python не знает вовсе.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/38-openapi-specification.png" alt="Страница спецификации OpenAPI 3.2.0 с разделом What is the OpenAPI Specification и определением формата" loading="lazy">
+<figcaption><b>spec.openapis.org — официальный текст спецификации.</b> Формат развивает OpenAPI Initiative; каждая редакция опубликована отдельной страницей с датой.</figcaption></figure>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Редакции: 3.1 и 3.2</h2>
+<p>У спецификации есть собственная версия, и её не нужно путать с версией вашего API. На сентябрь 2026 года последняя опубликованная редакция — 3.2.1 от 10 сентября 2026 года; минорная версия 3.2 вышла 19 сентября 2025 года.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/38b-openapi-latest.png" alt="Страница spec.openapis.org/oas/latest: OpenAPI Specification v3.2.1, Published 10 September 2026" loading="lazy">
+<figcaption><b>Последняя редакция на момент подготовки справочника.</b> Адрес <code>spec.openapis.org/oas/latest.html</code> всегда ведёт на актуальный текст — по нему удобно проверять, не вышла ли новая версия.</figcaption></figure>
+
+<p>Инструменты догоняют спецификацию не сразу. FastAPI версии 0.115, на которой собран учебный сервис, генерирует описание в редакции 3.1.0:</p>
+
+<div class="code code--out"><b>начало /openapi.json</b><pre>{
+  <span class="s">"openapi"</span>: <span class="s">"3.1.0"</span>,
+  <span class="s">"info"</span>: { <span class="s">"title"</span>: <span class="s">"Service Desk API"</span>, <span class="s">"version"</span>: <span class="s">"1.1.0"</span>, … },
+  <span class="s">"paths"</span>: { … }
+}</pre></div>
+
+<p>Это не ошибка и не повод менять фреймворк. Редакция 3.1 полностью пригодна для работы, её понимают все инструменты справочника. Важно другое: не путать поле <code>openapi</code> (редакция формата) с полем <code>info.version</code> (версия вашего контракта). Первое здесь 3.1.0, второе — 1.1.0, и меняются они независимо.</p>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>Кто читает описание</h2>
+<p>Главная выгода машиночитаемого описания в том, что с ним работает не только человек. Один файл обслуживает целую цепочку инструментов.</p>
+
+<div class="ops">
+<div><b>Swagger UI, ReDoc</b><span>Строят интерактивную документацию: список операций, схемы, примеры, отправка запроса из браузера.</span><i>для людей</i></div>
+<div><b>Генераторы клиентов</b><span>Создают библиотеку для нужного языка по описанию: имена методов берутся из <code>operationId</code>.</span><i>SDK</i></div>
+<div><b>Линтеры</b><span>Проверяют описание по правилам команды: Spectral читает тот же файл и находит нарушения.</span><i>правила</i></div>
+<div><b>Сравнение версий</b><span>oasdiff сопоставляет описание до и после изменения и находит то, что сломает клиентов.</span><i>breaking changes</i></div>
+<div><b>Mock-серверы</b><span>Поднимают заглушку по описанию: клиентская команда начинает работу до готовности сервера.</span><i>параллельная работа</i></div>
+<div><b>Тесты по схеме</b><span>Генерируют запросы из описания и проверяют, что ответы ему соответствуют.</span><i>проверка</i></div>
+</div>
+
+<p>Обратите внимание, что все шесть строк — это работа, которую иначе пришлось бы делать руками и заново после каждого изменения. Именно поэтому крупные компании публикуют описание своего API открыто: GitHub держит его в отдельном репозитории и, как сказано в README, использует для проверки запросов к своему API и для контрактных тестов.</p>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>Описание из кода</h2>
+<p>Есть два пути получить файл описания. Первый — писать его руками и по нему реализовывать сервис: так делают, когда контракт согласуют раньше, чем начинают разработку. Второй — генерировать описание из кода: так делает FastAPI и так устроен учебный проект.</p>
+
+<div class="fork">
+<div><small>путь 1</small><b>Сначала описание</b>
+<ul><li>контракт обсуждают и утверждают до кода;</li>
+<li>клиентская команда начинает сразу;</li>
+<li>нужен навык писать OpenAPI руками;</li>
+<li>так работает Zalando: «API First».</li></ul></div>
+<div><small>путь 2</small><b>Описание из кода</b>
+<ul><li>источник истины — код и схемы;</li>
+<li>описание не забывают обновить;</li>
+<li>легко «нечаянно» изменить контракт;</li>
+<li>так работает учебный проект.</li></ul></div>
+</div>
+
+<p>У второго пути есть слабое место: раз описание рождается из кода, любое изменение кода немедленно меняет контракт. Именно поэтому в проекте есть выгрузка описания в файл и проверка, что файл совпадает с кодом, — о ней следующий параграф.</p>
+
+<div class="code"><b>выгрузка описания</b><pre>python scripts/export_openapi.py</pre></div>
+
+<div class="code code--out"><b>вывод</b><pre>written openapi/openapi.json
+written openapi/openapi.yaml</pre></div>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Проверка против расхождения</h2>
+<p>Файлы в папке <code>openapi/</code> — это снимок контракта, который лежит в репозитории и виден в истории изменений. Чтобы снимок не отстал от кода, у скрипта есть режим проверки.</p>
+
+<div class="code"><b>проверка</b><pre>python scripts/export_openapi.py --check</pre></div>
+
+<p>Команда собирает описание из кода и сравнивает с файлами в репозитории. Совпало — молчит и завершается успешно. Разошлось — печатает, какой файл устарел, и завершается с ошибкой:</p>
+
+<div class="code code--out"><b>если кто-то изменил код и забыл выгрузить описание</b><pre>openapi/openapi.json is outdated: run python scripts/export_openapi.py</pre></div>
+
+<p>Эта же команда стоит в CI между тестами и линтером. Изменение, в котором описание не обновлено, не попадёт в основную ветку. Так пропадает целый класс проблем: описание в репозитории всегда соответствует тому, что сервис на самом деле отвечает.</p>
+
+<p class="takeaway">README расходится с кодом молча. Выгруженное описание расходится громко: сборка падает и называет файл.</p>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s7">
+<h2><i>§7</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Считать openapi версией API</b><code>"openapi": "3.1.0"</code> — редакция формата описания. Версия контракта лежит в <code>info.version</code>.</div>
+<div><b>Держать описание только в памяти сервиса</b>Если файл не выгружен в репозиторий, его нельзя сравнить с предыдущей версией и нельзя посмотреть в истории изменений.</div>
+<div><b>Править выгруженный файл руками</b>При следующей выгрузке правка исчезнет. Менять нужно код, из которого описание собирается.</div>
+<div><b>Оставлять README единственной документацией</b>Человек прочитает, инструмент — нет. Swagger UI, линтер и сравнение версий работают только с машиночитаемым описанием.</div>
+</div>
+</section>
+
+<section class="sec" id="s8">
+<h2><i>§8</i>Проверьте себя</h2>
+<ol class="check">
+<li>Что такое documentation drift и почему README подвержен ему сильнее, чем выгруженное описание?</li>
+<li>Какая редакция OpenAPI указана в описании учебного сервиса и почему она не совпадает с последней опубликованной?</li>
+<li>Назовите четыре инструмента, которые читают описание API, и скажите, что делает каждый.</li>
+<li>Измените в коде описание любой операции, не выгружая файл, и выполните <code>--check</code>. Что произойдёт?</li>
+<li>Чем «сначала описание» отличается от «описание из кода» и какие риски у каждого пути?</li>
+</ol>
+
+<div class="cheat">
+<div><b>OpenAPI</b><code>формат описания HTTP API</code><code>JSON или YAML</code><code>для людей и инструментов</code></div>
+<div><b>Две версии</b><code>openapi: 3.1.0 — формат</code><code>info.version: 1.1.0 — контракт</code></div>
+<div><b>Команды</b><code>export_openapi.py</code><code>export_openapi.py --check</code></div>
+<div><b>Читатели</b><code>Swagger UI · ReDoc</code><code>Spectral · oasdiff</code><code>генераторы · mock</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../../index.html">← Содержание справочника</a>
+<a href="../3-2-razdely/index.html">Глава 3.2. Разделы документа →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 3 · глава 3.1</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>

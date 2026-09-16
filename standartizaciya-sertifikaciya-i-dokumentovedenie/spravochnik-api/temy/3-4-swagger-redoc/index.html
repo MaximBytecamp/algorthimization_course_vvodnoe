@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 3.4 справочника: Swagger UI и ReDoc — два интерфейса поверх одного описания OpenAPI, чем они отличаются, как выполнить запрос прямо из браузера и что показывать заказчику.">
+<title>3.4 Swagger UI и ReDoc · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 3 · OpenAPI</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 3 · OpenAPI</p><p class="folio">Глава 3.4</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">3.4</span>
+<h1>Swagger UI<br>и ReDoc</h1>
+<p class="lead">Описание из предыдущих глав — это JSON, который человеку читать тяжело. Поверх него ставят интерфейс. Их два, и они решают разные задачи: в одном пробуют запросы руками, второй показывают тому, кто только читает. В этой главе — что умеет каждый и когда какой открывать.</p>
+<p class="pull">«Один и тот же файл, два разных читателя: тот, кто проверяет, и тот, кто изучает.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Описание контракта</dd></div>
+<div><dt>Уровень</dt><dd>Базовый</dd></div>
+<div><dt>Связанные главы</dt><dd>3.3 FastAPI и OpenAPI · 7.3 Публикация документации · 2.3 Коды ответов</dd></div>
+<div><dt>Зачем это знать</dt><dd>Чтобы проверять API без установки инструментов и показывать контракт коллегам</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Два интерфейса поверх одного файла</a></li>
+<li><a href="#s2">Swagger UI: как устроен экран</a></li>
+<li><a href="#s3">Выполнить запрос из браузера</a></li>
+<li><a href="#s4">Авторизация в Swagger UI</a></li>
+<li><a href="#s5">Что видно в ответе, кроме тела</a></li>
+<li><a href="#s6">ReDoc: документация для чтения</a></li>
+<li><a href="#s7">Как их подключают</a></li>
+<li><a href="#s8">Что выбрать под задачу</a></li>
+<li><a href="#s9">Частые ошибки</a></li>
+<li><a href="#s10">Проверьте себя</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Два интерфейса поверх одного файла</h2>
+<p>Ни Swagger UI, ни ReDoc ничего не знают о вашем коде. Оба читают один и тот же <code>openapi.json</code> и рисуют его по-своему. Отсюда важное следствие: если в интерфейсе чего-то не хватает — дело не в интерфейсе, а в описании, а значит, в коде.</p>
+
+<div class="tree">
+<p class="tree__head">кто что читает</p>
+<div class="tree__row tree__row--hot"><b>/openapi.json</b><span>исходное описание, единственный источник данных для обоих интерфейсов</span></div>
+<div class="tree__row"><b>/docs</b><span>Swagger UI: читает описание и умеет отправлять запросы</span></div>
+<div class="tree__row"><b>/redoc</b><span>ReDoc: читает то же описание и показывает его как документ</span></div>
+</div>
+
+<div class="fork">
+<div><b>Swagger UI</b><p>Нужен тому, кто <b>проверяет</b>: подставить параметры, нажать кнопку, увидеть настоящий ответ и заголовки. Экран рабочий, плотный, с формами.</p></div>
+<div><b>ReDoc</b><p>Нужен тому, кто <b>изучает</b>: прочитать подряд, найти операцию в оглавлении, разобраться в схемах. Экран спокойный, трёхколоночный, без кнопок отправки.</p></div>
+</div>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Swagger UI: как устроен экран</h2>
+<p>Откройте <code>http://127.0.0.1:8000/docs</code>. Экран делится на три части: шапка с метаданными, список операций по группам и раздел схем внизу.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/55-swagger-ui.png" alt="Swagger UI учебного сервиса: шапка с названием и версией, группа Tickets со списком операций разных цветов" loading="lazy">
+<figcaption><b>Общий вид.</b> Цвет плашки — метод: зелёный <code>GET</code>, синий <code>POST</code>, оранжевый <code>PATCH</code>, красный <code>DELETE</code>. Справа от адреса — <code>summary</code> операции.</figcaption></figure>
+
+<div class="ops">
+<div><b>Шапка</b><span>Название, версия контракта, описание, контакты, лицензия, выпадающий список серверов — всё из раздела <code>info</code> и <code>servers</code>.</span><i>info</i></div>
+<div><b>Группы</b><span>Заголовок с описанием — из раздела <code>tags</code>. Внутри — операции этой группы.</span><i>tags</i></div>
+<div><b>Операция</b><span>Раскрывается щелчком: описание, параметры с ограничениями, тело запроса с примером, список ответов.</span><i>paths</i></div>
+<div><b>Schemas</b><span>Внизу страницы — все модели из <code>components.schemas</code> с полями, типами и обязательностью.</span><i>components</i></div>
+</div>
+
+<p>Внутри раскрытой операции у каждого ответа есть вкладки <b>Example Value</b> и <b>Schema</b>. Первая показывает готовый пример, вторая — правила: типы, ограничения, обязательные поля. Когда спорят, «что должно приходить», смотрят вторую.</p>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Выполнить запрос из браузера</h2>
+<p>Главное отличие Swagger UI: запрос можно отправить, не выходя из страницы. Порядок один и тот же для любой операции.</p>
+
+<ol class="steps">
+<li><b>Раскройте операцию</b> — щелчок по её строке.</li>
+<li><b>Нажмите «Try it out»</b> — поля формы станут доступными для ввода.</li>
+<li><b>Заполните параметры и тело.</b> Тело подставляется из примера в схеме, его достаточно поправить.</li>
+<li><b>Нажмите «Execute».</b> Браузер отправит настоящий запрос на выбранный сервер.</li>
+<li><b>Прочитайте ответ</b> — код, тело, заголовки и готовая команда curl для повторения в терминале.</li>
+</ol>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/100-swagger-post-201.png" alt="Swagger UI после Execute: код ответа 201, тело с созданным обращением, заголовки ответа и команда curl" loading="lazy">
+<figcaption><b>Создание обращения через интерфейс.</b> Код <code>201 Created</code>, тело с полями созданного ресурса и заголовки ответа. Блок <b>Curl</b> над ответом — та же операция строкой для терминала; её удобно скопировать в отчёт или задачу.</figcaption></figure>
+
+<div class="note"><b>Запрос уходит по-настоящему</b><p>«Execute» — это не симуляция. Данные создаются, изменяются и удаляются на том сервере, который выбран в списке <code>servers</code>. Проверьте выбранный сервер перед тем, как нажимать <code>DELETE</code>.</p></div>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>Авторизация в Swagger UI</h2>
+<p>Операции записи в учебном сервисе требуют токен. Swagger UI знает об этом из раздела <code>security</code> — рядом с такими операциями стоит значок замка, а в шапке есть кнопка <b>Authorize</b>.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/84-swagger-authorize.png" alt="Окно Authorize в Swagger UI: схема BearerAuth, поле ввода токена и кнопки Authorize и Close" loading="lazy">
+<figcaption><b>Окно авторизации.</b> Имя схемы <code>BearerAuth</code> — то самое, что объявлено в <code>components.securitySchemes</code>. Введённый токен Swagger UI подставляет в заголовок <code>Authorization: Bearer …</code> во все последующие запросы.</figcaption></figure>
+
+<p>Если запрос без токена — сервис ответит <code>401</code>, если токен есть, но прав не хватает — <code>403</code>. Разницу между этими кодами разбирали в главе 2.3; здесь важно, что оба ответа видно в том же окне, сразу после «Execute».</p>
+
+<div class="note note--warn"><b>Не вводите рабочий токен в чужой Swagger UI</b><p>Страница документации может быть развёрнута кем угодно и отправлять запросы куда угодно. Токен от рабочего контура вводят только в документацию своего сервиса, на проверенном адресе.</p></div>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>Что видно в ответе, кроме тела</h2>
+<p>Начинающие смотрят только на тело ответа. Половина контракта живёт в заголовках, и Swagger UI показывает их в блоке <b>Response headers</b>.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/e-swagger-headers.png" alt="Блок Response headers в Swagger UI: etag, location, x-request-id и другие заголовки ответа" loading="lazy">
+<figcaption><b>Заголовки ответа.</b> Видны <code>etag</code> для условных запросов, <code>location</code> с адресом созданного ресурса и <code>x-request-id</code> для поиска записи в журнале. Заголовки видны в браузере только потому, что сервис перечислил их в настройке CORS <code>expose_headers</code> — без этого браузер их скрывает.</figcaption></figure>
+
+<p>Устаревшие операции интерфейс тоже помечает: заголовок перечёркнут, рядом плашка <b>deprecated</b>. Это поле <code>deprecated: true</code> в описании — предупреждение читателю до того, как он начнёт писать код.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/e-swagger-deprecated.png" alt="Операция в Swagger UI с перечёркнутым адресом и плашкой deprecated" loading="lazy">
+<figcaption><b>Устаревшая операция.</b> Перечёркнутый адрес виден в общем списке, ещё до раскрытия. Даты отключения передаются заголовками <code>Deprecation</code> и <code>Sunset</code> — об этом модуль 5.</figcaption></figure>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>ReDoc: документация для чтения</h2>
+<p>Тот же контракт по адресу <code>http://127.0.0.1:8000/redoc</code> выглядит иначе: слева оглавление, в центре текст, справа примеры запросов и ответов.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/57-redoc.png" alt="ReDoc: слева оглавление по группам и операциям, в центре описание операции, справа панель с примерами" loading="lazy">
+<figcaption><b>Трёхколоночный вид ReDoc.</b> Оглавление слева строится из <code>tags</code> и операций, правая панель показывает пример запроса и примеры ответов по кодам. Кнопки «отправить» здесь нет — и это осознанное решение авторов.</figcaption></figure>
+
+<div class="ops">
+<div><b>Оглавление</b><span>Полное дерево: группы, операции, схемы. По нему удобно листать контракт как документ и давать ссылку на конкретный раздел.</span><i>навигация</i></div>
+<div><b>Раскрытие схем</b><span>Вложенные объекты разворачиваются по месту, с типами и ограничениями каждого поля.</span><i>схемы</i></div>
+<div><b>Ответы по кодам</b><span>Справа переключаются вкладки <code>200</code>, <code>401</code>, <code>404</code> — видно, что приходит в каждом случае.</span><i>ответы</i></div>
+<div><b>Поиск</b><span>По названиям операций и полей — быстрее, чем листать длинную страницу Swagger UI.</span><i>поиск</i></div>
+</div>
+
+<p>ReDoc удобно показывать заказчику, аналитику или преподавателю: страница читается сверху вниз, без соблазна нажать «Execute» на рабочем сервере. Её же публикуют как статический сайт — в учебном проекте она собирается на GitHub Pages, и это отдельная глава модуля 7.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/g-pages-redoc.png" alt="Опубликованная на GitHub Pages документация ReDoc учебного проекта" loading="lazy">
+<figcaption><b>Та же документация, опубликованная.</b> Собирается из файла описания в репозитории и выкладывается автоматически при каждом изменении контракта. Сервер для этого не нужен — получается обычная статическая страница.</figcaption></figure>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>Как их подключают</h2>
+<p>FastAPI даёт оба интерфейса сразу, без установки: <code>/docs</code> и <code>/redoc</code> появляются вместе с приложением. Но в учебном проекте адрес <code>/redoc</code> задан вручную — и на это есть причина.</p>
+
+<div class="code"><b>app/main.py</b><pre>REDOC_JS_URL = <span class="s">"https://cdn.jsdelivr.net/npm/redoc@2.5.4/bundles/redoc.standalone.js"</span>
+
+app = FastAPI(…, redoc_url=<span class="k">None</span>)
+
+@app.get(<span class="s">"/redoc"</span>, include_in_schema=<span class="k">False</span>)
+<span class="k">def</span> <span class="f">redoc_html</span>():
+    <span class="k">return</span> get_redoc_html(openapi_url=app.openapi_url, title=…, redoc_js_url=REDOC_JS_URL)</pre></div>
+
+<p>Встроенный вариант ссылается на адрес <code>redoc@next</code>, который у поставщика библиотеки возвращает <code>404</code> — страница открывалась пустой. Поэтому версия закреплена: <code>redoc@2.5.4</code>. Это общее правило работы с внешними адресами: <b>закрепляйте версию</b>, иначе ваша страница зависит от чужих изменений.</p>
+
+<div class="note"><b>Убрать интерфейсы из рабочего контура</b><p>Иногда документацию не выкладывают наружу. Тогда задают <code>docs_url=None</code> и <code>redoc_url=None</code>, а описание публикуют отдельно — например, статической страницей за авторизацией. Сам файл <code>openapi.json</code> при этом остаётся в репозитории и никуда не девается.</p></div>
+</section>
+
+<section class="sec" id="s8">
+<h2><i>§8</i>Что выбрать под задачу</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Задача</th><th>Куда идти</th><th>Почему</th></tr></thead>
+<tbody>
+<tr><td>Проверить, что операция работает</td><td>Swagger UI</td><td>Отправляет настоящий запрос и показывает код, тело и заголовки</td></tr>
+<tr><td>Показать контракт заказчику</td><td>ReDoc</td><td>Читается как документ, нет кнопок, которые что-то изменят</td></tr>
+<tr><td>Разобраться во вложенной схеме</td><td>ReDoc</td><td>Схемы разворачиваются по месту, с ограничениями полей</td></tr>
+<tr><td>Получить готовую команду curl</td><td>Swagger UI</td><td>Блок Curl под ответом копируется целиком</td></tr>
+<tr><td>Дать ссылку на конкретную операцию</td><td>ReDoc</td><td>У каждой операции свой адрес в оглавлении</td></tr>
+<tr><td>Проверить ответ на неверные данные</td><td>Swagger UI</td><td>Можно сломать запрос намеренно и увидеть <code>422</code></td></tr>
+</tbody>
+</table></div>
+
+<p>Выбор между ними — не вопрос вкуса, а вопрос того, что вы собираетесь сделать: изменить состояние сервиса или прочитать контракт.</p>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s9">
+<h2><i>§9</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Считать Swagger UI «сайтом API»</b>Это просто отрисовка файла описания. Пусто на экране — пусто в описании, значит, не хватает в коде.</div>
+<div><b>Нажимать «Execute» на рабочем сервере</b>Запрос настоящий. Перед отправкой проверяйте выбранный сервер в списке.</div>
+<div><b>Смотреть только на тело ответа</b>Код, <code>ETag</code>, <code>Location</code>, <code>X-Request-Id</code> — тоже часть контракта, и они видны рядом.</div>
+<div><b>Ссылаться на библиотеку без версии</b>Адрес вида <code>@next</code> в любой момент перестаёт работать, и страница открывается пустой.</div>
+<div><b>Вводить рабочий токен в чужую документацию</b>Страницу мог развернуть кто угодно; запрос уйдёт туда, куда указано в её описании.</div>
+</div>
+</section>
+
+<section class="sec" id="s10">
+<h2><i>§10</i>Проверьте себя</h2>
+<ol class="check">
+<li>Почему в Swagger UI не может появиться операция, которой нет в описании?</li>
+<li>Чем вкладка <b>Schema</b> полезнее вкладки <b>Example Value</b> в споре о формате данных?</li>
+<li>Что делает кнопка Authorize и в какой заголовок попадает введённый токен?</li>
+<li>Почему заголовки ответа видны в браузере не всегда и какая настройка сервиса за это отвечает?</li>
+<li>Какой из двух интерфейсов вы откроете, чтобы показать контракт заказчику, и почему именно его?</li>
+<li>Зачем в проекте закреплена версия <code>redoc@2.5.4</code>, а не «последняя»?</li>
+</ol>
+
+<div class="cheat">
+<div><b>Адреса</b><code>/docs — Swagger UI</code><code>/redoc — ReDoc</code><code>/openapi.json — описание</code></div>
+<div><b>Порядок запроса</b><code>Try it out</code><code>заполнить поля</code><code>Execute</code><code>код, тело, заголовки</code></div>
+<div><b>Смотреть в ответе</b><code>код состояния</code><code>Response headers</code><code>блок Curl</code></div>
+<div><b>Правило</b><code>пусто в UI = пусто в описании</code><code>версию библиотеки закреплять</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../3-3-fastapi/index.html">← Глава 3.3. FastAPI и OpenAPI</a>
+<a href="../../index.html">К списку модулей →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 3 · глава 3.4</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>
