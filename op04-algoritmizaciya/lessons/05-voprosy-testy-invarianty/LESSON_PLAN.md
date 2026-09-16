@@ -53,7 +53,7 @@ C. Неубывание: равные соседи разрешены, [] и [x]
 
 ## Материалы
 
-- materials/lesson05-start.zip — намеренно ошибочные functions, начальные тесты, review.md, README.
+- materials/lesson05-start.zip — намеренно ошибочные функции, начальные тесты, review.md, README.
 - materials/lesson05-reference.zip — исправленные решения и полные проверки.
 - materials/examples.py — запускаемые примеры лекции.
 - materials/buggy.py — оригиналы трёх функций для скачивания со страниц.
