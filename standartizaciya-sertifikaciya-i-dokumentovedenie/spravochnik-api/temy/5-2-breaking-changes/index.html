@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 5.2 справочника: что считать breaking change, почему GitHub и Azure отвечают на это по-разному, список несовместимых изменений проекта и автоматическая проверка oasdiff.">
+<title>5.2 Breaking changes · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 5 · Версии и изменения</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 5 · Версии и изменения</p><p class="folio">Глава 5.2</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">5.2</span>
+<h1>Breaking<br>changes</h1>
+<p class="lead">Несовместимое изменение — это изменение, после которого работающий клиент перестаёт работать. Звучит просто, пока не выясняется, что одно и то же изменение GitHub считает безопасным, а Azure — ломающим. Разберёмся, откуда берётся это расхождение, что делать со своим API и как поручить проверку машине.</p>
+<p class="pull">«Совместимость — не свойство изменения. Это ваше решение, записанное заранее.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Версии</dd></div>
+<div><dt>Уровень</dt><dd>Средний</dd></div>
+<div><dt>Связанные главы</dt><dd>5.1 Четыре номера · 6.4 CI и поиск breaking changes · 5.3 Deprecation и Sunset</dd></div>
+<div><dt>Зачем это знать</dt><dd>Чтобы не сломать чужой код изменением, которое казалось безобидным</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Что значит «сломать клиента»</a></li>
+<li><a href="#s2">Спорный случай: новое поле в ответе</a></li>
+<li><a href="#s3">Два ответа: GitHub и Azure</a></li>
+<li><a href="#s4">Почему оба правы</a></li>
+<li><a href="#s5">Политика учебного проекта</a></li>
+<li><a href="#s6">Проверка машиной: oasdiff</a></li>
+<li><a href="#s7">Чего oasdiff не видит</a></li>
+<li><a href="#s8">Частые ошибки</a></li>
+<li><a href="#s9">Проверьте себя</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Что значит «сломать клиента»</h2>
+<p>Определение звучит одинаково у всех, и оно намеренно широкое.</p>
+
+<div class="cite">
+<p class="cite__head"><a href="https://docs.github.com/en/rest/about-the-rest-api/api-versions" target="_blank" rel="noopener">GitHub Docs, API Versions</a><em>правила компании</em></p>
+<p class="cite__en">«Breaking changes are changes that can potentially break an integration.»</p>
+<p class="cite__ru"><b>Перевод.</b> Breaking changes — это изменения, которые потенциально могут сломать интеграцию.</p>
+</div>
+
+<p>Ключевое слово — <b>potentially</b>. Речь не о том, сломалось ли что-то у конкретного клиента, а о том, могло ли сломаться. Поэтому бесспорных случаев немного, и начинать стоит с них.</p>
+
+<div class="compare">
+<div><b>Ломает почти наверняка</b><ul><li>удалить операцию</li><li>переименовать поле ответа</li><li>изменить тип поля</li><li>сделать необязательный параметр обязательным</li><li>убрать значение из перечисления</li><li>ужесточить проверку тела запроса</li></ul></div>
+<div><b>Не ломает почти наверняка</b><ul><li>добавить новую операцию</li><li>добавить необязательный параметр</li><li>добавить новый заголовок ответа</li><li>исправить опечатку в описании</li><li>добавить новый код ответа в новой ситуации</li></ul></div>
+</div>
+
+<p>А теперь про середину, где и живут все споры.</p>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Спорный случай: новое поле в ответе</h2>
+<p>Вы добавили в ответ поле <code>priority</code>. Старые клиенты о нём не знают. Сломается что-нибудь?</p>
+
+<div class="code code--out"><b>было</b><pre>{ <span class="s">"id"</span>: <span class="s">"a8d0…"</span>, <span class="s">"title"</span>: <span class="s">"Не работает VPN"</span>, <span class="s">"status"</span>: <span class="s">"open"</span> }</pre></div>
+
+<div class="code code--out"><b>стало</b><pre>{ <span class="s">"id"</span>: <span class="s">"a8d0…"</span>, <span class="s">"title"</span>: <span class="s">"Не работает VPN"</span>, <span class="s">"status"</span>: <span class="s">"open"</span>, <span class="s">"priority"</span>: <span class="s">"high"</span> }</pre></div>
+
+<div class="fork">
+<div><b>Не сломается, если</b><p>клиент читает нужные ему поля и пропускает остальные. Так работает большинство разборщиков JSON по умолчанию.</p></div>
+<div><b>Сломается, если</b><p>клиент проверяет ответ на строгое соответствие схеме и падает на незнакомом поле; или сохраняет ответ целиком туда, где есть ограничение на состав полей.</p></div>
+</div>
+
+<p>Обе ситуации реальны. Именно поэтому крупные компании пришли к разным выводам — и обе записали свой вывод в правилах.</p>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Два ответа: GitHub и Azure</h2>
+<p>GitHub относит добавление поля в ответ к совместимым изменениям и перечисляет его в списке того, что выпускается без новой редакции API.</p>
+
+<div class="cite">
+<p class="cite__head"><a href="https://github.com/Azure/azure-rest-api-specs/blob/main/documentation/Breaking%20changes%20guidelines.md" target="_blank" rel="noopener">Azure, Breaking changes guidelines</a><em>правила компании</em></p>
+<p class="cite__en">«Teams MAY define backwards compatibility as their business needs require. For example, Azure defines the addition of a new JSON field in a response to be not backwards compatible.»</p>
+<p class="cite__ru"><b>Перевод.</b> Команды MAY определять обратную совместимость так, как требуют их задачи. Например, Azure считает добавление нового поля JSON в ответ <b>не</b> обратно совместимым изменением.</p>
+</div>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/e-azure-new-field-breaking.png" alt="Документ Azure: добавление нового поля JSON в ответ объявлено несовместимым изменением" loading="lazy">
+<figcaption><b>Тот же абзац на странице.</b> Обратите внимание на первое предложение: правила прямо разрешают командам определять совместимость по-своему. То есть расхождение — не ошибка одной из сторон, а признанная возможность.</figcaption></figure>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Изменение</th><th>GitHub</th><th>Azure</th></tr></thead>
+<tbody>
+<tr><td>Добавить поле в ответ</td><td>совместимо</td><td>несовместимо</td></tr>
+<tr><td>Добавить необязательный параметр запроса</td><td>совместимо</td><td>совместимо</td></tr>
+<tr><td>Удалить поле ответа</td><td>несовместимо</td><td>несовместимо</td></tr>
+<tr><td>Что требуется от клиента</td><td>игнорировать незнакомые поля</td><td>—</td></tr>
+</tbody>
+</table></div>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>Почему оба правы</h2>
+<p>Разница не в аккуратности, а в том, кто клиент.</p>
+
+<div class="fork">
+<div><b>У GitHub</b><p>Миллионы независимых клиентов, которых нельзя ни собрать, ни обновить. Дешевле один раз потребовать «игнорируйте незнакомые поля» и дальше свободно добавлять поля.</p></div>
+<div><b>У Azure</b><p>Клиенты — в основном генерируемые SDK и инструменты развёртывания, которые сверяют ответ со схемой строго. Новое поле для них — изменение модели, и его нужно провести через версию.</p></div>
+</div>
+
+<p>Отсюда главный вывод главы: <b>совместимость — не свойство изменения, а решение команды</b>. Правильное решение то, которое записано и одинаково применяется. Незаписанное решение хуже любого из двух вариантов, потому что каждый участник считает по-своему.</p>
+
+<div class="takeaway"><b>Мысль главы</b><p>Если ваша политика требует от клиентов игнорировать незнакомые поля — напишите это в контракте прямым текстом. Тогда добавление поля перестаёт быть спором и становится обычным MINOR.</p></div>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>Политика учебного проекта</h2>
+<p>В проекте выбран подход GitHub, и выбор записан в <code>docs/VERSIONING.md</code> вместе с обязанностью клиента.</p>
+
+<div class="code"><b>docs/VERSIONING.md · выдержка</b><pre>В этом проекте принято правило GitHub, поэтому клиенты MUST игнорировать
+неизвестные поля ответа.
+
+Несовместимыми считаются и допускаются только в новой мажорной версии:
+- удаление или переименование endpoint;
+- удаление или переименование поля ответа;
+- изменение типа поля;
+- добавление обязательного параметра или обязательного поля запроса;
+- удаление значения из enum;
+- ужесточение требований аутентификации или лимитов.</pre></div>
+
+<p>Список короткий и закрытый — это важнее, чем его полнота. Спор «ломает или нет» сводится к вопросу «есть ли это в списке», а если случая в списке нет, список дополняют отдельным изменением, а не решают на ходу.</p>
+
+<div class="note"><b>Последний пункт списка</b><p>Ужесточение лимитов — изменение, которое легко не заметить: описание операции не меняется ни на строку. Но клиент, который присылал 100 запросов в минуту, начнёт получать <code>429</code>. Для него это поломка, поэтому в проекте она приравнена к несовместимым.</p></div>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Проверка машиной: oasdiff</h2>
+<p>Держать список в голове бесполезно. Есть инструмент, который сравнивает два описания OpenAPI и сообщает о несовместимых изменениях: <span class="term">oasdiff</span>.</p>
+
+<p>Проверим на учебном контракте. Уберём из схемы обращения обязательное поле <code>title</code> и сравним новое описание с прежним:</p>
+
+<div class="code"><b>терминал</b><pre>docker run --rm -v $(pwd):/specs tufin/oasdiff breaking \
+  /specs/base.yaml /specs/revision.yaml</pre></div>
+
+<div class="code code--out"><b>настоящий вывод</b><pre>4 changes: 4 error, 0 warning, 0 info
+
+error [response-required-property-removed] at /specs/revision.yaml
+  in API GET /api/v1/tickets
+    removed the required property `items/items/title` from the response with the `200` status
+
+error [response-required-property-removed] at /specs/revision.yaml
+  in API POST /api/v1/tickets
+    removed the required property `title` from the response with the `201` status
+
+error [response-required-property-removed] at /specs/revision.yaml
+  in API GET /api/v1/tickets/{ticket_id}
+    removed the required property `title` from the response with the `200` status
+
+error [response-required-property-removed] at /specs/revision.yaml
+  in API PATCH /api/v1/tickets/{ticket_id}
+    removed the required property `title` from the response with the `200` status</pre></div>
+
+<p>Одно изменение схемы — четыре ошибки, по одной на каждую операцию, где эта схема встречается. В этом и польза: человек, убирая поле, помнит про ту операцию, которую правил, и забывает про три остальные.</p>
+
+<p>Ту же проверку выполняет сборка при каждом pull request — задача <code>breaking-changes</code> сравнивает описание из ветки с описанием в <code>main</code> и не даёт объединить изменение, если нашлись ошибки. Подробно про сборку — глава 6.4.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/e-oasdiff-action.png" alt="Страница действия oasdiff для GitHub Actions в каталоге marketplace" loading="lazy">
+<figcaption><b>Готовое действие для сборки.</b> В проекте используется <code>oasdiff/oasdiff-action/breaking</code> с закреплённой версией — по тому же правилу, что и библиотека ReDoc в главе 3.4: версия внешнего инструмента всегда фиксируется.</figcaption></figure>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>Чего oasdiff не видит</h2>
+<p>Инструмент сравнивает описания, а не поведение. Всё, чего нет в описании, для него не существует.</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Изменение</th><th>Видит ли oasdiff</th><th>Почему</th></tr></thead>
+<tbody>
+<tr><td>Удалено поле ответа</td><td>да</td><td>Изменилась схема в описании</td></tr>
+<tr><td>Параметр стал обязательным</td><td>да</td><td>Изменился признак <code>required</code></td></tr>
+<tr><td>Изменился порядок элементов списка</td><td>нет</td><td>Порядок в схеме не описан</td></tr>
+<tr><td>Ужесточён лимит запросов</td><td>нет</td><td>Лимит не выражен в описании</td></tr>
+<tr><td>Поле <code>status</code> стало возвращать новое значение</td><td>только если перечисление объявлено</td><td>Без <code>enum</code> сравнивать нечего</td></tr>
+<tr><td>Изменился смысл поля при том же типе</td><td>нет</td><td>Смысл — в тексте описания, а не в схеме</td></tr>
+</tbody>
+</table></div>
+
+<p>Отсюда два практических следствия. Первое: чем подробнее описание, тем больше находит машина — объявленное перечисление ловит ошибку, необъявленное не ловит ничего. Второе: проверка машиной не отменяет ревью человеком, и именно поэтому изменение контракта в проекте требует и зелёной сборки, и одобрения владельца.</p>
+
+<div class="note note--warn"><b>Не всякое молчание — разрешение</b><p>При подготовке этого справочника oasdiff <b>не</b> счёл удаление устаревшей операции <code>GET /tickets/open</code> ошибкой — она была помечена <code>deprecated</code>. Для клиента, который ею пользуется, это тем не менее поломка. Вывод инструмента — довод, а не приговор.</p></div>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s8">
+<h2><i>§8</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Считать, что «совместимо» — объективное свойство</b>GitHub и Azure отвечают по-разному на один и тот же вопрос, и оба записали свой ответ.</div>
+<div><b>Не записать политику совместимости</b>Тогда каждый участник команды решает по-своему, и решение зависит от того, кто смотрит pull request.</div>
+<div><b>Требовать от клиентов игнорировать незнакомые поля молча</b>Требование есть только тогда, когда оно написано в контракте.</div>
+<div><b>Полагаться на oasdiff как на единственную проверку</b>Лимиты, порядок элементов и смысл полей он не сравнивает.</div>
+<div><b>Ужесточать проверки «незаметно»</b>Описание не изменилось, а клиент сломался — для него это breaking change.</div>
+</div>
+</section>
+
+<section class="sec" id="s9">
+<h2><i>§9</i>Проверьте себя</h2>
+<ol class="check">
+<li>Почему в определении breaking change стоит слово «потенциально»?</li>
+<li>Приведите по три бесспорно ломающих и бесспорно безопасных изменения.</li>
+<li>Почему GitHub и Azure по-разному оценивают добавление поля в ответ? Свяжите ответ с тем, кто их клиенты.</li>
+<li>Какую обязанность накладывает на клиентов политика учебного проекта и где она записана?</li>
+<li>Почему удаление одного поля из схемы дало в выводе oasdiff четыре ошибки?</li>
+<li>Назовите три изменения, которые oasdiff не поймает, и объясните, почему.</li>
+</ol>
+
+<div class="cheat">
+<div><b>Определение</b><code>может сломать интеграцию</code><code>потенциально, не фактически</code></div>
+<div><b>Спорный случай</b><code>новое поле в ответе</code><code>GitHub — можно</code><code>Azure — нельзя</code></div>
+<div><b>Правило</b><code>политику записать</code><code>список закрытый</code></div>
+<div><b>Проверка</b><code>oasdiff breaking</code><code>задача breaking-changes в CI</code><code>плюс ревью человека</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../5-1-nomera/index.html">← Глава 5.1. Четыре номера и SemVer</a>
+<a href="../5-3-deprecation/index.html">Глава 5.3. Deprecation и Sunset →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 5 · глава 5.2</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>

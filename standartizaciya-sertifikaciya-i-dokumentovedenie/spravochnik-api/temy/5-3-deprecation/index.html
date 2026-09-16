@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 5.3 справочника: как объявить операцию устаревшей — deprecated в описании, заголовки Deprecation (RFC 9745) и Sunset (RFC 8594), пять этапов жизненного цикла операции.">
+<title>5.3 Deprecation и Sunset · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 5 · Версии и изменения</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 5 · Версии и изменения</p><p class="folio">Глава 5.3</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">5.3</span>
+<h1>Deprecation<br>и Sunset</h1>
+<p class="lead">Удалить операцию нельзя — можно только объявить, что она будет удалена, и дать клиентам время. Разница между этими двумя действиями и есть весь разговор об устаревании. В этой главе — пять этапов, через которые проходит операция, и два заголовка, которые предупреждают клиента в каждом ответе.</p>
+<p class="pull">«Предупреждение, которое видит только человек в документации, не предупреждение: клиент — это программа.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Версии</dd></div>
+<div><dt>Уровень</dt><dd>Средний</dd></div>
+<div><dt>Связанные главы</dt><dd>5.2 Breaking changes · 5.4 CHANGELOG и ADR · 4.3 Заголовки контракта</dd></div>
+<div><dt>Зачем это знать</dt><dd>Чтобы убирать лишнее из API, не ломая чужую работу внезапно</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Пять этапов жизни операции</a></li>
+<li><a href="#s2">Шаг 1: пометка в описании</a></li>
+<li><a href="#s3">Шаг 2: заголовки в каждом ответе</a></li>
+<li><a href="#s4">Deprecation: RFC 9745</a></li>
+<li><a href="#s5">Sunset: RFC 8594</a></li>
+<li><a href="#s6">Пример целиком</a></li>
+<li><a href="#s7">Сколько длится период миграции</a></li>
+<li><a href="#s8">Частые ошибки</a></li>
+<li><a href="#s9">Проверьте себя</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Пять этапов жизни операции</h2>
+<p>В учебном проекте порядок записан одной строкой в <code>docs/VERSIONING.md</code>:</p>
+
+<div class="code code--out"><b>docs/VERSIONING.md</b><pre>ACTIVE → DEPRECATED → MIGRATION PERIOD → SUNSET → REMOVED</pre></div>
+
+<div class="ops">
+<div><b>ACTIVE</b><span>Обычная операция. Про неё ничего особенного не сказано, ею пользуются.</span><i>работает</i></div>
+<div><b>DEPRECATED</b><span>Объявлена устаревшей. Продолжает работать точно так же, но в описании и в каждом ответе есть предупреждение.</span><i>работает + предупреждает</i></div>
+<div><b>MIGRATION PERIOD</b><span>Время, за которое клиенты переходят на замену. Замена уже существует и описана.</span><i>ждём</i></div>
+<div><b>SUNSET</b><span>Наступила объявленная дата. Операция перестаёт отвечать.</span><i>дата</i></div>
+<div><b>REMOVED</b><span>Операция убрана из кода и из описания. Только в новой мажорной версии.</span><i>нет</i></div>
+</div>
+
+<p>Смысл цепочки в том, что <b>ни один переход не бывает внезапным</b>. Между «мы решили убрать» и «оно перестало работать» всегда лежит объявленный срок, и этот срок клиент узнаёт от самого API, а не из письма, которое мог не прочитать.</p>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Шаг 1: пометка в описании</h2>
+<p>Первое, что делают, — помечают операцию в описании и объясняют, чем её заменить.</p>
+
+<div class="cite">
+<p class="cite__head"><a href="https://opensource.zalando.com/restful-api-guidelines/#187" target="_blank" rel="noopener">Zalando, правило 187 «MUST reflect deprecation in API specifications»</a><em>правила компании</em></p>
+<p class="cite__en">«the producers must set deprecated: true for the affected element and add further explanation to the description section of the API specification. If a future shut down is planned, the producer must provide a sunset date and document in details what consumers should use instead and how to migrate.»</p>
+<p class="cite__ru"><b>Перевод.</b> Владелец API должен указать <code>deprecated: true</code> у затронутого элемента и добавить пояснение в раздел описания спецификации. Если планируется отключение, он должен указать дату отключения и подробно описать, чем потребителям пользоваться вместо него и как перейти.</p>
+</div>
+
+<p>Обратите внимание, что правило требует трёх вещей сразу: пометки, замены и даты. Пометка без замены — это просто «не пользуйтесь», и клиенту с ней нечего делать.</p>
+
+<div class="code"><b>app/api/v1/endpoints/tickets.py</b><pre>@router.get(
+    <span class="s">"/open"</span>,
+    deprecated=<span class="k">True</span>,
+    summary=<span class="s">"Открытые обращения (устаревшая операция)"</span>,
+    description=<span class="s">"Используйте GET /api/v1/tickets?status=open. Отключение 2027-03-01."</span>,
+    operation_id=<span class="s">"listOpenTicketsDeprecated"</span>,
+)</pre></div>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/e-swagger-deprecated.png" alt="Операция в Swagger UI с перечёркнутым адресом и плашкой deprecated" loading="lazy">
+<figcaption><b>Как это видит человек.</b> Адрес перечёркнут, рядом плашка <code>deprecated</code> — заметно ещё до раскрытия операции. Это результат одной строки <code>deprecated=True</code> в коде.</figcaption></figure>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Шаг 2: заголовки в каждом ответе</h2>
+<p>Пометки в описании мало: клиент — это программа, а программа документацию не перечитывает. Поэтому предупреждение кладут в каждый ответ устаревшей операции.</p>
+
+<div class="cite">
+<p class="cite__head"><a href="https://opensource.zalando.com/restful-api-guidelines/#189" target="_blank" rel="noopener">Zalando, правило 189 «SHOULD add Deprecation and Sunset header to responses»</a><em>правила компании</em></p>
+<p class="cite__en">«During the deprecation phase, the producer should add a Deprecation: &lt;timestamp&gt; (see RFC 9745 section 2) and - if also planned - a Sunset: &lt;date-time&gt; (see RFC 8594 section 3) header on each response affected by a deprecated element»</p>
+<p class="cite__ru"><b>Перевод.</b> На этапе устаревания владелец API должен добавлять заголовок <code>Deprecation</code> со временем (RFC 9745, раздел 2) и — если отключение тоже запланировано — заголовок <code>Sunset</code> с датой (RFC 8594, раздел 3) в каждый ответ, затронутый устаревшим элементом.</p>
+</div>
+
+<p>Дальше клиент может действовать сам: библиотека видит заголовок и пишет предупреждение в журнал, мониторинг считает, сколько вызовов устаревших операций осталось до даты отключения. Ни то ни другое невозможно, если предупреждение живёт только в документации.</p>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>Deprecation: RFC 9745</h2>
+<p>Заголовок отвечает на вопрос «с какого момента операция считается устаревшей». Формат непривычный: знак <code>@</code> и число секунд Unix.</p>
+
+<div class="code code--out"><b>из настоящего ответа</b><pre>deprecation: @1789516800</pre></div>
+
+<div class="ops">
+<div><b>Статус документа</b><span>RFC 9745, Standards Track, март 2025 года. То есть это полноценный стандарт, а не черновик.</span><i>стандарт</i></div>
+<div><b>Что означает значение</b><span>Момент времени. Если он в прошлом — операция уже устарела; если в будущем — устареет с этой даты.</span><i>момент</i></div>
+<div><b>Почему такой формат</b><span>Это тип «Date» из структурированных полей HTTP: знак <code>@</code> и целое число секунд от начала эпохи Unix.</span><i>формат</i></div>
+</div>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/e-rfc9745-deprecation.png" alt="Страница RFC 9745 The Deprecation HTTP Response Header Field на сайте rfc-editor.org" loading="lazy">
+<figcaption><b>Источник.</b> Документ называется «The Deprecation HTTP Response Header Field». Полезная привычка — открывать первоисточник и проверять статус: у этого заголовка он Standards Track, а у соседнего, как мы сейчас увидим, другой.</figcaption></figure>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>Sunset: RFC 8594</h2>
+<p>Второй заголовок отвечает на вопрос «когда перестанет работать». Формат здесь обычный — дата HTTP.</p>
+
+<div class="code code--out"><b>из настоящего ответа</b><pre>sunset: Mon, 01 Mar 2027 00:00:00 GMT</pre></div>
+
+<div class="compare">
+<div><b>Deprecation · RFC 9745</b><ul><li>статус: Standards Track</li><li>формат: <code>@1789516800</code></li><li>смысл: с какого момента устарело</li></ul></div>
+<div><b>Sunset · RFC 8594</b><ul><li>статус: Informational</li><li>формат: <code>Mon, 01 Mar 2027 00:00:00 GMT</code></li><li>смысл: когда перестанет отвечать</li></ul></div>
+</div>
+
+<div class="note"><b>Informational — не «второй сорт»</b><p>Статус Informational означает, что документ описывает сложившуюся практику, а не устанавливает обязательное требование. Пользоваться заголовком это не мешает — им пользуются повсеместно, — но в своём API Style Guide такие случаи отмечают отдельно: когда стандарт необязателен, единственным источником правил остаётся ваш собственный документ. Ровно та же ситуация была с <code>Idempotency-Key</code> в главе 4.3.</p></div>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Пример целиком</h2>
+<p>Соберём всё вместе. Вот настоящий ответ учебного сервиса на вызов устаревшей операции:</p>
+
+<div class="code code--out"><b>GET /api/v1/tickets/open</b><pre>HTTP/1.1 200
+x-request-id: f308afeb-842f-4f14-918d-49be7986e4db
+deprecation: @1789516800
+sunset: Mon, 01 Mar 2027 00:00:00 GMT
+access-control-expose-headers: ETag, Location, X-Request-Id, Retry-After,
+                               Deprecation, Sunset, X-RateLimit-Limit, …
+content-type: application/json
+
+{ <span class="s">"items"</span>: [ … ], <span class="s">"total"</span>: <span class="n">3</span>, <span class="s">"limit"</span>: <span class="n">1</span>, <span class="s">"offset"</span>: <span class="n">0</span> }</pre></div>
+
+<ol class="steps">
+<li><b>Код <code>200</code>.</b> Операция работает как прежде — устаревание ничего не сломало.</li>
+<li><b>Два заголовка предупреждения.</b> Программа-клиент может их прочитать и отреагировать.</li>
+<li><b>Оба заголовка перечислены в <code>expose_headers</code>.</b> Иначе веб-клиент их бы не увидел — ровно та ловушка из главы 4.3.</li>
+<li><b>Тело не изменилось.</b> Клиент, который не собирается ничего делать, продолжает работать до даты отключения.</li>
+</ol>
+
+<p>И четвёртый шаг — запись в журнале изменений, в разделе <b>Deprecated</b>, с указанием замены и даты. Об этом — следующая глава.</p>
+
+<div class="code code--out"><b>CHANGELOG.md · раздел Deprecated</b><pre>- GET /api/v1/tickets/open — используйте GET /api/v1/tickets?status=open.
+  Ответ содержит Deprecation и Sunset; отключение 2027-03-01.</pre></div>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>Сколько длится период миграции</h2>
+<p>Стандарты срок не задают — его определяет владелец API, исходя из того, кто его клиенты и как быстро они обновляются.</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Кто клиент</th><th>Разумный срок</th><th>Почему</th></tr></thead>
+<tbody>
+<tr><td>Своя же команда, один сервис</td><td>дни</td><td>Обновление выкатывается вместе с изменением</td></tr>
+<tr><td>Соседние команды в компании</td><td>недели или месяц</td><td>Нужно вписать работу в чужие планы</td></tr>
+<tr><td>Мобильное приложение</td><td>месяцы</td><td>Пользователи обновляют приложение неделями, часть — никогда</td></tr>
+<tr><td>Публичный API</td><td>год и более</td><td>Клиентов нельзя ни собрать, ни заставить</td></tr>
+</tbody>
+</table></div>
+
+<p>В учебном проекте записано «не меньше одного семестра учебного стенда» — срок привязан к тому, как живёт этот конкретный API. Сравните с GitHub, который обещает поддерживать старые редакции не менее двух лет: масштаб разный, принцип один — срок объявлен заранее и в явном виде.</p>
+
+<div class="note note--warn"><b>Дата — это обещание</b><p>Объявив <code>Sunset</code>, вы приняли на себя обязательство: до этой даты операция работает. Перенести дату вперёд (дать больше времени) можно всегда; сдвинуть назад — значит нарушить контракт, даже если формально код ответа не изменился.</p></div>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s8">
+<h2><i>§8</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Удалить операцию сразу</b>Клиенты узнают об этом по ответам <code>404</code> в рабочем контуре. Между решением и удалением обязан быть объявленный срок.</div>
+<div><b>Пометка без замены</b>«Не пользуйтесь» без ответа на вопрос «а чем пользоваться» не помогает перейти.</div>
+<div><b>Предупреждение только в документации</b>Программа её не читает. Нужны заголовки в каждом ответе.</div>
+<div><b>Дата отключения только в тексте описания</b>Её нельзя прочитать машинно и нельзя посчитать, сколько осталось.</div>
+<div><b>Забыть про expose_headers</b>Веб-клиент не увидит <code>Deprecation</code> и <code>Sunset</code>, и предупреждение до него не дойдёт.</div>
+<div><b>Сдвинуть дату отключения ближе</b>Объявленный срок — обещание. Продлевать можно, сокращать нельзя.</div>
+</div>
+</section>
+
+<section class="sec" id="s9">
+<h2><i>§9</i>Проверьте себя</h2>
+<ol class="check">
+<li>Назовите пять этапов жизни операции и скажите, на каком из них клиент впервые получает предупреждение.</li>
+<li>Почему пометки <code>deprecated: true</code> в описании недостаточно?</li>
+<li>Чем отличаются заголовки <code>Deprecation</code> и <code>Sunset</code> по смыслу, формату и статусу документа?</li>
+<li>Что означает значение <code>@1789516800</code> и почему оно записано именно так?</li>
+<li>Почему объявление операции устаревшей — совместимое изменение, а её удаление — нет?</li>
+<li>От чего зависит длительность периода миграции? Приведите два разных случая.</li>
+</ol>
+
+<div class="cheat">
+<div><b>Цепочка</b><code>ACTIVE</code><code>DEPRECATED</code><code>MIGRATION PERIOD</code><code>SUNSET</code><code>REMOVED</code></div>
+<div><b>Что сделать</b><code>deprecated: true</code><code>указать замену</code><code>объявить дату</code><code>заголовки в ответах</code><code>запись в CHANGELOG</code></div>
+<div><b>Заголовки</b><code>Deprecation: @секунды</code><code>Sunset: HTTP-date</code></div>
+<div><b>Источники</b><code>RFC 9745 — Standards Track</code><code>RFC 8594 — Informational</code><code>Zalando 187, 189</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../5-2-breaking-changes/index.html">← Глава 5.2. Breaking changes</a>
+<a href="../5-4-changelog-adr/index.html">Глава 5.4. CHANGELOG и ADR →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 5 · глава 5.3</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>

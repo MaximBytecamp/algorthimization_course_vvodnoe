@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Глава 5.1 справочника: четыре независимых номера в одном API — версия OpenAPI, версия контракта по SemVer, мажорная версия в пути и версия развёртывания.">
+<title>5.1 Четыре номера и SemVer · Стандартизация HTTP API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Модуль 5 · Версии и изменения</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандартизация HTTP API»</a> · модуль 5 · Версии и изменения</p><p class="folio">Глава 5.1</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">5.1</span>
+<h1>Четыре номера<br>и SemVer</h1>
+<p class="lead">Фраза «у нас API версии 3.1» почти всегда означает путаницу: в одном сервисе живут четыре независимых номера, и они меняются по разным поводам. Разобравшись, какой за что отвечает, вы перестанете спорить вслепую и научитесь читать чужую политику версионирования.</p>
+<p class="pull">«Версия — не украшение в документации, а обещание: что изменится молча, а что потребует от клиента работы.»</p>
+</header>
+
+<dl class="passport">
+<div><dt>Категория</dt><dd>Версии</dd></div>
+<div><dt>Уровень</dt><dd>Базовый</dd></div>
+<div><dt>Связанные главы</dt><dd>5.2 Breaking changes · 3.2 Разделы документа · 5.4 CHANGELOG и ADR</dd></div>
+<div><dt>Зачем это знать</dt><dd>Чтобы номер версии что-то значил и для вас, и для клиента</dd></div>
+</dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol>
+<li><a href="#s1">Четыре номера в одном сервисе</a></li>
+<li><a href="#s2">Semantic Versioning для контракта</a></li>
+<li><a href="#s3">Где указывать мажорную версию</a></li>
+<li><a href="#s4">Четыре решения крупных компаний</a></li>
+<li><a href="#s5">Решение учебного проекта</a></li>
+<li><a href="#s6">Как номер меняется на практике</a></li>
+<li><a href="#s7">Частые ошибки</a></li>
+<li><a href="#s8">Проверьте себя</a></li>
+</ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Четыре номера в одном сервисе</h2>
+<p>Откройте учебный проект и найдите в нём всё, что похоже на версию. Их будет четыре, и все они разные.</p>
+
+<div class="table-scroll"><table>
+<thead><tr><th>Номер</th><th>Где записан</th><th>Пример</th><th>Что означает</th></tr></thead>
+<tbody>
+<tr><td>Версия формата описания</td><td><code>openapi</code> в <code>openapi/openapi.json</code></td><td><code>3.1.0</code></td><td>Каким форматом записан контракт; выбирает библиотека</td></tr>
+<tr><td>Версия контракта</td><td><code>info.version</code> в <code>app/main.py</code></td><td><code>1.1.0</code></td><td>Состояние публичного контракта по SemVer</td></tr>
+<tr><td>Мажорная версия в пути</td><td>Префикс маршрутов</td><td><code>/api/v1</code></td><td>С какой несовместимой редакцией работает клиент</td></tr>
+<tr><td>Версия развёртывания</td><td>Git</td><td><code>commit 4ab219…</code></td><td>Какой именно код сейчас запущен</td></tr>
+</tbody>
+</table></div>
+
+<p>Они меняются независимо. Запись <code>openapi: 3.1.0</code> не означает, что у API версия 3.1, а выкладка нового коммита не меняет контракт. Об этом прямо предупреждает свод правил Zalando:</p>
+
+<div class="cite">
+<p class="cite__head"><a href="https://opensource.zalando.com/restful-api-guidelines/#116" target="_blank" rel="noopener">Zalando RESTful API Guidelines, правило 116 «MUST use semantic versioning»</a><em>правила компании</em></p>
+<p class="cite__en">«Note, this API specification document version is distinct from the OpenAPI Specification version (also required, e.g. openapi: 3.1.0), or the API Implementation version»</p>
+<p class="cite__ru"><b>Перевод.</b> Учтите: версия документа спецификации API — это не то же самое, что версия OpenAPI Specification (её тоже нужно указать, например <code>openapi: 3.1.0</code>) и не версия реализации API.</p>
+</div>
+
+<div class="takeaway"><b>Мысль главы</b><p>Прежде чем спорить о номере, спросите: о каком из четырёх идёт речь. Половина разногласий заканчивается на этом вопросе.</p></div>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Semantic Versioning для контракта</h2>
+<p>Для <code>info.version</code> в проекте принят <span class="term">Semantic Versioning</span> — три числа через точку, у каждого свой повод измениться.</p>
+
+<div class="cite">
+<p class="cite__head"><a href="https://semver.org/" target="_blank" rel="noopener">Semantic Versioning 2.0.0</a><em>спецификация</em></p>
+<p class="cite__en">«MAJOR version when you make incompatible API changes<br>MINOR version when you add functionality in a backward compatible manner<br>PATCH version when you make backward compatible bug fixes»</p>
+<p class="cite__ru"><b>Перевод.</b> MAJOR — при несовместимых изменениях API; MINOR — при добавлении возможностей с сохранением обратной совместимости; PATCH — при исправлении ошибок с сохранением обратной совместимости.</p>
+</div>
+
+<div class="ops">
+<div><b>MAJOR · 2.0.0</b><span>Ломает существующих клиентов. Требует новой мажорной редакции и периода, когда старая и новая работают одновременно.</span><i>ломает</i></div>
+<div><b>MINOR · 1.2.0</b><span>Добавляет возможности, ничего не ломая: новая операция, новый необязательный параметр, новое поле ответа.</span><i>добавляет</i></div>
+<div><b>PATCH · 1.1.1</b><span>Исправляет поведение или описание, не меняя обещаний: уточнённая формулировка, исправленный пример, починенный код ответа.</span><i>чинит</i></div>
+</div>
+
+<p>Главная польза — не в самих числах, а в том, что клиент по номеру понимает, нужно ли ему что-то делать. Переход с <code>1.1.0</code> на <code>1.2.0</code> он может пропустить; переход на <code>2.0.0</code> — не может.</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/e-zalando-116-semver.png" alt="Правило 116 в своде Zalando: MUST use semantic versioning с пояснением про отличие от версии OpenAPI" loading="lazy">
+<figcaption><b>Правило в оригинале.</b> Уровень требования — MUST: в этой компании номер контракта обязан следовать SemVer. Уровни требований разбираются в главе 6.1.</figcaption></figure>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Где указывать мажорную версию</h2>
+<p>Когда несовместимое изменение всё же нужно, старая и новая редакции какое-то время работают рядом. Значит, клиент должен уметь выбрать, с какой он разговаривает. Способов четыре, и все встречаются в жизни.</p>
+
+<div class="fork">
+<div><b>В пути</b><p><code>/api/v1/tickets</code>. Видно в любом журнале, ссылке и адресной строке. Редакции легко развести по разным экземплярам сервиса.</p></div>
+<div><b>В заголовке</b><p><code>X-GitHub-Api-Version: 2026-03-10</code>. Адрес ресурса не меняется, но версия не видна в ссылке и её легко забыть.</p></div>
+<div><b>В параметре запроса</b><p><code>?api-version=2024-05-01</code>. Видно в ссылке, но параметр приходится добавлять к каждому запросу.</p></div>
+<div><b>В media type</b><p><code>Accept: application/vnd.servicedesk.v1+json</code>. Формально самый «правильный» по духу HTTP и самый неудобный на практике.</p></div>
+</div>
+
+<p>Правильного ответа нет — есть выбор с последствиями. Поэтому решение записывают отдельным документом, и в главе 5.4 мы разберём, как он устроен.</p>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>Четыре решения крупных компаний</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Кто</th><th>Где версия</th><th>Пример</th><th>Источник</th></tr></thead>
+<tbody>
+<tr><td>GitHub</td><td>Заголовок, версия названа датой</td><td><code>X-GitHub-Api-Version: 2026-03-10</code></td><td><a href="https://docs.github.com/en/rest/about-the-rest-api/api-versions" target="_blank" rel="noopener">GitHub Docs, API Versions</a></td></tr>
+<tr><td>Microsoft Graph</td><td>Путь</td><td><code>graph.microsoft.com/v1.0/users</code>, <code>beta</code></td><td><a href="https://github.com/microsoft/api-guidelines/blob/vNext/graph/GuidelinesGraph.md" target="_blank" rel="noopener">GuidelinesGraph.md</a></td></tr>
+<tr><td>Azure</td><td>Параметр запроса</td><td><code>?api-version=2024-05-01</code></td><td><a href="https://github.com/microsoft/api-guidelines/blob/vNext/azure/Guidelines.md" target="_blank" rel="noopener">Azure Guidelines.md</a></td></tr>
+<tr><td>Box</td><td>В имени файла описания</td><td><code>openapi-v2025.0.json</code></td><td><a href="https://github.com/box/box-openapi/tree/main/openapi" target="_blank" rel="noopener">box/box-openapi</a></td></tr>
+</tbody>
+</table></div>
+
+<p>Обратите внимание на две вещи. Во-первых, даже внутри одной компании решения расходятся: Microsoft Graph ставит версию в путь, а Azure — в параметр запроса, и это документы одной организации. Во-вторых, GitHub и Box называют версии датами, а не номерами SemVer: для публичного API дата понятнее, чем «мажорная двойка».</p>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/72-github-api-versions.png" alt="Страница GitHub Docs про версии REST API и заголовок X-GitHub-Api-Version" loading="lazy">
+<figcaption><b>Версия датой.</b> GitHub просит присылать заголовок с датой редакции и обещает поддерживать старые редакции не менее двух лет. Такое обещание — тоже часть контракта, только записанная словами, а не в описании.</figcaption></figure>
+
+<figure class="shot"><img src="../../../lessons/01-api-kak-kontrakt/shots/e-azure-api-version.png" alt="Документ Azure Guidelines с требованием обязательного параметра api-version" loading="lazy">
+<figcaption><b>Версия параметром.</b> В Azure параметр <code>api-version</code> обязателен во всех запросах; правила даже задают текст сообщения, которое сервис возвращает, если параметр забыли.</figcaption></figure>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>Решение учебного проекта</h2>
+<p>В проекте выбран путь: <code>/api/v1</code>. Решение и его причины записаны в файле <code>docs/adr/0001-api-versioning.md</code> — это не заметка на полях, а документ с обоснованием.</p>
+
+<div class="code"><b>docs/adr/0001-api-versioning.md · выдержки</b><pre>## Decision
+Мажорная версия указывается в пути: /api/v1. Версия контракта ведётся по
+Semantic Versioning в info.version. Совместимые изменения выпускаются без смены пути.
+
+## Consequences
+- Версия видна в любом логе, ссылке и в адресной строке Swagger UI.
+- Старую и новую редакции можно направить на разные экземпляры сервиса правилом gateway.
+- Кэши и CDN различают редакции без настройки Vary.
+- Нельзя выпустить несовместимое изменение одной операции, не выпуская /api/v2 целиком.</pre></div>
+
+<p>Последний пункт — честно записанный минус выбранного способа, и это важнее всех плюсов. Решение без списка последствий выглядит убедительно ровно до того дня, когда последствие наступает.</p>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Как номер меняется на практике</h2>
+<p>Посмотрим на настоящую историю учебного контракта: от <code>1.0.0</code> к <code>1.1.0</code>.</p>
+
+<div class="code code--out"><b>CHANGELOG.md · что вошло в 1.1.0</b><pre>### Added
+- Заголовок X-Request-Id в каждом ответе.
+- ETag в ответах с одним обращением, 304 на совпавший If-None-Match.
+- If-Match в PATCH, ответ 412 при устаревшей версии.
+- Idempotency-Key в POST: повтор с тем же ключом не создаёт второе обращение.
+- Лимит операций записи: 429 с Retry-After, заголовки X-RateLimit-*.
+
+### Deprecated
+- GET /api/v1/tickets/open — используйте GET /api/v1/tickets?status=open.</pre></div>
+
+<ol class="steps">
+<li><b>Все изменения — добавления.</b> Новые заголовки, новые коды ответов в новых ситуациях. Ни одна существующая операция не изменила обещаний.</li>
+<li><b>Значит, это MINOR:</b> <code>1.0.0 → 1.1.0</code>. Путь остаётся <code>/api/v1</code>, клиентам ничего делать не нужно.</li>
+<li><b>Устаревание — не удаление.</b> Операция <code>GET /tickets/open</code> помечена устаревшей, но работает. Само по себе это совместимое изменение; несовместимым станет её удаление — и оно ждёт версии <code>2.0.0</code>.</li>
+</ol>
+
+<div class="note"><b>Почему устаревание не ломает</b><p>Клиент, который ничего не знает о пометке, продолжает получать прежние ответы. Меняются только два заголовка, которые он вправе игнорировать. В этом весь смысл механизма: предупредить заранее, не ломая сегодня. Подробно — в главе 5.3.</p></div>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s7">
+<h2><i>§7</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Путать версию OpenAPI с версией API</b><code>openapi: 3.1.0</code> — про формат файла, а не про ваш сервис.</div>
+<div><b>Повышать MAJOR при каждом изменении</b>Тогда номер перестаёт что-либо сообщать, а клиенты — на него смотреть.</div>
+<div><b>Менять контракт, не трогая номер</b>Клиент не может отличить старое описание от нового и не знает, нужно ли ему что-то делать.</div>
+<div><b>Версия только в заголовке и нигде больше</b>В журналах и ссылках не видно, с какой редакцией работал клиент, — разбор жалобы усложняется.</div>
+<div><b>Выбрать способ версионирования и не записать почему</b>Через год никто не вспомнит причину, и спор начнётся заново.</div>
+</div>
+</section>
+
+<section class="sec" id="s8">
+<h2><i>§8</i>Проверьте себя</h2>
+<ol class="check">
+<li>Назовите четыре номера учебного проекта и скажите, кто меняет каждый из них.</li>
+<li>Какая часть SemVer меняется при добавлении нового необязательного параметра? А при удалении поля ответа?</li>
+<li>Перечислите четыре места, куда можно поместить мажорную версию, и назовите по одному минусу каждого.</li>
+<li>Почему в одной компании — Microsoft — два API версионируются по-разному?</li>
+<li>Почему переход <code>1.0.0 → 1.1.0</code> в учебном проекте не потребовал пути <code>/api/v2</code>, хотя добавилось семь новых возможностей?</li>
+<li>Зачем в документе решения записывают отрицательные последствия выбора?</li>
+</ol>
+
+<div class="cheat">
+<div><b>Четыре номера</b><code>openapi: 3.1.0 — формат</code><code>info.version — контракт</code><code>/api/v1 — редакция</code><code>commit — развёртывание</code></div>
+<div><b>SemVer</b><code>MAJOR — ломает</code><code>MINOR — добавляет</code><code>PATCH — чинит</code></div>
+<div><b>Где версия</b><code>путь</code><code>заголовок</code><code>параметр запроса</code><code>media type</code></div>
+<div><b>В проекте</b><code>/api/v1 + SemVer</code><code>ADR 0001</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav">
+<a href="../4-3-zagolovki/index.html">← Глава 4.3. Заголовки контракта</a>
+<a href="../5-2-breaking-changes/index.html">Глава 5.2. Breaking changes →</a>
+</nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандартизация HTTP API» · модуль 5 · глава 5.1</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>
