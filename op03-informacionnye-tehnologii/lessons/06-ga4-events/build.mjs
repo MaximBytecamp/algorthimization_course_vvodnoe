@@ -18,8 +18,8 @@ const cycleShots={201:'GitHub: кнопка Code, вкладка HTTPS и ско
 const cycle=[200,201,202,203,204,205,206,207,208,209,210].map(id=>({id,title:titles[id],shot:cycleShots[id]||null}));
 slides.splice(slides.findIndex(s=>s.id===103),0,...cycle);
 // Подробный проход Tag Assistant → DebugView: показываем каждый переход.
-const debugShots={220:'Tag Assistant: список доменов и кнопка «Добавить домен».',221:'Tag Assistant: окно подключения с введённым Production URL.',222:'Вкладка отладки: адрес с gtm_debug и плашка «Tag Assistant подключен».',223:'GA4: путь Администратор → Просмотр данных → DebugView.',224:'GA4 DebugView: минуты слева, лента секунд в центре, верхние события справа.',225:'Нажатие CTA на сайте и событие cta_click в ленте DebugView.'};
-const debugFlow=[220,221,222].map(id=>({id,title:titles[id],shot:debugShots[id]}));
+const debugShots={226:'Tag Assistant: список сообщений и объект параметров события cta_click.',220:'Tag Assistant: список доменов и кнопка «Добавить домен».',221:'Tag Assistant: окно подключения с введённым Production URL.',222:'Вкладка отладки: адрес с gtm_debug и плашка «Tag Assistant подключен».',223:'GA4: путь Администратор → Просмотр данных → DebugView.',224:'GA4 DebugView: минуты слева, лента секунд в центре, верхние события справа.',225:'Нажатие CTA на сайте и событие cta_click в ленте DebugView.'};
+const debugFlow=[220,221,222,226].map(id=>({id,title:titles[id],shot:debugShots[id]}));
 slides.splice(slides.findIndex(s=>s.id===143),0,...debugFlow);
 slides.splice(slides.findIndex(s=>s.id===144),0,{id:223,title:titles[223],shot:debugShots[223]});
 slides.splice(slides.findIndex(s=>s.id===145),0,{id:224,title:titles[224],shot:debugShots[224]},{id:225,title:titles[225],shot:debugShots[225]});
@@ -104,7 +104,7 @@ fs.writeFileSync(path.join(root,'index.html'),html);
 fs.mkdirSync(path.join(root,'shots'),{recursive:true});
 fs.writeFileSync(path.join(root,'shots/manifest.json'),JSON.stringify(manifest,null,2)+'\n');
 const cycleIds=new Set([201,202,203,204,205,206,207,208,209,210]);
-const debugIds=new Set([220,221,222,223,224,225]);
+const debugIds=new Set([220,221,222,223,224,225,226]);
 const ga4Ids=new Set([95,96,97,101,104,109,112,115,116,131,140,143,144,145,146,147,148,151,152,153,157,158,160]);
 const publishIds=new Set([129,130,139]);
 const groups=[['Рабочий цикл публикации',m=>cycleIds.has(m.slide)],['Tag Assistant и DebugView: переходы',m=>debugIds.has(m.slide)],['GA4 и Tag Assistant',m=>ga4Ids.has(m.slide)],['Публикация и сайт',m=>publishIds.has(m.slide)],['Редактор и код',()=>true]];
