@@ -25,3 +25,11 @@ pathlib.Path('sizes.json').write_text(json.dumps(sizes, indent=1))
    Текстовый протокол для студентов — `materials/run-evidence.txt`.
 
 Пути в снимках относятся к записанному прогону: у студентов они будут другими.
+
+## Кадры 25 и 26 (структура и запуск, глава 2.5)
+
+Собираются отдельной парой скриптов, чтобы не перезаписывать основной протокол:
+
+1. `bash record-run-structure.sh` — реальные команды в `/tmp/python-book-structure`;
+2. `python3 build-shots-structure.py` — собирает `evidence-structure.html`;
+3. рендер PNG тем же кодом, что и выше, но по файлу `evidence-structure.html`.

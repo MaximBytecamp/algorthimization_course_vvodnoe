@@ -315,7 +315,7 @@
       },
       file: {
         start: 'pkg', hidden: 'root',
-        text: 'При запуске файлом поиск начинается с папки, где лежит сам файл, — с app/. Корень проекта в поиск не попадает, пакет app снаружи не виден: ModuleNotFoundError: No module named app.'
+        text: 'При запуске файлом поиск начинается с папки, где лежит сам файл, — с app/. Корень проекта в список поиска не попадает, поэтому импорт from app.services.calculator даёт ModuleNotFoundError: No module named app. Такой запуск работает, если импорты записаны внутри пакета: from services.calculator import …'
       }
     };
     document.querySelectorAll('[data-run]').forEach(button => button.addEventListener('click', () => {
