@@ -1,6 +1,6 @@
 # Список скриншотов · Тема 6
 
-Всего: **56**. Каждый файл вставляется на одноимённый слайд автоматически после команды `node build.mjs`. До съёмки на слайде видна пустая рамка. Снимать личный учебный проект; скрыть аккаунт, почту и другие личные данные. Интерфейс должен показывать указанный результат, а не только открытый раздел.
+Всего: **55**. Каждый файл вставляется на одноимённый слайд автоматически после команды `node build.mjs`. До съёмки на слайде видна пустая рамка. Снимать личный учебный проект; скрыть аккаунт, почту и другие личные данные. Интерфейс должен показывать указанный результат, а не только открытый раздел.
 
 ## Отчёты и разрезы
 
@@ -16,17 +16,17 @@
 
 <a id="slide-238"></a>
 
-- [ ] **238. Шаг 35. Открыть отчёт по событиям** — GA4: путь Отчёты → Просмотр данных о взаимодействии → События.
+- [ ] **238. Открыть отчёт по событиям** — GA4: путь Отчёты → Просмотр данных о взаимодействии → События.
   - Файл: `shots/238-shot.png`
 
 <a id="slide-239"></a>
 
-- [ ] **239. Шаг 36. Выбрать событие** — GA4: таблица событий за период; параметров в ней нет.
+- [ ] **239. Выбрать событие в таблице** — GA4: таблица событий за период; параметров в ней нет.
   - Файл: `shots/239-shot.png`
 
 <a id="slide-240"></a>
 
-- [ ] **240. Шаг 37. Найти карточки разрезов** — GA4: карточки зарегистрированных разрезов под графиком события.
+- [ ] **240. Найти карточки разрезов** — GA4: карточки зарегистрированных разрезов под графиком события.
   - Файл: `shots/240-shot.png`
 
 <a id="slide-241"></a>
@@ -86,29 +86,9 @@
   - Файл: `shots/210-shot.png`
 ## Tag Assistant и DebugView: переходы
 
-<a id="slide-220"></a>
-
-- [ ] **220. Шаг 26. Открыть Tag Assistant** — Tag Assistant: список доменов и кнопка «Добавить домен».
-  - Файл: `shots/220-shot.png`
-
-<a id="slide-221"></a>
-
-- [ ] **221. Шаг 27. Подключить свой сайт** — Tag Assistant: окно подключения с введённым Production URL.
-  - Файл: `shots/221-shot.png`
-
-<a id="slide-222"></a>
-
-- [ ] **222. Вкладка отладки** — Вкладка отладки: адрес с gtm_debug и плашка «Tag Assistant подключен».
-  - Файл: `shots/222-shot.png`
-
-<a id="slide-226"></a>
-
-- [ ] **226. Что видно в Tag Assistant** — Tag Assistant: список сообщений и объект параметров события cta_click.
-  - Файл: `shots/226-shot.png`
-
 <a id="slide-223"></a>
 
-- [ ] **223. Шаг 28. Открыть DebugView** — GA4: путь Администратор → Просмотр данных → DebugView.
+- [ ] **223. Открыть DebugView** — GA4: путь Администратор → Просмотр данных → DebugView.
   - Файл: `shots/223-shot.png`
 
 <a id="slide-224"></a>
@@ -120,6 +100,26 @@
 
 - [ ] **225. Действие на сайте → событие в ленте** — Нажатие CTA на сайте и событие cta_click в ленте DebugView.
   - Файл: `shots/225-shot.png`
+
+<a id="slide-220"></a>
+
+- [ ] **220. Открыть Tag Assistant** — Tag Assistant: список доменов и кнопка «Добавить домен».
+  - Файл: `shots/220-shot.png`
+
+<a id="slide-221"></a>
+
+- [ ] **221. Подключить свой сайт** — Tag Assistant: окно подключения с введённым Production URL.
+  - Файл: `shots/221-shot.png`
+
+<a id="slide-222"></a>
+
+- [ ] **222. Вкладка отладки** — Вкладка отладки: адрес с gtm_debug и плашка «Tag Assistant подключен».
+  - Файл: `shots/222-shot.png`
+
+<a id="slide-226"></a>
+
+- [ ] **226. Что видно в Tag Assistant** — Tag Assistant: список сообщений и объект параметров события cta_click.
+  - Файл: `shots/226-shot.png`
 ## GA4 и Tag Assistant
 
 <a id="slide-95"></a>
@@ -169,22 +169,17 @@
 
 <a id="slide-131"></a>
 
-- [ ] **131. Шаг 20. Найти generate_lead** — GA4 Realtime: событие generate_lead после отправки формы.
+- [ ] **131. Шаг 16. Найти generate_lead** — GA4 Realtime: событие generate_lead после отправки формы.
   - Файл: `shots/131-shot.png`
 
 <a id="slide-140"></a>
 
-- [ ] **140. Шаг 25. Нажать кнопку** — GA4 Realtime: событие cta_click после одного нажатия кнопки.
+- [ ] **140. Шаг 19. Нажать кнопку** — GA4 Realtime: событие cta_click после одного нажатия кнопки.
   - Файл: `shots/140-shot.png`
-
-<a id="slide-143"></a>
-
-- [ ] **143. Шаг 26. Google Tag Assistant** — Google Tag Assistant: подключён Production URL учебного сайта.
-  - Файл: `shots/143-shot.png`
 
 <a id="slide-144"></a>
 
-- [ ] **144. Шаг 27. Admin → DebugView** — GA4 DebugView: открыт экран, выбрано своё debug-устройство.
+- [ ] **144. Выбрать устройство отладки** — GA4 DebugView: открыт экран, выбрано своё debug-устройство.
   - Файл: `shots/144-shot.png`
 
 <a id="slide-145"></a>
@@ -194,7 +189,7 @@
 
 <a id="slide-146"></a>
 
-- [ ] **146. Шаг 28. Открыть событие** — GA4 DebugView: раскрыто событие generate_lead.
+- [ ] **146. Шаг 20. Открыть событие** — GA4 DebugView: раскрыто событие generate_lead.
   - Файл: `shots/146-shot.png`
 
 <a id="slide-147"></a>
@@ -204,53 +199,53 @@
 
 <a id="slide-148"></a>
 
-- [ ] **148. Шаг 29. Проверить Custom Event** — GA4 DebugView: у cta_click видны button_name=program и page_section=hero.
+- [ ] **148. Шаг 21. Проверить Custom Event** — GA4 DebugView: у cta_click видны button_name=program и page_section=hero.
   - Файл: `shots/148-shot.png`
 
 <a id="slide-151"></a>
 
-- [ ] **151. Шаг 30. Admin → Custom definitions** — GA4 Custom definitions: открыт список и кнопка создания определения.
+- [ ] **151. Шаг 22. Admin → Custom definitions** — GA4 Custom definitions: открыт список и кнопка создания определения.
   - Файл: `shots/151-shot.png`
 
 <a id="slide-152"></a>
 
-- [ ] **152. Шаг 31. Создать Event-scoped Dimension** — GA4 Create custom dimension: Event scope и параметр button_name.
+- [ ] **152. Шаг 23. Создать Event-scoped Dimension** — GA4 Create custom dimension: Event scope и параметр button_name.
   - Файл: `shots/152-shot.png`
 
 <a id="slide-153"></a>
 
-- [ ] **153. Шаг 32. Второй параметр** — GA4 Create custom dimension: Event scope и параметр page_section.
+- [ ] **153. Шаг 24. Второй параметр** — GA4 Create custom dimension: Event scope и параметр page_section.
   - Файл: `shots/153-shot.png`
 
 <a id="slide-157"></a>
 
-- [ ] **157. Шаг 33. Admin → Events** — GA4 Events: в списке найдено событие generate_lead.
+- [ ] **157. Шаг 25. Admin → Events** — GA4 Events: в списке найдено событие generate_lead.
   - Файл: `shots/157-shot.png`
 
 <a id="slide-158"></a>
 
-- [ ] **158. Шаг 34. Mark as key event** — GA4 Events: generate_lead отмечено как Key Event.
+- [ ] **158. Шаг 26. Mark as key event** — GA4 Events: generate_lead отмечено как Key Event.
   - Файл: `shots/158-shot.png`
 
 <a id="slide-160"></a>
 
-- [ ] **160. Шаг 35. Отправить ещё одну форму** — GA4 Realtime: новое generate_lead после настройки Key Event.
+- [ ] **160. Шаг 27. Отправить ещё одну форму** — GA4 Realtime: новое generate_lead после настройки Key Event.
   - Файл: `shots/160-shot.png`
 ## Публикация и сайт
 
 <a id="slide-129"></a>
 
-- [ ] **129. Шаг 18. Проверить Deployment** — Vercel Deployments: нужный коммит имеет статусы Ready и Production.
+- [ ] **129. Шаг 14. Проверить Deployment** — Vercel Deployments: нужный коммит имеет статусы Ready и Production.
   - Файл: `shots/129-shot.png`
 
 <a id="slide-130"></a>
 
-- [ ] **130. Шаг 19. Отправить тестовую заявку** — Production-сайт: форма Contacts после одной успешной учебной отправки; виден URL.
+- [ ] **130. Шаг 15. Отправить тестовую заявку** — Production-сайт: форма Contacts после одной успешной учебной отправки; виден URL.
   - Файл: `shots/130-shot.png`
 
 <a id="slide-139"></a>
 
-- [ ] **139. Шаг 24. Отправить изменения** — Source Control и Vercel: коммит CTA опубликован, deployment Ready.
+- [ ] **139. Шаг 18. Отправить изменения** — Source Control и Vercel: коммит CTA опубликован, deployment Ready.
   - Файл: `shots/139-shot.png`
 ## Редактор и код
 
@@ -281,10 +276,10 @@
 
 <a id="slide-128"></a>
 
-- [ ] **128. Шаг 17. Save → Commit → Push** — VS Code Source Control: изменения contacts.html и script.js готовы к коммиту.
+- [ ] **128. Шаг 13. Save → Commit → Push** — VS Code Source Control: изменения contacts.html и script.js готовы к коммиту.
   - Файл: `shots/128-shot.png`
 
 <a id="slide-133"></a>
 
-- [ ] **133. Шаг 21. Подготовить HTML** — VS Code: кнопка #program-cta в index.html.
+- [ ] **133. Шаг 17. Подготовить HTML** — VS Code: кнопка #program-cta в index.html.
   - Файл: `shots/133-shot.png`
