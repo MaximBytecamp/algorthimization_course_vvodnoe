@@ -160,11 +160,7 @@
       ['│ │ └ calculator.py', 'Функция calculate_average: сумма / количество. Пустой список вызывает ValueError.'],
       ['│ └ utils/', 'Пакет небольших вспомогательных функций.'],
       ['│   ├ __init__.py', 'Пустой файл обычного пакета app.utils.'],
-      ['│   └ formatter.py', 'Функция format_average: число превращается в строку с двумя знаками после точки.'],
-      ['├ tests/  [глава 2.6]', 'Добавим в следующей главе: проверки расчёта, пустого списка и форматирования.'],
-      ['├ .gitignore  [2.6]', 'В следующей главе исключим .venv, кэш и .env из Git.'],
-      ['├ requirements.txt  [2.6]', 'В следующей главе зафиксируем установленные библиотеки и версии.'],
-      ['└ README.md  [2.6]', 'В следующей главе напишем инструкцию, чтобы проект запустил другой человек.']
+      ['│   └ formatter.py', 'Функция format_average: число превращается в строку с двумя знаками после точки.']
     ],
     go: [
       ['student-tools/', 'Корень модуля. Здесь лежит go.mod, и отсюда выполняется go run .'],
@@ -175,24 +171,26 @@
       ['│ ├ services/', 'Пакет прикладной логики. Не знает ни про main, ни про оформление.'],
       ['│ │ └ calculator.go', 'Функция CalculateAverage: сумма / количество. Пустой срез возвращает ошибку.'],
       ['│ └ utils/', 'Пакет небольших вспомогательных функций.'],
-      ['│   └ formatter.go', 'Функция FormatAverage: число превращается в строку с двумя знаками после точки.'],
-      ['├ internal/services/calculator_test.go  [2.6]', 'Тест лежит рядом с кодом, в том же пакете. Добавим в следующей главе.'],
-      ['├ .gitignore  [2.6]', 'В следующей главе исключим собранный бинарник и локальные файлы.'],
-      ['└ README.md  [2.6]', 'В следующей главе напишем инструкцию, чтобы проект запустил другой человек.']
+      ['│   └ formatter.go', 'Функция FormatAverage: число превращается в строку с двумя знаками после точки.']
     ]
   };
   function buildTree() {
     if (!tree) return;
     tree.textContent = '';
     const panel = document.getElementById('tree-info');
-    if (panel) panel.innerHTML = '<b>Выберите строку</b><p>Нажмите на файл или папку слева, чтобы прочитать, зачем они нужны.</p>';
-    treeFiles[activeLang].forEach(([label, description]) => {
-      const button = document.createElement('button');button.type = 'button';button.textContent = label;button.setAttribute('aria-pressed','false');
+    const show = (label, description) => {
+      if (!panel) return;
+      panel.innerHTML = `<b>${escape(label.replace(/[├└│]/g,'').trim())}</b><p>${escape(description)}</p>`;
+    };
+    treeFiles[activeLang].forEach(([label, description], index) => {
+      const button = document.createElement('button');button.type = 'button';button.textContent = label;
+      button.setAttribute('aria-pressed', String(index === 0));
       button.addEventListener('click', () => {
         tree.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed','false'));button.setAttribute('aria-pressed','true');
-        document.getElementById('tree-info').innerHTML = `<b>${escape(label.replace(/[├└│]/g,'').trim())}</b><p>${escape(description)}</p>`;
+        show(label, description);
       });
       tree.append(button);
+      if (index === 0) show(label, description);
     });
   }
   buildTree();
@@ -216,8 +214,8 @@
   // Minimal local highlighting; source text is escaped before adding markup.
   const PY_TOKENS = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|#[^\n]*|\b(?:def|if|not|raise|return|from|import|class|with|as|for|in)\b)/g;
   const GO_TOKENS = /("(?:\\.|[^"\\])*"|`[^`]*`|\/\/[^\n]*|\b(?:package|import|func|return|if|else|for|range|var|const|type|struct|interface|map|defer|go|nil|errors|fmt)\b)/g;
-  const PY_LABELS = ['ЗАЩИТА ТОЧКИ ЗАПУСКА', 'ДВА СПОСОБА ОБРАЩЕНИЯ'];
-  const GO_LABELS = ['ТОЧКА ЗАПУСКА В GO', 'ИМЯ РЕШАЕТ ВИДИМОСТЬ'];
+  const PY_LABELS = ['ПОСЛЕДНИЕ СТРОКИ main.py', 'ДВЕ ФОРМЫ ИМПОРТА'];
+  const GO_LABELS = ['ТОЧКА ЗАПУСКА В GO', 'ВИДИМОСТЬ ИМЕНИ В GO'];
   document.querySelectorAll('.code').forEach(figure => {
     const label = figure.querySelector('figcaption > span')?.textContent || '';
     const isGo = label.endsWith('.go') || label.endsWith('go.mod') || GO_LABELS.includes(label);
@@ -338,7 +336,7 @@
       run: {value: '"__main__"', cond: 'выполняется', call: 'вызывается',
             text: 'Файл запущен напрямую: Python дал ему имя __main__, условие истинно, программа стартовала. Это обычный запуск вашей программы.'},
       import: {value: '"main"', cond: 'ложно', call: 'не вызывается',
-            text: 'Файл импортирован другим файлом: Python дал ему собственное имя модуля. Определения из файла созданы и доступны, но программа не стартовала — именно этого мы и добиваемся.'}
+            text: 'Файл импортирован другим файлом: Python дал ему собственное имя модуля. Определения из файла созданы и доступны, программа не стартовала.'}
     };
     document.querySelectorAll('[data-namemode]').forEach(button => button.addEventListener('click', () => {
       const mode = button.dataset.namemode;
@@ -375,7 +373,7 @@
   if (impMap) {
     const state = {
       module: {name: 'calculator', what: 'модуль целиком', call: 'calculator.calculate_average([5, 4, 5])',
-        text: 'Видно, откуда пришла функция: имя модуля остаётся в строке вызова. Удобно, когда из модуля нужно много всего или когда имена в разных модулях совпадают.'},
+        text: 'Видно, откуда пришла функция: имя модуля остаётся в строке вызова. Такую форму берут, когда из модуля нужно много имён или когда имена в разных модулях совпадают.'},
       name: {name: 'calculate_average', what: 'одна функция из модуля', call: 'calculate_average([5, 4, 5])',
         text: 'Короче в вызове, но по строке уже не видно, из какого модуля пришло имя. Так пишут, когда из модуля нужны одна-две функции и имена не спорят между собой.'}
     };
