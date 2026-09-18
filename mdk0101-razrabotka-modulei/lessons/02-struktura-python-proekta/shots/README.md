@@ -33,3 +33,9 @@ pathlib.Path('sizes.json').write_text(json.dumps(sizes, indent=1))
 1. `bash record-run-structure.sh` — реальные команды в `/tmp/python-book-structure`;
 2. `python3 build-shots-structure.py` — собирает `evidence-structure.html`;
 3. рендер PNG тем же кодом, что и выше, но по файлу `evidence-structure.html`.
+
+## Кадры 27-31 (главы 2.1, 2.4, 2.6-2.8)
+
+1. `bash record-run-extra.sh && python3 build-shots-extra.py` — кадры 27 и 28;
+2. `bash record-run-more.sh && python3 build-shots-more.py` — кадры 29, 30 и 31;
+3. рендер PNG тем же кодом, что и выше, по файлам `evidence-extra.html` и `evidence-more.html`.
