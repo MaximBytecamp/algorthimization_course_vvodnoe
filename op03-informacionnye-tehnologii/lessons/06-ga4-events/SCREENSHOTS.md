@@ -86,21 +86,6 @@
   - Файл: `shots/210-shot.png`
 ## Tag Assistant и DebugView: переходы
 
-<a id="slide-223"></a>
-
-- [ ] **223. Открыть DebugView** — GA4: путь Администратор → Просмотр данных → DebugView.
-  - Файл: `shots/223-shot.png`
-
-<a id="slide-224"></a>
-
-- [ ] **224. Из чего состоит экран DebugView** — GA4 DebugView: минуты слева, лента секунд в центре, верхние события справа.
-  - Файл: `shots/224-shot.png`
-
-<a id="slide-225"></a>
-
-- [ ] **225. Действие на сайте → событие в ленте** — Нажатие CTA на сайте и событие cta_click в ленте DebugView.
-  - Файл: `shots/225-shot.png`
-
 <a id="slide-220"></a>
 
 - [ ] **220. Открыть Tag Assistant** — Tag Assistant: список доменов и кнопка «Добавить домен».
@@ -120,6 +105,21 @@
 
 - [ ] **226. Что видно в Tag Assistant** — Tag Assistant: список сообщений и объект параметров события cta_click.
   - Файл: `shots/226-shot.png`
+
+<a id="slide-223"></a>
+
+- [ ] **223. Открыть DebugView** — GA4: путь Администратор → Просмотр данных → DebugView.
+  - Файл: `shots/223-shot.png`
+
+<a id="slide-224"></a>
+
+- [ ] **224. Из чего состоит экран DebugView** — GA4 DebugView: минуты слева, лента секунд в центре, верхние события справа.
+  - Файл: `shots/224-shot.png`
+
+<a id="slide-225"></a>
+
+- [ ] **225. Действие на сайте → событие в ленте** — Нажатие CTA на сайте и событие cta_click в ленте DebugView.
+  - Файл: `shots/225-shot.png`
 ## GA4 и Tag Assistant
 
 <a id="slide-95"></a>

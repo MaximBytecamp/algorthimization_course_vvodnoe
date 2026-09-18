@@ -18,18 +18,18 @@ slides.unshift({id:88,title:titles[88],shot:null}); // вводный экран
 // Рабочий цикл публикации: один подробный проход перед первой правкой кода.
 const cycleShots={201:'GitHub: кнопка Code, вкладка HTTPS и скопированный адрес репозитория.',202:'VS Code: команда Git: Clone и поле для адреса репозитория.',203:'VS Code Explorer: файлы склонированного проекта, открыт index.html.',204:'VS Code: изменение сохранено, метка M у файла в Explorer.',205:'VS Code Source Control: список изменённых файлов и сравнение версий.',206:'VS Code: сообщение коммита и кнопка Commit.',207:'VS Code: кнопка Sync Changes после коммита.',208:'GitHub: новый коммит в истории репозитория.',209:'Vercel Deployments: коммит со статусами Ready и Production.',210:'Production-сайт: изменение видно на опубликованной странице.'};
 const cycle=[200,201,202,203,204,205,206,207,208,209,210].map(id=>({id,title:titles[id],shot:cycleShots[id]||null}));
-slides.splice(slides.findIndex(s=>s.id===103),0,...cycle);
+const insertBefore=(id,...extra)=>{const at=slides.findIndex(s=>s.id===id);if(at<0)throw Error('Нет слайда '+id+' для вставки');slides.splice(at,0,...extra);};
+insertBefore(103,...cycle);
 // Подробный проход Tag Assistant → DebugView: показываем каждый переход.
 const debugShots={226:'Tag Assistant: список сообщений и объект параметров события cta_click.',220:'Tag Assistant: список доменов и кнопка «Добавить домен».',221:'Tag Assistant: окно подключения с введённым Production URL.',222:'Вкладка отладки: адрес с gtm_debug и плашка «Tag Assistant подключен».',223:'GA4: путь Администратор → Просмотр данных → DebugView.',224:'GA4 DebugView: минуты слева, лента секунд в центре, верхние события справа.',225:'Нажатие CTA на сайте и событие cta_click в ленте DebugView.'};
 const debugFlow=[220,221,222,226].map(id=>({id,title:titles[id],shot:debugShots[id]}));
-slides.splice(slides.findIndex(s=>s.id===143),0,...debugFlow);
-slides.splice(slides.findIndex(s=>s.id===144),0,{id:223,title:titles[223],shot:debugShots[223]});
-slides.splice(slides.findIndex(s=>s.id===145),0,{id:224,title:titles[224],shot:debugShots[224]},{id:225,title:titles[225],shot:debugShots[225]});
+insertBefore(144,...debugFlow,{id:223,title:titles[223],shot:debugShots[223]});
+insertBefore(145,{id:224,title:titles[224],shot:debugShots[224]},{id:225,title:titles[225],shot:debugShots[225]});
 // Практика: готовый скрипт с дополнительными метриками.
 const practice=[230,233,231,234,235,232].map(id=>({id,title:titles[id],shot:null}));
-slides.splice(slides.findIndex(s=>s.id===162),0,...practice);
-slides.splice(slides.findIndex(s=>s.id===151),0,{id:236,title:titles[236],shot:null});
-slides.splice(slides.findIndex(s=>s.id===156),0,{id:237,title:titles[237],shot:null},...[238,239,240,241].map(id=>({id,title:titles[id],shot:reportShots[id]})));
+insertBefore(162,...practice);
+insertBefore(151,{id:236,title:titles[236],shot:null});
+insertBefore(156,{id:237,title:titles[237],shot:null},...[238,239,240,241].map(id=>({id,title:titles[id],shot:reportShots[id]})));
 const stage=id=>id>=236&&id<=241?'Custom Dimensions':id>=230?'Практика':id>=220?'DebugView':id>=200?'Публикация изменений':id<95?'Событийная модель':id<111?'Автоматические измерения':id<119?'Форма и бизнес-смысл':id<132?'Рекомендуемое событие':id<141?'Собственное событие':id<150?'DebugView':id<155?'Custom Dimensions':id<161?'Key Events':'Путь пользователя';
 const leadCode=`const leadForm = document.querySelector('#lead-form');
 if (leadForm) {
