@@ -26,10 +26,10 @@ source .venv/bin/activate
 python -c "import sys; print(sys.executable)"
 python -m pip install -r requirements.txt
 python -m app.main
-python -m unittest discover -s tests -v
+python -m pytest -v
 ```
 
-Ожидаемый вывод: `Средний результат: 4.40`. Три теста должны завершиться OK.
+Ожидаемый вывод: `Средний результат: 4.40`. Тесты должны дать строку `3 passed`.
 В VS Code выполните Python: Select Interpreter и выберите Python внутри .venv.
 
 ## Ответственность
@@ -37,7 +37,7 @@ python -m unittest discover -s tests -v
 - app/main.py — соединение частей и запуск.
 - app/services/calculator.py — расчёт; пустой список вызывает ValueError.
 - app/utils/formatter.py — формат строки с двумя знаками после точки.
-- tests/ — проверки без стороннего тестового фреймворка.
+- tests/ — проверки: обычные функции с assert, запускаются через pytest.
 - requirements.txt — зафиксированные зависимости учебного примера (не требование последних версий).
 - .gitignore — исключает локальное окружение и кэш.
 

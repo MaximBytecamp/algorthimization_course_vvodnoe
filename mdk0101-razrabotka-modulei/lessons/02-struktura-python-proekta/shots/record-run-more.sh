@@ -31,7 +31,7 @@ run m2-after "(.venv) student-tools $" "which python && python -c 'import sys; p
 deactivate
 run m3-off "student-tools $" "which python3 && python3 -c 'import sys; print(sys.prefix != sys.base_prefix)'"
 source .venv/bin/activate
-python -m pip install -q rich==13.9.4
+python -m pip install -q rich==13.9.4 pytest
 
 # --- 2.7: что в архиве практики и что будет при запуске до раскладки
 mkdir -p $BASE/praktika && cd $BASE/praktika
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     main()
 PY
 cat > tests/test_calculator.py <<'PY'
-import unittest
+import pytest
 
 from app.services.calculator import calculate_average, calculate_max, calculate_min
 from app.utils.formatter import format_average
@@ -101,32 +101,37 @@ from app.utils.formatter import format_average
 VALUES = [5, 4, 5, 3, 5]
 
 
-class AverageTests(unittest.TestCase):
-    def test_average(self):
-        self.assertAlmostEqual(calculate_average(VALUES), 4.4)
+def test_average():
+    assert calculate_average(VALUES) == pytest.approx(4.4)
 
-    def test_average_empty(self):
-        with self.assertRaises(ValueError):
-            calculate_average([])
 
-    def test_format(self):
-        self.assertEqual(format_average(4.4), "Средний результат: 4.40")
+def test_average_empty():
+    with pytest.raises(ValueError):
+        calculate_average([])
 
-    def test_min(self):
-        self.assertEqual(calculate_min(VALUES), 3)
 
-    def test_min_empty(self):
-        with self.assertRaises(ValueError):
-            calculate_min([])
+def test_format():
+    assert format_average(4.4) == "Средний результат: 4.40"
 
-    def test_max(self):
-        self.assertEqual(calculate_max(VALUES), 5)
 
-    def test_max_empty(self):
-        with self.assertRaises(ValueError):
-            calculate_max([])
+def test_min():
+    assert calculate_min(VALUES) == 3
+
+
+def test_min_empty():
+    with pytest.raises(ValueError):
+        calculate_min([])
+
+
+def test_max():
+    assert calculate_max(VALUES) == 5
+
+
+def test_max_empty():
+    with pytest.raises(ValueError):
+        calculate_max([])
 PY
 source $BASE/student-tools/.venv/bin/activate
 run m6-hw-run "(.venv) lesson_02 $" "python -m app.main"
-run m7-hw-tests "(.venv) lesson_02 $" "python -m unittest discover -s tests -v 2>&1 | tail -12"
+run m7-hw-tests "(.venv) lesson_02 $" "python -m pytest -v 2>&1 | tail -13"
 echo "лог: $LOG"
