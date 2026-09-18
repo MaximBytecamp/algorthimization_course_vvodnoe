@@ -148,30 +148,31 @@
       : 'Команда выполнена в корне: go.mod найден сразу, модуль определён.';
   });
   const tree = document.getElementById('project-tree');
+  // [подпись, уровень вложенности, тип, описание]
   const treeFiles = {
     py: [
-      ['student-tools/', 'Корень проекта. Здесь находятся app и служебные файлы. Отсюда запускаем python -m app.main.'],
-      ['├ .venv/', 'Локальный Python и установленные пакеты. В Git и архив с исходниками не включаем.'],
-      ['├ app/', 'Пакет приложения: точка запуска, прикладной расчёт и оформление.'],
-      ['│ ├ __init__.py', 'Пустой маркер обычного пакета app. Код инициализации здесь пока не нужен.'],
-      ['│ ├ main.py', 'Получает данные, вызывает расчёт и выводит строку через Rich.'],
-      ['│ ├ services/', 'Пакет прикладной логики. Не зависит от main и оформления.'],
-      ['│ │ ├ __init__.py', 'Пустой файл обычного пакета app.services.'],
-      ['│ │ └ calculator.py', 'Функция calculate_average: сумма / количество. Пустой список вызывает ValueError.'],
-      ['│ └ utils/', 'Пакет небольших вспомогательных функций.'],
-      ['│   ├ __init__.py', 'Пустой файл обычного пакета app.utils.'],
-      ['│   └ formatter.py', 'Функция format_average: число превращается в строку с двумя знаками после точки.']
+      ['student-tools', 0, 'dir', 'Корень проекта. Здесь находятся app и служебные файлы. Отсюда запускаем python -m app.main.'],
+      ['.venv', 1, 'dir', 'Локальный Python и установленные пакеты. В Git и архив с исходниками не включаем.'],
+      ['app', 1, 'dir', 'Пакет приложения: точка запуска, прикладной расчёт и оформление.'],
+      ['__init__.py', 2, 'file', 'Пустой файл, объявляющий папку app обычным пакетом. Код инициализации здесь пока не нужен.'],
+      ['main.py', 2, 'file', 'Точка запуска: получает данные, вызывает расчёт и выводит строку через Rich.'],
+      ['services', 2, 'dir', 'Пакет прикладной логики. Не зависит ни от main, ни от оформления.'],
+      ['__init__.py', 3, 'file', 'Пустой файл пакета app.services.'],
+      ['calculator.py', 3, 'file', 'Функция calculate_average: сумма / количество. Пустой список вызывает ValueError.'],
+      ['utils', 2, 'dir', 'Пакет небольших вспомогательных функций.'],
+      ['__init__.py', 3, 'file', 'Пустой файл пакета app.utils.'],
+      ['formatter.py', 3, 'file', 'Функция format_average: число превращается в строку с двумя знаками после точки.']
     ],
     go: [
-      ['student-tools/', 'Корень модуля. Здесь лежит go.mod, и отсюда выполняется go run .'],
-      ['├ go.mod', 'Имя модуля, версия Go и список прямых зависимостей. Главный файл проекта в Go.'],
-      ['├ go.sum', 'Контрольные суммы скачанных версий. Создаётся сам; руками не правим, но храним в Git.'],
-      ['├ main.go', 'Пакет main: получает данные, вызывает расчёт и выводит строку цветом.'],
-      ['├ internal/', 'Пакеты только для этого модуля. Импортировать их извне Go не разрешит.'],
-      ['│ ├ services/', 'Пакет прикладной логики. Не знает ни про main, ни про оформление.'],
-      ['│ │ └ calculator.go', 'Функция CalculateAverage: сумма / количество. Пустой срез возвращает ошибку.'],
-      ['│ └ utils/', 'Пакет небольших вспомогательных функций.'],
-      ['│   └ formatter.go', 'Функция FormatAverage: число превращается в строку с двумя знаками после точки.']
+      ['student-tools', 0, 'dir', 'Корень модуля. Здесь лежит go.mod, и отсюда выполняется go run .'],
+      ['go.mod', 1, 'file', 'Имя модуля, версия Go и список прямых зависимостей.'],
+      ['go.sum', 1, 'file', 'Контрольные суммы скачанных версий. Создаётся сам; руками не правим, но храним в Git.'],
+      ['main.go', 1, 'file', 'Пакет main: получает данные, вызывает расчёт и выводит строку цветом.'],
+      ['internal', 1, 'dir', 'Пакеты только для этого модуля. Импортировать их извне Go не разрешит.'],
+      ['services', 2, 'dir', 'Пакет прикладной логики. Не знает ни про main, ни про оформление.'],
+      ['calculator.go', 3, 'file', 'Функция CalculateAverage: сумма / количество. Пустой срез возвращает ошибку.'],
+      ['utils', 2, 'dir', 'Пакет небольших вспомогательных функций.'],
+      ['formatter.go', 3, 'file', 'Функция FormatAverage: число превращается в строку с двумя знаками после точки.']
     ]
   };
   function buildTree() {
@@ -180,13 +181,18 @@
     const panel = document.getElementById('tree-info');
     const show = (label, description) => {
       if (!panel) return;
-      panel.innerHTML = `<b>${escape(label.replace(/[├└│]/g,'').trim())}</b><p>${escape(description)}</p>`;
+      panel.innerHTML = `<b>${escape(label)}</b><p>${escape(description)}</p>`;
     };
-    treeFiles[activeLang].forEach(([label, description], index) => {
-      const button = document.createElement('button');button.type = 'button';button.textContent = label;
+    treeFiles[activeLang].forEach(([label, level, kind, description], index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.dataset.level = String(level);
+      button.dataset.kind = kind;
       button.setAttribute('aria-pressed', String(index === 0));
       button.addEventListener('click', () => {
-        tree.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed','false'));button.setAttribute('aria-pressed','true');
+        tree.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', 'false'));
+        button.setAttribute('aria-pressed', 'true');
         show(label, description);
       });
       tree.append(button);
