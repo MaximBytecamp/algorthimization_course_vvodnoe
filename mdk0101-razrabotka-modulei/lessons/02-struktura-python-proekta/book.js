@@ -422,6 +422,30 @@
     });
   }
 
+  // Разбор практики открывается по паролю: он называется на занятии.
+  const gate = document.getElementById('answer-gate');
+  if (gate) {
+    const body = document.getElementById('answer-body');
+    const feedback = gate.querySelector('[data-gate-feedback]');
+    const link = document.getElementById('reference-link');
+    // Пароль не лежит в коде строкой: сравнивается контрольная сумма ввода.
+    const sum = value => [...value].reduce((acc, ch) => (acc * 31 + ch.codePointAt(0)) % 100003, 7);
+    const EXPECTED = 89399;
+    gate.addEventListener('submit', event => {
+      event.preventDefault();
+      const value = gate.querySelector('#gate-code').value.trim();
+      if (sum(value) !== EXPECTED) {
+        feedback.textContent = 'Пароль не подошёл. Его называет преподаватель после того, как вы показали собранный проект.';
+        return;
+      }
+      if (link && !link.href) link.href = ['materials', 'student-tools-reference.zip'].join('/');
+      body.hidden = false;
+      gate.hidden = true;
+      feedback.textContent = '';
+      body.scrollIntoView({block: 'start', behavior: 'smooth'});
+    });
+  }
+
   const blocks = document.querySelectorAll('.evidence, .action-card, .lab');
   if (!blocks.length || !('IntersectionObserver' in window)) return;
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
