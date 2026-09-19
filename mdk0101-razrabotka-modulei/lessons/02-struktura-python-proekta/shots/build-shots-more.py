@@ -35,7 +35,7 @@ SHOTS = [
           ("--", "ПОСЛЕ АКТИВАЦИИ"), ("m2-after", "which python   +   проверка префикса"),
           ("--", "ПОСЛЕ deactivate"), ("m3-off", "which python3   +   проверка префикса"))),
     ("30-practice-files", "Архив практики: что внутри и почему рано запускать", "macOS · Python 3.12 · реальный вывод",
-     term(("m4-files", "ls"), ("m5-early", "python 'запуск final.py'"))),
+     term(("m4-files", "ls   +   ls python"), ("m5-early", "python 'запуск final.py'"))),
     ("31-homework-check", "Домашнее задание: как выглядит готовая работа", "macOS · Python 3.12 · реальный вывод",
      term(("m6-hw-run", "python -m app.main"), ("m7-hw-tests", "python -m unittest discover -s tests -v"))),
 ]

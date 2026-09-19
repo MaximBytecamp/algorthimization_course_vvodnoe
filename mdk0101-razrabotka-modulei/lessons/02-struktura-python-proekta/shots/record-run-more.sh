@@ -37,8 +37,9 @@ python -m pip install -q rich==13.9.4 pytest
 mkdir -p $BASE/praktika && cd $BASE/praktika
 unzip -q "$PRACTICE"
 cd student-tools-practice
-run m4-files "student-tools-practice $" "ls"
-run m5-early "student-tools-practice $" "python 'запуск final.py'"
+run m4-files "student-tools-practice $" "ls && echo '' && ls python"
+cd python
+run m5-early "student-tools-practice/python $" "python 'запуск final.py'"
 
 # --- 2.8: ожидаемый результат домашнего задания
 mkdir -p $BASE/lesson_02/app/services $BASE/lesson_02/app/utils $BASE/lesson_02/tests
