@@ -14,7 +14,7 @@
 - `assets/telemetry-lab.zip` — полный архив практики.
 - `assets/experiment-data.js` — сохранённые измерения для интерактивов.
 - `shots/` — реальные кадры; происхождение в SOURCES.md.
-- `tools/chapters/c*.py` — текст глав; `tools/kit.py` — блоки глав;
+- `tools/chapters/c*.py` — текст и схемы глав; `tools/kit.py` — блоки глав;
   `tools/build_book.py` — сборка страниц и оглавления.
 - `tools/capture.py`, `traffic.py`, `capture_stack.py` — повторная съёмка стенда (см. SOURCES.md).
 - `tools/verify.py`, `check_browser.py` — проверки ссылок, данных, архива и вёрстки.

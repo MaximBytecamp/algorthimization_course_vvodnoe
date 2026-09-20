@@ -7,7 +7,8 @@
 
 <div class="book"><div class="book-body"><aside class="spine" aria-hidden="true"><span>Наблюдаемость / Метрики · Логи · Трассы / Макаров М. Н.</span></aside>
 <main class="leaf" id="main"><div class="running"><a href="../index.html">Практический справочник</a><span>Глава 1.2</span></div><header class="chapter-head"><span class="chapter-num">1.2</span><h1>Мониторинг: регулярные измерения и история</h1><p class="lead">Разбираем, из каких шагов состоит мониторинг, как читать временной ряд и почему у каждого числа на графике должны быть объект, единица измерения и окно времени.</p>
-</header>
+<blockquote class="quote"><p>Число без объекта, единицы и окна времени ничего не решает.</p>
+</blockquote></header>
 <dl class="passport"><div><dt>Раздел</dt><dd>Основы наблюдаемости</dd></div><div><dt>Уровень</dt><dd>Начальный · Python знаком</dd></div><div><dt>Связанные главы</dt><dd>1.1 — учебный сервис, 1.4 — метрики</dd></div><div><dt>Зачем это знать</dt><dd>Отличать изменение в работе сервиса от случайного числа на экране</dd></div></dl>
 <nav class="contents" aria-label="Содержание главы"><b>В этой главе</b><ol><li><a href="#process">Что такое мониторинг</a></li><li><a href="#indicator">Из чего состоит показатель</a></li><li><a href="#history">Временной ряд: значение и момент измерения</a></li><li><a href="#interval">Частота измерений и что происходит между ними</a></li><li><a href="#windows">Окно времени меняет смысл числа</a></li><li><a href="#sum">Складываем количества, а не проценты</a></li><li><a href="#baseline">С чем сравнивать: базовый уровень</a></li><li><a href="#scope">Что измерять у сервиса</a></li><li><a href="#blackbox">Проверка снаружи и показатели изнутри</a></li><li><a href="#alerting">От измерения к действию: правило и уведомление</a></li><li><a href="#mistakes">Частые ошибки</a></li><li><a href="#check">Проверьте себя</a></li><li><a href="#cheatsheet">Шпаргалка</a></li></ol></nav>
 <section
@@ -83,6 +84,25 @@ print(f&quot;{error_ratio:.1%}&quot;)</code></pre></figure>
 <p class="definition"><strong>Мониторинг чёрного ящика (black-box monitoring)</strong> — проверка поведения системы через её внешний интерфейс, без знания внутреннего устройства. Внешний агент отправляет запрос и проверяет ответ: пришёл ли он, какой у него код, сколько он занял.</p>
 <p class="definition"><strong>Мониторинг белого ящика (white-box monitoring)</strong> — измерение показателей, которые система сообщает о себе изнутри: длина очереди, число занятых соединений, время отдельных этапов обработчика.</p>
 <p>Внешняя проверка проходит тот же путь, что и пользователь: разрешение доменного имени, сеть, шифрование, балансировщик. Если истёк сертификат или сломалась настройка балансировщика, приложение внутри будет работать исправно, и только внешняя проверка заметит сбой.</p>
+<figure class="diagram"><div class="diagram-scroll" tabindex="0" role="group" aria-label="Схема · что охватывает каждая из двух проверок"><svg viewBox="0 0 680 250" role="img" aria-label="Путь запроса: внешний агент, доменное имя, сеть и TLS, балансировщик, приложение. Внешняя проверка охватывает весь путь, внутренние показатели — только приложение.">
+<path class="dg-grid" d="M30 46H650"/><text class="dg-small" x="30" y="36">Проверка снаружи охватывает весь путь</text>
+<path class="dg-arrow" d="M30 46v14M650 46v14"/>
+<g><rect class="dg-box" x="30" y="70" width="112" height="58" rx="2"/><text class="dg-name" x="86" y="95" text-anchor="middle">Агент</text><text class="dg-small" x="86" y="114" text-anchor="middle">GET /products</text></g>
+<text class="dg-axis" x="152" y="103" text-anchor="middle">→</text>
+<g><rect class="dg-box" x="162" y="70" width="104" height="58" rx="2"/><text class="dg-name" x="214" y="95" text-anchor="middle">DNS</text><text class="dg-small" x="214" y="114" text-anchor="middle">имя → адрес</text></g>
+<text class="dg-axis" x="276" y="103" text-anchor="middle">→</text>
+<g><rect class="dg-box" x="286" y="70" width="112" height="58" rx="2"/><text class="dg-name" x="342" y="95" text-anchor="middle">Сеть и TLS</text><text class="dg-small" x="342" y="114" text-anchor="middle">сертификат</text></g>
+<text class="dg-axis" x="408" y="103" text-anchor="middle">→</text>
+<g><rect class="dg-box" x="418" y="70" width="112" height="58" rx="2"/><text class="dg-name" x="474" y="95" text-anchor="middle">Балансировщик</text><text class="dg-small" x="474" y="114" text-anchor="middle">выбор экземпляра</text></g>
+<text class="dg-axis" x="540" y="103" text-anchor="middle">→</text>
+<g><rect class="dg-box-teal" x="550" y="70" width="100" height="58" rx="2"/><text class="dg-name" x="600" y="95" text-anchor="middle">Приложение</text><text class="dg-small" x="600" y="114" text-anchor="middle">обработчик</text></g>
+<path class="dg-grid" d="M550 152H650"/><path class="dg-arrow" d="M550 152v-14M650 152v-14"/>
+<text class="dg-small" x="650" y="170" text-anchor="end">Показатели изнутри видны только здесь</text>
+<g><rect class="dg-box-accent" x="392" y="186" width="258" height="50" rx="2"/><text class="dg-small" x="521" y="206" text-anchor="middle">длина очереди · занятые соединения</text><text class="dg-small" x="521" y="224" text-anchor="middle">длительность этапов обработчика</text></g>
+<path class="dg-arrow" d="M600 152v34"/>
+<g><rect class="dg-box-quiet" x="30" y="186" width="348" height="50" rx="2" fill="#f1eee5" stroke="#ded5ce" stroke-width="1"/><text class="dg-small" x="204" y="206" text-anchor="middle">Здесь внутренние показатели не измеряют ничего:</text><text class="dg-small" x="204" y="224" text-anchor="middle">истёкший сертификат заметен только снаружи</text></g>
+</svg></div><figcaption><b>Схема · что охватывает каждая из двух проверок</b><p>Внешняя проверка проходит все пять участков и сообщает, что плохо пользователю. Внутренние показатели начинаются внутри приложения и указывают место задержки. Ни один из двух подходов не покрывает путь целиком.</p>
+</figcaption></figure>
 <p>Внутренние показатели точнее указывают место проблемы. Внешняя проверка сообщит «страница открывается пять секунд», а внутренний показатель покажет, что четыре из пяти секунд запрос ждал свободное соединение с базой. Поэтому на практике используют оба подхода: снаружи узнают, что пользователю плохо, изнутри выясняют, где именно.</p>
 <aside class="margin-note"><b>Что проверяет адрес /health</b><p>Проверка /health на нашем стенде отвечает только о том, что процесс жив и выполняет простой обработчик. Внешняя проверка, которая открывает /health, не узнает, что /products завершается ошибкой. Смысл проверки определяется тем, что именно выполняет обработчик, а не названием адреса.</p>
 </aside>

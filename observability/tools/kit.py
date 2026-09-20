@@ -1,12 +1,40 @@
 """Блоки, из которых собираются главы справочника. Текст глав — в tools/chapters/."""
 from pathlib import Path
 from html import escape
+import csv
 import io
+import json
 import keyword
 import struct
 import tokenize
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def plural(number, one, few, many):
+    """Согласование существительного с числом: 1 раздел, 2 раздела, 81 раздел."""
+    tail, hundred = number % 10, number % 100
+    if 11 <= hundred <= 14 or tail == 0 or tail >= 5:
+        return many
+    return one if tail == 1 else few
+
+
+def lab_requests():
+    """Записанный прогон: двадцать измерений из lab/results/requests.csv."""
+    with (ROOT / 'lab/results/requests.csv').open(newline='') as file:
+        rows = list(csv.DictReader(file))
+    for row in rows:
+        row['number'] = int(row['number'])
+        row['status'] = int(row['status'])
+        row['client_ms'] = float(row['client_ms'])
+        row['handler_ms'] = float(row['handler_ms'])
+    return rows
+
+
+def lab_slow_event():
+    """Запись о медленном запросе того же прогона: её этапы рисует водопад."""
+    events = json.loads((ROOT / 'lab/results/events.json').read_text())
+    return next(event for event in events if event['scenario'] == 'slow')
 
 
 def p(s):
@@ -89,11 +117,17 @@ def example(title, body):
     return '<div class="example"><span class="eyebrow">Пример</span><h3>' + title + '</h3>' + body + '</div>'
 
 
+def diagram(title, caption, svg):
+    """Схема, нарисованная в SVG: подпись читается и без изображения."""
+    return ('<figure class="diagram"><div class="diagram-scroll" tabindex="0" role="group" aria-label="Схема · ' + title + '">'
+            + svg + '</div><figcaption><b>Схема · ' + title + '</b>' + p(caption) + '</figcaption></figure>')
+
+
 def source(url, title):
     return '<p class="source">Первоисточник: <a href="' + url + '" target="_blank" rel="noreferrer">' + title + ' ↗</a></p>'
 
 
-def chapter(slug, title, lead, passport, sections, mistakes, selfcheck, cheatsheet, links, practice=''):
-    """practice — интерактивное упражнение, которое стоит перед вопросами «Проверьте себя»."""
-    return dict(slug=slug, title=title, lead=lead, passport=passport, sections=sections,
+def chapter(slug, title, lead, epigraph, passport, sections, mistakes, selfcheck, cheatsheet, links, practice=''):
+    """epigraph — короткая мысль главы в шапке; practice — упражнение перед «Проверьте себя»."""
+    return dict(slug=slug, title=title, lead=lead, epigraph=epigraph, passport=passport, sections=sections,
                 mistakes=mistakes, selfcheck=selfcheck, cheatsheet=cheatsheet, links=links, practice=practice)

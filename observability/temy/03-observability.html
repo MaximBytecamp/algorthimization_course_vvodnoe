@@ -7,7 +7,8 @@
 
 <div class="book"><div class="book-body"><aside class="spine" aria-hidden="true"><span>Наблюдаемость / Метрики · Логи · Трассы / Макаров М. Н.</span></aside>
 <main class="leaf" id="main"><div class="running"><a href="../index.html">Практический справочник</a><span>Глава 1.3</span></div><header class="chapter-head"><span class="chapter-num">1.3</span><h1>Наблюдаемость и телеметрия</h1><p class="lead">Разбираем, чем наблюдаемость отличается от мониторинга, какие данные система сообщает о себе, как их связать между собой и почему даже полная телеметрия может ошибаться.</p>
-</header>
+<blockquote class="quote"><p>Наблюдаемость проверяется не списком инструментов, а вопросом, на который нужен ответ.</p>
+</blockquote></header>
 <dl class="passport"><div><dt>Раздел</dt><dd>Основы наблюдаемости</dd></div><div><dt>Уровень</dt><dd>Начальный · Python знаком</dd></div><div><dt>Связанные главы</dt><dd>1.2 — мониторинг, 1.5 — логи, 1.6 — трассы</dd></div><div><dt>Зачем это знать</dt><dd>Понимать, какие данные нужно создать заранее, чтобы потом найти причину сбоя</dd></div></dl>
 <nav class="contents" aria-label="Содержание главы"><b>В этой главе</b><ol><li><a href="#question">Вопрос, для которого нет готовой панели</a></li><li><a href="#definition">Наблюдаемость</a></li><li><a href="#relation">Как связаны мониторинг и наблюдаемость</a></li><li><a href="#telemetry">Телеметрия: данные, которые система сообщает о себе</a></li><li><a href="#instrumentation">Инструментация: откуда берутся данные</a></li><li><a href="#correlation">Время и идентификатор связывают события</a></li><li><a href="#cardinality">Почему идентификатор запроса не добавляют в метрику</a></li><li><a href="#opentelemetry">OpenTelemetry: общий способ создавать и передавать телеметрию</a></li><li><a href="#limits">Телеметрия тоже может ошибаться</a></li><li><a href="#mistakes">Частые ошибки</a></li><li><a href="#check">Проверьте себя</a></li><li><a href="#cheatsheet">Шпаргалка</a></li></ol></nav>
 <section
@@ -37,6 +38,25 @@
 <code>errors / requests</code></div><div><span class="signal-icon">{ }</span><h3>Логи</h3><p>Записи об отдельных событиях: когда, где и что произошло, с каким результатом.</p>
 <code>event=request_completed</code></div><div><span class="signal-icon">↳</span><h3>Трассы</h3><p>Путь одной операции: из каких этапов она состояла и сколько длился каждый.</p>
 <code>request → wait → serialize</code></div></div><p>Сигналы различаются тем, сколько подробностей сохраняют и сколько это стоит. <strong>Метрика</strong> сжимает тысячи запросов в несколько чисел. Она дёшево хранится годами и хорошо показывает масштаб, но теряет подробности отдельных запросов. <strong>Лог</strong> хранит запись о каждом событии со всеми полями. Он показывает, что именно случилось, но при большом потоке занимает много места. <strong>Трасса</strong> хранит этапы одной операции на общей временной шкале. Она показывает, где операция потратила время, но описывает только ту операцию, которую записали.</p>
+<figure class="diagram"><div class="diagram-scroll" tabindex="0" role="group" aria-label="Схема · чем платят за подробности"><svg viewBox="0 0 680 330" role="img" aria-label="Две оси: охват событий и подробность одной операции. Метрики охватывают все запросы при малой подробности, логи — каждое событие при средней, трассы — часть операций при высокой.">
+<path class="dg-frame" d="M70 30v238h580"/>
+<path class="dg-grid" d="M70 90H650M70 150H650M70 210H650M260 30v238M450 30v238"/>
+<text class="dg-axis" x="62" y="46" text-anchor="end">все</text>
+<text class="dg-axis" x="62" y="154" text-anchor="end">часть</text>
+<text class="dg-axis" x="62" y="264" text-anchor="end">одна</text>
+<text class="dg-small" x="14" y="150" transform="rotate(-90 14 150)" text-anchor="middle">Сколько операций охватывает</text>
+<text class="dg-axis" x="165" y="290" text-anchor="middle">мало</text>
+<text class="dg-axis" x="355" y="290" text-anchor="middle">средне</text>
+<text class="dg-axis" x="550" y="290" text-anchor="middle">много</text>
+<text class="dg-small" x="360" y="316" text-anchor="middle">Сколько подробностей об одной операции</text>
+<g><rect class="dg-box-teal" x="96" y="44" width="138" height="56" rx="2"/><text class="dg-name" x="165" y="68" text-anchor="middle">Метрики</text><text class="dg-small" x="165" y="87" text-anchor="middle">числа за интервал</text></g>
+<g><rect class="dg-box-accent" x="286" y="112" width="138" height="56" rx="2"/><text class="dg-name" x="355" y="136" text-anchor="middle">Логи</text><text class="dg-small" x="355" y="155" text-anchor="middle">событие с полями</text></g>
+<g><rect class="dg-box" x="481" y="196" width="138" height="56" rx="2"/><text class="dg-name" x="550" y="220" text-anchor="middle">Трассы</text><text class="dg-small" x="550" y="239" text-anchor="middle">этапы операции</text></g>
+<path class="dg-arrow" d="M234 72h44l8 44M424 140h44l8 60" stroke-dasharray="5 4"/>
+<text class="dg-small" x="672" y="46" text-anchor="end">дёшево хранить долго</text>
+<text class="dg-small" x="672" y="186" text-anchor="end">дорого: часть трасс отбрасывают</text>
+</svg></div><figcaption><b>Схема · чем платят за подробности</b><p>Чем больше сигнал сохраняет об одной операции, тем меньше операций он способен охватить. Метрика описывает все запросы несколькими числами, лог хранит запись о каждом событии, трасса — этапы отдельной операции, и как раз трассы чаще всего сохраняют выборочно. Расположение блоков показывает порядок величин, а не измеренные значения.</p>
+</figcaption></figure>
 <div class="table-scroll"><table><thead><tr><th scope="col">Вопрос</th><th scope="col">Лучший сигнал</th><th scope="col">Почему</th></tr></thead><tbody><tr><td>Какая доля запросов завершилась ошибкой за час?</td><td>Метрика</td><td>Хранит количества, из которых считается доля</td></tr><tr><td>Какое исключение возникло у запроса 2797ad2d…?</td><td>Лог</td><td>Хранит текст ошибки конкретного события</td></tr><tr><td>На каком этапе медленный запрос потратил три секунды?</td><td>Трасса</td><td>Хранит начало и длительность каждого этапа</td></tr></tbody></table>
 </div><p>Сигналы дополняют друг друга, а не заменяют. Типичный разбор идёт от метрики к логу и трассе: метрика показывает, что и когда ухудшилось, лог — что случилось с отдельными запросами, трасса — где именно ушло время.</p>
 <p>Кроме трёх основных сигналов, существуют и другие. Профили показывают, какие функции программы тратят процессорное время и память. В этой теме они не нужны: для первых расследований достаточно метрик, логов и трасс.</p>

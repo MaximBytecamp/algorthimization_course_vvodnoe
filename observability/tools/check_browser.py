@@ -60,7 +60,13 @@ with sync_playwright() as p:
  nojs=b.new_context(java_script_enabled=False,viewport={'width':390,'height':844})
  np=nojs.new_page();np.goto(base+'temy/05-logs.html');np.locator('.selfcheck summary').first.click()
  assert np.locator('.selfcheck details').first.get_attribute('open') is not None
- print('No-JS narrative and native disclosures OK',flush=True)
+ np.goto(base+'temy/04-metrics.html');assert np.locator('.duration-chart button').count()==20
+ np.goto(base+'temy/06-traces.html');assert np.locator('.waterfall-row').count()==4
+ np.goto(base+'temy/09-praktika.html')
+ for os_name in ['unix','windows']:assert np.locator('[data-command="'+os_name+'"]').is_visible()
+ for relative in ['index.html',*[f.relative_to(R).as_posix() for f in sorted(R.glob('temy/*.html'))]]:
+  np.goto(base+relative);assert not np.evaluate('document.documentElement.scrollWidth > innerWidth'),relative
+ print('No-JS narrative, static diagrams, both command sets and layout OK',flush=True)
  assert not errors,errors
  page.goto(base+'temy/08-prometheus-grafana.html')
  for img in page.locator('.evidence img').all():

@@ -9,7 +9,7 @@ import sys
 
 TOOLS = Path(__file__).resolve().parent
 sys.path.insert(0, str(TOOLS))
-from kit import ROOT, p, ul, table  # noqa: E402
+from kit import ROOT, p, ul, table, plural  # noqa: E402
 
 CH = [importlib.import_module('chapters.' + f.stem).CHAPTER for f in sorted((TOOLS / 'chapters').glob('c*.py'))]
 
@@ -35,7 +35,8 @@ def selfcheck(items):
 
 
 def render_chapter(i, c):
-    body = f'<header class="chapter-head"><span class="chapter-num">1.{i}</span><h1>{c["title"]}</h1><p class="lead">{c["lead"]}</p></header>'
+    body = (f'<header class="chapter-head"><span class="chapter-num">1.{i}</span><h1>{c["title"]}</h1>'
+            f'<p class="lead">{c["lead"]}</p><blockquote class="quote"><p>{c["epigraph"]}</p></blockquote></header>')
     body += '<dl class="passport">' + ''.join(f'<div><dt>{dt}</dt><dd>{dd}</dd></div>' for dt, dd in c['passport']) + '</dl>'
     tail = [('mistakes', 'Частые ошибки'), ('check', 'Проверьте себя'), ('cheatsheet', 'Шпаргалка')]
     body += ('<nav class="contents" aria-label="Содержание главы"><b>В этой главе</b><ol>'
@@ -64,7 +65,7 @@ roadmap = [('Метрика как данные', ['Измерение, timestam
 
 sections_total = sum(len(c['sections']) for c in CH)
 body = f'''<header class="cover"><div><span class="eyebrow">Учебное издание · Python и работающий сервис</span><h1>Метрики<br>и наблюдаемость</h1><p class="cover-sub">От медленного запроса<br>к объяснённому инциденту</p><p>Как узнать, что происходит с приложением после запуска на сервере: что измерять, какие события записывать и как найти этап, на котором запрос теряет время. Главы с кодом, настоящими измерениями и снимками учебного стенда.</p><p class="author-line">Макаров Максим Николаевич</p><a class="primary" href="temy/{CH[0]["slug"]}.html">Начать первую тему →</a></div><aside class="cover-sheet"><span class="eyebrow">Один сервис / три сигнала</span><div class="cover-series"><svg viewBox="0 0 280 85" role="img" aria-label="Условный график: рост длительности запросов"><path d="M0 65H280M0 35H280" class="cover-grid"/><path d="M0 65L30 64L55 62L80 64L110 60L135 62L160 18L180 25L200 17L225 23L250 20L280 15" fill="none" stroke="currentColor" stroke-width="3"/></svg><b>МЕТРИКИ</b><p>Изменение видно в истории.</p></div><div class="cover-log"><b>ЛОГИ</b><code>event=request_completed<br>status=500 request_id=b5408f22…</code></div><div class="cover-trace"><b>ТРАССЫ</b><span style="width:100%">GET /products</span><span style="width:78%;margin-left:12%">dependency.wait</span></div><small>Условная схема; значения учебные.</small></aside></header>
-<div class="cover-meta"><span>Тема 1 · {len(CH)} глав</span><span>{sections_total} разделов</span><span>Снимки учебного стенда</span><span>Запускаемый Python-проект</span></div>
+<div class="cover-meta"><span>Тема 1 · {len(CH)} {plural(len(CH), 'глава', 'главы', 'глав')}</span><span>{sections_total} {plural(sections_total, 'раздел', 'раздела', 'разделов')}</span><span>Снимки учебного стенда</span><span>Запускаемый Python-проект</span></div>
 <section><h2><span class="sec">I</span>Как устроен справочник</h2><p>Первая тема посвящена мониторингу, наблюдаемости и телеметрии. Мы начинаем с учебного сервиса на FastAPI и того, что разработчик теряет после его развёртывания. Затем по отдельности разбираем метрики, логи и трассы, проводим по ним расследование и смотрим, как данные собирают Prometheus и Grafana.</p><p>Каждая глава построена одинаково: объяснение по разделам, частые ошибки, вопросы для самопроверки с ответами и шпаргалка. Все числа и снимки получены на учебном стенде; архив стенда можно скачать и повторить опыт. Следующие модули показаны в содержании как план.</p><div class="reading-path"><b>Ситуация</b><span>→</span><b>Механизм</b><span>→</span><b>Измерения</b><span>→</span><b>Проверка вывода</b></div></section>
 <section id="contents"><h2><span class="sec">II</span>Содержание по модулям</h2><div class="module-grid"><div class="module module-ready"><div class="module-spine">МОДУЛЬ 1 · ГОТОВ</div><div class="module-body"><h3>Мониторинг, наблюдаемость и телеметрия</h3><p>От жалобы пользователя до подтверждённой причины сбоя.</p><ol class="toc">'''
 for i, c in enumerate(CH, 1):

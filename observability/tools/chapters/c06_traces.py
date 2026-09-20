@@ -1,6 +1,25 @@
 from kit import *
 
-WATERFALL_WIDGET = '''<div class="interactive waterfall" data-waterfall><div class="widget-head"><b>Этапы медленного запроса учебного прогона</b><div class="controls"><button data-trace-step="next">Следующий этап →</button><button data-trace-step="reset">Сначала</button></div></div><div class="waterfall-axis"><span>0 мс</span><span class="trace-end">≈ 3020 мс</span></div><div class="waterfall-rows"></div><p class="widget-detail" aria-live="polite">Выберите этап, чтобы увидеть его начало и длительность.</p><small>Данные из events.json учебного прогона. Этапы измерены функцией stage в обработчике, без OpenTelemetry.</small></div>'''
+# Полосы рисуются при сборке: водопад виден и без JavaScript, скрипт лишь добавляет выбор этапа.
+def _rows():
+    event = lab_slow_event()
+    total = event['duration_ms']
+    spans = [{'name': 'GET /products', 'offset_ms': 0.0, 'duration_ms': total}, *event['spans']]
+    out = []
+    for i, span in enumerate(spans):
+        left = span['offset_ms'] / total * 100
+        width = min(100 - left, span['duration_ms'] / total * 100)
+        label = f"{span['name']}: начало {span['offset_ms']:.1f} мс; длительность {span['duration_ms']:.1f} мс"
+        out.append(f'<div class="waterfall-row{" active" if i == 0 else ""}">'
+                   f'<button type="button" aria-pressed="{"true" if i == 0 else "false"}">{span["name"]}</button>'
+                   f'<div class="span-track" aria-label="{label}">'
+                   f'<div class="span-bar" style="left:{left:.2f}%;width:{width:.2f}%"></div></div></div>')
+    return ''.join(out)
+
+
+ROWS = _rows()
+
+WATERFALL_WIDGET = '''<div class="interactive waterfall" data-waterfall><div class="widget-head"><b>Этапы медленного запроса учебного прогона</b><div class="controls"><button data-trace-step="next">Следующий этап →</button><button data-trace-step="reset">Сначала</button></div></div><div class="waterfall-axis"><span>0 мс</span><span class="trace-end">≈ 3020 мс</span></div><div class="waterfall-rows">''' + ROWS + '''</div><p class="widget-detail" aria-live="polite">Выберите этап, чтобы увидеть его начало и длительность.</p><small>Данные из events.json учебного прогона. Этапы измерены функцией stage в обработчике, без OpenTelemetry.</small></div>'''
 
 QUEUE_TIMELINE = '''<div class="queue-timeline"><div><b>HTTP</b><span>принять запрос → поставить задание в очередь → ответ 202</span><em>0–40 мс</em></div><div><b>Очередь</b><span>задание ждёт свободный обработчик</span><em>40–1200 мс</em></div><div><b>Обработчик</b><span>прочитать данные → построить PDF → сохранить файл</span><em>1200–6200 мс</em></div></div>'''
 
@@ -8,6 +27,7 @@ CHAPTER = chapter(
     slug='06-traces',
     title='Трассы: где операция потратила время',
     lead='Разбираем, из чего состоит трасса, как читать этапы на временной шкале, почему длительности вложенных и параллельных этапов нельзя просто складывать и как связать HTTP-запрос с фоновой задачей.',
+    epigraph='Длительность операции говорит сколько; где — говорят только этапы.',
     passport=[
         ('Раздел', 'Основы наблюдаемости'),
         ('Уровень', 'Начальный · Python знаком'),
@@ -139,7 +159,21 @@ asyncio.run(main())''', 'Python · parallel.py') + output('''последова�
             'Пустой промежуток означает одно: в это время не шёл ни один измеренный этап. Причин может быть несколько. '
             'Код выполнял работу, для которой этап не создали. Процесс ждал блокировку. '
             'Асинхронная задача ждала своей очереди в цикле событий, потому что цикл был занят другой синхронной работой.'
+        ) + example('Как закрыть промежуток измерениями', p(
+            'В трассе отчёта родительский этап <code>build_report</code> длится 800 мс. Внутри него один дочерний этап <code>SELECT rows</code> на 300 мс. '
+            'Остальные 500 мс на водопаде пустые. Записывать в отчёт «база тормозит» нельзя: измеренный SQL как раз быстрый, а неизвестен именно непокрытый участок.'
         ) + p(
+            'Разработчик добавляет два этапа вокруг подозрительных участков кода: <code>render_rows</code> вокруг сборки строк отчёта '
+            'и <code>write_pdf</code> вокруг записи файла. Одна строка инструментации на участок, новая версия выкатывается, и следующая трасса показывает картину целиком.'
+        ) + table(['Этап', 'Длительность', 'Что изменилось'], [
+            ['<code>build_report</code>', '800 мс', 'Как и раньше'],
+            ['<code>SELECT rows</code>', '300 мс', 'Как и раньше'],
+            ['<code>render_rows</code>', '480 мс', 'Был частью пустого промежутка'],
+            ['<code>write_pdf</code>', '15 мс', 'Был частью пустого промежутка'],
+        ]) + p(
+            'Промежуток сократился с 500 мс до 5 мс, и место задержки названо: сборка строк отчёта, а не база данных. '
+            'Это обычный порядок работы с трассами: пустой участок — не ответ, а указание, куда добавить следующий этап.'
+        )) + p(
             'По одному промежутку причину не определить. Нужно добавить этапы в подозрительные участки кода или посмотреть записи логов, которые попадают в этот интервал по времени и request_id. '
             'Точно утверждать можно только то, что текущая инструментация этот участок не покрывает.'
         )),

@@ -1,11 +1,70 @@
 from kit import *
 
-QUANTILE_WIDGET = '''<div class="interactive quantile" data-quantile><div class="widget-head"><b>20 измерений · время клиента</b><div class="controls"><button data-order="original" aria-pressed="true">Порядок запросов</button><button data-order="sorted" aria-pressed="false">По длительности</button></div></div><div class="duration-chart" aria-label="Длительности двадцати запросов учебного прогона"></div><p class="widget-detail" aria-live="polite">Переключите порядок на «По длительности» и выберите 19-й столбец: это p95 по методу ближайшего ранга.</p><small>Высота столбца пропорциональна длительности, самый высокий столбец — самый долгий запрос. Под столбцом номер запроса в прогоне. Бирюзовые — быстрые, оранжевые — медленные, фиолетовый — ошибка.</small></div>'''
+# Столбцы рисуются при сборке: без JavaScript схема остаётся на месте, с JavaScript — перестраивается.
+def _bars():
+    rows = lab_requests()
+    top = max(row['client_ms'] for row in rows)
+    out = []
+    for row in rows:
+        kind = 'slow' if row['scenario'] == 'slow' else ('error' if row['status'] >= 500 else '')
+        label = f"Запрос {row['number']}, {row['client_ms']:.1f} мс, HTTP {row['status']}; позиция {row['number']}"
+        out.append(f'<button type="button" class="{kind}" style="height:{max(2, row["client_ms"] / top * 90):.1f}%" '
+                   f'aria-pressed="false" aria-label="{label}" title="{label}"><span>{row["number"]}</span></button>')
+    return ''.join(out)
+
+
+BARS = _bars()
+
+QUANTILE_WIDGET = '''<div class="interactive quantile" data-quantile><div class="widget-head"><b>20 измерений · время клиента</b><div class="controls"><button data-order="original" aria-pressed="true">Порядок запросов</button><button data-order="sorted" aria-pressed="false">По длительности</button></div></div><div class="duration-chart" aria-label="Длительности двадцати запросов учебного прогона">''' + BARS + '''</div><p class="widget-detail" aria-live="polite">Переключите порядок на «По длительности» и выберите 19-й столбец: это p95 по методу ближайшего ранга.</p><small>Высота столбца пропорциональна длительности, самый высокий столбец — самый долгий запрос. Под столбцом номер запроса в прогоне. Бирюзовые — быстрые, оранжевые — медленные, фиолетовый — ошибка.</small></div>'''
+
+# Корзины со снимка /metrics: накопительные счётчики и разности соседних корзин.
+BUCKETS = [('0.1', 246), ('0.25', 246), ('0.5', 246), ('1.0', 246), ('2.5', 246), ('5.0', 265), ('+Inf', 265)]
+
+
+def _histogram_svg():
+    total = BUCKETS[-1][1]
+    parts = ['<svg viewBox="0 0 680 350" role="img" aria-label="Семь накопительных корзин гистограммы: 246, 246, 246, 246, 246, 265, 265. '
+             'Разности соседних корзин: 246 запросов до 0,1 секунды и 19 запросов от 2,5 до 5 секунд.">']
+    parts.append('<text class="dg-name" x="0" y="16">Накопительные корзины: столько запросов уложилось в границу le</text>')
+    parts.append('<path class="dg-grid" d="M56 150H660"/>')
+    previous = 0
+    for i, (bound, value) in enumerate(BUCKETS):
+        x = 56 + i * 87
+        height = value / total * 106
+        parts.append(f'<rect class="dg-bar" x="{x}" y="{150 - height:.1f}" width="66" height="{height:.1f}"/>')
+        parts.append(f'<text class="dg-small" x="{x + 33}" y="{144 - height:.1f}" text-anchor="middle">{value}</text>')
+        parts.append(f'<text class="dg-axis" x="{x + 33}" y="168" text-anchor="middle">le={bound}</text>')
+        previous = value
+    parts.append('<text class="dg-name" x="0" y="216">Разность соседних корзин: столько запросов попало в сам диапазон</text>')
+    parts.append('<path class="dg-grid" d="M56 320H660"/>')
+    previous = 0
+    for i, (bound, value) in enumerate(BUCKETS):
+        x = 56 + i * 87
+        inside = value - previous
+        previous = value
+        height = inside / total * 84
+        style = 'dg-bar-slow' if 0 < inside < 100 else ('dg-bar' if inside else 'dg-bar-quiet')
+        parts.append(f'<rect class="{style}" x="{x}" y="{320 - max(height, 2):.1f}" width="66" height="{max(height, 2):.1f}"/>')
+        parts.append(f'<text class="dg-small" x="{x + 33}" y="{312 - max(height, 2):.1f}" text-anchor="middle">{inside}</text>')
+        parts.append(f'<text class="dg-axis" x="{x + 33}" y="338" text-anchor="middle">le={bound}</text>')
+    parts.append('</svg>')
+    return ''.join(parts)
+
+
+HISTOGRAM_DIAGRAM = diagram(
+    'корзины накопительные, а интересна разность',
+    'Верхний ряд — то, что гистограмма хранит на самом деле: каждая корзина считает все запросы не длиннее своей границы, поэтому числа только растут. '
+    'Нижний ряд получен вычитанием соседних корзин и отвечает на вопрос «сколько запросов попало в сам диапазон»: '
+    '246 запросов уложились в 100 мс, ещё 19 длились от 2,5 до 5 секунд, между этими границами не оказалось ни одного. '
+    'Числа взяты со снимка /metrics выше.',
+    _histogram_svg())
+
 
 CHAPTER = chapter(
     slug='04-metrics',
     title='Метрики: количества, скорость и распределения',
     lead='Разбираем, какие числа хранит метрика, чем счётчик отличается от мгновенного значения, почему среднее скрывает редкие задержки и как гистограмма хранит распределение длительностей. Все расчёты выполнены на двадцати настоящих запросах учебного сервиса.',
+    epigraph='Метрика показывает масштаб; за подробностями всегда придётся идти дальше.',
     passport=[
         ('Раздел', 'Основы наблюдаемости'),
         ('Уровень', 'Начальный · Python знаком'),
@@ -183,7 +242,7 @@ p95: 3024.239 мс''') + p(
             'Затем идёт гистограмма. Строки <code>_bucket</code> — счётчики корзин. Метка <code>le</code> означает less or equal, «меньше или равно». '
             'Корзина <code>le="0.1"</code> хранит число запросов длительностью не больше 0,1 секунды. '
             'Корзины накопительные: каждая включает все предыдущие. Поэтому числа только растут сверху вниз.'
-        ) + table(['Корзина', 'Значение', 'Что означает'], [
+        ) + HISTOGRAM_DIAGRAM + table(['Корзина', 'Значение', 'Что означает'], [
             ['le="0.1"', '246', '246 запросов уложились в 100 мс'],
             ['le="0.25" … le="2.5"', '246', 'Между 100 мс и 2,5 с не попал ни один запрос'],
             ['le="5.0"', '265', '265 − 246 = 19 запросов длились от 2,5 до 5 секунд'],

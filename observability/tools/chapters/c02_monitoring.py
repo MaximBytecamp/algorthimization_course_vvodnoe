@@ -2,12 +2,19 @@ from kit import *
 
 HISTORY_WIDGET = '''<div class="interactive history" data-history><div class="widget-head"><b>CPU · два учебных временных ряда</b><div class="controls"><button data-series="steady" aria-pressed="true">Стабильная нагрузка</button><button data-series="spike" aria-pressed="false">Резкий рост</button></div></div><svg viewBox="0 0 680 240" role="img" aria-label="CPU в процентах за шесть наблюдений: последнее значение 80%"><g class="gridlines"><path d="M55 30H650M55 110H650M55 190H650"/></g><g class="axis-labels"><text x="10" y="35">100%</text><text x="20" y="115">50%</text><text x="28" y="195">0%</text><text x="55" y="223">09:00</text><text x="590" y="223">09:05</text></g><polyline class="history-line" points="55,65 174,62 293,59 412,64 531,60 650,62" fill="none" stroke-width="4"/><g class="history-dots"></g></svg><p class="widget-detail" aria-live="polite">78 → 80 → 82 → 79 → 81 → 80%. Последнее значение: 80%.</p><small>Учебные данные для сравнения формы графика; это не измерения CPU стенда.</small></div>'''
 
+BLACKBOX_DIAGRAM = diagram(
+    'что охватывает каждая из двух проверок',
+    'Внешняя проверка проходит все пять участков и сообщает, что плохо пользователю. Внутренние показатели начинаются внутри приложения '
+    'и указывают место задержки. Ни один из двух подходов не покрывает путь целиком.',
+    '<svg viewBox="0 0 680 250" role="img" aria-label="Путь запроса: внешний агент, доменное имя, сеть и TLS, балансировщик, приложение. Внешняя проверка охватывает весь путь, внутренние показатели — только приложение.">\n<path class="dg-grid" d="M30 46H650"/><text class="dg-small" x="30" y="36">Проверка снаружи охватывает весь путь</text>\n<path class="dg-arrow" d="M30 46v14M650 46v14"/>\n<g><rect class="dg-box" x="30" y="70" width="112" height="58" rx="2"/><text class="dg-name" x="86" y="95" text-anchor="middle">Агент</text><text class="dg-small" x="86" y="114" text-anchor="middle">GET /products</text></g>\n<text class="dg-axis" x="152" y="103" text-anchor="middle">→</text>\n<g><rect class="dg-box" x="162" y="70" width="104" height="58" rx="2"/><text class="dg-name" x="214" y="95" text-anchor="middle">DNS</text><text class="dg-small" x="214" y="114" text-anchor="middle">имя → адрес</text></g>\n<text class="dg-axis" x="276" y="103" text-anchor="middle">→</text>\n<g><rect class="dg-box" x="286" y="70" width="112" height="58" rx="2"/><text class="dg-name" x="342" y="95" text-anchor="middle">Сеть и TLS</text><text class="dg-small" x="342" y="114" text-anchor="middle">сертификат</text></g>\n<text class="dg-axis" x="408" y="103" text-anchor="middle">→</text>\n<g><rect class="dg-box" x="418" y="70" width="112" height="58" rx="2"/><text class="dg-name" x="474" y="95" text-anchor="middle">Балансировщик</text><text class="dg-small" x="474" y="114" text-anchor="middle">выбор экземпляра</text></g>\n<text class="dg-axis" x="540" y="103" text-anchor="middle">→</text>\n<g><rect class="dg-box-teal" x="550" y="70" width="100" height="58" rx="2"/><text class="dg-name" x="600" y="95" text-anchor="middle">Приложение</text><text class="dg-small" x="600" y="114" text-anchor="middle">обработчик</text></g>\n<path class="dg-grid" d="M550 152H650"/><path class="dg-arrow" d="M550 152v-14M650 152v-14"/>\n<text class="dg-small" x="650" y="170" text-anchor="end">Показатели изнутри видны только здесь</text>\n<g><rect class="dg-box-accent" x="392" y="186" width="258" height="50" rx="2"/><text class="dg-small" x="521" y="206" text-anchor="middle">длина очереди · занятые соединения</text><text class="dg-small" x="521" y="224" text-anchor="middle">длительность этапов обработчика</text></g>\n<path class="dg-arrow" d="M600 152v34"/>\n<g><rect class="dg-box-quiet" x="30" y="186" width="348" height="50" rx="2" fill="#f1eee5" stroke="#ded5ce" stroke-width="1"/><text class="dg-small" x="204" y="206" text-anchor="middle">Здесь внутренние показатели не измеряют ничего:</text><text class="dg-small" x="204" y="224" text-anchor="middle">истёкший сертификат заметен только снаружи</text></g>\n</svg>')
+
 PIPELINE = '''<ol class="pipeline"><li><b>Измерить</b><span>Программа фиксирует значение</span></li><li><b>Сохранить</b><span>Значение и время измерения</span></li><li><b>Сопоставить</b><span>Окно, группа, базовый уровень</span></li><li><b>Показать</b><span>График или таблица</span></li><li><b>Отреагировать</b><span>Правило и уведомление</span></li></ol>'''
 
 CHAPTER = chapter(
     slug='02-monitoring',
     title='Мониторинг: регулярные измерения и история',
     lead='Разбираем, из каких шагов состоит мониторинг, как читать временной ряд и почему у каждого числа на графике должны быть объект, единица измерения и окно времени.',
+    epigraph='Число без объекта, единицы и окна времени ничего не решает.',
     passport=[
         ('Раздел', 'Основы наблюдаемости'),
         ('Уровень', 'Начальный · Python знаком'),
@@ -202,7 +209,7 @@ print(f"{error_ratio:.1%}")''', 'Python · доля ошибок за одно �
         ) + p(
             'Внешняя проверка проходит тот же путь, что и пользователь: разрешение доменного имени, сеть, шифрование, балансировщик. '
             'Если истёк сертификат или сломалась настройка балансировщика, приложение внутри будет работать исправно, и только внешняя проверка заметит сбой.'
-        ) + p(
+        ) + BLACKBOX_DIAGRAM + p(
             'Внутренние показатели точнее указывают место проблемы. Внешняя проверка сообщит «страница открывается пять секунд», '
             'а внутренний показатель покажет, что четыре из пяти секунд запрос ждал свободное соединение с базой. '
             'Поэтому на практике используют оба подхода: снаружи узнают, что пользователю плохо, изнутри выясняют, где именно.'
