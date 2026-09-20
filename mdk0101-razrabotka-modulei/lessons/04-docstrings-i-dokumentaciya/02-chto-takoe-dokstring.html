@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>4.2 Докстринг: где пишется и как читается · Докстринги и документация</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Тема 04 · Докстринги и документация кода</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Докстринги и документация кода</a> · МДК.01.01 · разработка программных модулей</p>
+          <p class="running__folio">Глава 4.2</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">4.2</span>
+          <h1>Докстринг:<br>где пишется и как читается</h1>
+          <p class="lead">В этой главе разобрано устройство докстринга: в каком месте файла он должен стоять, чтобы Python его сохранил, как достать его из программы через <code>__doc__</code>, <code>help()</code> и модуль <code>inspect</code>, какие правила задаёт PEP 257 и чем отличаются однострочная и многострочная запись. В конце — восемь ошибок, из-за которых описание не доходит до читателя.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Синтаксис и стандарт</dd></div>
+          <div><dt>Уровень</dt><dd>Начальный</dd></div>
+          <div><dt>Опирается на</dt><dd>Глава 4.1, модули и пакеты</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Писать докстринги так, чтобы их видели инструменты</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Определение и место в файле</a></li>
+            <li><a href="#s2">Где Python хранит докстринг</a></li>
+            <li><a href="#s3">help и подсказка редактора</a></li>
+            <li><a href="#s4">Однострочный докстринг</a></li>
+            <li><a href="#s5">Многострочный докстринг</a></li>
+            <li><a href="#s6">Правила PEP 257</a></li>
+            <li><a href="#s7">Докстринг модуля и пакета</a></li>
+            <li><a href="#s8">Докстринг класса и метода</a></li>
+            <li><a href="#s9">Восемь ошибок</a></li>
+            <li><a href="#s10">Мини-практика: пять минут</a></li>
+            <li><a href="#s11">Проверьте себя</a></li>
+            <li><a href="#s12">Шпаргалка по главе</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Определение и место в файле</h2>
+        <p><span class="term">Докстринг</span> — строковый литерал, стоящий первой инструкцией в модуле, классе, функции или методе. Python сохраняет такую строку в атрибуте <code>__doc__</code> соответствующего объекта. Пишут докстринг в тройных кавычках: они позволяют занять несколько строк и оставляют внутри одинарные и двойные кавычки без экранирования.</p>
+        <div class="term-card">
+          <p class="term-card__head"><b>Докстринг</b><span>строка документации</span></p>
+          <div class="term-card__body">
+            <p>Стоит сразу после строки <code>def</code>, <code>class</code> или в самом начале файла. Ничего исполняемого перед ним быть не должно: как только выше появляется присваивание, импорт или другая инструкция, строка перестаёт быть докстрингом и становится обычным значением, которое вычисляется и отбрасывается.</p>
+          </div>
+        </div>
+        <p>Место важно буквально. Ниже две функции, отличающиеся одной строкой:</p>
+        <figure class="code">
+          <figcaption><span>Python</span><span>докстринг на месте</span></figcaption>
+<pre><span class="k">def</span> <span class="f">normalize_name</span>(name: <span class="k">str</span>) -&gt; <span class="k">str</span>:
+    <span class="s">"""Приводит имя официанта к виду «Фамилия Имя» с одним пробелом."""</span>
+    <span class="k">return</span> <span class="s">" "</span>.join(name.split()).title()</pre>
+        </figure>
+        <figure class="code">
+          <figcaption><span>Python</span><span>та же строка после кода: докстрингом не считается</span></figcaption>
+<pre><span class="k">def</span> <span class="f">normalize_name</span>(name: <span class="k">str</span>) -&gt; <span class="k">str</span>:
+    cleaned = <span class="s">" "</span>.join(name.split())
+    <span class="s">"""Приводит имя официанта к виду «Фамилия Имя» с одним пробелом."""</span>
+    <span class="k">return</span> cleaned.title()</pre>
+        </figure>
+        <p>Во втором случае <code>normalize_name.__doc__</code> равно <code>None</code>. Строка вычисляется как выражение, результат никуда не записывается, в подсказке редактора описания нет, в собранную документацию оно не попадёт. Программа при этом работает, и ошибки не будет: по внешним признакам такое место отличается от первого только пустой подсказкой.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Где Python хранит докстринг</h2>
+        <p>Docstring доступен через атрибут <code>__doc__</code> у любого объекта, который его имеет: модуля, класса, функции, метода. Атрибут — обычная строка, с ней можно работать как с любой другой.</p>
+        <figure class="code">
+          <figcaption><span>Терминал</span><span>python -i</span></figcaption>
+<pre>&gt;&gt;&gt; <span class="k">from</span> app.utils.text <span class="k">import</span> normalize_name
+&gt;&gt;&gt; normalize_name.__doc__
+<span class="s">'Приводит имя официанта к виду «Фамилия Имя» с одним пробелом.'</span>
+&gt;&gt;&gt; <span class="k">import</span> app.utils.text
+&gt;&gt;&gt; app.utils.text.__doc__
+<span class="s">'Работа с именами и строками отчёта.'</span>
+&gt;&gt;&gt; <span class="k">print</span>(<span class="k">len</span>.__doc__)
+Return the number of items in a container.</pre>
+        </figure>
+        <p>Последняя строка показывает, что через тот же атрибут читаются описания встроенных функций: докстринги устроены одинаково и в вашем коде, и в стандартной библиотеке.</p>
+        <p>У многострочных докстрингов в <code>__doc__</code> сохраняются и отступы, которыми текст был выровнен в файле. Чтобы получить текст без общего отступа, применяют <code>inspect.getdoc</code>:</p>
+        <figure class="code">
+          <figcaption><span>Терминал</span><span>python -i</span></figcaption>
+<pre>&gt;&gt;&gt; <span class="k">import</span> inspect
+&gt;&gt;&gt; <span class="k">from</span> app.services.calculator <span class="k">import</span> calculate_average
+&gt;&gt;&gt; <span class="k">print</span>(inspect.getdoc(calculate_average))
+Считает среднюю оценку по списку.
+
+Args:
+    grades: Оценки студента, список не должен быть пустым.
+
+Returns:
+    Среднее значение, округлённое до двух знаков.</pre>
+        </figure>
+        <div class="margin-note margin-note--steel">
+          <b>На полях: докстринги можно потерять при запуске</b>
+          <p>Ключ <code>python -OO</code> запускает программу без докстрингов: они удаляются, и <code>__doc__</code> становится <code>None</code>. Такой запуск применяют для экономии памяти в готовых сборках. Программу, которая читает <code>__doc__</code> своих функций и строит по нему поведение, этот ключ ломает. Докстринг предназначен людям и инструментам сборки документации.</p>
+        </div>
+
+        <h2 id="s3"><span class="sec">§3</span>help и подсказка редактора</h2>
+        <p>Встроенная функция <code>help()</code> печатает справку об объекте: подпись, докстринг и, для модулей и классов, перечень их содержимого. Она работает только на том, что записано в коде, и никаких описаний не добавляет.</p>
+        <figure class="code">
+          <figcaption><span>Терминал</span><span>python -i</span></figcaption>
+<pre>&gt;&gt;&gt; <span class="f">help</span>(calculate_average)
+Help on function calculate_average in module app.services.calculator:
+
+calculate_average(grades: list[int]) -&gt; float
+    Считает среднюю оценку по списку.
+
+    Args:
+        grades: Оценки студента, список не должен быть пустым.
+
+    Returns:
+        Среднее значение, округлённое до двух знаков.
+
+    Raises:
+        ValueError: Если список оценок пуст.</pre>
+        </figure>
+        <p>Вызов <code>help(app.services.calculator)</code> напечатает докстринг модуля и список его функций с первыми строками их докстрингов. Это самый быстрый способ проверить, что описания на месте: у функции без докстринга в выводе будет только подпись.</p>
+        <p>VS Code показывает то же самое при наведении указателя на имя функции в месте её вызова: всплывает подпись с аннотациями и текст докстринга. Подсказка вызывается и с клавиатуры — <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>K</kbd>, затем <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>I</kbd>. Пустая подсказка означает, что докстринга нет или он стоит не на первом месте.</p>
+        <figure class="shot">
+          <img src="img/vscode-hover-docstring.png" alt="Подсказка VS Code при наведении на вызов calculate_average: подпись функции, описание и разделы Args, Returns, Raises">
+          <figcaption>Курсор стоит на вызове <code>calculate_average</code> в <code>main.py</code>. В подсказке сверху подпись с аннотациями, под ней краткая строка докстринга, ниже разделы <b>Args</b> и <b>Returns</b> с описаниями параметра и результата. Редактор взял всё это из докстринга функции и разметил заголовками; подсказка прокручивается, ниже в ней раздел <b>Raises</b>.</figcaption>
+        </figure>
+
+        <h2 id="s4"><span class="sec">§4</span>Однострочный докстринг</h2>
+        <p>Однострочная запись применяется, когда назначение выражается одним предложением, а параметры понятны из имён и аннотаций. Правила записи такие:</p>
+        <ul>
+          <li>Кавычки и текст на одной строке: <code>"""Текст."""</code></li>
+          <li>Предложение заканчивается точкой.</li>
+          <li>Пустых строк до и после нет.</li>
+          <li>Описывается действие функции: «Возвращает…», «Считает…», «Записывает…».</li>
+        </ul>
+        <figure class="code">
+          <figcaption><span>app/utils/formatter.py</span><span>однострочные докстринги</span></figcaption>
+<pre><span class="k">def</span> <span class="f">format_kopeks</span>(kopeks: <span class="k">int</span>) -&gt; <span class="k">str</span>:
+    <span class="s">"""Переводит сумму в копейках в строку вида «1 250,00 ₽»."""</span>
+    <span class="k">return</span> <span class="s">f"{kopeks / 100:,.2f} ₽"</span>.replace(<span class="s">","</span>, <span class="s">" "</span>).replace(<span class="s">"."</span>, <span class="s">","</span>)
+
+
+<span class="k">def</span> <span class="f">format_title</span>(text: <span class="k">str</span>, width: <span class="k">int</span> = <span class="n">40</span>) -&gt; <span class="k">str</span>:
+    <span class="s">"""Центрирует заголовок отчёта по заданной ширине."""</span>
+    <span class="k">return</span> text.center(width, <span class="s">"="</span>)</pre>
+        </figure>
+
+        <h2 id="s5"><span class="sec">§5</span>Многострочный докстринг</h2>
+        <p>Многострочная запись нужна, когда у функции есть параметры с ограничениями, возвращаемое значение требует пояснения или функция возбуждает исключения. Устройство такое: краткая строка, пустая строка, подробности, закрывающие кавычки на отдельной строке.</p>
+        <figure class="code">
+          <figcaption><span>app/services/orders.py</span><span>строение многострочного докстринга</span></figcaption>
+<pre><span class="k">def</span> <span class="f">load_orders</span>(path: Path) -&gt; <span class="k">list</span>[Order]:
+    <span class="s">"""Читает заказы из CSV-файла.        # краткая строка: одно предложение
+
+    Имена официантов в файле записаны по-разному, поэтому здесь они
+    приводятся к одному виду: по ним потом группируются заказы.
+                                        # пустая строка отделяет разделы
+    Args:
+        path: Путь к файлу с колонками waiter и kopeks.
+
+    Returns:
+        Список заказов в порядке следования строк файла.
+
+    Raises:
+        FileNotFoundError: Если файла по указанному пути нет.
+        ValueError: Если в колонке kopeks не целое число.
+    """</span>                                 <span class="c"># кавычки на отдельной строке</span></pre>
+        </figure>
+        <p>Комментарии справа в примере добавлены для разбора и в коде не пишутся. Порядок частей одинаков во всех форматах из главы 4.3, различается только запись разделов.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Часть</th><th>Что в ней</th><th>Обязательна</th></tr></thead>
+            <tbody>
+              <tr><td><b>Краткая строка</b></td><td>Одно предложение о действии функции, начинается сразу после кавычек</td><td>Да</td></tr>
+              <tr><td><b>Пустая строка</b></td><td>Отделяет краткую строку от подробностей</td><td>Да, если есть подробности</td></tr>
+              <tr><td><b>Пояснение</b></td><td>Смысл, ограничения, побочные действия, связь с другими частями проекта</td><td>По необходимости</td></tr>
+              <tr><td><b>Параметры</b></td><td>Перечень аргументов и что в них допустимо</td><td>Если ограничения не видны из подписи</td></tr>
+              <tr><td><b>Результат</b></td><td>Что означает возвращаемое значение</td><td>Если функция возвращает значение</td></tr>
+              <tr><td><b>Исключения</b></td><td>Какие ошибки возбуждаются и при каких данных</td><td>Если функция возбуждает исключения</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s6"><span class="sec">§6</span>Правила PEP 257</h2>
+        <p><span class="term">PEP 257</span> — документ стандарта Python, описывающий оформление докстрингов. Он задаёт общие правила записи: в каких кавычках, где переносы, о чём первая строка. Разметку разделов он не определяет; форматы из главы 4.3 надстраиваются над этими правилами.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Правило</th><th>Как это выглядит</th></tr></thead>
+            <tbody>
+              <tr><td>Тройные двойные кавычки, даже для одной строки</td><td><code>"""Текст."""</code></td></tr>
+              <tr><td>Первая строка — краткое описание действия, заканчивается точкой</td><td><code>"""Считает среднюю оценку."""</code></td></tr>
+              <tr><td>Текст начинается сразу после кавычек, без переноса</td><td><code>"""Считает…</code> вместо <code>"""<br>Считает…</code></td></tr>
+              <tr><td>В многострочном — пустая строка после краткого описания</td><td>см. §5</td></tr>
+              <tr><td>Закрывающие кавычки многострочного — на своей строке</td><td><code>    """</code></td></tr>
+              <tr><td>Докстринг есть у модуля, публичной функции, класса и метода</td><td>правило курса из главы 4.1</td></tr>
+              <tr><td>Описание сообщает, что функция делает</td><td><code>"""Возвращает список заказов."""</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Про первую строку PEP 257 требует описывать действие функции, и в англоязычных проектах это записывают повелительной формой: <code>Return the list of orders.</code> В русском тексте тот же смысл передаётся формой третьего лица: «Возвращает список заказов». В курсе принята эта форма, и она должна быть одинаковой во всём проекте.</p>
+        <div class="swap">
+          <div class="swap__row">
+            <div class="swap__old"><b>Разнобой в проекте</b>
+              <p><code>"""Загрузить заказы."""</code><br><code>"""Функция для чтения файла"""</code><br><code>"""отчёт"""</code></p>
+            </div>
+            <div class="swap__arrow">→</div>
+            <div class="swap__new"><b>Одна форма</b>
+              <p><code>"""Читает заказы из файла."""</code><br><code>"""Возвращает текст отчёта."""</code><br><code>"""Записывает отчёт в файл."""</code></p>
+            </div>
+          </div>
+        </div>
+
+        <h2 id="s7"><span class="sec">§7</span>Докстринг модуля и пакета</h2>
+        <p>Докстринг модуля — первая строка файла, до импортов. Он отвечает на вопрос, за что отвечает этот файл, и виден при вызове <code>help()</code> на модуле.</p>
+        <figure class="code">
+          <figcaption><span>app/services/orders.py</span><span>первые строки файла</span></figcaption>
+<pre><span class="s">"""Заказы: чтение из CSV и расчёты по ним.
+
+Модуль работает только с данными заказов и ничего не печатает.
+Форматирование отчёта — в app/utils/formatter.py.
+"""</span>
+
+<span class="k">import</span> csv
+<span class="k">from</span> pathlib <span class="k">import</span> Path</pre>
+        </figure>
+        <p>У пакета докстринг пишется в файле <code>__init__.py</code>: этот файл представляет пакет целиком. В нём указывают назначение пакета и перечень того, что он предоставляет наружу.</p>
+        <figure class="code">
+          <figcaption><span>app/services/__init__.py</span><span>докстринг пакета</span></figcaption>
+<pre><span class="s">"""Служебный слой: расчёты и чтение данных.
+
+Пакет содержит модули calculator и orders. Функции этих модулей
+вызываются из main.py и не зависят от способа вывода.
+"""</span></pre>
+        </figure>
+        <p>Перечислять внутри докстринга все функции модуля не требуется: их список <code>help()</code> и сборщик документации получают из самого кода.</p>
+
+        <h2 id="s8"><span class="sec">§8</span>Докстринг класса и метода</h2>
+        <p>Докстринг класса стоит первой строкой после <code>class</code> и описывает, что представляет объект этого класса. Атрибуты перечисляют в отдельном разделе. У методов свои докстринги, по тем же правилам, что у функций.</p>
+        <figure class="code">
+          <figcaption><span>app/domain/order.py</span><span>класс, атрибуты, методы</span></figcaption>
+<pre><span class="k">class</span> <span class="f">Order</span>:
+    <span class="s">"""Один заказ из отчёта кафе.
+
+    Attributes:
+        waiter: Имя официанта в виде «Фамилия Имя».
+        kopeks: Сумма заказа в копейках, неотрицательная.
+    """</span>
+
+    <span class="k">def</span> <span class="f">__init__</span>(self, waiter: <span class="k">str</span>, kopeks: <span class="k">int</span>) -&gt; <span class="k">None</span>:
+        <span class="s">"""Создаёт заказ, проверяя сумму.
+
+        Args:
+            waiter: Имя официанта, приводится к виду «Фамилия Имя».
+            kopeks: Сумма в копейках.
+
+        Raises:
+            ValueError: Если сумма отрицательная.
+        """</span>
+        <span class="k">if</span> kopeks &lt; <span class="n">0</span>:
+            <span class="k">raise</span> ValueError(<span class="s">"Сумма заказа не может быть отрицательной"</span>)
+        self.waiter = normalize_name(waiter)
+        self.kopeks = kopeks
+
+    <span class="k">def</span> <span class="f">as_rubles</span>(self) -&gt; <span class="k">float</span>:
+        <span class="s">"""Возвращает сумму заказа в рублях."""</span>
+        <span class="k">return</span> self.kopeks / <span class="n">100</span></pre>
+        </figure>
+        <p>Описание того, что объект собой представляет, идёт в докстринг класса; описание создания и проверок при создании — в докстринг <code>__init__</code>. Когда проверок нет и все параметры очевидны из аннотаций, докстринг <code>__init__</code> опускают.</p>
+
+        <h2 id="s9"><span class="sec">§9</span>Восемь ошибок</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Ошибка</th><th>Что получается</th><th>Как правильно</th></tr></thead>
+            <tbody>
+              <tr><td>Строка стоит после первой инструкции</td><td><code>__doc__</code> равен <code>None</code>, подсказка пустая</td><td>Поставить строку сразу после <code>def</code></td></tr>
+              <tr><td>Одинарные кавычки: <code>'Текст'</code></td><td>Работает, но нарушает стандарт и ломается на кавычках внутри</td><td>Тройные двойные кавычки</td></tr>
+              <tr><td>Пересказ кода построчно</td><td>Описание длиннее функции и устаревает после первой правки</td><td>Назначение, ограничения, результат</td></tr>
+              <tr><td>Перечисление типов словами</td><td>Дублирует аннотации, расходится с ними после правки</td><td>Типы в подписи, смысл в докстринге</td></tr>
+              <tr><td>Описание осталось от прежнего поведения</td><td>Читатель получает неверные сведения и не может их проверить</td><td>Править докстринг в том же коммите, что и функцию</td></tr>
+              <tr><td>Незадокументированные исключения</td><td>Вызывающий код не знает, что перехватывать</td><td>Раздел с перечнем ошибок</td></tr>
+              <tr><td>Докстринг вместо комментария внутри тела</td><td>Пояснение к строке кода попадает в справку и на сайт документации</td><td>Пояснения к реализации — комментарием</td></tr>
+              <tr><td>Пустая строка между <code>def</code> и докстрингом</td><td>Строка остаётся докстрингом, но стандарт нарушен, проверка выдаёт замечание</td><td>Без пустой строки</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s10"><span class="sec">§10</span>Мини-практика: пять минут</h2>
+        <p>Шаги выполняются на проекте из темы 02 или на любом файле с функциями.</p>
+        <ol class="steps">
+          <li>Откройте <code>app/services/calculator.py</code> и добавьте докстринг модуля первой строкой файла, до импортов.</li>
+          <li>Добавьте однострочный докстринг функции <code>calculate_average</code>.</li>
+          <li>Запустите <code>python -i -c "import app.services.calculator as c"</code> и выполните <code>help(c)</code>. В выводе должны быть докстринг модуля и список функций.</li>
+          <li>Выполните <code>print(c.calculate_average.__doc__)</code> и сверьте текст с файлом.</li>
+          <li>Перенесите докстринг функции на строку ниже, после первой инструкции тела, и повторите предыдущую команду. Вывод — <code>None</code>.</li>
+          <li>Верните докстринг на место. Наведите указатель на вызов функции в <code>main.py</code>: в подсказке появился текст описания.</li>
+        </ol>
+
+        <h2 id="s11"><span class="sec">§11</span>Проверьте себя</h2>
+        <details>
+          <summary>Почему строка документации должна быть первой инструкцией в функции?</summary>
+          <p>Python сохраняет в <code>__doc__</code> только строковый литерал, стоящий первым в теле. Если выше есть любая инструкция, строка вычисляется как обычное выражение и нигде не сохраняется: <code>__doc__</code> остаётся <code>None</code>, подсказка редактора пуста, в собранную документацию описание не попадает.</p>
+          </details>
+        <details>
+          <summary>Чем <code>inspect.getdoc</code> отличается от <code>__doc__</code>?</summary>
+          <p><code>__doc__</code> возвращает строку как она записана в файле, вместе с отступами выравнивания. <code>inspect.getdoc</code> убирает общий отступ, поэтому текст удобно печатать и обрабатывать.</p>
+        </details>
+        <details>
+          <summary>Что напечатает <code>help()</code> для функции без докстринга?</summary>
+          <p>Имя функции, её подпись с аннотациями и имя модуля. Описания в выводе не будет: брать его негде. По этому признаку недокументированные функции находят вручную, а программой это проверяют правилами из главы 4.5.</p>
+        </details>
+        <details>
+          <summary>Где пишется докстринг пакета?</summary>
+          <p>В файле <code>__init__.py</code> этого пакета, первой строкой файла. Этот файл представляет пакет целиком, поэтому его докстринг показывается при вызове <code>help()</code> на имени пакета.</p>
+        </details>
+        <details>
+          <summary>Что описывают в докстринге класса, а что — в докстринге <code>__init__</code>?</summary>
+          <p>В докстринге класса — что представляет объект и какие у него атрибуты. В докстринге <code>__init__</code> — параметры создания, проверки входных значений и исключения при недопустимых данных. Если проверок нет и параметры понятны из аннотаций, докстринг <code>__init__</code> не пишут.</p>
+        </details>
+        <details>
+          <summary>Функция изменилась, а докстринг остался прежним. Чем это хуже отсутствия докстринга?</summary>
+          <p>Отсутствие описания заставляет читателя открыть код. Неверное описание читатель принимает за верное и строит на нём вызывающий код, а расхождение обнаруживается при работе программы. Поэтому докстринг правят в том же изменении, что и поведение функции.</p>
+        </details>
+
+        <h2 id="s12"><span class="sec">§12</span>Шпаргалка по главе</h2>
+        <div class="cheat">
+          <div>
+            <b>Место</b>
+            <code>первая инструкция объекта</code>
+            <code>после def / class</code>
+            <code>в начале файла — у модуля</code>
+          </div>
+          <div>
+            <b>Кавычки</b>
+            <code>"""три двойные"""</code>
+            <code>закрывающие — своей строкой</code>
+          </div>
+          <div>
+            <b>Прочитать из программы</b>
+            <code>f.__doc__</code>
+            <code>help(f)</code>
+            <code>inspect.getdoc(f)</code>
+          </div>
+          <div>
+            <b>Подсказка в VS Code</b>
+            <code>наведение на имя</code>
+            <code>Cmd/Ctrl+K, затем Cmd/Ctrl+I</code>
+          </div>
+          <div>
+            <b>Строение</b>
+            <code>краткая строка + точка</code>
+            <code>пустая строка</code>
+            <code>параметры, результат, ошибки</code>
+          </div>
+          <div>
+            <b>Форма первой строки</b>
+            <code>Считает… Возвращает… Записывает…</code>
+            <code>одинаково во всём проекте</code>
+          </div>
+        </div>
+
+        <h3>Итог главы</h3>
+        <p>Докстринг — строковый литерал, стоящий первой инструкцией в модуле, классе, функции или методе. Python сохраняет его в атрибуте <code>__doc__</code>, откуда его читают <code>help()</code>, модуль <code>inspect</code>, подсказка редактора и сборщик документации. Строка, стоящая после первой инструкции тела, докстрингом не становится, и ошибки при этом не возникает: описание просто не доходит до читателя. Однострочная запись годится, когда назначение выражается одним предложением. Многострочная состоит из краткой строки, пустой строки и разделов о параметрах, результате и исключениях; закрывающие кавычки стоят на отдельной строке. Эти правила задаёт PEP 257, а разметку разделов — форматы, которые разобраны в следующей главе: одна и та же функция записана в них четырьмя способами.</p>
+
+        <div class="sources">
+          <b>Откуда взяты факты</b>
+          <ol>
+            <li>Правила оформления и требование к первой строке — <a href="https://peps.python.org/pep-0257/">PEP 257, Docstring Conventions</a>.</li>
+            <li><code>inspect.getdoc</code> и удаление общего отступа — <a href="https://docs.python.org/3/library/inspect.html#inspect.getdoc">документация модуля inspect</a>.</li>
+            <li>Удаление докстрингов ключом <code>-OO</code> — <a href="https://docs.python.org/3/using/cmdline.html#cmdoption-OO">описание параметров командной строки Python</a>.</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="01-vidy-dokumentacii.html">← 4.1 Виды документации кода</a><a href="03-formaty.html">4.3 Четыре формата на одной функции →</a></div>
+
+        <div class="colophon">
+          <span>Глава 4.2 · Докстринг: где пишется и как читается · МДК.01.01</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="book.js"></script>
+</body>
+</html>

@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>4.5 VS Code: генератор и проверка · Докстринги и документация</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    try {
+      var saved = localStorage.getItem('docs-book-os');
+      if (!saved) {
+        var p = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+        saved = /win/i.test(p) ? 'win' : (/mac|iphone|ipad/i.test(p) ? 'mac' : 'linux');
+      }
+      document.documentElement.dataset.os = saved;
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Тема 04 · Докстринги и документация кода</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Докстринги и документация кода</a> · МДК.01.01 · разработка программных модулей</p>
+          <p class="running__folio">Глава 4.5</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">4.5</span>
+          <h1>VS Code:<br>генератор и проверка</h1>
+          <p class="lead">В этой главе редактор начинает помогать с докстрингами. Разобрано расширение, которое создаёт заготовку докстринга по подписи функции, настройка формата в файле проекта, свой шаблон и сниппет, а во второй половине — программная проверка: правила pydocstyle в Ruff, которые находят недокументированные функции и нарушения оформления, и включение этой проверки в запрос на слияние.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Рабочее место</dd></div>
+          <div><dt>Уровень</dt><dd>Начальный</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 4.2–4.4, тема 02</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Не набирать разделы руками и не искать пропуски глазами</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Что редактор умеет без расширений</a></li>
+            <li><a href="#s2">Расширение autoDocstring</a></li>
+            <li><a href="#s3">Как вызвать генератор</a></li>
+            <li><a href="#s4">Настройка формата в проекте</a></li>
+            <li><a href="#s5">Где лежат настройки</a></li>
+            <li><a href="#s6">Полезные параметры генератора</a></li>
+            <li><a href="#s7">Свой шаблон</a></li>
+            <li><a href="#s8">Сниппет вместо расширения</a></li>
+            <li><a href="#s9">Проверка докстрингов программой</a></li>
+            <li><a href="#s10">Правила, которые чаще срабатывают</a></li>
+            <li><a href="#s11">Проверка в редакторе и в запросе на слияние</a></li>
+            <li><a href="#s12">Мини-практика: десять минут</a></li>
+            <li><a href="#s13">Частые вопросы</a></li>
+            <li><a href="#s14">Проверьте себя</a></li>
+            <li><a href="#s15">Шпаргалка по главе</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Что редактор умеет без расширений</h2>
+        <p>Расширение Python от Microsoft вместе с языковым сервером Pylance устанавливается в VS Code одним пакетом и уже умеет две вещи из этой темы.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Возможность</th><th>Как пользоваться</th></tr></thead>
+            <tbody>
+              <tr><td>Подсказка с докстрингом при наведении на имя функции</td><td>Указатель на имя, либо <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>K</kbd>, затем <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>I</kbd></td></tr>
+              <tr><td>Подсказка при наборе аргументов вызова</td><td>Открывается сама после открывающей скобки; вызвать заново — <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>Shift</kbd> + <kbd>Пробел</kbd></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Создавать заготовку докстринга по подписи функции редактор без расширений не умеет. Для этого ставят отдельное расширение.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Расширение autoDocstring</h2>
+        <p><span class="term">autoDocstring</span> — расширение VS Code, которое читает подпись функции и вставляет заготовку докстринга: краткую строку, раздел с параметрами по именам аргументов, раздел результата и раздел исключений, если в теле есть <code>raise</code>. Текст описаний пишет человек, разметку и перечень имён — расширение.</p>
+        <p>Установка: откройте панель расширений (<kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>Shift</kbd> + <kbd>X</kbd>), введите в поиске идентификатор и нажмите <b>Install</b>.</p>
+        <figure class="code">
+          <figcaption><span>Панель расширений</span><span>идентификатор</span></figcaption>
+<pre>njpwerner.autodocstring</pre>
+        </figure>
+        <figure class="shot">
+          <img src="img/vscode-ext-autodocstring.png" alt="Панель расширений VS Code: по идентификатору найдено одно расширение autoDocstring автора Nils Werner">
+          <figcaption>По идентификатору находится ровно одно расширение: <b>autoDocstring — Python Docstring Generator</b>, автор Nils Werner. Кнопка установки появляется на карточке при наведении; на кадре расширение уже установлено, поэтому вместо неё показан значок настроек.</figcaption>
+        </figure>
+        <p>Расширение ищут по идентификатору: в поиске есть несколько расширений с похожими названиями, и идентификатор отличает нужное однозначно.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Как вызвать генератор</h2>
+        <p>Курсор ставится на строку под подписью функции. Дальше подходит любой из трёх способов:</p>
+        <ol class="steps">
+          <li>Наберите три двойные кавычки и нажмите <kbd>Enter</kbd>. Заготовка вставится на место курсора.</li>
+          <li>Нажмите <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>Shift</kbd> + <kbd>2</kbd>.</li>
+          <li>Откройте палитру команд (<kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>Shift</kbd> + <kbd>P</kbd>) и выберите <b>Generate Docstring</b>.</li>
+        </ol>
+        <figure class="shot">
+          <img src="img/vscode-generate-before.png" alt="Файл orders.py в VS Code: функция revenue_by_waiter без докстринга">
+          <figcaption>Исходное состояние: функция <code>revenue_by_waiter</code> без описания. В строке состояния внизу видно положение курсора — <code>Ln 1, Col 1</code>. Перед вызовом генератора курсор ставится в тело функции.</figcaption>
+        </figure>
+        <p>Для функции <code>revenue_by_waiter</code> из главы 4.3 вставляется такая заготовка:</p>
+        <figure class="code">
+          <figcaption><span>Результат вставки</span><span>формат google</span></figcaption>
+<pre><span class="k">def</span> <span class="f">revenue_by_waiter</span>(orders: <span class="k">list</span>[Order], top: <span class="k">int</span> = <span class="n">0</span>) -&gt; <span class="k">dict</span>[<span class="k">str</span>, <span class="k">int</span>]:
+    <span class="s">"""_summary_
+
+    Args:
+        orders (list[Order]): _description_
+        top (int, optional): _description_. Defaults to 0.
+
+    Raises:
+        ValueError: _description_
+
+    Returns:
+        dict[str, int]: _description_
+    """</span></pre>
+        </figure>
+        <figure class="shot">
+          <img src="img/vscode-generate-after.png" alt="Тот же файл после вызова генератора: вставлена заготовка докстринга с разделами Args, Raises и Returns">
+          <figcaption>Тот же файл после вызова генератора. Разделы расставлены по подписи функции: в <b>Args</b> оба параметра, у <code>top</code> приписаны <code>optional</code> и <code>Defaults to 0</code>; раздел <b>Raises</b> добавлен из-за <code>raise ValueError</code> в теле; в <b>Returns</b> подставлен тип из аннотации. Выделенные серым слова — поля для заполнения.</figcaption>
+        </figure>
+        <p>Слова <code>_summary_</code> и <code>_description_</code> — поля для заполнения. Между ними переходят клавишей <kbd>Tab</kbd>, пока вставка активна. Раздел <code>Raises:</code> появился потому, что в теле функции есть <code>raise ValueError</code>, а признак <code>optional</code> и строка <code>Defaults to 0</code> — потому что у параметра есть значение по умолчанию.</p>
+        <div class="margin-note">
+          <b>На полях: заготовку нужно дописать</b>
+          <p>Оставленные в коде <code>_description_</code> — это докстринг, который сообщает читателю перечень имён параметров, уже известный из подписи. Проверка из §9 на незаполненные описания не жалуется: докстринг формально есть. Она заметит только <code>_summary_</code> без точки на конце — правилом <code>D415</code>. Заготовку заполняют сразу, пока функция в работе.</p>
+        </div>
+
+        <h2 id="s4"><span class="sec">§4</span>Настройка формата в проекте</h2>
+        <p>По умолчанию расширение вставляет формат google. Формат задают явно, чтобы у всех в команде получалась одинаковая разметка. Настройка хранится в файле <code>.vscode/settings.json</code> внутри проекта и попадает в репозиторий вместе с кодом.</p>
+        <figure class="code">
+          <figcaption><span>.vscode/settings.json</span><span>настройки проекта</span></figcaption>
+<pre>{
+  <span class="s">"autoDocstring.docstringFormat"</span>: <span class="s">"google"</span>,
+  <span class="s">"autoDocstring.startOnNewLine"</span>: <span class="k">false</span>,
+  <span class="s">"autoDocstring.includeName"</span>: <span class="k">false</span>,
+  <span class="s">"autoDocstring.guessTypes"</span>: <span class="k">true</span>,
+  <span class="s">"autoDocstring.quoteStyle"</span>: <span class="s">"\"\"\""</span>
+}</pre>
+        </figure>
+        <p>Значение параметра <code>docstringFormat</code> выбирается из перечня форматов расширения:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Значение</th><th>Что вставляет</th></tr></thead>
+            <tbody>
+              <tr><td><code>google</code></td><td>Разделы <code>Args:</code>, <code>Returns:</code>, <code>Raises:</code> — формат курса</td></tr>
+              <tr><td><code>google-notypes</code></td><td>То же без повтора типов в скобках</td></tr>
+              <tr><td><code>numpy</code></td><td>Заголовки разделов с чертой из дефисов</td></tr>
+              <tr><td><code>sphinx</code></td><td>Поля <code>:param:</code>, <code>:returns:</code>, <code>:raises:</code></td></tr>
+              <tr><td><code>pep257</code></td><td>Краткая строка и место под описание, без разделов</td></tr>
+              <tr><td><code>one-line-sphinx</code></td><td>Поля reStructuredText в сжатой записи</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Для проектов курса подходит <code>google-notypes</code>: типы остаются в подписи функции и в докстринге не повторяются. Начать можно с <code>google</code> и убирать типы вручную, пока формат не закрепился в привычке.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Где лежат настройки</h2>
+        <p>У VS Code два уровня настроек. Настройки проекта лежат в папке <code>.vscode</code> рядом с кодом и действуют на всех, кто откроет этот репозиторий. Настройки пользователя действуют на все проекты этого компьютера и в репозиторий не попадают.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Уровень</th><th>Файл</th><th>Когда применять</th></tr></thead>
+            <tbody>
+              <tr><td><b>Проект</b></td><td><code>.vscode/settings.json</code> в корне репозитория</td><td>Формат докстрингов, правила проверки — общие для команды</td></tr>
+              <tr>
+                <td><b>Пользователь</b></td>
+                <td>
+                  <span data-os="win"><code>%APPDATA%\Code\User\settings.json</code></span>
+                  <span data-os="mac"><code>~/Library/Application Support/Code/User/settings.json</code></span>
+                  <span data-os="linux"><code>~/.config/Code/User/settings.json</code></span>
+                </td>
+                <td>Личные привычки: тема, шрифт, сочетания клавиш</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Открыть любой из файлов удобнее через палитру команд: <b>Preferences: Open Workspace Settings (JSON)</b> для проекта и <b>Preferences: Open User Settings (JSON)</b> для пользователя. Путь при этом искать не нужно.</p>
+        <div class="margin-note margin-note--steel">
+          <b>На полях: папку .vscode держат в репозитории</b>
+          <p>В <code>.gitignore</code> учебных проектов <code>.vscode/</code> не вносят. Файл настроек проекта — часть договорённостей команды: формат докстрингов, включённые проверки, выбранный интерпретатор. Личные настройки в этот файл не пишут, для них есть настройки пользователя.</p>
+        </div>
+
+        <h2 id="s6"><span class="sec">§6</span>Полезные параметры генератора</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Параметр</th><th>Значение</th><th>Что меняет</th></tr></thead>
+            <tbody>
+              <tr><td><code>autoDocstring.docstringFormat</code></td><td><code>google</code></td><td>Разметка разделов</td></tr>
+              <tr><td><code>autoDocstring.startOnNewLine</code></td><td><code>false</code></td><td>Краткая строка начинается сразу после кавычек, как требует PEP 257</td></tr>
+              <tr><td><code>autoDocstring.includeName</code></td><td><code>false</code></td><td>Имя функции в докстринг не подставляется</td></tr>
+              <tr><td><code>autoDocstring.guessTypes</code></td><td><code>true</code></td><td>Типы берутся из аннотаций и значений по умолчанию</td></tr>
+              <tr><td><code>autoDocstring.includeExtendedSummary</code></td><td><code>false</code></td><td>Не вставляет пустой блок под подробное описание</td></tr>
+              <tr><td><code>autoDocstring.generateDocstringOnEnter</code></td><td><code>true</code></td><td>Работает вставка по трём кавычкам и <kbd>Enter</kbd></td></tr>
+              <tr><td><code>autoDocstring.customTemplatePath</code></td><td>путь к файлу</td><td>Подключает свой шаблон вместо встроенного</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s7"><span class="sec">§7</span>Свой шаблон</h2>
+        <p>Встроенные форматы меняются через шаблон на языке mustache: в нём подстановки вида <code>{{name}}</code> заменяются данными из подписи функции. Шаблон кладут в репозиторий и указывают путь в настройках проекта.</p>
+        <figure class="code">
+          <figcaption><span>.vscode/docstring.mustache</span><span>свой шаблон</span></figcaption>
+<pre>{{summaryPlaceholder}}
+{{#parametersExist}}
+
+Args:
+{{#args}}
+    {{var}}: {{descriptionPlaceholder}}
+{{/args}}
+{{/parametersExist}}
+{{#exceptionsExist}}
+
+Raises:
+{{#exceptions}}
+    {{type}}: {{descriptionPlaceholder}}
+{{/exceptions}}
+{{/exceptionsExist}}
+{{#returnsExist}}
+
+Returns:
+    {{descriptionPlaceholder}}
+{{/returnsExist}}</pre>
+        </figure>
+        <figure class="code">
+          <figcaption><span>.vscode/settings.json</span><span>подключение шаблона</span></figcaption>
+<pre>{
+  <span class="s">"autoDocstring.customTemplatePath"</span>: <span class="s">".vscode/docstring.mustache"</span>
+}</pre>
+        </figure>
+        <p>Этот шаблон отличается от встроенного <code>google</code> одним: типы в разделе <code>Args:</code> не подставляются, потому что они уже есть в подписи. Разделы <code>Args:</code>, <code>Raises:</code> и <code>Returns:</code> вставляются только тогда, когда у функции действительно есть параметры, <code>raise</code> в теле и возвращаемое значение.</p>
+
+        <h2 id="s8"><span class="sec">§8</span>Сниппет вместо расширения</h2>
+        <p>Заготовку можно вставлять и средствами самого редактора, без расширения. <span class="term">Сниппет</span> — шаблон текста, который вставляется по короткому слову и клавише <kbd>Tab</kbd>. Сниппеты проекта лежат в файле с расширением <code>.code-snippets</code> в папке <code>.vscode</code>.</p>
+        <figure class="code">
+          <figcaption><span>.vscode/python.code-snippets</span><span>сниппет по слову dsg</span></figcaption>
+<pre>{
+  <span class="s">"Докстринг в формате Google"</span>: {
+    <span class="s">"scope"</span>: <span class="s">"python"</span>,
+    <span class="s">"prefix"</span>: <span class="s">"dsg"</span>,
+    <span class="s">"body"</span>: [
+      <span class="s">"\"\"\"${1:Действие функции одним предложением.}"</span>,
+      <span class="s">""</span>,
+      <span class="s">"Args:"</span>,
+      <span class="s">"    ${2:параметр}: ${3:ограничения и смысл}"</span>,
+      <span class="s">""</span>,
+      <span class="s">"Returns:"</span>,
+      <span class="s">"    ${4:что означает результат}"</span>,
+      <span class="s">"\"\"\""</span>
+    ],
+    <span class="s">"description"</span>: <span class="s">"Заготовка докстринга с разделами Args и Returns"</span>
+  }
+}</pre>
+        </figure>
+        <p>Наберите <code>dsg</code> и нажмите <kbd>Tab</kbd> — вставится этот текст, курсор встанет в первое поле, переход между полями по <kbd>Tab</kbd>. Имена параметров сниппет не знает и подставить не может: этим он и отличается от расширения. Зато он не требует установки и работает в любой сборке редактора.</p>
+
+        <h2 id="s9"><span class="sec">§9</span>Проверка докстрингов программой</h2>
+        <p>Генератор помогает написать докстринг, но не сообщает, где его забыли. Эту работу выполняет проверка кода. В курсе используется <span class="term">Ruff</span> — программа проверки кода на Python, в которую входят правила <span class="term">pydocstyle</span>: они отвечают за докстринги и обозначаются кодами с буквой <code>D</code>.</p>
+        <p>Правила включаются в файле <code>pyproject.toml</code> в корне проекта:</p>
+        <figure class="code">
+          <figcaption><span>pyproject.toml</span><span>включение правил о докстрингах</span></figcaption>
+<pre>[tool.ruff.lint]
+select = [<span class="s">"E"</span>, <span class="s">"F"</span>, <span class="s">"D"</span>]
+
+[tool.ruff.lint.pydocstyle]
+convention = <span class="s">"google"</span>
+
+[tool.ruff.lint.per-file-ignores]
+<span class="s">"tests/*"</span> = [<span class="s">"D"</span>]</pre>
+        </figure>
+        <p>Три части этого файла означают следующее. Набор <code>"D"</code> включает правила о докстрингах вместе с обычными проверками кода. Строка <code>convention = "google"</code> согласует правила с выбранным форматом: часть правил, относящихся к другим форматам, отключается, чтобы они не спорили между собой. Последний раздел снимает требование докстрингов с папки тестов: имя тестовой функции там само описывает проверяемый случай.</p>
+        <figure class="code">
+          <figcaption><span>Терминал</span><span>запуск проверки</span></figcaption>
+<pre>$ ruff check app --output-format=concise</pre>
+        </figure>
+        <figure class="shot">
+          <img src="img/vscode-terminal-ruff.png" alt="Встроенный терминал VS Code с выводом ruff check: десять замечаний с кодами D100, D103 и D104">
+          <figcaption>Вывод в терминале, встроенном в редактор. В каждой строке файл, номер строки и колонки, код правила и его название. Последняя строка — <code>Found 10 errors.</code> Без ключа <code>--output-format=concise</code> Ruff печатает то же самое подробнее: под каждым замечанием фрагмент кода с подчёркнутым местом.</figcaption>
+        </figure>
+        <p>По коду правила его находят в документации Ruff, где описано, что оно проверяет и как исправить.</p>
+
+        <h2 id="s10"><span class="sec">§10</span>Правила, которые чаще срабатывают</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Код</th><th>Что проверяет</th><th>Как исправить</th></tr></thead>
+            <tbody>
+              <tr><td><code>D100</code></td><td>Нет докстринга у модуля</td><td>Добавить описание первой строкой файла</td></tr>
+              <tr><td><code>D101</code></td><td>Нет докстринга у класса</td><td>Описать, что представляет объект</td></tr>
+              <tr><td><code>D102</code></td><td>Нет докстринга у публичного метода</td><td>Описать действие метода</td></tr>
+              <tr><td><code>D103</code></td><td>Нет докстринга у публичной функции</td><td>Добавить описание после <code>def</code></td></tr>
+              <tr><td><code>D104</code></td><td>Нет докстринга у пакета</td><td>Добавить описание в <code>__init__.py</code></td></tr>
+              <tr><td><code>D200</code></td><td>Описание из одной строки записано в три</td><td>Свести к <code>"""Текст."""</code></td></tr>
+              <tr><td><code>D205</code></td><td>Нет пустой строки между краткой строкой и подробностями</td><td>Вставить пустую строку</td></tr>
+              <tr><td><code>D209</code></td><td>Закрывающие кавычки не на своей строке</td><td>Перенести кавычки вниз</td></tr>
+              <tr><td><code>D210</code></td><td>Лишние пробелы вокруг текста в кавычках</td><td>Убрать пробелы</td></tr>
+              <tr><td><code>D415</code></td><td>Первая строка не заканчивается знаком препинания</td><td>Поставить точку</td></tr>
+              <tr><td><code>D417</code></td><td>В разделе <code>Args:</code> описаны не все параметры</td><td>Дописать пропущенные или убрать лишние</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Правило <code>D417</code> самое полезное из перечня: оно сравнивает список параметров в подписи со списком в разделе <code>Args:</code>. Добавленный аргумент, для которого забыли строку описания, находится сразу, и расхождение между кодом и докстрингом не доживает до чужого чтения.</p>
+        <div class="margin-note">
+          <b>На полях: правило про повелительную форму</b>
+          <p>Среди правил pydocstyle есть <code>D401</code>: первая строка докстринга записывается повелительной формой английского глагола. Конвенция <code>google</code> это правило не включает, и для русских описаний в форме «Считает…», «Возвращает…» замечаний не будет. Текущий перечень правил, входящих в конвенцию, приведён в документации Ruff по ссылке в конце главы.</p>
+        </div>
+
+        <h2 id="s11"><span class="sec">§11</span>Проверка в редакторе и в запросе на слияние</h2>
+        <p>Замечания удобнее видеть во время набора кода. Для этого ставят расширение Ruff, его идентификатор — <code>charliermarsh.ruff</code>. После установки нарушения подчёркиваются в файле и перечисляются в панели <b>Problems</b> (<kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>Shift</kbd> + <kbd>M</kbd>), а часть из них исправляется действием <b>Quick Fix</b> по сочетанию <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>.</kbd>.</p>
+        <figure class="shot">
+          <img src="img/vscode-problems-ruff.png" alt="Панель Problems в VS Code: три замечания Ruff с кодами D100 и D103 для файла formatter.py">
+          <figcaption>Панель <b>Problems</b> для открытого файла <code>formatter.py</code>. Замечания подписаны источником: <code>Ruff(D100)</code> — нет докстринга у модуля, <code>Ruff(D103)</code> — у двух функций. Справа в скобках строка и колонка; щелчок по строке открывает это место в файле. Цифра <code>3</code> рядом с именем файла в проводнике — то же число замечаний.</figcaption>
+        </figure>
+        <p>Та же команда запускается в проверках запроса на слияние. В курсе она входит в быстрый набор проверок вместе с форматированием и тестами:</p>
+        <figure class="code">
+          <figcaption><span>.github/workflows/checks.yml</span><span>шаг проверки</span></figcaption>
+<pre>      - name: Проверка кода и докстрингов
+        run: ruff check app</pre>
+        </figure>
+        <p>После этого отсутствие докстринга у публичной функции попадает в замечания к запросу на слияние так же, как лишний импорт. Подробно устройство таких проверок разбирается в разделе про CI; здесь важен состав: один запуск <code>ruff check</code> покрывает и оформление кода, и наличие описаний.</p>
+
+        <h2 id="s12"><span class="sec">§12</span>Мини-практика: десять минут</h2>
+        <ol class="steps">
+          <li>Установите расширение <code>njpwerner.autodocstring</code> через панель расширений.</li>
+          <li>Создайте в проекте файл <code>.vscode/settings.json</code> с параметрами из §4.</li>
+          <li>Откройте функцию без докстринга, поставьте курсор под подписью, наберите три кавычки и нажмите <kbd>Enter</kbd>. Заполните вставленные поля, переходя по <kbd>Tab</kbd>.</li>
+          <li>Добавьте в <code>pyproject.toml</code> разделы из §9 и выполните <code>ruff check app</code>. Разберите каждое замечание по таблице §10.</li>
+          <li>Исправьте замечания и добейтесь вывода <code>All checks passed!</code>.</li>
+          <li>Добавьте в функцию новый параметр, не дописывая раздел <code>Args:</code>, и запустите проверку снова: появится <code>D417</code>. Верните докстринг в соответствие с подписью.</li>
+        </ol>
+
+        <h2 id="s13"><span class="sec">§13</span>Частые вопросы</h2>
+        <div class="myths">
+          <div class="myth">
+            <div class="myth__no"><b>Обычно думают</b>Расширение создаёт документацию за разработчика.</div>
+            <div class="myth__yes"><b>На самом деле</b>Расширение вставляет разметку и имена параметров из подписи. Описания остаются полями <code>_description_</code>, и текст в них пишет человек.</div>
+          </div>
+          <div class="myth">
+            <div class="myth__no"><b>Обычно думают</b>Проверка Ruff показывает, что докстринг правильный.</div>
+            <div class="myth__yes"><b>На самом деле</b>Проверка находит отсутствие докстринга, нарушения оформления и расхождение списка параметров с подписью. Верность описания по смыслу она не проверяет: докстринг с текстом <code>_description_</code> для неё в порядке.</div>
+          </div>
+          <div class="myth">
+            <div class="myth__no"><b>Обычно думают</b>Настройки редактора у каждого свои, в репозиторий их класть не нужно.</div>
+            <div class="myth__yes"><b>На самом деле</b>Формат докстрингов и набор правил проверки — договорённость команды, и хранится она в <code>.vscode/settings.json</code> и <code>pyproject.toml</code> внутри репозитория. Личные настройки остаются в настройках пользователя.</div>
+          </div>
+          <div class="myth">
+            <div class="myth__no"><b>Обычно думают</b>Раз есть генератор, докстринги можно расставить в конце разработки одним проходом.</div>
+            <div class="myth__yes"><b>На самом деле</b>Генератор подставляет имена и разметку, а смысл описания восстанавливается чтением собственного кода. Пока функция в работе, эти сведения есть; через месяц их приходится выяснять заново.</div>
+          </div>
+        </div>
+
+        <h2 id="s14"><span class="sec">§14</span>Проверьте себя</h2>
+        <details>
+          <summary>Что именно вставляет autoDocstring и что остаётся человеку?</summary>
+          <p>Расширение вставляет разметку выбранного формата, имена параметров из подписи, признак необязательности со значением по умолчанию, раздел <code>Raises:</code> при наличии <code>raise</code> в теле и раздел результата. Человек пишет краткую строку и описания на месте полей <code>_description_</code>.</p>
+        </details>
+        <details>
+          <summary>Чем настройки проекта отличаются от настроек пользователя?</summary>
+          <p>Настройки проекта лежат в <code>.vscode/settings.json</code> внутри репозитория и действуют у всех, кто его откроет: туда пишут формат докстрингов и общие правила. Настройки пользователя лежат в папке профиля VS Code, действуют на все проекты этого компьютера и в репозиторий не попадают.</p>
+        </details>
+        <details>
+          <summary>Зачем в <code>pyproject.toml</code> строка <code>convention = "google"</code>?</summary>
+          <p>Она согласует правила проверки с выбранным форматом: правила, относящиеся к другим форматам, отключаются. Без неё включённый набор <code>"D"</code> выдаёт замечания, требующие несовместимого оформления.</p>
+        </details>
+        <details>
+          <summary>Что находит правило <code>D417</code> и почему оно полезнее остальных?</summary>
+          <p>Оно сравнивает параметры в подписи функции с перечнем в разделе <code>Args:</code>. Так находится расхождение, которое возникает после правки подписи: добавленный аргумент без описания или описание удалённого аргумента. Остальные правила проверяют наличие и оформление докстринга, а это — соответствие докстринга коду.</p>
+        </details>
+        <details>
+          <summary>Почему с папки тестов снимают требование докстрингов?</summary>
+          <p>Имя тестовой функции описывает проверяемый случай: <code>test_average_empty_list_raises</code>. Отдельное описание повторяло бы имя. Поэтому в настройках проверки для папки тестов правила <code>D</code> отключают.</p>
+        </details>
+        <details>
+          <summary>Проверка <code>ruff check</code> прошла без замечаний. Означает ли это, что документация в порядке?</summary>
+          <p>Нет. Проверка отвечает за наличие докстрингов, их оформление и совпадение перечня параметров с подписью. Верность описания по смыслу и его соответствие поведению функции проверяет человек на разборе запроса на слияние.</p>
+        </details>
+
+        <h2 id="s15"><span class="sec">§15</span>Шпаргалка по главе</h2>
+        <div class="cheat">
+          <div>
+            <b>Расширения</b>
+            <code>njpwerner.autodocstring</code>
+            <code>charliermarsh.ruff</code>
+          </div>
+          <div>
+            <b>Вставить заготовку</b>
+            <code>""" и Enter</code>
+            <code>Cmd/Ctrl+Shift+2</code>
+            <code>палитра: Generate Docstring</code>
+          </div>
+          <div>
+            <b>Настройки проекта</b>
+            <code>.vscode/settings.json</code>
+            <code>autoDocstring.docstringFormat</code>
+            <code>значение google</code>
+          </div>
+          <div>
+            <b>Правила проверки</b>
+            <code>pyproject.toml</code>
+            <code>select = ["D"]</code>
+            <code>convention = "google"</code>
+          </div>
+          <div>
+            <b>Запуск</b>
+            <code>ruff check app</code>
+            <code>панель Problems</code>
+            <code>Quick Fix: Cmd/Ctrl+.</code>
+          </div>
+          <div>
+            <b>Частые коды</b>
+            <code>D100, D103 — нет описания</code>
+            <code>D205 — нет пустой строки</code>
+            <code>D417 — параметр без описания</code>
+          </div>
+        </div>
+
+        <h3>Итог главы</h3>
+        <p>Редактор с расширением Python показывает докстринг в подсказке, но заготовку по подписи не создаёт: для этого ставят расширение <code>njpwerner.autodocstring</code>. Оно вставляет разметку выбранного формата, имена параметров, признак необязательности и раздел исключений; описания пишет человек. Формат задают в <code>.vscode/settings.json</code> внутри репозитория, потому что это договорённость команды. Свой шаблон подключают файлом mustache, а простую заготовку можно получить сниппетом редактора без установки расширений. Пропущенные и неверно оформленные докстринги находит проверка: правила pydocstyle включаются в <code>pyproject.toml</code> набором <code>"D"</code> с конвенцией <code>google</code> и запускаются командой <code>ruff check</code> в редакторе и в проверках запроса на слияние. Правило <code>D417</code> сравнивает перечень параметров в докстринге с подписью функции. Верность описания по смыслу проверяет человек. В следующей главе всё это применяется к своему проекту: практика на паре и домашнее задание.</p>
+
+        <div class="sources">
+          <b>Откуда взяты факты</b>
+          <ol>
+            <li>Параметры, сочетания клавиш и перечень форматов расширения — <a href="https://marketplace.visualstudio.com/items?itemName=njpwerner.autodocstring">страница autoDocstring в каталоге расширений VS Code</a>.</li>
+            <li>Уровни настроек и расположение файла настроек пользователя — <a href="https://code.visualstudio.com/docs/getstarted/settings">документация VS Code, раздел Settings</a>.</li>
+            <li>Правила pydocstyle, их коды и конвенции — <a href="https://docs.astral.sh/ruff/rules/#pydocstyle-d">документация Ruff, перечень правил pydocstyle</a>.</li>
+            <li>Синтаксис сниппетов — <a href="https://code.visualstudio.com/docs/editor/userdefinedsnippets">документация VS Code, Snippets</a>.</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="04-razbor-sluchaev.html">← 4.4 Разбор случаев: двенадцать функций</a><a href="06-praktika-i-dz.html">4.6 Практика и домашнее задание →</a></div>
+
+        <div class="colophon">
+          <span>Глава 4.5 · VS Code: генератор и проверка · МДК.01.01</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="book.js"></script>
+</body>
+</html>

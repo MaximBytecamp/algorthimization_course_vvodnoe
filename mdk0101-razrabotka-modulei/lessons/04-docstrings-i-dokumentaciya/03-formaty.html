@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>4.3 Четыре формата докстрингов · Докстринги и документация</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Тема 04 · Докстринги и документация кода</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Докстринги и документация кода</a> · МДК.01.01 · разработка программных модулей</p>
+          <p class="running__folio">Глава 4.3</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">4.3</span>
+          <h1>Четыре формата<br>на одной функции</h1>
+          <p class="lead">В этой главе одна и та же функция записана четырьмя способами: по PEP 257, в reStructuredText, в стиле Google и в стиле NumPy. Разобрано, чем форматы различаются, какие разделы в них есть, что из них понимает сборщик документации и почему в проекте выбирают один формат на всех.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Форматы записи</dd></div>
+          <div><dt>Уровень</dt><dd>Начальный</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 4.1 и 4.2</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Читать чужие докстринги и писать в формате проекта</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Зачем нужны форматы</a></li>
+            <li><a href="#s2">Функция для сравнения</a></li>
+            <li><a href="#s3">Формат 1. PEP 257 без разделов</a></li>
+            <li><a href="#s4">Формат 2. reStructuredText</a></li>
+            <li><a href="#s5">Формат 3. Google</a></li>
+            <li><a href="#s6">Формат 4. NumPy</a></li>
+            <li><a href="#s7">Сравнение четырёх форматов</a></li>
+            <li><a href="#s8">Разделы и когда они нужны</a></li>
+            <li><a href="#s9">Примеры, которые проверяются запуском</a></li>
+            <li><a href="#s10">Формат этого курса</a></li>
+            <li><a href="#s11">Проверьте себя</a></li>
+            <li><a href="#s12">Шпаргалка по главе</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Зачем нужны форматы</h2>
+        <p>PEP 257 задаёт общие правила записи: тройные кавычки, краткая первая строка, пустая строка после неё. Как перечислять параметры и что писать про возвращаемое значение, он не определяет. Из-за этого сложились несколько соглашений с готовой разметкой разделов; их называют <span class="term">форматами докстрингов</span>.</p>
+        <p>Формат нужен по двум причинам. Первая: читателю не приходится каждый раз разбираться в устройстве текста — раздел с параметрами стоит там же, где в остальных функциях проекта. Вторая: сборщик документации по этой разметке строит таблицы параметров на странице. Текст в свободной форме он покажет как абзац.</p>
+        <p>Четыре формата встречаются постоянно, и различаются они только записью разделов:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Формат</th><th>Откуда взялся</th><th>Как выглядит параметр</th></tr></thead>
+            <tbody>
+              <tr><td><b>PEP 257</b></td><td>Стандарт Python, разделов не задаёт</td><td>Обычным текстом в абзаце</td></tr>
+              <tr><td><b>reStructuredText</b> (reST)</td><td>Разметка документации Python и Sphinx</td><td><code>:param path: описание</code></td></tr>
+              <tr><td><b>Google</b></td><td>Соглашение проектов Google</td><td>Раздел <code>Args:</code>, внутри <code>path: описание</code></td></tr>
+              <tr><td><b>NumPy</b></td><td>Библиотеки NumPy и SciPy</td><td>Раздел <code>Parameters</code> с чертой, внутри <code>path : Path</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s2"><span class="sec">§2</span>Функция для сравнения</h2>
+        <p>Все четыре записи сделаны для одной функции из проекта кафе. Она берёт список заказов, считает выручку по каждому официанту и возвращает словарь. Пустой список для неё недопустим.</p>
+        <figure class="code">
+          <figcaption><span>app/services/orders.py</span><span>функция без докстринга</span></figcaption>
+<pre><span class="k">def</span> <span class="f">revenue_by_waiter</span>(orders: <span class="k">list</span>[Order], top: <span class="k">int</span> = <span class="n">0</span>) -&gt; <span class="k">dict</span>[<span class="k">str</span>, <span class="k">int</span>]:
+    <span class="k">if</span> <span class="k">not</span> orders:
+        <span class="k">raise</span> ValueError(<span class="s">"Список заказов пуст"</span>)
+    totals: <span class="k">dict</span>[<span class="k">str</span>, <span class="k">int</span>] = {}
+    <span class="k">for</span> order <span class="k">in</span> orders:
+        totals[order.waiter] = totals.get(order.waiter, <span class="n">0</span>) + order.kopeks
+    ranked = <span class="f">sorted</span>(totals.items(), key=<span class="k">lambda</span> pair: -pair[<span class="n">1</span>])
+    <span class="k">if</span> top:
+        ranked = ranked[:top]
+    <span class="k">return</span> <span class="k">dict</span>(ranked)</pre>
+        </figure>
+        <p>Из подписи видно, что на входе список заказов и целое число, на выходе словарь со строковыми ключами. Из подписи не видно четыре вещи: что значения словаря — копейки, что ключи идут в порядке убывания выручки, что <code>top</code> со значением <code>0</code> означает «все официанты», и что пустой список приводит к <code>ValueError</code>. Это и есть содержание докстринга.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Формат 1. PEP 257 без разделов</h2>
+        <p>Самая простая запись: краткая строка и абзац подробностей без разметки. Стандарт этого достаточно.</p>
+        <figure class="code">
+          <figcaption><span>Формат PEP 257</span><span>без разделов</span></figcaption>
+<pre>    <span class="s">"""Считает выручку по каждому официанту.
+
+    Суммы возвращаются в копейках, официанты идут в порядке убывания
+    выручки. Значение top = 0 означает, что возвращаются все официанты,
+    иначе остаются только первые top. Пустой список заказов приводит
+    к ValueError.
+    """</span></pre>
+        </figure>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Сильная сторона</th><th>Ограничение</th></tr></thead>
+            <tbody>
+              <tr><td>Пишется быстро, читается как обычный текст</td><td>Параметры перечислены в абзаце: при четырёх аргументах текст становится сплошным</td></tr>
+              <tr><td>Никаких дополнительных правил запоминать не нужно</td><td>Сборщик документации не построит таблицу параметров, покажет абзац</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Такая запись применяется для коротких функций и служебных модулей. Для функции с несколькими параметрами и исключениями берут формат с разделами.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Формат 2. reStructuredText</h2>
+        <p><span class="term">reStructuredText</span> — язык разметки, на котором написана документация самого Python. В докстринге от него используются поля: строка начинается с двоеточия, затем имя поля, затем двоеточие и текст.</p>
+        <figure class="code">
+          <figcaption><span>Формат reStructuredText</span><span>поля с двоеточиями</span></figcaption>
+<pre>    <span class="s">"""Считает выручку по каждому официанту.
+
+    :param orders: Заказы за смену, список не должен быть пустым.
+    :type orders: list[Order]
+    :param top: Сколько официантов оставить; 0 — оставить всех.
+    :type top: int
+    :return: Выручка в копейках по официантам, по убыванию суммы.
+    :rtype: dict[str, int]
+    :raises ValueError: Если список заказов пуст.
+    """</span></pre>
+        </figure>
+        <p>Поля <code>:type:</code> и <code>:rtype:</code> нужны, когда у функции нет аннотаций типов. При аннотированной подписи их опускают: иначе один и тот же тип записан в двух местах и после правки расходится.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Сильная сторона</th><th>Ограничение</th></tr></thead>
+            <tbody>
+              <tr><td>Понимается сборщиком без дополнительных настроек</td><td>Каждая строка начинается со служебных символов, читать в редакторе тяжелее</td></tr>
+              <tr><td>Внутри полей доступна вся разметка reStructuredText: ссылки, списки, вставки кода</td><td>Разметку нужно знать: у неё свои правила про отступы и переносы</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s5"><span class="sec">§5</span>Формат 3. Google</h2>
+        <p>Формат Google размечает разделы обычными словами с двоеточием, а содержимое — отступом. Служебных символов в тексте нет.</p>
+        <figure class="code">
+          <figcaption><span>Формат Google</span><span>разделы Args, Returns, Raises</span></figcaption>
+<pre>    <span class="s">"""Считает выручку по каждому официанту.
+
+    Args:
+        orders: Заказы за смену, список не должен быть пустым.
+        top: Сколько официантов оставить в результате. Значение 0
+            означает, что возвращаются все.
+
+    Returns:
+        Выручка в копейках по именам официантов, в порядке убывания
+        суммы.
+
+    Raises:
+        ValueError: Если список заказов пуст.
+    """</span></pre>
+        </figure>
+        <p>Длинное описание параметра переносится на следующую строку с дополнительным отступом — так видно, что это продолжение того же пункта.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Сильная сторона</th><th>Ограничение</th></tr></thead>
+            <tbody>
+              <tr><td>Читается в редакторе как обычный текст, разделы видны сразу</td><td>Сборщику документации нужно расширение, которое понимает эту разметку</td></tr>
+              <tr><td>Занимает меньше строк, чем NumPy, при том же составе разделов</td><td>Отступы значимы: сбитый отступ превращает раздел в абзац</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="margin-note margin-note--steel">
+          <b>На полях: расширение napoleon</b>
+          <p>Разделы <code>Args:</code> и <code>Parameters</code> сборщик Sphinx понимает через расширение <code>sphinx.ext.napoleon</code>: оно переводит форматы Google и NumPy в поля reStructuredText перед сборкой. Подключается строкой в настройках сборки, и это единственное, что требуется для этих двух форматов. Подробно — в теме про Sphinx.</p>
+        </div>
+
+        <h2 id="s6"><span class="sec">§6</span>Формат 4. NumPy</h2>
+        <p>Формат NumPy размечает разделы заголовком с чертой из дефисов под ним. Имя параметра и его тип пишутся через двоеточие, описание — на следующей строке с отступом.</p>
+        <figure class="code">
+          <figcaption><span>Формат NumPy</span><span>заголовки с подчёркиванием</span></figcaption>
+<pre>    <span class="s">"""Считает выручку по каждому официанту.
+
+    Parameters
+    ----------
+    orders : list[Order]
+        Заказы за смену, список не должен быть пустым.
+    top : int, optional
+        Сколько официантов оставить в результате, по умолчанию 0 —
+        возвращаются все.
+
+    Returns
+    -------
+    dict[str, int]
+        Выручка в копейках по именам официантов, по убыванию суммы.
+
+    Raises
+    ------
+    ValueError
+        Если список заказов пуст.
+    """</span></pre>
+        </figure>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Сильная сторона</th><th>Ограничение</th></tr></thead>
+            <tbody>
+              <tr><td>Подробно: тип, признак необязательности и описание разнесены</td><td>Занимает много строк, у короткой функции описание длиннее тела</td></tr>
+              <tr><td>Принят в научных библиотеках, привычен их пользователям</td><td>Черта под заголовком должна совпадать по длине со словом, это легко нарушить</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s7"><span class="sec">§7</span>Сравнение четырёх форматов</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Признак</th><th>PEP 257</th><th>reST</th><th>Google</th><th>NumPy</th></tr></thead>
+            <tbody>
+              <tr><td>Разделы для параметров</td><td>нет</td><td><code>:param:</code></td><td><code>Args:</code></td><td><code>Parameters</code> + черта</td></tr>
+              <tr><td>Строк на разобранную функцию</td><td><code>7</code></td><td><code>10</code></td><td><code>12</code></td><td><code>18</code></td></tr>
+              <tr><td>Служебные символы в тексте</td><td>нет</td><td>много</td><td>нет</td><td>нет</td></tr>
+              <tr><td>Нужно расширение для сборки</td><td>нет</td><td>нет</td><td>napoleon</td><td>napoleon</td></tr>
+              <tr><td>Таблица параметров на странице</td><td>нет</td><td>да</td><td>да</td><td>да</td></tr>
+              <tr><td>Где встречается чаще</td><td>короткие служебные функции</td><td>старые проекты и документация Python</td><td>прикладные проекты и веб-сервисы</td><td>NumPy, SciPy, pandas</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Формат выбирают один на весь проект и записывают это решение в README или в настройках проверки. Смешивать форматы в одном репозитории — то же, что смешивать отступы в четыре и восемь пробелов: работать будет, а читать придётся с переключением.</p>
+
+        <h2 id="s8"><span class="sec">§8</span>Разделы и когда они нужны</h2>
+        <p>Названия разделов даны в записи формата Google; в остальных форматах они называются похоже.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Раздел</th><th>Что в нём</th><th>Когда нужен</th></tr></thead>
+            <tbody>
+              <tr><td><code>Args:</code></td><td>Параметры: ограничения, единицы измерения, смысл значений по умолчанию</td><td>Когда из имени и аннотации ограничения не видны</td></tr>
+              <tr><td><code>Returns:</code></td><td>Что означает возвращаемое значение, в каком порядке, в каких единицах</td><td>Когда функция возвращает значение</td></tr>
+              <tr><td><code>Yields:</code></td><td>Что выдаёт генератор на каждом шаге</td><td>Вместо <code>Returns:</code> в функциях с <code>yield</code></td></tr>
+              <tr><td><code>Raises:</code></td><td>Класс исключения и условие, при котором оно возбуждается</td><td>Когда функция возбуждает исключение сама</td></tr>
+              <tr><td><code>Attributes:</code></td><td>Атрибуты объекта и их смысл</td><td>В докстринге класса</td></tr>
+              <tr><td><code>Examples:</code></td><td>Вызов функции и результат</td><td>Когда порядок аргументов или формат результата неочевиден</td></tr>
+              <tr><td><code>Note:</code></td><td>Побочные действия: запись файла, изменение аргумента на месте, обращение к сети</td><td>Когда функция делает что-то помимо вычисления результата</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Раздел, в котором нечего написать, пропускают. Пустой <code>Returns:</code> у функции, возвращающей <code>None</code>, занимает две строки и не сообщает ничего.</p>
+
+        <h2 id="s9"><span class="sec">§9</span>Примеры, которые проверяются запуском</h2>
+        <p>Раздел с примерами оформляют так, как выглядит работа в интерактивном режиме Python: строка ввода начинается с трёх угловых скобок, под ней — ожидаемый вывод. У такой записи есть дополнительное свойство: встроенный модуль <code>doctest</code> находит эти примеры, выполняет их и сравнивает результат с тем, что написано.</p>
+        <figure class="code">
+          <figcaption><span>app/utils/formatter.py</span><span>пример в докстринге</span></figcaption>
+<pre><span class="k">def</span> <span class="f">format_kopeks</span>(kopeks: <span class="k">int</span>) -&gt; <span class="k">str</span>:
+    <span class="s">"""Переводит сумму в копейках в строку с рублями.
+
+    Examples:
+        &gt;&gt;&gt; format_kopeks(125000)
+        '1 250,00 ₽'
+        &gt;&gt;&gt; format_kopeks(0)
+        '0,00 ₽'
+    """</span></pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>проверка примеров</span></figcaption>
+<pre>$ python -m doctest app/utils/formatter.py -v
+2 items passed all tests:
+   2 tests in app.utils.formatter.format_kopeks
+2 tests in 3 items.
+2 passed.</pre>
+        </figure>
+        <p>Расхождение примера с поведением функции эта команда показывает как несовпадение строк: ожидалось одно, получено другое. Так описание перестаёт устаревать молча — устаревший пример становится падающей проверкой. Запускать <code>doctest</code> можно вместе с тестами: <code>pytest --doctest-modules</code>.</p>
+        <div class="margin-note">
+          <b>На полях: что не годится для примеров</b>
+          <p>Примеры сравниваются построчно как текст. Вызов, результат которого меняется от запуска к запуску — текущее время, случайное число, путь к файлу на конкретном компьютере, — в таком виде проверить нельзя. Для примеров берут вызовы с постоянным результатом; остальное проверяют обычными тестами.</p>
+        </div>
+
+        <h2 id="s10"><span class="sec">§10</span>Формат этого курса</h2>
+        <p>В проектах дисциплины принят формат Google. Основания такие:</p>
+        <ul>
+          <li>Разделы читаются в редакторе без разметки: студент видит тот же текст, что попадёт на страницу документации.</li>
+          <li>Типы остаются в подписи функции, в докстринге их дублировать не требуется.</li>
+          <li>Формат поддерживается генератором докстрингов в VS Code из главы 4.5 и проверкой из той же главы.</li>
+          <li>Он применяется в прикладных проектах и веб-сервисах, а курс заканчивается сервисом на FastAPI.</li>
+        </ul>
+        <p>Формат NumPy встретится при чтении документации научных библиотек, reStructuredText — в старых проектах и в исходниках стандартной библиотеки. Их достаточно узнавать и понимать.</p>
+
+        <h2 id="s11"><span class="sec">§11</span>Проверьте себя</h2>
+        <details>
+          <summary>Зачем нужны форматы, если PEP 257 разделов не требует?</summary>
+          <p>Формат даёт одинаковое место для одинаковых сведений: читатель находит раздел о параметрах там же, где в остальных функциях проекта. Второе основание — сборщик документации: по размеченным разделам он строит таблицу параметров, а текст без разметки показывает абзацем.</p>
+        </details>
+        <details>
+          <summary>В функции есть аннотации типов. Нужны ли поля <code>:type:</code> в формате reStructuredText?</summary>
+          <p>Нет. Тип уже записан в подписи, и второе его упоминание после правки функции расходится с первым. Поля <code>:type:</code> и <code>:rtype:</code> применяют в коде без аннотаций.</p>
+        </details>
+        <details>
+          <summary>Чем разделы Google отличаются от разделов NumPy по записи?</summary>
+          <p>В Google раздел открывается словом с двоеточием (<code>Args:</code>), содержимое идёт с отступом, тип не повторяется. В NumPy раздел открывается заголовком (<code>Parameters</code>) с чертой из дефисов под ним, имя параметра и тип записываются в одну строку через двоеточие, описание — ниже с отступом. Запись NumPy занимает больше строк.</p>
+        </details>
+        <details>
+          <summary>Что требуется для сборки документации из докстрингов в формате Google?</summary>
+          <p>Расширение <code>sphinx.ext.napoleon</code>: оно переводит разделы Google и NumPy в поля reStructuredText перед сборкой. Формат reStructuredText сборщик понимает без расширений.</p>
+        </details>
+        <details>
+          <summary>Какой раздел ставят у функции-генератора и почему?</summary>
+          <p><code>Yields:</code> вместо <code>Returns:</code>. Генератор выдаёт значения по одному при каждом шаге перебора, и описывается то, что приходит на каждом шаге.</p>
+        </details>
+        <details>
+          <summary>Чем пример в разделе <code>Examples:</code> отличается от обычного описания?</summary>
+          <p>Он записан как строки интерактивного режима и поэтому проверяем запуском: <code>python -m doctest</code> выполняет вызовы и сравнивает вывод с написанным. Расхождение примера с поведением функции становится падающей проверкой.</p>
+        </details>
+
+        <h2 id="s12"><span class="sec">§12</span>Шпаргалка по главе</h2>
+        <div class="cheat">
+          <div>
+            <b>PEP 257</b>
+            <code>краткая строка + абзац</code>
+            <code>разделов нет</code>
+          </div>
+          <div>
+            <b>reStructuredText</b>
+            <code>:param x: описание</code>
+            <code>:return: описание</code>
+            <code>:raises ValueError: когда</code>
+          </div>
+          <div>
+            <b>Google — формат курса</b>
+            <code>Args:</code>
+            <code>Returns:</code>
+            <code>Raises:</code>
+          </div>
+          <div>
+            <b>NumPy</b>
+            <code>Parameters</code>
+            <code>----------</code>
+            <code>x : int</code>
+          </div>
+          <div>
+            <b>Остальные разделы</b>
+            <code>Yields: у генератора</code>
+            <code>Attributes: у класса</code>
+            <code>Examples: с &gt;&gt;&gt;</code>
+          </div>
+          <div>
+            <b>Проверить примеры</b>
+            <code>python -m doctest файл.py -v</code>
+            <code>pytest --doctest-modules</code>
+          </div>
+        </div>
+
+        <h3>Итог главы</h3>
+        <p>PEP 257 задаёт общие правила записи, а разметку разделов задают форматы. Запись по PEP 257 состоит из краткой строки и абзаца и годится для коротких функций. reStructuredText размечает сведения полями с двоеточиями и понимается сборщиком без настроек. Формат Google размечает разделы словами <code>Args</code>, <code>Returns</code>, <code>Raises</code> и читается в редакторе как обычный текст. Формат NumPy подробнее остальных: заголовок раздела с чертой, тип рядом с именем параметра, описание ниже. Google и NumPy собираются в документацию через расширение napoleon. Раздел с примерами, записанный строками интерактивного режима, проверяется запуском <code>doctest</code>. В дисциплине принят формат Google, один на все проекты. В следующей главе он применён к двенадцати небольшим функциям разного вида.</p>
+
+        <div class="sources">
+          <b>Откуда взяты факты</b>
+          <ol>
+            <li>Общие правила записи — <a href="https://peps.python.org/pep-0257/">PEP 257, Docstring Conventions</a>.</li>
+            <li>Разделы форматов Google и NumPy и их поддержка при сборке — <a href="https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html">документация расширения sphinx.ext.napoleon</a>.</li>
+            <li>Поля reStructuredText для описания функций — <a href="https://www.sphinx-doc.org/en/master/usage/domains/python.html#info-field-lists">документация Sphinx, списки информационных полей</a>.</li>
+            <li>Проверка примеров из докстрингов — <a href="https://docs.python.org/3/library/doctest.html">документация модуля doctest</a>.</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="02-chto-takoe-dokstring.html">← 4.2 Докстринг: где пишется и как читается</a><a href="04-razbor-sluchaev.html">4.4 Разбор случаев: двенадцать функций →</a></div>
+
+        <div class="colophon">
+          <span>Глава 4.3 · Четыре формата на одной функции · МДК.01.01</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="book.js"></script>
+</body>
+</html>
