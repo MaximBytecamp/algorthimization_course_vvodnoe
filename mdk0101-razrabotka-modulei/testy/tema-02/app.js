@@ -175,6 +175,30 @@ function codeBlock(code, cls = '', file = 'main.py') {
     code.split('\n').map((line, i) => `<span class="ln" data-l="${i}">${esc(line) || ' '}</span>`).join('')}</pre></figure>`;
 }
 
+/* Несколько файлов проекта — вкладками. Открыт первый, остальные по нажатию. */
+function filesBlock(files) {
+  const lines = code => code.split('\n').map((line, i) => `<span class="ln" data-l="${i}">${esc(line) || ' '}</span>`).join('');
+  return `<figure class="q-code q-files">
+    <div class="tabs" role="tablist" aria-label="Файлы проекта">${files.map((f, i) =>
+      `<button type="button" class="tab${i ? '' : ' on'}" role="tab" aria-selected="${i ? 'false' : 'true'}" data-tab="${i}">${esc(f.name)}</button>`).join('')}</div>
+    ${files.map((f, i) => `<div class="pane" data-pane="${i}"${i ? ' hidden' : ''}>${f.note ? `<p class="pane-note">${esc(f.note)}</p>` : ''}<pre>${lines(f.code)}</pre></div>`).join('')}
+    <figcaption><span>Нажмите имя файла, чтобы открыть его</span><span>Python 3.12</span></figcaption>
+  </figure>`;
+}
+
+document.addEventListener('click', e => {
+  const tab = e.target.closest('.q-files .tab');
+  if (!tab) return;
+  const fig = tab.closest('.q-files');
+  fig.querySelectorAll('.tab').forEach(t => { const on = t === tab; t.classList.toggle('on', on); t.setAttribute('aria-selected', on); });
+  fig.querySelectorAll('.pane').forEach(p => { p.hidden = p.dataset.pane !== tab.dataset.tab; });
+});
+
+function sourceBlock(q) {
+  if (q.files) return filesBlock(q.files);
+  return q.code && q.type !== 'line' ? codeBlock(q.code, '', q.file) : '';
+}
+
 function imageBlock(img) {
   return img ? `<figure class="q-img">${img.svg}<figcaption>${esc(img.caption)}</figcaption></figure>` : '';
 }
@@ -254,7 +278,7 @@ function renderQuestions() {
     card.id = 'card-' + q.id;
     card.innerHTML = questionHead(q, pos)
       + imageBlock(q.image)
-      + (q.code && q.type !== 'line' ? codeBlock(q.code, '', q.file) : '')
+      + sourceBlock(q)
       + (HINT[q.type] ? `<p class="q-hint">${HINT[q.type]}</p>` : '')
       + '<div class="body"></div>';
     host.appendChild(card);
@@ -565,7 +589,7 @@ async function renderResult(r, returning) {
     return `<article class="q rv ${d.ok ? 'ok' : 'bad'}" id="rv-${q.id}">
       ${questionHead(q, pos, verdict)}
       ${imageBlock(q.image)}
-      ${q.code && q.type !== 'line' ? codeBlock(q.code, '', q.file) : ''}
+      ${sourceBlock(q)}
       ${reviewBody(q, raw[q.id], key)}
       <div class="why"><b>Разбор</b>${secret[q.id].why}</div>
     </article>`;
