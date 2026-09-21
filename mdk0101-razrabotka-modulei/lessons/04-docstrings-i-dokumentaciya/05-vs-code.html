@@ -320,6 +320,87 @@ convention = <span class="s">"google"</span>
             </tbody>
           </table>
         </div>
+        <p>Как это выглядит на коде проекта — четыре случая с настоящим выводом проверки:</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>Какое правило сработает</b><span>четыре случая из проекта</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>Описания нет</button>
+            <button>Нет пустой строки</button>
+            <button>Параметр без описания</button>
+            <button>Кавычки и точка</button>
+          </div>
+
+          <div class="demo__pane">
+            <figure class="code">
+              <figcaption><span>app/utils/formatter.py</span><span>как написано</span></figcaption>
+<pre><span class="k">def</span> <span class="f">format_title</span>(text: <span class="k">str</span>, width: <span class="k">int</span> = <span class="n">40</span>) -&gt; <span class="k">str</span>:
+    <span class="k">return</span> text.center(width, <span class="s">"="</span>)</pre>
+            </figure>
+            <span class="demo__label">вывод ruff check</span>
+            <figure class="code code--out">
+              <figcaption><span>Терминал</span><span>--output-format=concise</span></figcaption>
+<pre>formatter.py:1:1: D100 Missing docstring in public module
+formatter.py:1:5: D103 Missing docstring in public function</pre>
+            </figure>
+            <p class="demo__verdict"><b>Исправление</b>Добавить докстринг модуля первой строкой файла и докстринг функции сразу после <code>def</code>.</p>
+          </div>
+
+          <div class="demo__pane">
+            <figure class="code">
+              <figcaption><span>app/utils/formatter.py</span><span>как написано</span></figcaption>
+<pre>    <span class="s">"""Центрирует заголовок отчёта
+    Достраивает строку знаками «=» до нужной ширины.
+    """</span></pre>
+            </figure>
+            <span class="demo__label">вывод ruff check</span>
+            <figure class="code code--out">
+              <figcaption><span>Терминал</span><span>--output-format=concise</span></figcaption>
+<pre>formatter.py:5:5: D205 1 blank line required between summary
+line and description</pre>
+            </figure>
+            <p class="demo__verdict"><b>Исправление</b>Поставить точку в конце краткой строки и отделить её от пояснения пустой строкой.</p>
+          </div>
+
+          <div class="demo__pane">
+            <figure class="code">
+              <figcaption><span>app/services/orders.py</span><span>у функции два параметра</span></figcaption>
+<pre>    <span class="s">"""Считает выручку по официантам.
+
+    Args:
+        orders: Заказы за смену.
+
+    Returns:
+        Выручка по именам.
+    """</span></pre>
+            </figure>
+            <span class="demo__label">вывод ruff check</span>
+            <figure class="code code--out">
+              <figcaption><span>Терминал</span><span>--output-format=concise</span></figcaption>
+<pre>orders.py:4:5: D417 Missing argument description in the
+docstring for `revenue`: `top`</pre>
+            </figure>
+            <p class="demo__verdict"><b>Исправление</b>Дописать в раздел <code>Args:</code> строку про <code>top</code>. Это правило сравнивает докстринг с подписью функции, поэтому находит расхождение после правки кода.</p>
+          </div>
+
+          <div class="demo__pane">
+            <figure class="code">
+              <figcaption><span>app/utils/clock.py</span><span>как написано</span></figcaption>
+<pre>    <span class="s">"""
+    Возвращает дату для шапки отчёта
+    """</span></pre>
+            </figure>
+            <span class="demo__label">вывод ruff check</span>
+            <figure class="code code--out">
+              <figcaption><span>Терминал</span><span>--output-format=concise</span></figcaption>
+<pre>clock.py:5:5: D200 One-line docstring should fit on one line
+clock.py:5:5: D212 Multi-line docstring summary should start
+at the first line
+clock.py:5:5: D415 First line should end with a period,
+question mark, or exclamation point</pre>
+            </figure>
+            <p class="demo__verdict"><b>Исправление</b>Свести к одной строке и поставить точку: <code>"""Возвращает дату для шапки отчёта."""</code>. У <code>D212</code> есть готовое исправление в меню быстрых действий.</p>
+          </div>
+        </div>
         <p>Правило <code>D417</code> отличается от остальных тем, что сравнивает докстринг с кодом: перечень параметров в разделе <code>Args:</code> с подписью функции. Добавленный аргумент, для которого забыли строку описания, находится сразу. Остальные правила проверяют наличие описания и его оформление.</p>
         <p>У части замечаний есть готовое исправление. Пример: заготовка генератора оставляет краткую строку <code>_summary_</code> без точки на конце, и правило <code>D415</code> предлагает её поставить.</p>
         <figure class="shot">
@@ -337,6 +418,32 @@ convention = <span class="s">"google"</span>
           <img src="img/vscode-problems-ruff.png" alt="Панель Problems в VS Code: три замечания Ruff с кодами D100 и D103 для файла formatter.py">
           <figcaption>Панель <b>Problems</b> для открытого файла <code>formatter.py</code>. Замечания подписаны источником: <code>Ruff(D100)</code> — нет докстринга у модуля, <code>Ruff(D103)</code> — у двух функций. Справа в скобках строка и колонка; щелчок по строке открывает это место в файле. Цифра <code>3</code> рядом с именем файла в проводнике — то же число замечаний.</figcaption>
         </figure>
+        <div class="flowline" data-play>
+          <p class="flowline__head">Путь пропущенного описания</p>
+          <div class="flowline__track">
+            <div class="flowline__step">
+              <b>1 · Код</b>
+              <span>Функция дописана, докстринг забыт.</span>
+              <em>программа работает</em>
+            </div>
+            <div class="flowline__step">
+              <b>2 · Редактор</b>
+              <span>Расширение Ruff подчёркивает строку <code>def</code> и пишет замечание в панель Problems.</span>
+              <em>видно сразу</em>
+            </div>
+            <div class="flowline__step">
+              <b>3 · Терминал</b>
+              <span><code>ruff check app</code> печатает файл, строку и код правила.</span>
+              <em>перед коммитом</em>
+            </div>
+            <div class="flowline__step">
+              <b>4 · Запрос на слияние</b>
+              <span>Та же команда выполняется на стороне репозитория и отмечает проверку непройденной.</span>
+              <em>до разбора работы</em>
+            </div>
+          </div>
+          <p class="flowline__foot">Шаги <code>2</code> и <code>3</code> зависят от одного файла настроек — <code>pyproject.toml</code>, поэтому редактор и терминал показывают одинаковые замечания.</p>
+        </div>
         <p>Та же команда запускается в проверках запроса на слияние. В курсе она входит в быстрый набор проверок вместе с форматированием и тестами:</p>
         <figure class="code">
           <figcaption><span>.github/workflows/checks.yml</span><span>шаг проверки</span></figcaption>

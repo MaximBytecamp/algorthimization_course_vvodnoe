@@ -60,21 +60,47 @@
             <p>Стоит сразу после строки <code>def</code>, <code>class</code> или в самом начале файла. Ничего исполняемого перед ним быть не должно: как только выше появляется присваивание, импорт или другая инструкция, строка перестаёт быть докстрингом и становится обычным значением, которое вычисляется и отбрасывается.</p>
           </div>
         </div>
-        <p>Место важно буквально. Ниже две функции, отличающиеся одной строкой:</p>
-        <figure class="code">
-          <figcaption><span>Python</span><span>докстринг на месте</span></figcaption>
+        <p>Место в файле решает, сохранится строка или пропадёт. Ниже одна и та же функция с одной и той же строкой, сдвинутой на строку ниже.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>Одна строка, два места</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>Первой инструкцией</button>
+            <button>После первой инструкции</button>
+          </div>
+          <div class="demo__pane">
+            <figure class="code">
+              <figcaption><span>app/utils/text.py</span><span>строка стоит сразу после def</span></figcaption>
 <pre><span class="k">def</span> <span class="f">normalize_name</span>(name: <span class="k">str</span>) -&gt; <span class="k">str</span>:
-    <span class="s">"""Приводит имя официанта к виду «Фамилия Имя» с одним пробелом."""</span>
-    <span class="k">return</span> <span class="s">" "</span>.join(name.split()).title()</pre>
-        </figure>
-        <figure class="code">
-          <figcaption><span>Python</span><span>та же строка после кода: докстрингом не считается</span></figcaption>
+    <span class="s">"""Приводит имя официанта к виду «Фамилия Имя»."""</span>
+    cleaned = <span class="s">" "</span>.join(name.split())
+    <span class="k">return</span> cleaned.title()</pre>
+            </figure>
+            <span class="demo__label">что вернёт программа</span>
+            <figure class="code code--out">
+              <figcaption><span>Терминал</span><span>python -i</span></figcaption>
+<pre>&gt;&gt;&gt; normalize_name.__doc__
+<span class="s">'Приводит имя официанта к виду «Фамилия Имя».'</span></pre>
+            </figure>
+            <p class="demo__verdict"><b>Докстринг</b>Строка стоит первой инструкцией тела, поэтому Python сохранил её в атрибуте <code>__doc__</code>. Её увидят <code>help()</code>, подсказка редактора и сборщик документации.</p>
+          </div>
+          <div class="demo__pane">
+            <figure class="code">
+              <figcaption><span>app/utils/text.py</span><span>та же строка на одну строку ниже</span></figcaption>
 <pre><span class="k">def</span> <span class="f">normalize_name</span>(name: <span class="k">str</span>) -&gt; <span class="k">str</span>:
     cleaned = <span class="s">" "</span>.join(name.split())
-    <span class="s">"""Приводит имя официанта к виду «Фамилия Имя» с одним пробелом."""</span>
+    <span class="s">"""Приводит имя официанта к виду «Фамилия Имя»."""</span>
     <span class="k">return</span> cleaned.title()</pre>
-        </figure>
-        <p>Во втором случае <code>normalize_name.__doc__</code> равно <code>None</code>. Строка вычисляется как выражение, результат никуда не записывается, в подсказке редактора описания нет, в собранную документацию оно не попадёт. Программа при этом работает, и ошибки не будет: по внешним признакам такое место отличается от первого только пустой подсказкой.</p>
+            </figure>
+            <span class="demo__label">что вернёт программа</span>
+            <figure class="code code--out">
+              <figcaption><span>Терминал</span><span>python -i</span></figcaption>
+<pre>&gt;&gt;&gt; <span class="k">print</span>(normalize_name.__doc__)
+None</pre>
+            </figure>
+            <p class="demo__verdict"><b>Обычная строка</b>Выше неё стоит присваивание, поэтому строка перестала быть докстрингом. Python вычислил её как выражение и отбросил результат. Программа работает по-прежнему, ошибки нет, а описания нет нигде: подсказка редактора пустая.</p>
+          </div>
+        </div>
+        <p>Разница видна только из программы: во втором случае <code>normalize_name.__doc__</code> равен <code>None</code>. По внешним признакам такое место отличается от первого пустой подсказкой редактора, и ошибки при запуске не возникает.</p>
 
         <h2 id="s2"><span class="sec">§2</span>Где Python хранит докстринг</h2>
         <p>Docstring доступен через атрибут <code>__doc__</code> у любого объекта, который его имеет: модуля, класса, функции, метода. Атрибут — обычная строка, с ней можно работать как с любой другой.</p>

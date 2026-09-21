@@ -121,3 +121,71 @@
     item.addEventListener('mouseleave', () => lit(false));
   });
 })();
+
+/* ---- Разбор механизма: вкладки ---------------------------------- */
+/* Блок .demo показывает одно место кода при разных условиях. Разметка
+   остаётся читаемой без скриптов: панели скрываются только здесь, после
+   того как кнопки заработали. */
+(() => {
+  document.querySelectorAll('.demo[data-demo]').forEach(demo => {
+    const buttons = [...demo.querySelectorAll('.demo__tabs button')];
+    const panes = [...demo.querySelectorAll('.demo__pane')];
+    if (buttons.length !== panes.length || !buttons.length) return;
+
+    const show = index => {
+      buttons.forEach((button, i) => button.setAttribute('aria-selected', String(i === index)));
+      panes.forEach((pane, i) => { pane.hidden = i !== index; });
+    };
+
+    buttons.forEach((button, index) => {
+      button.type = 'button';
+      button.setAttribute('role', 'tab');
+      button.addEventListener('click', () => show(index));
+      button.addEventListener('keydown', event => {
+        const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+        if (!step) return;
+        event.preventDefault();
+        const next = (index + step + buttons.length) % buttons.length;
+        buttons[next].focus();
+        show(next);
+      });
+    });
+
+    show(0);
+  });
+
+
+  /* ---- Пошаговое появление схемы ------------------------------- */
+  /* Шаги проступают по очереди: так видно порядок, а не готовая картинка.
+     Показ запускается, когда блок доходит до экрана, и повторяется кнопкой. */
+  const flows = [...document.querySelectorAll('.flowline[data-play]')];
+  if (flows.length) {
+    const play = flow => {
+      const steps = [...flow.querySelectorAll('.flowline__step')];
+      steps.forEach(step => step.classList.remove('is-on'));
+      steps.forEach((step, index) => setTimeout(() => step.classList.add('is-on'), 260 * index));
+    };
+
+    flows.forEach(flow => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'flowline__replay';
+      button.textContent = '↻ показать по шагам';
+      button.addEventListener('click', () => play(flow));
+      flow.appendChild(button);
+    });
+
+    if ('IntersectionObserver' in window) {
+      const watcher = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          play(entry.target);
+          observer.unobserve(entry.target);
+        });
+      }, { threshold: 0.4 });
+      flows.forEach(flow => watcher.observe(flow));
+    } else {
+      flows.forEach(play);
+    }
+  }
+})();
