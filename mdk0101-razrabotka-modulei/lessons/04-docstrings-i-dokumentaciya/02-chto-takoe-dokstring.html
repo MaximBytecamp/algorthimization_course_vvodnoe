@@ -103,7 +103,7 @@ None</pre>
         <p>Разница видна только из программы: во втором случае <code>normalize_name.__doc__</code> равен <code>None</code>. По внешним признакам такое место отличается от первого пустой подсказкой редактора, и ошибки при запуске не возникает.</p>
 
         <h2 id="s2"><span class="sec">§2</span>Где Python хранит докстринг</h2>
-        <p>Docstring доступен через атрибут <code>__doc__</code> у любого объекта, который его имеет: модуля, класса, функции, метода. Атрибут — обычная строка, с ней можно работать как с любой другой.</p>
+        <p>Докстринг доступен через атрибут <code>__doc__</code> у любого объекта, который его имеет: модуля, класса, функции, метода. Атрибут — обычная строка, с ней можно работать как с любой другой.</p>
         <figure class="code">
           <figcaption><span>Терминал</span><span>python -i</span></figcaption>
 <pre>&gt;&gt;&gt; <span class="k">from</span> app.utils.text <span class="k">import</span> normalize_name
@@ -160,7 +160,7 @@ calculate_average(grades: list[int]) -&gt; float
           <figcaption>Вывод <code>help()</code> на модуле <code>app.services.orders</code> из эталонного архива. Раздел <b>NAME</b> — первая строка докстринга модуля, <b>DESCRIPTION</b> — остальной его текст, <b>FUNCTIONS</b> — функции модуля с подписями и описаниями. Python собрал эту справку из кода: своего текста он не добавляет. Двоеточие внизу — постраничный просмотр, выход по клавише <kbd>q</kbd>.</figcaption>
         </figure>
         <p>VS Code показывает то же самое при наведении указателя на имя функции в месте её вызова: всплывает подпись с аннотациями и текст докстринга. Подсказка вызывается и с клавиатуры — <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>K</kbd>, затем <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>I</kbd>. Пустая подсказка означает, что докстринга нет или он стоит не на первом месте.</p>
-        <p>Разница между кодом с описаниями и без них видна в одной и той же подсказке. Слева проект, в котором докстрингов ещё нет, справа — тот же файл после того, как описания написаны.</p>
+        <p>Разница между кодом с описаниями и без них видна в одной и той же подсказке. Сначала проект, в котором докстрингов ещё нет, следом тот же вызов после того, как описания написаны.</p>
         <figure class="shot">
           <img src="img/vscode-hover-empty.png" alt="Подсказка VS Code на вызове revenue_by_waiter в проекте без докстрингов: показана только подпись функции">
           <figcaption>Проект без описаний. Курсор стоит на вызове <code>revenue_by_waiter</code> в <code>main.py</code>, подсказка открыта. В ней только подпись: имя, параметры с типами и тип результата. Что означает <code>top</code> и в каких единицах суммы, придётся смотреть в файле функции.</figcaption>
@@ -256,7 +256,7 @@ calculate_average(grades: list[int]) -&gt; float
         </div>
 
         <h2 id="s7"><span class="sec">§7</span>Докстринг модуля и пакета</h2>
-        <p>Докстринг модуля — первая строка файла, до импортов. Он отвечает на вопрос, за что отвечает этот файл, и виден при вызове <code>help()</code> на модуле.</p>
+        <p>Докстринг модуля — первая строка файла, до импортов. Он называет, за что файл отвечает, и попадает в раздел <b>DESCRIPTION</b> при вызове <code>help()</code> на модуле.</p>
         <figure class="code">
           <figcaption><span>app/services/orders.py</span><span>первые строки файла</span></figcaption>
 <pre><span class="s">"""Заказы: чтение из CSV и расчёты по ним.
@@ -282,35 +282,37 @@ calculate_average(grades: list[int]) -&gt; float
         <h2 id="s8"><span class="sec">§8</span>Докстринг класса и метода</h2>
         <p>Докстринг класса стоит первой строкой после <code>class</code> и описывает, что представляет объект этого класса. Атрибуты перечисляют в отдельном разделе. У методов свои докстринги, по тем же правилам, что у функций.</p>
         <figure class="code">
-          <figcaption><span>app/domain/order.py</span><span>класс, атрибуты, методы</span></figcaption>
-<pre><span class="k">class</span> <span class="f">Order</span>:
-    <span class="s">"""Один заказ из отчёта кафе.
+          <figcaption><span>app/domain/shift.py</span><span>класс, атрибуты, методы</span></figcaption>
+<pre><span class="k">class</span> <span class="f">Shift</span>:
+    <span class="s">"""Смена кафе: заказы одного рабочего дня.
+
+    Объект накапливает заказы и считает по ним итоги. Заказы хранятся
+    в порядке добавления.
 
     Attributes:
-        waiter: Имя официанта в виде «Фамилия Имя».
-        kopeks: Сумма заказа в копейках, неотрицательная.
+        day: Дата смены.
+        orders: Добавленные заказы в порядке поступления.
     """</span>
 
-    <span class="k">def</span> <span class="f">__init__</span>(self, waiter: <span class="k">str</span>, kopeks: <span class="k">int</span>) -&gt; <span class="k">None</span>:
-        <span class="s">"""Создаёт заказ, проверяя сумму.
+    <span class="k">def</span> <span class="f">__init__</span>(self, day: date) -&gt; <span class="k">None</span>:
+        <span class="s">"""Создаёт пустую смену на указанную дату."""</span>
+        self.day = day
+        self.orders: <span class="k">list</span>[Order] = []
+
+    <span class="k">def</span> <span class="f">add</span>(self, order: Order) -&gt; <span class="k">None</span>:
+        <span class="s">"""Добавляет заказ в конец списка смены.
 
         Args:
-            waiter: Имя официанта, приводится к виду «Фамилия Имя».
-            kopeks: Сумма в копейках.
-
-        Raises:
-            ValueError: Если сумма отрицательная.
+            order: Заказ с уже нормализованным именем официанта.
         """</span>
-        <span class="k">if</span> kopeks &lt; <span class="n">0</span>:
-            <span class="k">raise</span> ValueError(<span class="s">"Сумма заказа не может быть отрицательной"</span>)
-        self.waiter = normalize_name(waiter)
-        self.kopeks = kopeks
+        self.orders.append(order)
 
-    <span class="k">def</span> <span class="f">as_rubles</span>(self) -&gt; <span class="k">float</span>:
-        <span class="s">"""Возвращает сумму заказа в рублях."""</span>
-        <span class="k">return</span> self.kopeks / <span class="n">100</span></pre>
+    <span class="k">def</span> <span class="f">total_kopeks</span>(self) -&gt; <span class="k">int</span>:
+        <span class="s">"""Возвращает выручку смены в копейках; у пустой смены — 0."""</span>
+        <span class="k">return</span> <span class="f">sum</span>(order.kopeks <span class="k">for</span> order <span class="k">in</span> self.orders)</pre>
         </figure>
-        <p>Описание того, что объект собой представляет, идёт в докстринг класса; описание создания и проверок при создании — в докстринг <code>__init__</code>. Когда проверок нет и все параметры очевидны из аннотаций, докстринг <code>__init__</code> опускают.</p>
+        <p>Описание того, что объект собой представляет, идёт в докстринг класса, а перечень полей — в раздел <code>Attributes:</code>. Описание создания и проверок при создании относится к <code>__init__</code>. Здесь проверок нет и параметр один, поэтому у <code>__init__</code> хватает одной строки.</p>
+        <p>Как этот докстринг выглядит в справке, показано в главе 4.4, случай <code>10</code>: <code>help(Shift)</code> печатает описание класса, раздел <b>Attributes</b> и следом перечень методов с их описаниями.</p>
 
         <h2 id="s9"><span class="sec">§9</span>Восемь ошибок</h2>
         <div class="table-scroll">
