@@ -1,4 +1,4 @@
-"""Обрезка и уменьшение кадров для главы 4.5.
+"""Обрезка и уменьшение кадров для главы 4.9.
 
     python3 crop.py
 
@@ -21,20 +21,26 @@ WIDTH = 1600
 
 # имя файла → сколько точек оставить по ширине (None — весь кадр)
 FRAMES = {
-    "project-run": None,        # 4.1 — дерево проекта и запуск
-    "hover-empty": None,        # 4.2 — подсказка без докстринга
-    "hover-docstring": None,    # 4.2 — подсказка с докстрингом
-    "terminal-help": None,      # 4.2 — help() в терминале
-    "terminal-doctest": None,   # 4.3 — проверка примеров
-    "terminal-help-class": None,  # 4.4 — справка по классу
-    "ext-autodocstring": None,  # 4.5 — панель расширений
-    "generate-before": None,    # 4.5 — функция без описания
-    "generate-after": None,     # 4.5 — вставленная заготовка
-    "settings-json": None,      # 4.5 — настройки проекта
-    "problems-ruff": None,      # 4.5 — панель Problems
-    "terminal-ruff": None,      # 4.5 — вывод ruff check
-    "quickfix": None,           # 4.5 — быстрое исправление D415
-    "terminal-checks": None,    # 4.6 — тесты и проверка пройдены
+    "types-hover-untyped": None,  # 4.1 — подсказка без аннотаций: Unknown
+    "types-pylance-error": None,  # 4.3 — ошибка Pylance при наведении
+    "types-problems": None,       # 4.3 — панель Problems с Pylance и Ruff
+    "types-mypy-success": None,   # 4.3 — mypy без ошибок
+    "types-mypy-errors": None,    # 4.3 — 17 функций без аннотаций
+    "types-final": None,          # 4.4 — mypy, тесты, запуск
+    "project-run": None,        # 4.5 — дерево проекта и запуск
+    "hover-empty": None,        # 4.6 — подсказка без докстринга
+    "hover-docstring": None,    # 4.6 — подсказка с докстрингом
+    "terminal-help": None,      # 4.6 — help() в терминале
+    "terminal-doctest": None,   # 4.7 — проверка примеров
+    "terminal-help-class": None,  # 4.8 — справка по классу
+    "ext-autodocstring": None,  # 4.9 — панель расширений
+    "generate-before": None,    # 4.9 — функция без описания
+    "generate-after": None,     # 4.9 — вставленная заготовка
+    "settings-json": None,      # 4.9 — настройки проекта
+    "problems-ruff": None,      # 4.9 — панель Problems
+    "terminal-ruff": None,      # 4.9 — вывод ruff check
+    "quickfix": None,           # 4.9 — быстрое исправление D415
+    "terminal-checks": None,    # 4.10 — тесты и проверка пройдены
 }
 
 

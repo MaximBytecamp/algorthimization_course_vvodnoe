@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>4.4 Практика: аннотации в проекте · Аннотации типов и документация</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Тема 04 · Аннотации типов и документация кода</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Аннотации типов и документация кода</a> · МДК.01.01 · разработка программных модулей</p>
+          <p class="running__folio">Глава 4.4</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">4.4</span>
+          <h1>Практика:<br>аннотации в проекте</h1>
+          <p class="lead">В этой главе проект «Отчёт кафе» без единой аннотации доводится до чистой проверки mypy. Разобраны порядок работы по пакетам, способ выбрать тип для каждой функции, один модуль целиком до и после, и то, как после каждого пакета уменьшается число ошибок. Итог работы совпадает со вторым архивом темы — с него начинается часть про документацию.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Практика</dd></div>
+          <div><dt>Время на паре</dt><dd>Около 60 минут</dd></div>
+          <div><dt>Проверка</dt><dd>mypy, тесты, запуск</dd></div>
+          <div><dt>Результат</dt><dd>Проект с аннотациями, <code>mypy app</code> без ошибок</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Задача</a></li>
+            <li><a href="#s2">Подготовка</a></li>
+            <li><a href="#s3">Порядок: от листьев к корню</a></li>
+            <li><a href="#s4">Как выбрать тип</a></li>
+            <li><a href="#s5">Один модуль до и после</a></li>
+            <li><a href="#s6">Трудные места проекта</a></li>
+            <li><a href="#s7">Как уменьшается число ошибок</a></li>
+            <li><a href="#s8">Что сдаётся с пары</a></li>
+            <li><a href="#s9">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Задача</h2>
+        <p>Первый архив темы — рабочий проект без аннотаций. Отчёт печатается, двенадцать тестов проходят, а <code>mypy app</code> находит семнадцать функций без типов. Задача: расставить аннотации у всех семнадцати, не меняя поведения программы, и получить от mypy ответ <code>Success</code>.</p>
+        <div class="downloads">
+          <a class="download" href="materials/otchet-kafe-bez-tipov.zip" download>
+            <span>↓</span>
+            <b>Проект без аннотаций<small>ZIP · 17 ошибок mypy, с ним работают на паре</small></b>
+          </a>
+          <a class="download" href="materials/otchet-kafe-start.zip" download>
+            <span>↓</span>
+            <b>Тот же проект с аннотациями<small>ZIP · эталон для сверки, mypy — Success</small></b>
+          </a>
+        </div>
+
+        <h2 id="s2"><span class="sec">§2</span>Подготовка</h2>
+        <ol class="steps">
+          <li>Распакуйте первый архив и откройте папку <code>otchet-kafe-bez-tipov</code> в VS Code.</li>
+          <li>Создайте окружение и установите зависимости: <code>python3 -m venv .venv</code>, затем <code>.venv/bin/pip install -r requirements.txt</code>. В списке зависимостей есть mypy.</li>
+          <li>Включите проверку в редакторе: добавьте в <code>.vscode/settings.json</code> строку <code>"python.analysis.typeCheckingMode": "basic"</code>.</li>
+          <li>Запустите проект и тесты: <code>.venv/bin/python main.py</code> и <code>.venv/bin/python -m pytest -q</code>. Запомните итог отчёта — <code>4 937,50 ₽</code>: после работы он должен остаться тем же.</li>
+          <li>Запустите <code>.venv/bin/mypy app</code> и сохраните вывод. Семнадцать строк — это список работы.</li>
+        </ol>
+
+        <h2 id="s3"><span class="sec">§3</span>Порядок: от листьев к корню</h2>
+        <p>Модули проекта зависят друг от друга. Это видно по импортам: <code>domain</code> вызывает <code>normalize_name</code> из <code>utils</code>, <code>services</code> создаёт объекты <code>Order</code> из <code>domain</code>, а <code>main.py</code> вызывает <code>services</code>, <code>ui</code> и <code>utils</code>. Аннотации расставляют в обратном порядке — начиная с модулей, которые ничего из проекта не вызывают.</p>
+        <p>Файл <code>main.py</code> в архиве оставлен с аннотациями: его функция <code>build_report(path: Path) -&gt; list[str]</code> служит образцом записи.</p>
+        <figure class="scheme">
+          <svg viewBox="0 0 680 230" role="img" aria-label="Схема зависимостей пакетов по импортам: domain вызывает utils, services создаёт объекты domain, main.py вызывает services, ui и utils; ui ни от кого не зависит">
+            <rect x="40" y="170" width="170" height="46" fill="var(--fire-pale)" stroke="var(--ink)" stroke-width="3"/>
+            <text x="125" y="192" text-anchor="middle" font-family="Roboto Mono, monospace" font-size="14" fill="var(--ink)">utils</text>
+            <text x="125" y="208" text-anchor="middle" font-family="Roboto Mono, monospace" font-size="11" fill="var(--fire-deep)">1 · 5 функций</text>
+            <rect x="40" y="92" width="170" height="46" fill="var(--fire-pale)" stroke="var(--ink)" stroke-width="3"/>
+            <text x="125" y="114" text-anchor="middle" font-family="Roboto Mono, monospace" font-size="14" fill="var(--ink)">domain</text>
+            <text x="125" y="130" text-anchor="middle" font-family="Roboto Mono, monospace" font-size="11" fill="var(--fire-deep)">2 · 4 функции</text>
+            <rect x="40" y="14" width="170" height="46" fill="var(--steel-pale)" stroke="var(--ink)" stroke-width="3"/>
+            <text x="125" y="36" text-anchor="middle" font-family="Roboto Mono, monospace" font-size="14" fill="var(--ink)">services</text>
+            <text x="125" y="52" text-anchor="middle" font-family="Roboto Mono, monospace" font-size="11" fill="var(--steel)">3 · 7 функций</text>
+            <rect x="290" y="170" width="150" height="46" fill="var(--page)" stroke="var(--ink)" stroke-width="3"/>
+            <text x="365" y="192" text-anchor="middle" font-family="Roboto Mono, monospace" font-size="14" fill="var(--ink)">ui</text>
+            <text x="365" y="208" text-anchor="middle" font-family="Roboto Mono, monospace" font-size="11" fill="var(--ink-soft)">4 · 1 функция</text>
+            <rect x="290" y="14" width="150" height="46" fill="var(--page)" stroke="var(--ink)" stroke-width="3" stroke-dasharray="6 4"/>
+            <text x="365" y="36" text-anchor="middle" font-family="Roboto Mono, monospace" font-size="14" fill="var(--ink)">main.py</text>
+            <text x="365" y="52" text-anchor="middle" font-family="Roboto Mono, monospace" font-size="11" fill="var(--ink-soft)">образец, аннотирован</text>
+
+            <path d="M 125 138 L 125 168" stroke="var(--ink-soft)" stroke-width="2"/>
+            <path d="M 125 60 L 125 90" stroke="var(--ink-soft)" stroke-width="2"/>
+            <path d="M 290 37 L 212 37" stroke="var(--ink-soft)" stroke-width="2"/>
+            <path d="M 365 60 L 365 168" stroke="var(--ink-soft)" stroke-width="2"/>
+            <path d="M 300 60 L 212 188" stroke="var(--ink-soft)" stroke-width="2"/>
+
+            <path d="M 540 205 L 540 30" stroke="var(--fire)" stroke-width="4"/>
+            <path d="M 530 44 L 540 24 L 550 44 Z" fill="var(--fire)"/>
+            <text x="560" y="100" font-family="Roboto Mono, monospace" font-size="12" fill="var(--fire-deep)">порядок</text>
+            <text x="560" y="118" font-family="Roboto Mono, monospace" font-size="12" fill="var(--fire-deep)">работы</text>
+            <text x="560" y="200" font-family="Roboto Mono, monospace" font-size="11" fill="var(--ink-soft)">начать</text>
+            <text x="560" y="40" font-family="Roboto Mono, monospace" font-size="11" fill="var(--ink-soft)">закончить</text>
+          </svg>
+          <figcaption>Линии построены по импортам проекта: блок выше или правее пользуется тем, с которым он соединён. Работа идёт снизу вверх: <code>utils</code>, затем <code>domain</code>, затем <code>services</code>. Когда очередь доходит до <code>services</code>, поля <code>Order</code> из <code>domain</code> уже аннотированы, и редактор подсказывает их при наборе. Пакет <code>ui</code> ни от кого не зависит, его аннотируют последним. Цифры — порядок работы и число функций без аннотаций в пакете.</figcaption>
+        </figure>
+
+        <h2 id="s4"><span class="sec">§4</span>Как выбрать тип</h2>
+        <p>Для каждой функции ответ ищется в трёх местах по очереди.</p>
+        <div class="checklist">
+          <p class="checklist__head">Откуда брать тип</p>
+          <div class="checklist__item"><span><b>Параметр: как его используют внутри</b>Если по параметру идут циклом и берут <code>order.kopeks</code> — это <code>list[Order]</code>. Если к нему вызывают <code>.split()</code> — это <code>str</code>.</span></div>
+          <div class="checklist__item"><span><b>Параметр: что передаёт вызывающий код</b>В <code>main.py</code> в <code>load_orders</code> передаётся <code>Path("data/smena.csv")</code> — значит, параметр <code>path: Path</code>.</span></div>
+          <div class="checklist__item"><span><b>Результат: что стоит после return</b><code>return min(grades), max(grades)</code> — пара целых, <code>tuple[int, int]</code>. Нет <code>return</code> со значением — <code>-&gt; None</code>. Есть <code>yield</code> — <code>Iterator[...]</code>.</span></div>
+        </div>
+        <p>Когда сомнения остаются, ставят предполагаемый тип и запускают mypy: неверное предположение он покажет ошибкой в месте вызова. Для выражений внутри функции помогает временная строка <code>reveal_type(...)</code> из главы 4.2.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Один модуль до и после</h2>
+        <p>Модуль <code>app/services/orders.py</code> в первом архиве. mypy сообщает о нём три строки — по одной на функцию:</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy app, строки про orders.py</span></figcaption>
+<pre>app/services/orders.py:7: error: Function is missing a type annotation  [no-untyped-def]
+app/services/orders.py:14: error: Function is missing a type annotation  [no-untyped-def]
+app/services/orders.py:26: error: Function is missing a type annotation  [no-untyped-def]</pre>
+        </figure>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>app/services/orders.py</b><span>переключите вариант</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>До: без аннотаций</button>
+            <button>После: с аннотациями</button>
+          </div>
+          <div class="demo__pane">
+            <figure class="code">
+              <figcaption><span>Первый архив</span><span>3 ошибки mypy</span></figcaption>
+<pre><span class="k">def</span> <span class="f">load_orders</span>(path):
+    <span class="k">return</span> [
+        Order(waiter=row[<span class="s">"waiter"</span>], kopeks=<span class="k">int</span>(row[<span class="s">"kopeks"</span>]))
+        <span class="k">for</span> row <span class="k">in</span> read_rows(path)
+    ]
+
+
+<span class="k">def</span> <span class="f">revenue_by_waiter</span>(orders, top=<span class="n">0</span>):
+    ...
+    totals = {}
+    ...
+
+
+<span class="k">def</span> <span class="f">sort_orders_in_place</span>(orders):
+    orders.sort(key=<span class="k">lambda</span> order: -order.kopeks)</pre>
+            </figure>
+            <p class="demo__verdict"><b>Что видно</b>Из подписей неясно, что такое <code>path</code> и что в списке <code>orders</code>; неясно, что возвращают функции. Ответы находятся только чтением тел.</p>
+          </div>
+          <div class="demo__pane">
+            <figure class="code">
+              <figcaption><span>Второй архив</span><span>0 ошибок mypy</span></figcaption>
+<pre><span class="k">def</span> <span class="f">load_orders</span>(path: Path) -&gt; <span class="k">list</span>[Order]:
+    <span class="k">return</span> [
+        Order(waiter=row[<span class="s">"waiter"</span>], kopeks=<span class="k">int</span>(row[<span class="s">"kopeks"</span>]))
+        <span class="k">for</span> row <span class="k">in</span> read_rows(path)
+    ]
+
+
+<span class="k">def</span> <span class="f">revenue_by_waiter</span>(orders: <span class="k">list</span>[Order], top: <span class="k">int</span> = <span class="n">0</span>) -&gt; <span class="k">dict</span>[<span class="k">str</span>, <span class="k">int</span>]:
+    ...
+    totals: <span class="k">dict</span>[<span class="k">str</span>, <span class="k">int</span>] = {}
+    ...
+
+
+<span class="k">def</span> <span class="f">sort_orders_in_place</span>(orders: <span class="k">list</span>[Order]) -&gt; <span class="k">None</span>:
+    orders.sort(key=<span class="k">lambda</span> order: -order.kopeks)</pre>
+            </figure>
+            <p class="demo__verdict"><b>Что изменилось</b>Семь аннотаций в подписях и одна у переменной. <code>top=0</code> стало <code>top: int = 0</code> — с аннотацией вокруг знака равенства ставят пробелы. Тела функций не тронуты.</p>
+          </div>
+        </div>
+        <p>Как выбраны типы. <code>path</code> — объект <code>Path</code>, так его передаёт <code>main.py</code>. Список <code>orders</code> содержит заказы: из элементов берут <code>.waiter</code> и <code>.kopeks</code>. <code>sort_orders_in_place</code> ничего не возвращает, поэтому <code>-&gt; None</code>. Переменной <code>totals</code> нужна аннотация, потому что по пустому словарю <code>{}</code> тип ключей и значений не определить.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Трудные места проекта</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Место</th><th>Аннотация</th><th>Почему так</th></tr></thead>
+            <tbody>
+              <tr><td><code>read_rows</code> в <code>importer.py</code></td><td><code>-&gt; Iterator[dict[str, str]]</code></td><td>В теле <code>yield from</code> — это генератор; строки CSV читаются словарями из строк</td></tr>
+              <tr><td><code>grade_bounds</code></td><td><code>-&gt; tuple[int, int]</code></td><td>Возвращается пара: минимум и максимум</td></tr>
+              <tr><td><code>__post_init__</code> у <code>Order</code></td><td><code>-&gt; None</code></td><td>Метод проверяет данные и ничего не возвращает</td></tr>
+              <tr><td><code>Shift.__init__</code></td><td><code>(self, day: date) -&gt; None</code></td><td>У <code>__init__</code> результат всегда <code>None</code>; для <code>date</code> нужен импорт, он уже есть в файле</td></tr>
+              <tr><td><code>self.orders</code> в <code>Shift</code></td><td><code>self.orders: list[Order] = []</code></td><td>Пустой список — тип элементов не определить без аннотации</td></tr>
+              <tr><td><code>self</code></td><td>без аннотации</td><td>Тип <code>self</code> проверка выводит сама — это объект того же класса</td></tr>
+              <tr><td>поля <code>Order</code></td><td>уже стоят</td><td>У dataclass аннотации — объявления полей, в первом архиве они оставлены</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s7"><span class="sec">§7</span>Как уменьшается число ошибок</h2>
+        <p>После каждого пакета запускайте <code>.venv/bin/mypy app</code>. Число ошибок в последней строке вывода — ход работы. Ниже настоящие итоги прогонов при работе в порядке из §3:</p>
+        <div class="flowline" data-play>
+          <p class="flowline__head">Итог mypy после каждого пакета</p>
+          <div class="flowline__track">
+            <div class="flowline__step">
+              <b>Исходно</b>
+              <span><code>Found 17 errors in 10 files</code></span>
+              <em>первый архив</em>
+            </div>
+            <div class="flowline__step">
+              <b>После utils</b>
+              <span><code>Found 12 errors in 7 files</code></span>
+              <em>−5</em>
+            </div>
+            <div class="flowline__step">
+              <b>После domain</b>
+              <span><code>Found 8 errors in 5 files</code></span>
+              <em>−4</em>
+            </div>
+            <div class="flowline__step">
+              <b>После services</b>
+              <span><code>Found 1 error in 1 file</code></span>
+              <em>−7</em>
+            </div>
+            <div class="flowline__step">
+              <b>После ui</b>
+              <span><code>Success: no issues found</code></span>
+              <em>готово</em>
+            </div>
+          </div>
+          <p class="flowline__foot">Число уменьшается ровно на количество функций в пакете — если это не так, значит, в аннотации ошибка и mypy нашёл несовпадение. Строку с ней он напечатает выше итога.</p>
+        </div>
+        <p>Когда mypy ответил <code>Success</code>, проверьте, что поведение не изменилось: тесты и запуск должны дать то же, что в §2.</p>
+        <figure class="shot">
+          <img src="img/vscode-types-final.png" alt="Терминал VS Code: mypy app — Success, двенадцать тестов пройдено, отчёт с итогом 4 937,50 ₽">
+          <figcaption>Три команды подряд на законченной работе. <code>Success: no issues found in 15 source files</code> — типы расставлены во всём пакете. <code>12 passed</code> — поведение не изменилось. Итог отчёта — те же <code>4 937,50 ₽</code>, что до работы.</figcaption>
+        </figure>
+        <p>Получившийся проект совпадает со вторым архивом темы во всех файлах, кроме README, — это проверено сравнением. С этого проекта начинается следующая часть темы: в главе 4.5 в него добавляются описания.</p>
+
+        <h2 id="s8"><span class="sec">§8</span>Что сдаётся с пары</h2>
+        <div class="checklist">
+          <p class="checklist__head">Работа принята, когда</p>
+          <div class="checklist__item"><span><b>Проверка типов проходит</b><code>mypy app</code> отвечает <code>Success: no issues found</code>.</span></div>
+          <div class="checklist__item"><span><b>Поведение не изменилось</b>Двенадцать тестов проходят, итог отчёта — <code>4 937,50 ₽</code>.</span></div>
+          <div class="checklist__item"><span><b>Без <code>Any</code> и подавлений</b>В коде нет <code>Any</code> и <code># type: ignore</code>: каждое замечание исправлено аннотацией.</span></div>
+          <div class="checklist__item"><span><b>Редактор не подчёркивает</b>В панели Problems нет замечаний Pylance по пакету <code>app</code>.</span></div>
+          <div class="checklist__item"><span><b>Тела функций не тронуты</b>Изменения — только в подписях и у переменных с пустыми коллекциями.</span></div>
+        </div>
+
+        <h2 id="s9"><span class="sec">§9</span>Проверьте себя</h2>
+        <details>
+          <summary>Почему аннотации расставляют начиная с <code>utils</code>?</summary>
+          <p>Так аннотации появляются сначала у того, что вызывают, и только потом у того, кто вызывает. Когда очередь доходит до <code>services</code>, поля <code>Order</code> уже аннотированы: редактор подсказывает их, а mypy сверяет вызовы.</p>
+        </details>
+        <details>
+          <summary>Как определить тип результата функции, в которой есть <code>yield</code>?</summary>
+          <p>Это генератор, его результат — итератор: <code>Iterator[тип элемента]</code>. У <code>read_rows</code> элементы — строки CSV в виде словарей, поэтому <code>Iterator[dict[str, str]]</code>.</p>
+        </details>
+        <details>
+          <summary>Почему у <code>totals = {}</code> нужна аннотация, а у <code>ranked = sorted(...)</code> — нет?</summary>
+          <p>По пустому словарю проверка не может узнать тип ключей и значений. У <code>sorted(...)</code> тип результата выводится из аргумента — списка пар из словаря <code>totals</code>, тип которого уже известен.</p>
+        </details>
+        <details>
+          <summary>После пакета <code>domain</code> число ошибок уменьшилось только на три. Что это значит?</summary>
+          <p>Одна из аннотаций не совпала с тем, как функция используется, и mypy сообщил об этом новой ошибкой. Её строка стоит в выводе выше итога: нужно прочитать сообщение «пришло / ожидалось» и поправить аннотацию.</p>
+        </details>
+
+        <h3>Итог главы</h3>
+        <p>Проект без аннотаций доводится до чистой проверки в четыре шага по пакетам: <code>utils</code>, <code>domain</code>, <code>services</code>, <code>ui</code>, начиная с модулей, которые ничего из проекта не вызывают. Тип параметра определяется по тому, как его используют внутри и что передаёт вызывающий код, тип результата — по <code>return</code>, а наличие <code>yield</code> означает итератор. Переменным с пустыми коллекциями аннотация нужна, остальным — нет. После каждого пакета число ошибок mypy уменьшается на количество аннотированных функций: <code>17</code>, <code>12</code>, <code>8</code>, <code>1</code>, <code>Success</code>. Работа принята, когда проверка чистая, тесты проходят и отчёт не изменился. Результат совпадает со вторым архивом темы, и с него начинается часть про документацию: в следующей главе разобрано, какой бывает документация кода и чем докстринг отличается от комментария.</p>
+
+        <div class="pager"><a href="03-proverka-tipov.html">← 4.3 Проверка типов</a><a href="05-vidy-dokumentacii.html">4.5 Документация кода: какая она бывает →</a></div>
+
+        <div class="colophon">
+          <span>Глава 4.4 · Практика: аннотации в проекте · МДК.01.01</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="book.js"></script>
+</body>
+</html>

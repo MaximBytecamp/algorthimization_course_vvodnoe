@@ -39,6 +39,7 @@ import Quartz
 
 PROFILE = "/private/tmp/vsc-docs"
 PROJECTS = {
+    "bez": "/private/tmp/student/otchet-kafe-bez-tipov",    # без аннотаций и описаний
     "start": "/private/tmp/student/otchet-kafe-start",      # код без описаний
     "gotov": "/private/tmp/student/otchet-kafe-dokumentirovan",  # эталон
 }
@@ -334,7 +335,8 @@ def unpack(kind: str) -> str:
         Путь к распакованной папке проекта.
     """
     target = PROJECTS[kind]
-    name = "otchet-kafe-start" if kind == "start" else "otchet-kafe-dokumentirovan"
+    name = {"bez": "otchet-kafe-bez-tipov", "start": "otchet-kafe-start",
+            "gotov": "otchet-kafe-dokumentirovan"}[kind]
     subprocess.run(["rm", "-rf", target])
     subprocess.run(["mkdir", "-p", "/private/tmp/student"])
     subprocess.run(["unzip", "-qo", f"{MATERIALS}/{name}.zip", "-d", "/private/tmp/student"])
@@ -349,7 +351,8 @@ def unpack(kind: str) -> str:
     settings = f"{target}/.vscode/settings.json"
     text = open(settings, encoding="utf-8").read().rstrip().rstrip("}").rstrip().rstrip(",")
     open(settings, "w", encoding="utf-8").write(
-        text + f',\n  "python.defaultInterpreterPath": "{target}/.venv/bin/python"\n}}\n')
+        text + f',\n  "python.defaultInterpreterPath": "{target}/.venv/bin/python",'
+        '\n  "python.analysis.typeCheckingMode": "basic"\n}\n')
     return target
 
 
@@ -504,7 +507,9 @@ def main() -> None:
     if stage == "hover":
         ready()
         tidy()
-        name = "hover-docstring" if "dokumentirovan" in project_path() else "hover-empty"
+        folder = project_path()
+        name = ("hover-docstring" if "dokumentirovan" in folder
+                else "types-hover-untyped" if "bez-tipov" in folder else "hover-empty")
         print(f"Подсказка при наведении: {name}")
         open_file("main.py")
         ensure_no_chat()
@@ -562,6 +567,81 @@ def main() -> None:
         terminal(".venv/bin/python -m pytest -q && .venv/bin/ruff check app", 8.0)
         ensure_no_chat()
         retry(shot, "terminal-checks", 1.5)
+        return
+
+    if stage == "completion":
+        ready()
+        tidy()
+        untyped = "bez-tipov" in project_path()
+        name = "types-completion-untyped" if untyped else "types-completion"
+        print(f"Автодополнение после точки: {name}")
+        open_file("orders.py")
+        ensure_no_chat()
+        key(5, " using {control down}", 1.0)                  # ⌃G
+        typ("27", 0.6)                                        # тело sort_orders_in_place
+        key(36, "", 1.2)
+        key(124, " using {command down}", 0.6)                # ⌘→ — конец строки
+        key(36, "", 1.0)                                      # Enter — новая строка
+        typ("orders[0].", 1.5)
+        # Подсказки вызываются явно, командой палитры: без типа редактор
+        # так и напишет, что предложить нечего. Сочетание ⌃Пробел на macOS
+        # занято переключением раскладки.
+        palette("Trigger Suggest", 3.0)
+        retry(shot, name, 1.0, keep_cursor=True)
+        key(53, "", 0.5)
+        for _ in range(4):
+            key(6, " using {command down}", 0.4)              # ⌘Z
+        return
+
+    if stage == "pylance":
+        ready()
+        tidy()
+        print("Ошибка Pylance в редакторе и в панели Problems:")
+        open_file("main.py")
+        ensure_no_chat()
+        key(125, " using {command down}", 0.8)                # ⌘↓ — конец файла
+        key(36, "", 0.6)
+        typ("format_title(40)", 3.0)
+        key(123, "", 0.3)                                     # ← к числу 40
+        key(123, "", 0.3)
+        osa(f'tell application "System Events" to tell (first process whose unix id is {pid()}) '
+            'to keystroke "k" using {command down}')
+        time.sleep(0.8)
+        osa(f'tell application "System Events" to tell (first process whose unix id is {pid()}) '
+            'to keystroke "i" using {command down}')
+        time.sleep(2.5)
+        retry(shot, "types-pylance-error", 1.0, keep_cursor=True)
+        key(53, "", 0.5)
+        key(46, " using {command down, shift down}", 2.5)     # ⇧⌘M — Problems
+        retry(shot, "types-problems", 1.5)
+        for _ in range(4):
+            key(6, " using {command down}", 0.4)              # ⌘Z
+        return
+
+    if stage == "mypy":
+        ready()
+        tidy()
+        untyped = "bez-tipov" in project_path()
+        name = "types-mypy-errors" if untyped else "types-mypy-success"
+        print(f"mypy в терминале: {name}")
+        # Первый запуск mypy строит кэш и идёт долго; перед съёмкой кэш
+        # прогревается тем же запуском из обычного терминала.
+        subprocess.run([f"{project_path()}/.venv/bin/mypy", "app"], cwd=project_path(),
+                       capture_output=True)
+        terminal(".venv/bin/mypy app", 6.0)
+        ensure_no_chat()
+        retry(shot, name, 1.5)
+        return
+
+    if stage == "final":
+        ready()
+        tidy()
+        print("Итог практики по аннотациям:")
+        subprocess.run([f"{project_path()}/.venv/bin/mypy", "app"], cwd=project_path(),
+                       capture_output=True)
+        terminal(".venv/bin/mypy app && .venv/bin/python -m pytest -q && .venv/bin/python main.py", 10.0)
+        ensure_no_chat()
+        retry(shot, "types-final", 1.5)
         return
 
     if stage == "series":
