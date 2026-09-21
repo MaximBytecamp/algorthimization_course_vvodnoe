@@ -21,12 +21,20 @@ WIDTH = 1600
 
 # имя файла → сколько точек оставить по ширине (None — весь кадр)
 FRAMES = {
-    "ext-autodocstring": None,
-    "problems-ruff": None,
-    "terminal-ruff": None,
-    "generate-before": None,
-    "generate-after": None,
-    "hover-docstring": None,
+    "project-run": None,        # 4.1 — дерево проекта и запуск
+    "hover-empty": None,        # 4.2 — подсказка без докстринга
+    "hover-docstring": None,    # 4.2 — подсказка с докстрингом
+    "terminal-help": None,      # 4.2 — help() в терминале
+    "terminal-doctest": None,   # 4.3 — проверка примеров
+    "terminal-help-class": None,  # 4.4 — справка по классу
+    "ext-autodocstring": None,  # 4.5 — панель расширений
+    "generate-before": None,    # 4.5 — функция без описания
+    "generate-after": None,     # 4.5 — вставленная заготовка
+    "settings-json": None,      # 4.5 — настройки проекта
+    "problems-ruff": None,      # 4.5 — панель Problems
+    "terminal-ruff": None,      # 4.5 — вывод ruff check
+    "quickfix": None,           # 4.5 — быстрое исправление D415
+    "terminal-checks": None,    # 4.6 — тесты и проверка пройдены
 }
 
 

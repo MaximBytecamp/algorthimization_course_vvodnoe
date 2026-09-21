@@ -1,17 +1,28 @@
 """Кадры VS Code для главы 4.5 «VS Code: генератор и проверка».
 
-    python3 shoot.py prepare     поднять чистый экземпляр редактора
+    python3 shoot.py prepare start   поднять редактор на проекте без описаний
+    python3 shoot.py prepare gotov   то же на эталоне с описаниями
+    python3 shoot.py tree        дерево проекта и запуск в терминале
     python3 shoot.py ext         панель расширений с autoDocstring
     python3 shoot.py problems    панель Problems с замечаниями Ruff
     python3 shoot.py terminal    вывод ruff check в терминале
     python3 shoot.py generate    вставка заготовки докстринга
-    python3 shoot.py hover       подсказка с докстрингом при наведении
+    python3 shoot.py hover       подсказка при наведении (пусто на start, текст на gotov)
+    python3 shoot.py settings    файл .vscode/settings.json
+    python3 shoot.py quickfix    быстрое исправление по замечанию D415
+    python3 shoot.py help        help() и __doc__ в терминале
+    python3 shoot.py doctest     проверка примеров из докстринга
+    python3 shoot.py checks      итоговые проверки: тесты и ruff
     python3 shoot.py unhide      вернуть скрытые приложения
 
 Снимается отдельный экземпляр редактора с чистым профилем
 (`--user-data-dir`): в рабочем VS Code открыты Claude Code, Copilot и лишние
 панели, а студент видит окно без них. В профиль поставлены расширения Python,
 autoDocstring и Ruff — те же три, что названы в главе.
+
+Проекты распаковываются из архивов темы (`materials/*.zip`), поэтому на кадрах
+тот же код, который студент скачивает кнопкой: `start` — без описаний,
+`gotov` — эталон.
 
 Про предохранители. Рабочее окно на этой машине развёрнуто на весь экран,
 то есть живёт на отдельном рабочем столе macOS, и фокус между запусками
@@ -27,7 +38,11 @@ import time
 import Quartz
 
 PROFILE = "/private/tmp/vsc-docs"
-DEMO = "/private/tmp/student/otchet-kafe"
+PROJECTS = {
+    "start": "/private/tmp/student/otchet-kafe-start",      # код без описаний
+    "gotov": "/private/tmp/student/otchet-kafe-dokumentirovan",  # эталон
+}
+MATERIALS = "/Users/makarovmn/algorthimization_course_vvodnoe/mdk0101-razrabotka-modulei/lessons/04-docstrings-i-dokumentaciya/materials"
 CODE = "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"
 PIDFILE = ".shot-pid"
 WIN = (100, 60, 1240, 780)           # x, y, ширина, высота — логические точки
@@ -268,13 +283,22 @@ def tidy() -> None:
     (стадия prepare) и после этого не возвращается."""
     palette("View: Close Panel")
     palette("View: Close All Editors")
+    key(14, " using {command down, shift down}", 0.8)   # ⇧⌘E — проводник:
+    ensure_no_chat()                                    # иначе в кадре остаётся
+                                                        # панель прошлой стадии
 
 
 def open_file(name: str) -> None:
-    """Быстрое открытие: ⌘P, имя файла, Enter."""
+    """Быстрое открытие: ⌘P, имя файла, Enter.
+
+    После открытия курсор ставится в текст щелчком: если фокус остался
+    в терминале или в поле поиска, переход к строке и подсказка не работают,
+    а кадр выходит пустым.
+    """
     key(35, " using {command down}", 1.0)          # ⌘P
     typ(name, 1.4)
     key(36, "", 2.0)                               # Enter
+    retry(click, WIN[0] + 700, WIN[1] + 170)
 
 
 def close_all() -> None:
@@ -290,14 +314,68 @@ def close_all() -> None:
     time.sleep(1.2)
 
 
+
+
+def project_path() -> str:
+    """Папка проекта, на котором сейчас идёт съёмка."""
+    return open(".shot-project").read().strip()
+
+
+def unpack(kind: str) -> str:
+    """Распаковывает архив темы во временную папку и ставит зависимости.
+
+    Кадры должны показывать тот же код, который студент скачивает кнопкой,
+    поэтому проект берётся из архива, а не пишется рядом.
+
+    Args:
+        kind: `start` — код без описаний, `gotov` — эталон.
+
+    Returns:
+        Путь к распакованной папке проекта.
+    """
+    target = PROJECTS[kind]
+    name = "otchet-kafe-start" if kind == "start" else "otchet-kafe-dokumentirovan"
+    subprocess.run(["rm", "-rf", target])
+    subprocess.run(["mkdir", "-p", "/private/tmp/student"])
+    subprocess.run(["unzip", "-qo", f"{MATERIALS}/{name}.zip", "-d", "/private/tmp/student"])
+    # Внутри архива уже есть папка с этим именем, поэтому переносить нечего,
+    # когда имя совпало с целевым.
+    unpacked = f"/private/tmp/student/{name}"
+    if unpacked != target:
+        subprocess.run(["mv", unpacked, target])
+    subprocess.run([sys.executable, "-m", "venv", f"{target}/.venv"])
+    subprocess.run([f"{target}/.venv/bin/pip", "-q", "install", "-r",
+                    f"{target}/requirements.txt"])
+    settings = f"{target}/.vscode/settings.json"
+    text = open(settings, encoding="utf-8").read().rstrip().rstrip("}").rstrip().rstrip(",")
+    open(settings, "w", encoding="utf-8").write(
+        text + f',\n  "python.defaultInterpreterPath": "{target}/.venv/bin/python"\n}}\n')
+    return target
+
+
+def terminal(command: str, wait: float = 4.0) -> None:
+    """Выполняет команду в свежем терминале редактора.
+
+    Прежний терминал закрывается: после help() в нём остаётся открытый
+    пейджер, и следующая команда уходит к нему как строка поиска.
+    """
+    palette("Terminal: Kill All Terminals", 1.5)
+    key(50, " using {control down}", 3.0)                 # ⌃` — новый терминал
+    paste(command, 0.8)
+    key(36, "", wait)
+
+
 def main() -> None:
     stage = sys.argv[1] if len(sys.argv) > 1 else ""
 
     if stage == "prepare":
+        kind = sys.argv[2] if len(sys.argv) > 2 else "start"
+        folder = unpack(kind)
+        open(".shot-project", "w").write(folder)
         subprocess.run(["pkill", "-f", f"user-data-dir {PROFILE}/data"], capture_output=True)
         time.sleep(1)
         subprocess.Popen([CODE, "--user-data-dir", f"{PROFILE}/data",
-                          "--extensions-dir", f"{PROFILE}/ext", "--new-window", DEMO],
+                          "--extensions-dir", f"{PROFILE}/ext", "--new-window", folder],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         time.sleep(14)
         out = subprocess.run(["pgrep", "-f", f"user-data-dir {PROFILE}/data --extensions-dir"],
@@ -305,11 +383,9 @@ def main() -> None:
         if not out:
             stop("экземпляр редактора не запустился")
         open(PIDFILE, "w").write(out[0])
-        print("PID экземпляра:", out[0])
+        print(f"PID экземпляра: {out[0]}, проект: {folder}")
         ready()
-        # крестик в заголовке панели Chat: закрывается один раз на сессию
-        retry(click, WIN[0] + 1219, WIN[1] + 49)
-        print("панель чата закрыта")
+        ensure_no_chat()
         return
 
     if stage == "unhide":
@@ -323,43 +399,50 @@ def main() -> None:
         print("Приложения возвращены.")
         return
 
+    if stage == "tree":
+        ready()
+        tidy()
+        print("Дерево проекта и запуск:")
+        key(14, " using {command down, shift down}", 1.0)     # ⇧⌘E — проводник
+        open_file("main.py")
+        ensure_no_chat()
+        terminal(".venv/bin/python main.py", 5.0)
+        ensure_no_chat()
+        retry(shot, "project-run", 1.5)
+        return
+
     if stage == "ext":
         ready()
         tidy()
         print("Панель расширений:")
-        key(7, " using {command down, shift down}", 2.0)     # ⇧⌘X
-        key(0, " using {command down}", 0.5)                 # ⌘A — поле поиска
-        key(51, "", 0.5)                                     # Delete: в поле мог
-        paste("njpwerner.autodocstring", 3.5)                # остаться прошлый запрос
-        shot("ext-autodocstring", 1.5)
+        key(7, " using {command down, shift down}", 2.0)      # ⇧⌘X
+        key(0, " using {command down}", 0.5)                  # ⌘A — поле поиска
+        key(51, "", 0.5)
+        paste("njpwerner.autodocstring", 3.5)
+        ensure_no_chat()
+        retry(shot, "ext-autodocstring", 1.5)
         key(53, "", 0.5)
         return
 
     if stage == "problems":
         ready()
         tidy()
-        print("Открываю файлы, чтобы Ruff их разобрал:")
-        key(14, " using {command down, shift down}", 1.0)    # ⇧⌘E — проводник
+        print("Панель Problems:")
+        key(14, " using {command down, shift down}", 1.0)     # ⇧⌘E — проводник
         open_file("formatter.py")
         time.sleep(3)
-        # Открытый файл редактор прикладывает к чату и показывает панель
-        # чата заново, поэтому её состояние проверяется по кадру.
         ensure_no_chat()
-        key(46, " using {command down, shift down}", 2.5)    # ⇧⌘M — Problems
-        shot("problems-ruff", 1.5)
+        key(46, " using {command down, shift down}", 2.5)     # ⇧⌘M
+        retry(shot, "problems-ruff", 1.5)
         return
 
     if stage == "terminal":
         ready()
         tidy()
-        print("Терминал и запуск проверки:")
-        key(50, " using {control down}", 2.5)                # ⌃` — терминал
-        paste("clear", 0.6)                                   # убрать след прошлого
-        key(36, "", 1.2)                                      # запуска и подсказку zsh
-        paste(".venv/bin/ruff check app --output-format=concise", 0.8)
-        key(36, "", 4.0)                                     # Enter
+        print("Проверка в терминале:")
+        terminal(".venv/bin/ruff check app --output-format=concise", 5.0)
         ensure_no_chat()
-        shot("terminal-ruff", 1.5)
+        retry(shot, "terminal-ruff", 1.5)
         return
 
     if stage == "generate":
@@ -367,47 +450,129 @@ def main() -> None:
         tidy()
         print("Функция без докстринга:")
         open_file("orders.py")
-        key(5, " using {control down}", 1.0)                 # ⌃G — переход к строке
-        typ("1", 0.6)
-        key(36, "", 1.2)
         ensure_no_chat()
+        key(5, " using {control down}", 1.0)                  # ⌃G
+        typ("14", 0.6)                                        # строка def revenue_by_waiter
+        key(36, "", 1.2)
         retry(shot, "generate-before", 1.0)
         print("Вставка заготовки:")
-        # Курсор — в конец строки def, затем пустая строка тела: иначе
-        # закрывающие кавычки заготовки встанут в одну строку с кодом.
-        key(124, " using {command down}", 0.6)               # ⌘→ — конец строки
-        key(36, "", 1.0)                                     # Enter — пустая строка
-        # Вставка кавычек через буфер обмена генератор не запускает:
-        # расширение ждёт набранные символы. Команда палитры надёжнее.
+        key(124, " using {command down}", 0.6)                # ⌘→ — конец строки
+        key(36, "", 1.0)                                      # Enter — пустая строка тела
         palette("Generate Docstring", 2.5)
         ensure_no_chat()
         retry(shot, "generate-after", 1.5)
         print("Возвращаю файл в исходный вид:")
         for _ in range(8):
-            key(6, " using {command down}", 0.4)             # ⌘Z
+            key(6, " using {command down}", 0.4)              # ⌘Z
+        return
+
+    if stage == "settings":
+        ready()
+        tidy()
+        print("Настройки проекта:")
+        open_file("settings.json")
+        ensure_no_chat()
+        retry(shot, "settings-json", 1.5)
+        return
+
+    if stage == "quickfix":
+        ready()
+        tidy()
+        print("Заготовка, а затем быстрое исправление по D415:")
+        open_file("orders.py")
+        ensure_no_chat()
+        key(5, " using {control down}", 1.0)                  # ⌃G
+        typ("14", 0.6)
+        key(36, "", 1.2)
+        key(124, " using {command down}", 0.6)                # ⌘→ — конец строки def
+        key(36, "", 1.0)                                      # Enter — пустая строка тела
+        palette("Generate Docstring", 2.5)
+        # Незаполненная краткая строка заканчивается без точки: на это
+        # у Ruff есть правило с готовым исправлением.
+        key(5, " using {control down}", 1.0)
+        typ("15", 0.6)
+        key(36, "", 1.2)
+        key(124, " using {command down}", 0.8)
+        palette("Quick Fix", 2.5)                             # меню исправлений
+        time.sleep(1.5)
+        retry(shot, "quickfix", 1.0, keep_cursor=True)
+        key(53, "", 0.5)
+        for _ in range(8):
+            key(6, " using {command down}", 0.4)              # ⌘Z
         return
 
     if stage == "hover":
         ready()
         tidy()
-        print("Подсказка с докстрингом:")
+        name = "hover-docstring" if "dokumentirovan" in project_path() else "hover-empty"
+        print(f"Подсказка при наведении: {name}")
         open_file("main.py")
-        key(38, " using {command down}", 1.5)                # ⌘J — убрать нижнюю
-        time.sleep(0.8)                                      # панель: подсказка
-        #                                                      иначе обрезается
-        key(5, " using {control down}", 1.0)                 # ⌃G
-        typ("5", 0.6)
+        ensure_no_chat()
+        key(5, " using {control down}", 1.0)                  # ⌃G
+        line = "30" if "dokumentirovan" in project_path() else "11"
+        typ(line, 0.6)                                        # строка с вызовом revenue_by_waiter
         key(36, "", 1.2)
-        for _ in range(8):                                   # внутрь имени функции
-            key(124, "", 0.12)
+        for _ in range(16):
+            key(124, "", 0.1)
         osa(f'tell application "System Events" to tell (first process whose unix id is {pid()}) '
             'to keystroke "k" using {command down}')
         time.sleep(0.8)
         osa(f'tell application "System Events" to tell (first process whose unix id is {pid()}) '
             'to keystroke "i" using {command down}')
         time.sleep(2.5)
-        shot("hover-docstring", 1.0)
+        retry(shot, name, 1.0, keep_cursor=True)
         key(53, "", 0.5)
+        return
+
+    if stage == "help":
+        ready()
+        tidy()
+        print("Справка в терминале:")
+        terminal('.venv/bin/python -c "import app.services.orders as m; help(m)"', 4.0)
+        ensure_no_chat()
+        retry(shot, "terminal-help", 1.5)
+        # help() показывает справку в пейджере: пока он открыт, следующие
+        # команды уходят к нему как строки поиска.
+        typ("q", 1.0)
+        return
+
+    if stage == "helpclass":
+        ready()
+        tidy()
+        print("Справка по классу:")
+        terminal('.venv/bin/python -c "from app.domain.shift import Shift; help(Shift)"', 4.0)
+        ensure_no_chat()
+        retry(shot, "terminal-help-class", 1.5)
+        typ("q", 1.0)                                         # закрыть пейджер
+        return
+
+    if stage == "doctest":
+        ready()
+        tidy()
+        print("Проверка примеров из докстринга:")
+        terminal(".venv/bin/python -m doctest app/utils/formatter.py -v", 4.0)
+        ensure_no_chat()
+        retry(shot, "terminal-doctest", 1.5)
+        return
+
+    if stage == "checks":
+        ready()
+        tidy()
+        print("Итоговые проверки:")
+        terminal(".venv/bin/python -m pytest -q && .venv/bin/ruff check app", 8.0)
+        ensure_no_chat()
+        retry(shot, "terminal-checks", 1.5)
+        return
+
+    if stage == "series":
+        # Между отдельными запусками система успевает вернуться на рабочий
+        # стол с полноэкранным редактором, и окно съёмки туда не возвращается:
+        # AX-интерфейс видит окна только текущего рабочего стола. Поэтому все
+        # стадии серии выполняются одним процессом, без пауз между ними.
+        for name in sys.argv[2:]:
+            print(f"── {name}")
+            sys.argv = ["shoot.py", name]
+            main()
         return
 
     print(__doc__)
