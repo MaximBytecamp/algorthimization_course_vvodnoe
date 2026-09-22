@@ -1,0 +1,1207 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>Занятие 7 · Массив: индексы, проходы, границы</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&family=Unbounded:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../styles.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="boot" id="boot">
+    <div class="boot__scanlines" aria-hidden="true"></div>
+    <div class="boot-card">
+      <div class="boot-card__top"><span>ОП.04 · ЗАНЯТИЕ 7</span><span>2026 / 2027</span></div>
+      <p class="boot-card__title">Массив: индексы,<br><em>проходы, границы</em></p>
+      <dl class="boot-card__fields">
+        <div><dt>Формат</dt><dd>новая тема + практика по стартовому набору</dd></div>
+        <div><dt>Объём</dt><dd>одна пара, 90 минут</dd></div>
+        <div><dt>Результат</dt><dd>три функции, тесты и заметка о сложности</dd></div>
+        <div><dt>Файлы</dt><dd>lesson_07/ · solution.py · tests.py · complexity_note.md</dd></div>
+      </dl>
+    </div>
+    <p class="boot__hint">нажмите любую клавишу, чтобы начать <i>▸</i></p>
+  </div>
+
+  <div class="deck" id="deck" aria-live="polite">
+    <header class="chrome">
+      <button class="brand" type="button" data-go="0" aria-label="На первый слайд">
+        <span class="brand-mark">A<span>/</span>П</span>
+        <span class="brand-copy">Занятие 07<br>Массив и границы</span>
+      </button>
+      <div class="chrome-right">
+        <button class="icon-button" id="sourcesButton" type="button" aria-label="План занятия и источники">S</button>
+        <button class="icon-button" id="fullscreenButton" type="button" aria-label="Полноэкранный режим">⛶</button>
+        <span class="counter"><span id="currentNumber">01</span><i>/</i><span id="totalNumber">49</span></span>
+      </div>
+    </header>
+
+    <main class="slides">
+
+      <!-- 01 · титул -->
+      <section class="slide slide--title is-active" data-accent="blue">
+        <div class="slide-inner title-layout">
+          <div>
+            <p class="eyebrow">Занятие 7 · раздел 2 · массивы, строки и последовательные техники</p>
+            <h1>Массив:<br>индексы, проходы,<br><code>границы</code></h1>
+            <p class="lead">Как список Python хранит элементы в памяти, где проходят границы среза, как изменить список на месте и почему <code>append</code> в среднем стоит O(1). Три задачи на один проход с инвариантом: максимальная серия, разворот участка, удаление на месте.</p>
+            <div class="title-meta"><span>3 задачи</span><span>5 демонстраций</span><span>27 тестов</span><span>lesson_07</span></div>
+          </div>
+          <div class="title-count">
+            <p class="title-count__label">план пары</p>
+            <ol class="title-plan">
+              <li><b>1–2</b>массив в памяти и границы</li>
+              <li><b>3</b>инвариант прохода: серия</li>
+              <li><b>4–5</b>разворот, копия или на месте</li>
+              <li><b>6</b>удаление на месте</li>
+              <li><b>7</b>ёмкость и амортизация</li>
+              <li><b>8</b>практика и сдача</li>
+            </ol>
+          </div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 02 · вход: баг-репорт -->
+      <section class="slide slide--answer" data-accent="pink">
+        <div class="slide-inner">
+          <p class="eyebrow">Баг-репорт · модерация комментариев</p>
+          <h2>Спам удалили, но один остался</h2>
+          <p class="lead">В ленте четыре комментария, в двух есть ссылка. Ниже две версии чистки, которые часто пишут первыми, и их настоящий вывод на Python 3.12. Первая версия молча оставляет спам, вторая падает.</p>
+          <div class="cols">
+            <div class="stack">
+              <figure class="code"><div class="code__head"><span>moderation_v1.py</span><span>remove() в цикле for</span></div>
+<pre><span class="k">def</span> is_spam(text):
+    <span class="k">return</span> <span class="s">"http"</span> <span class="k">in</span> text
+
+comments = [<span class="s">"Отличный урок"</span>, <span class="s">"http://win.ru"</span>,
+            <span class="s">"http://prize.ru"</span>, <span class="s">"Спасибо"</span>]
+<span class="k">for</span> text <span class="k">in</span> comments:
+    <span class="k">if</span> is_spam(text):
+<span class="hl">        comments.remove(text)</span>
+print(comments)</pre></figure>
+              <figure class="term"><div class="term__head"><span>$ python3 moderation_v1.py</span><span>3.12.12</span></div>
+<pre>['Отличный урок', <span class="e">'http://prize.ru'</span>, 'Спасибо']</pre></figure>
+            </div>
+            <div class="stack">
+              <figure class="code"><div class="code__head"><span>moderation_v2.py</span><span>del по индексу</span></div>
+<pre>comments = [<span class="s">"Отличный урок"</span>, <span class="s">"http://win.ru"</span>,
+            <span class="s">"http://prize.ru"</span>, <span class="s">"Спасибо"</span>]
+<span class="k">for</span> i <span class="k">in</span> range(len(comments)):
+    <span class="k">if</span> is_spam(comments[i]):
+<span class="hl">        <span class="k">del</span> comments[i]</span>
+print(comments)</pre></figure>
+              <figure class="term"><div class="term__head"><span>$ python3 moderation_v2.py</span><span>3.12.12</span></div>
+<pre><span class="d">Traceback (most recent call last):
+  File "moderation_v2.py", line 6, in &lt;module&gt;
+    if is_spam(comments[i]):
+               ~~~~~~~~^^^</span>
+<span class="e">IndexError: list index out of range</span></pre></figure>
+            </div>
+          </div>
+          <p class="note">Причина у обеих ошибок одна: список меняется во время прохода по нему, а позиция прохода этого не учитывает. Разбор — в части 6, когда будут введены индекс, граница и инвариант прохода.</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 03 · карта занятия -->
+      <section class="slide slide--answer" data-accent="blue">
+        <div class="slide-inner">
+          <p class="eyebrow">Структура занятия · 8 частей · 90 минут</p>
+          <h2>От ячейки памяти к трём задачам</h2>
+          <div class="agenda">
+            <div><span>1</span><strong>Массив в памяти</strong><p>Непрерывный блок, адрес по индексу, что падает и что нет.</p><i>экраны 5–7</i></div>
+            <div><span>2</span><strong>Границы</strong><p>Полуинтервал [l, r), разрезы, забор и столбы, ошибки на единицу, пустой вход.</p><i>экраны 8–13</i></div>
+            <div><span>3</span><strong>Инвариант прохода</strong><p>Задача 1 «максимальная серия» и ошибка потерянной последней серии.</p><i>экраны 14–19</i></div>
+            <div><span>4</span><strong>Два указателя навстречу</strong><p>Задача 2 «разворот участка» и условие остановки.</p><i>экраны 20–24</i></div>
+            <div><span>5</span><strong>Копия или на месте</strong><p>Ссылки на один список, контракт функции, выбор по памяти и риску.</p><i>экраны 25–27</i></div>
+            <div><span>6</span><strong>Удаление на месте</strong><p>Разбор баг-репорта, указатели чтения и записи, цена четырёх способов.</p><i>экраны 28–34</i></div>
+            <div><span>7</span><strong>Ёмкость и append</strong><p>Размер и ёмкость, исходник CPython, амортизированная стоимость.</p><i>экраны 35–40</i></div>
+            <div><span>8</span><strong>Практика и сдача</strong><p>lesson_07, ручная таблица, карточка изменения, справка, итог.</p><i>экраны 41–49</i></div>
+          </div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 04 · результат пары -->
+      <section class="slide slide--answer" data-accent="lime">
+        <div class="slide-inner">
+          <p class="eyebrow">Результат пары · что сдаётся</p>
+          <h2>Папка <code>portfolio/lesson_07</code></h2>
+          <div class="cols cols--wide-left">
+            <table class="tbl">
+              <thead><tr><th>Файл</th><th>Что в нём</th></tr></thead>
+              <tbody>
+                <tr><td><code>solution.py</code></td><td>три функции: <code>max_streak</code>, <code>reverse_segment</code>, <code>remove_spam</code>; обязательны первая и третья</td></tr>
+                <tr><td><code>tests.py</code></td><td>27 публичных тестов и ваши тесты: один воспроизводит найденную ошибку, три — по карточке изменения</td></tr>
+                <tr><td><code>complexity_note.md</code></td><td>инвариант, время и память каждой функции своими словами</td></tr>
+                <tr><td><code>initial_attempt.txt</code></td><td>вопросы к условию и три примера, записанные до кода</td></tr>
+              </tbody>
+            </table>
+            <div class="stack"><div class="def" style="margin-top:0"><b>Критерии КТП</b>Результат запускается одной командой <code>python -m pytest tests.py</code>. Публичные тесты проходят, граничный сценарий воспроизведён отдельным тестом. Вы объясняете ключевой инвариант и сложность по времени и памяти.</div><div class="def"><b>Контрольный вопрос занятия</b>Какой инвариант остаётся истинным после каждого перемещения границы?</div></div>
+          </div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 05 · массив в памяти -->
+      <section class="slide slide--answer" data-accent="blue">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 1 · массив в памяти</p>
+          <h2>Массив: ячейки одного размера подряд</h2>
+          <div class="def"><b>Определение</b><strong>Массив</strong> — структура данных, в которой элементы лежат в памяти подряд, в ячейках одинакового размера, и каждый элемент доступен по номеру — <strong>индексу</strong>. Индекс равен смещению от начала блока, поэтому первый элемент имеет индекс 0.</div>
+          <p class="lead">Список Python устроен как массив, но в ячейках лежат не сами числа или строки, а <strong>ссылки</strong> на объекты. На 64-битной системе ссылка занимает 8 байт. Поэтому в одном списке могут лежать объекты разных типов и размеров, а ячейки при этом одинаковые. Ниже шаги трекера за пять дней; нажмите на ячейку.</p>
+          <div class="memrow" data-values="12000,3000,11000,10500,10000"></div>
+          <p class="cap">Адреса условные: настоящее начало блока каждый запуск разное. Под ячейкой — индекс слева направо и отрицательный индекс справа налево.</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 06 · O(1) по индексу -->
+      <section class="slide slide--answer" data-accent="blue">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 1 · цена доступа</p>
+          <h2>Доступ по индексу за O(1), поиск по значению за O(n)</h2>
+          <p class="lead">Адрес ячейки вычисляется формулой: <code>адрес(i) = начало + i × 8</code>. Это одно умножение и одно сложение, и их число не зависит от длины списка. Для поиска по значению формулы нет: чтобы узнать, есть ли в списке 10 500, элементы просматриваются по порядку.</p>
+          <table class="tbl">
+            <thead><tr><th>Операция</th><th>Что выполняется</th><th>Время</th></tr></thead>
+            <tbody>
+              <tr><td><code>steps[3]</code></td><td>адрес по формуле, чтение одной ячейки</td><td class="good">O(1)</td></tr>
+              <tr><td><code>steps[-1]</code></td><td>индекс −1 заменяется на <code>len(steps) − 1</code>, дальше как выше</td><td class="good">O(1)</td></tr>
+              <tr><td><code>steps[3] = 9000</code></td><td>запись ссылки в одну ячейку</td><td class="good">O(1)</td></tr>
+              <tr><td><code>len(steps)</code></td><td>длина хранится в объекте списка, считать её заново не нужно</td><td class="good">O(1)</td></tr>
+              <tr><td><code>10500 in steps</code></td><td>сравнение с каждым элементом, пока не найдено совпадение</td><td class="bad">O(n)</td></tr>
+              <tr><td><code>steps.index(10500)</code></td><td>тот же просмотр, возвращает позицию первого совпадения</td><td class="bad">O(n)</td></tr>
+            </tbody>
+          </table>
+          <p class="note">На этом различии построены решения раздела: алгоритм обращается к элементам по индексу, а поиск по значению внутри цикла не используется.</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 07 · что падает -->
+      <section class="slide slide--answer" data-accent="pink">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 1 · индексы в Python</p>
+          <h2>Индекс за границей падает, срез за границей — нет</h2>
+          <div class="cols cols--wide-right">
+            <figure class="term"><div class="term__head"><span>python3 -i</span><span>3.12.12</span></div>
+<pre><span class="p">&gt;&gt;&gt;</span> a = [10, 20, 30, 40, 50]
+<span class="p">&gt;&gt;&gt;</span> a[4], a[-1]
+(50, 50)
+<span class="p">&gt;&gt;&gt;</span> a[5]
+<span class="d">Traceback (most recent call last):
+  File "&lt;stdin&gt;", line 1, in &lt;module&gt;</span>
+<span class="e">IndexError: list index out of range</span>
+<span class="p">&gt;&gt;&gt;</span> a[1:3], a[3:10], a[10:20]
+([20, 30], [40, 50], [])
+<span class="p">&gt;&gt;&gt;</span> max([])
+<span class="d">Traceback (most recent call last):
+  File "&lt;stdin&gt;", line 1, in &lt;module&gt;</span>
+<span class="e">ValueError: max() iterable argument is empty</span></pre></figure>
+            <div class="stack">
+              <div class="def"><b>Отрицательный индекс</b><code>a[-k]</code> — то же, что <code>a[len(a) - k]</code>. <code>a[-1]</code> — последний элемент, <code>a[-len(a)]</code> — первый.</div>
+              <div class="def"><b>Индекс вне диапазона</b>Допустимы индексы от <code>-len(a)</code> до <code>len(a) - 1</code>. Остальные поднимают <code>IndexError</code>.</div>
+              <div class="def"><b>Срез вне диапазона</b>Границы среза обрезаются до <code>[0, len(a)]</code>, исключения нет. <code>a[3:10]</code> вернул два элемента вместо семи без сообщения. Ошибку границы в срезе находят только тестом.</div>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 08 · полуинтервал -->
+      <section class="slide slide--answer" data-accent="blue">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 2 · границы</p>
+          <h2>Полуинтервал [l, r): левая граница входит, правая нет</h2>
+          <div class="def"><b>Определение</b>Срез <code>a[l:r]</code> берёт элементы с индексами <code>l, l + 1, …, r − 1</code>. Такой участок называют <strong>полуинтервалом</strong> и записывают <code>[l, r)</code>: квадратная скобка — граница включена, круглая — нет. По тому же правилу работает <code>range(l, r)</code>.</div>
+          <div class="cards3">
+            <div><b>Длина без +1</b><strong>len(a[l:r]) == r − l</strong><p>Число элементов равно разности границ. При включённой правой границе пришлось бы помнить про <code>r − l + 1</code>, и это частый источник ошибки.</p><pre>a[2:5]  → 3 элемента
+range(0, n) → n чисел</pre></div>
+            <div><b>Склейка без стыков</b><strong>a[:k] + a[k:] == a</strong><p>Граница <code>k</code> закрывает первый участок и открывает второй. Элемент <code>a[k]</code> попадает ровно в одну часть, пропусков и повторов нет.</p><pre>a[:3] + a[3:]
+a[:l] + a[l:r] + a[r:]</pre></div>
+            <div><b>Пустой участок</b><strong>a[k:k] == []</strong><p>При <code>l == r</code> участок пустой, и отдельный <code>if</code> для этого случая не нужен: цикл <code>for i in range(k, k)</code> не выполнится ни разу.</p><pre>a[3:3]     → []
+range(5, 5) → пусто</pre></div>
+          </div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 09 · демонстрация: разрезы -->
+      <section class="slide slide--answer" data-accent="blue">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 2 · демонстрация · границы среза</p>
+          <h2>Граница стоит между ячейками</h2>
+          <p class="lead">Индекс границы — номер промежутка между ячейками. Граница 0 стоит перед первым элементом, граница <code>n</code> — после последнего. Нажмите на две границы: первая станет <code>l</code>, вторая <code>r</code>.</p>
+          <div class="cuts" data-values="10,20,30,40,50,60,70,80" data-l="2" data-r="5"></div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 10 · забор и столбы -->
+      <section class="slide slide--answer" data-accent="orange">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 2 · подсчёт итераций</p>
+          <h2>n элементов, n + 1 границ, n − 1 пар соседей</h2>
+          <p class="lead">Забор из четырёх пролётов стоит на пяти столбах. В списке то же соотношение: элементов <code>n</code>, границ между ними и по краям <code>n + 1</code>, пар соседних элементов <code>n − 1</code>. Прежде чем писать <code>range</code>, определите, что именно перебирает цикл.</p>
+          <div class="fence" aria-hidden="true"><span></span><em>a[0]</em><span></span><em>a[1]</em><span></span><em>a[2]</em><span></span><em>a[3]</em><span></span></div>
+          <table class="tbl">
+            <thead><tr><th>Что перебираем</th><th>Сколько при n = 4</th><th>Цикл</th><th>Где встречается</th></tr></thead>
+            <tbody>
+              <tr><td>элементы <code>a[i]</code></td><td class="num">n = 4</td><td><code>for i in range(n)</code></td><td>сумма, счётчик, серия</td></tr>
+              <tr><td>границы, места для вставки</td><td class="num">n + 1 = 5</td><td><code>for k in range(n + 1)</code></td><td>разрез на <code>a[:k]</code> и <code>a[k:]</code>, префиксные суммы</td></tr>
+              <tr><td>пары соседей <code>a[i], a[i + 1]</code></td><td class="num">n − 1 = 3</td><td><code>for i in range(n - 1)</code></td><td>рост цены по дням, проверка порядка</td></tr>
+              <tr><td>отрезки длины k подряд</td><td class="num">n − k + 1</td><td><code>for i in range(n - k + 1)</code></td><td>окно фиксированного размера (занятие 9)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 11 · подмассив, подпоследовательность, подстрока -->
+      <section class="slide slide--answer" data-accent="blue">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 2 · термины условия</p>
+          <h2>Подмассив, подпоследовательность, подстрока</h2>
+          <p class="lead">Эти слова в условии меняют задачу целиком. «Самый длинный подмассив» и «самая длинная подпоследовательность» решаются разными алгоритмами, поэтому термин уточняется до кода.</p>
+          <div class="cards3">
+            <div><b>Подмассив · subarray</b><strong>Участок подряд, без пропусков</strong><p>Записывается срезом <code>a[l:r]</code>. У списка длины n непустых подмассивов n(n + 1) / 2 — для n = 5 это 15.</p><pre>a = [3, 8, 1, 9, 4]
+[8, 1, 9]  подмассив
+[3, 1, 4]  не подмассив</pre></div>
+            <div><b>Подпоследовательность · subsequence</b><strong>Элементы в исходном порядке, пропуски разрешены</strong><p>Порядок сохраняется, но соседство — нет. Всего подпоследовательностей 2ⁿ, включая пустую: для n = 5 это 32.</p><pre>a = [3, 8, 1, 9, 4]
+[3, 1, 4]  подпоследовательность
+[1, 3]     порядок нарушен</pre></div>
+            <div><b>Подстрока · substring</b><strong>Подмассив строки</strong><p>Символы подряд. Проверяется оператором <code>in</code> для строк: <code>"паси" in "спасибо"</code> даёт <code>True</code>.</p><pre>s = "спасибо"
+"паси"  подстрока
+"спб"   подпоследовательность</pre></div>
+          </div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 12 · ошибки на единицу -->
+      <section class="slide slide--answer" data-accent="pink">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 2 · off-by-one</p>
+          <h2>Пять ошибок на единицу</h2>
+          <p class="lead"><strong>Off-by-one</strong> — ошибка, при которой цикл или срез проходит на один элемент больше или меньше нужного. Код при этом часто работает на обычных примерах и ломается на крайнем элементе.</p>
+          <table class="tbl tbl--dense">
+            <thead><tr><th>Код</th><th>Что происходит</th><th>Исправление</th></tr></thead>
+            <tbody>
+              <tr><td><code>for i in range(len(a)):</code><br><code>&nbsp;&nbsp;if a[i + 1] &gt; a[i]:</code></td><td>на последнем <code>i</code> индекс <code>i + 1</code> равен <code>len(a)</code> → <span class="bad">IndexError</span></td><td>пар соседей n − 1: <code>range(len(a) - 1)</code></td></tr>
+              <tr><td><code>for i in range(1, len(a)):</code><br><code>&nbsp;&nbsp;total += a[i]</code></td><td>первый элемент не учтён, ошибки нет, ответ меньше верного</td><td><code>range(len(a))</code> или <code>for x in a</code></td></tr>
+              <tr><td>«с l по r включительно» → <code>a[l:r]</code></td><td>элемент <code>a[r]</code> потерян</td><td><code>a[l:r + 1]</code></td></tr>
+              <tr><td><code>for i in range(len(a) - k):</code><br><code>&nbsp;&nbsp;sum(a[i:i + k])</code></td><td>последнее окно не просмотрено</td><td>окон n − k + 1: <code>range(len(a) - k + 1)</code></td></tr>
+              <tr><td><code>last = a[len(a)]</code></td><td>индекс <code>len(a)</code> — граница после последнего элемента → <span class="bad">IndexError</span></td><td><code>a[len(a) - 1]</code> или <code>a[-1]</code></td></tr>
+            </tbody>
+          </table>
+          <p class="note">Проверка без запуска: подставьте n = 0, 1 и 2 и посчитайте итерации вручную. Если при n = 1 цикл по парам выполняется один раз, граница неверна.</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 13 · пустой и короткий вход -->
+      <section class="slide slide--answer" data-accent="orange">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 2 · пустой вход</p>
+          <h2>Что делает код на <code>[]</code> и на одном элементе</h2>
+          <table class="tbl">
+            <thead><tr><th>Выражение</th><th><code>a = []</code></th><th><code>a = [7]</code></th><th><code>a = [7, 7]</code></th></tr></thead>
+            <tbody>
+              <tr><td><code>a[0]</code></td><td class="bad">IndexError</td><td>7</td><td>7</td></tr>
+              <tr><td><code>a[-1]</code></td><td class="bad">IndexError</td><td>7</td><td>7</td></tr>
+              <tr><td><code>max(a)</code></td><td class="bad">ValueError</td><td>7</td><td>7</td></tr>
+              <tr><td><code>range(len(a) - 1)</code></td><td>range(−1): пусто</td><td>range(0): пусто</td><td>одна итерация</td></tr>
+              <tr><td><code>a[1:]</code></td><td>[]</td><td>[]</td><td>[7]</td></tr>
+              <tr><td><code>for x in a</code></td><td>ни одной итерации</td><td>одна</td><td>две</td></tr>
+            </tbody>
+          </table>
+          <div class="cols">
+            <div class="def"><b>Сначала контракт</b>Что вернуть на пустом входе, решает условие, и это уточняется до кода: 0, <code>None</code> или исключение. В задаче 1 ответ на <code>[]</code> — 0, в задаче 2 — <code>ValueError</code>.</div>
+            <div class="def"><b>Потом код</b>Часто цикл сам даёт верный ответ на пустом входе, и проверка <code>if not a</code> не нужна. Она нужна, когда код до цикла читает <code>a[0]</code> или вызывает <code>max(a)</code>.</div>
+          </div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 14 · инвариант прохода -->
+      <section class="slide slide--answer" data-accent="lime">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 3 · инвариант прохода · возврат к занятию 5</p>
+          <h2>Что хранится между итерациями</h2>
+          <p class="lead">На занятии 5 инвариант цикла проверялся на готовом коде ручным прогоном. Здесь порядок обратный: сначала формулируется инвариант, по нему пишется код прохода.</p>
+          <div class="def"><b>Определение</b><strong>Инвариант прохода</strong> — утверждение о переменных цикла, которое верно перед первой итерацией и остаётся верным после каждой. Для последовательных техник оно описывает, что уже обработано и что хранится про обработанную часть.</div>
+          <div class="cards3">
+            <div><b>1 · Инициализация</b><p>Инвариант верен до первой итерации. Отсюда берутся начальные значения: <code>best = 0</code>, <code>w = 0</code>, <code>i, j = l, r</code>.</p></div>
+            <div><b>2 · Сохранение</b><p>Если инвариант верен перед шагом, он верен и после шага. Отсюда тело цикла и порядок обновлений: что меняется до сдвига границы, что после.</p></div>
+            <div><b>3 · Завершение</b><p>Когда цикл закончился, инвариант вместе с условием остановки даёт ответ. Если ответ из него не следует, код после цикла что-то досчитывает.</p></div>
+          </div>
+          <p class="note">По КТП хороший ответ звучит так: «вот что хранится между итерациями, и вот почему ни один кандидат не пропущен». Антипример — указатели двигаются по ощущению, а крайние случаи добавляются отдельными <code>if</code> после каждой найденной ошибки.</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 15 · задача 1: условие -->
+      <section class="slide slide--answer" data-accent="blue">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 3 · задача 1 · фитнес-трекер</p>
+          <h2>Максимальная серия дней с целью по шагам</h2>
+          <p class="lead">Трекер хранит число шагов по дням: <code>steps[0]</code> — первый день, <code>steps[-1]</code> — последний. Цель дня — <code>goal</code> шагов, по умолчанию 10 000. Нужно вернуть длину самой длинной серии дней подряд, в каждый из которых цель достигнута.</p>
+          <div class="cols">
+            <table class="tbl">
+              <thead><tr><th>steps</th><th>Ответ</th></tr></thead>
+              <tbody>
+                <tr><td><code>[12000, 3000, 11000, 10500, 10000]</code></td><td class="num">3</td></tr>
+                <tr><td><code>[9999]</code></td><td class="num">0</td></tr>
+                <tr><td><code>[]</code></td><td class="num">0</td></tr>
+              </tbody>
+            </table>
+            <table class="tbl">
+              <thead><tr><th>Вопрос к условию</th><th>Ответ</th></tr></thead>
+              <tbody>
+                <tr><td>Ровно 10 000 шагов — цель достигнута?</td><td>да, сравнение <code>&gt;=</code></td></tr>
+                <tr><td>Что вернуть на пустом списке?</td><td>0</td></tr>
+                <tr><td>Бывают ли пропущенные дни?</td><td>нет, один элемент — один день</td></tr>
+                <tr><td>Можно ли менять список?</td><td>нет; память O(1)</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="note">Термин из условия: серия — подмассив, то есть дни подряд. Если бы спрашивали о днях с пропусками, это была бы другая задача.</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 16 · задача 1: код и инвариант -->
+      <section class="slide slide--answer" data-accent="blue">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 3 · задача 1 · решение</p>
+          <h2>Две переменные: текущая серия и лучшая</h2>
+          <div class="cols cols--wide-right">
+            <figure class="code"><div class="code__head"><span>solution.py</span><span>O(n) · O(1)</span></div>
+<pre><span class="k">def</span> max_streak(steps, goal=<span class="n">10_000</span>):
+    best = <span class="n">0</span>   <span class="c"># лучшая серия среди steps[0..i]</span>
+    cur = <span class="n">0</span>    <span class="c"># серия, которая заканчивается на i</span>
+    <span class="k">for</span> s <span class="k">in</span> steps:
+        <span class="k">if</span> s &gt;= goal:
+            cur += <span class="n">1</span>
+<span class="ok">            <span class="k">if</span> cur &gt; best:</span>
+<span class="ok">                best = cur</span>
+        <span class="k">else</span>:
+            cur = <span class="n">0</span>
+    <span class="k">return</span> best</pre></figure>
+            <div class="stack">
+              <div class="def"><b>Инвариант</b>После обработки дня <code>i</code>: <code>cur</code> — длина серии, которая заканчивается на дне <code>i</code>; <code>best</code> — длина лучшей серии среди дней <code>0..i</code>.</div>
+              <table class="tbl tbl--dense">
+                <tbody>
+                  <tr><td><b>Инициализация</b></td><td>дней не просмотрено, серий нет: <code>cur = best = 0</code></td></tr>
+                  <tr><td><b>Сохранение</b></td><td>цель достигнута — серия продлевается на 1, и лучшая обновляется сразу; не достигнута — серия, оканчивающаяся на этом дне, пустая</td></tr>
+                  <tr><td><b>Завершение</b></td><td>просмотрены все дни, по инварианту <code>best</code> — лучшая серия среди всех. Досчитывать после цикла нечего</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 17 · демонстрация: серия -->
+      <section class="slide slide--answer" data-accent="blue">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 3 · демонстрация · проход по дням</p>
+          <h2>Серия растёт, обрывается, best хранит максимум</h2>
+          <div class="player" data-scenario="streak"></div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 18 · ошибка: потерянная последняя серия -->
+      <section class="slide slide--answer" data-accent="pink">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 3 · типичная ошибка · обновление не в том месте</p>
+          <h2>best обновляется только при обрыве серии</h2>
+          <div class="cols cols--wide-right">
+            <div class="stack">
+              <figure class="code"><div class="code__head"><span>ошибочная версия</span><span>тест: best_series_at_the_end</span></div>
+<pre><span class="k">for</span> s <span class="k">in</span> steps:
+    <span class="k">if</span> s &gt;= goal:
+        cur += <span class="n">1</span>
+    <span class="k">else</span>:
+<span class="hl">        best = max(best, cur)</span>
+        cur = <span class="n">0</span>
+<span class="k">return</span> best</pre></figure>
+              <p class="cap">Код проходит примеры, где за лучшей серией идёт день без цели. Если серия заканчивается вместе со списком, ветка <code>else</code> для неё не выполнится. Частая «заплатка» — <code>return max(best, cur)</code> после цикла: она работает, но инвариант при этом остаётся нарушенным внутри цикла.</p>
+            </div>
+            <div class="player player--stack" data-scenario="streakBug"></div>
+          </div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 19 · тесты задачи 1 -->
+      <section class="slide slide--answer" data-accent="lime">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 3 · задача 1 · тесты</p>
+          <h2>Один тест — один класс входа</h2>
+          <p class="lead">Публичные тесты из <code>tests.py</code>. Имя теста называет класс входа: при падении по имени понятно, какое допущение нарушено.</p>
+          <table class="tbl tbl--dense">
+            <thead><tr><th>Тест</th><th>Вход</th><th>Ждём</th><th>Что проверяет</th></tr></thead>
+            <tbody>
+              <tr><td><code>test_streak_empty</code></td><td><code>[]</code></td><td class="num">0</td><td>пустой вход без отдельного <code>if</code></td></tr>
+              <tr><td><code>test_streak_single_day_missed</code></td><td><code>[9999]</code></td><td class="num">0</td><td>один элемент, цель не достигнута</td></tr>
+              <tr><td><code>test_streak_goal_is_inclusive</code></td><td><code>[10000, 10000, 9999, 10000]</code></td><td class="num">2</td><td>сравнение <code>&gt;=</code> на границе цели</td></tr>
+              <tr><td><code>test_streak_all_days_reached</code></td><td>четыре дня выше цели</td><td class="num">4</td><td>обрывов нет ни одного</td></tr>
+              <tr class="is-hl"><td><code>test_streak_best_series_at_the_end</code></td><td><code>[12000, 3000, 11000, 10500, 10000]</code></td><td class="num">3</td><td>серия заканчивается вместе со списком</td></tr>
+              <tr><td><code>test_streak_best_series_in_the_middle</code></td><td>лучшая серия внутри</td><td class="num">3</td><td>серия после обрыва начинается с нуля</td></tr>
+              <tr><td><code>test_streak_does_not_change_input</code></td><td><code>[12000, 3000, 11000]</code></td><td>список тот же</td><td>вход не изменён</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 20 · задача 2: условие -->
+      <section class="slide slide--answer" data-accent="blue">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 4 · задача 2 · плейлист</p>
+          <h2>Разворот участка с l по r включительно</h2>
+          <p class="lead">В плейлисте нужно развернуть порядок треков с позиции <code>l</code> по позицию <code>r</code>. Остальные треки остаются на местах. Функция меняет переданный список и ничего не возвращает.</p>
+          <div class="cols">
+            <table class="tbl">
+              <thead><tr><th>До</th><th>l, r</th><th>После</th></tr></thead>
+              <tbody>
+                <tr><td><code>A B C D E F</code></td><td class="num">1, 4</td><td><code>A E D C B F</code></td></tr>
+                <tr><td><code>A B C</code></td><td class="num">1, 1</td><td><code>A B C</code></td></tr>
+                <tr><td><code>1 2 3 4</code></td><td class="num">0, 3</td><td><code>4 3 2 1</code></td></tr>
+                <tr><td><code>1 2 3</code></td><td class="num">2, 1</td><td><code>ValueError</code></td></tr>
+              </tbody>
+            </table>
+            <table class="tbl">
+              <thead><tr><th>Вопрос к условию</th><th>Ответ</th></tr></thead>
+              <tbody>
+                <tr><td>Правая граница включена?</td><td>да; срезом это был бы <code>a[l:r + 1]</code></td></tr>
+                <tr><td>Что при <code>l &gt; r</code> или выходе за список?</td><td><code>ValueError</code>, список не меняется</td></tr>
+                <tr><td>Что при <code>l == r</code>?</td><td>участок из одного трека, ничего не меняется</td></tr>
+                <tr><td>Вернуть новый список или изменить этот?</td><td>изменить этот, вернуть <code>None</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 21 · задача 2: решение -->
+      <section class="slide slide--answer" data-accent="blue">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 4 · задача 2 · решение</p>
+          <h2>Два указателя идут навстречу и меняют треки местами</h2>
+          <div class="cols cols--wide-right">
+            <figure class="code"><div class="code__head"><span>solution.py</span><span>O(r − l) · O(1)</span></div>
+<pre><span class="k">def</span> reverse_segment(tracks, l, r):
+    <span class="k">if</span> <span class="k">not</span> (<span class="n">0</span> &lt;= l &lt;= r &lt; len(tracks)):
+        <span class="k">raise</span> ValueError(<span class="s">"неверные границы"</span>)
+    i, j = l, r
+<span class="ok">    <span class="k">while</span> i &lt; j:</span>
+        tracks[i], tracks[j] = tracks[j], tracks[i]
+        i += <span class="n">1</span>
+        j -= <span class="n">1</span></pre></figure>
+            <div class="stack">
+              <div class="def"><b>Инвариант</b>Всё, что лежит вне <code>tracks[i..j]</code>, уже стоит на итоговом месте. Внутри <code>[i..j]</code> — необработанная середина участка.</div>
+              <table class="tbl tbl--dense">
+                <tbody>
+                  <tr><td><b>Инициализация</b></td><td><code>i = l</code>, <code>j = r</code>: снаружи только треки вне участка, их разворот не касается</td></tr>
+                  <tr><td><b>Сохранение</b></td><td>обмен ставит <code>tracks[i]</code> и <code>tracks[j]</code> на итоговые места, затем обе границы сдвигаются внутрь</td></tr>
+                  <tr><td><b>Завершение</b></td><td><code>i ≥ j</code>: в середине ноль или один трек, а один трек стоит на своём месте в любом случае</td></tr>
+                </tbody>
+              </table>
+              <p class="cap">Проверка границ стоит до цикла, поэтому при неверных <code>l</code>, <code>r</code> список не меняется. Число обменов — <code>(r − l + 1) // 2</code>.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 22 · демонстрация: разворот -->
+      <section class="slide slide--answer" data-accent="blue">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 4 · демонстрация · разворот tracks[1..6]</p>
+          <h2>Обработанная зона растёт с двух сторон</h2>
+          <div class="player" data-scenario="reverse"></div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 23 · почему i < j -->
+      <section class="slide slide--answer" data-accent="pink">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 4 · условие остановки</p>
+          <h2>Почему <code>i &lt; j</code>: указатели встречаются или перескакивают</h2>
+          <p class="lead">При нечётной длине участка указатели встречаются на среднем элементе. При чётной — перескакивают друг через друга, и условие <code>i != j</code> тогда не срабатывает.</p>
+          <div class="cols">
+            <table class="tbl tbl--dense">
+              <thead><tr><th colspan="4">Участок из 5 треков, l = 0, r = 4</th></tr><tr><th>Шаг</th><th>i</th><th>j</th><th>i &lt; j</th></tr></thead>
+              <tbody>
+                <tr><td>до цикла</td><td>0</td><td>4</td><td>да</td></tr>
+                <tr><td>1</td><td>1</td><td>3</td><td>да</td></tr>
+                <tr><td>2</td><td>2</td><td>2</td><td>нет — встретились на середине</td></tr>
+              </tbody>
+            </table>
+            <table class="tbl tbl--dense">
+              <thead><tr><th colspan="4">Участок из 4 треков, l = 0, r = 3</th></tr><tr><th>Шаг</th><th>i</th><th>j</th><th>i != j</th></tr></thead>
+              <tbody>
+                <tr><td>до цикла</td><td>0</td><td>3</td><td>да</td></tr>
+                <tr><td>1</td><td>1</td><td>2</td><td>да</td></tr>
+                <tr class="is-hl"><td>2</td><td>2</td><td>1</td><td class="bad">да — указатели разошлись</td></tr>
+                <tr><td>3</td><td>3</td><td>0</td><td class="bad">да — обмен (2, 1) отменил шаг 2</td></tr>
+                <tr><td>4</td><td>4</td><td>−1</td><td class="bad">да — обмен (3, 0) отменил шаг 1, участок в исходном порядке</td></tr>
+                <tr><td>5</td><td>—</td><td>—</td><td class="bad">IndexError: <code>tracks[4]</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="note">Вариант <code>while i &lt;= j</code> корректен: он добавляет один лишний обмен среднего трека с самим собой. В тестах занятия ошибка <code>i != j</code> роняет три теста, в том числе <code>test_reverse_whole_list_even_length</code>.</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 24 · сравнение способов разворота -->
+      <section class="slide slide--answer" data-accent="orange">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 4 · три способа развернуть участок</p>
+          <h2>Короткий код со срезом создаёт копии</h2>
+          <table class="tbl">
+            <thead><tr><th>Код</th><th>Время</th><th>Дополнительная память</th><th>Что происходит</th></tr></thead>
+            <tbody>
+              <tr><td>два указателя, <code>while i &lt; j</code></td><td>O(k)</td><td class="good">O(1)</td><td>(k // 2) обменов в том же списке; k = r − l + 1</td></tr>
+              <tr><td><code>t[l:r + 1] = t[l:r + 1][::-1]</code></td><td>O(k)</td><td class="bad">O(k)</td><td>срез справа создаёт копию участка, <code>[::-1]</code> — вторую, затем они записываются на место</td></tr>
+              <tr><td><code>t[l:r + 1] = reversed(t[l:r + 1])</code></td><td>O(k)</td><td class="bad">O(k)</td><td>одна копия участка, <code>reversed</code> идёт по ней с конца</td></tr>
+              <tr><td><code>t.reverse()</code></td><td>O(n)</td><td class="good">O(1)</td><td>разворачивает весь список на месте; для участка не подходит</td></tr>
+            </tbody>
+          </table>
+          <p class="note">В рабочем коде строка со срезом читается проще, и при небольших k копия участка занимает мало памяти. На собеседовании условие «без срезов» ставят, чтобы проверить работу с индексами: где стоят границы, когда остановиться, что происходит при чётной длине.</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 25 · копия или на месте -->
+      <section class="slide slide--answer" data-accent="lime">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 5 · копия или на месте</p>
+          <h2>Два способа вернуть результат</h2>
+          <div class="cols">
+            <div class="def"><b>На месте · in-place</b>Алгоритм меняет переданный список и использует O(1) дополнительной памяти: несколько переменных-индексов, память под сам вход не считается.<br><br><strong>Плюс:</strong> не нужна вторая копия данных, это важно при миллионах элементов и ограничении памяти.<br><strong>Минус:</strong> исходные данные потеряны; ошибка в индексах портит вход, и повторить вычисление уже не на чем.</div>
+            <div class="def"><b>С копией</b>Результат собирается в новом объекте, вход не меняется. Дополнительная память O(n).<br><br><strong>Плюс:</strong> проще писать и проверять, вход можно сравнить с результатом, функцию можно вызвать повторно.<br><strong>Минус:</strong> в памяти одновременно два списка; для данных, которые едва помещаются в память, способ не подходит.</div>
+          </div>
+          <p class="note">Выбор задаёт контракт функции, и его уточняют до кода вопросом: «можно ли менять входной список?». Во всех трёх задачах занятия ответ записан в условии.</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 26 · ссылки: Python Tutor -->
+      <section class="slide slide--answer" data-accent="blue">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 5 · снимок Python Tutor</p>
+          <h2>Две переменные, один список</h2>
+          <div class="cols cols--wide-left">
+            <figure class="shot"><img src="assets/pythontutor-aliasing.png" alt="Python Tutor: переменные feed и backup указывают на один список, после drop_last в нём два элемента">
+              <figcaption>Снимок <a href="https://pythontutor.com" target="_blank" rel="noopener">pythontutor.com</a>, последний шаг программы. Стрелки от <code>feed</code> и <code>backup</code> ведут к одному объекту.</figcaption></figure>
+            <div class="stack">
+              <p class="lead" style="margin-top:0">Присваивание <code>backup = feed</code> не копирует список: обе переменные ссылаются на один объект. Функция <code>drop_last</code> получает ту же ссылку и удаляет последний элемент — изменение видно через <code>backup</code>. <code>feed is backup</code> возвращает <code>True</code>.</p>
+              <table class="tbl tbl--dense">
+                <thead><tr><th>Код</th><th>Новый список?</th></tr></thead>
+                <tbody>
+                  <tr><td><code>b = a</code></td><td class="bad">нет, вторая ссылка</td></tr>
+                  <tr><td><code>b = a.copy()</code>, <code>a[:]</code>, <code>list(a)</code></td><td class="good">да, O(n)</td></tr>
+                  <tr><td><code>f(a)</code></td><td class="bad">нет, функция получает ссылку</td></tr>
+                </tbody>
+              </table>
+              <p class="cap">Отсюда требование тестов <code>test_remove_keeps_order_and_object</code> и <code>test_reverse_returns_none_and_keeps_object</code>: после вызова проверяется, что это тот же объект, <code>same is comments</code>.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 27 · контракт -->
+      <section class="slide slide--answer" data-accent="orange">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 5 · три вида контракта</p>
+          <h2>Что функция возвращает, если меняет список</h2>
+          <table class="tbl">
+            <thead><tr><th>Контракт</th><th>Примеры</th><th>Как проверяется тестом</th></tr></thead>
+            <tbody>
+              <tr><td>меняет на месте, возвращает <code>None</code></td><td><code>list.sort()</code>, <code>list.reverse()</code>, <code>reverse_segment</code></td><td>вызов, затем сравнение самого списка</td></tr>
+              <tr><td>не меняет, возвращает новый объект</td><td><code>sorted(a)</code>, <code>a[::-1]</code>, <code>max_streak</code> (возвращает число)</td><td>сравнение результата и проверка, что вход тот же</td></tr>
+              <tr><td>меняет на месте, возвращает число k</td><td><code>remove_spam</code>; LeetCode 27 Remove Element</td><td>сравнение k и первых k элементов</td></tr>
+            </tbody>
+          </table>
+          <div class="def"><b>Соглашение Python</b>Функция, которая меняет аргумент на месте, возвращает <code>None</code>. Поэтому <code>a = a.sort()</code> записывает в <code>a</code> значение <code>None</code>. В <code>remove_spam</code> число возвращается по условию задачи — так устроены задачи с контрактом «первые k элементов».</div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 28 · задача 3: условие -->
+      <section class="slide slide--answer" data-accent="blue">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 6 · задача 3 · модерация</p>
+          <h2>Удалить спам из того же списка</h2>
+          <p class="lead">Модерация получает список комментариев. Спам — комментарий со ссылкой, функция <code>is_spam</code> уже написана. Нужно удалить спам из того же списка, сохранить порядок остальных и вернуть их число.</p>
+          <div class="cols">
+            <table class="tbl">
+              <thead><tr><th>До</th><th>Ответ</th><th>После</th></tr></thead>
+              <tbody>
+                <tr><td><code>["Отличный урок", "http://win.ru", "http://prize.ru", "Спасибо"]</code></td><td class="num">2</td><td><code>["Отличный урок", "Спасибо"]</code></td></tr>
+                <tr><td><code>["http://a.ru"]</code></td><td class="num">0</td><td><code>[]</code></td></tr>
+                <tr><td><code>[]</code></td><td class="num">0</td><td><code>[]</code></td></tr>
+              </tbody>
+            </table>
+            <table class="tbl">
+              <thead><tr><th>Ограничение</th><th>Причина</th></tr></thead>
+              <tbody>
+                <tr><td>нет нового списка</td><td>память O(1)</td></tr>
+                <tr><td>нет <code>remove()</code> и <code>del a[i]</code> в цикле</td><td>каждое удаление сдвигает хвост: O(n²)</td></tr>
+                <tr><td>один <code>del a[k:]</code> после цикла</td><td>обрезка хвоста за одну операцию, разрешена</td></tr>
+                <tr><td>порядок сохраняется</td><td>лента комментариев идёт по времени</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 29 · демонстрация: почему падает версия из баг-репорта -->
+      <section class="slide slide--answer" data-accent="pink">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 6 · демонстрация · разбор баг-репорта</p>
+          <h2>После <code>del</code> хвост сдвигается, а <code>i</code> идёт дальше</h2>
+          <div class="player" data-scenario="delBug"></div>
+          <p class="note">Версия с <code>remove()</code> внутри <code>for text in comments</code> ломается так же. Цикл <code>for</code> по списку хранит внутренний номер позиции; после удаления следующий элемент сдвигается на этот номер, и цикл переходит через него. Поэтому <code>'http://prize.ru'</code> остался в ленте.</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 30 · три зоны -->
+      <section class="slide slide--answer" data-accent="lime">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 6 · указатели чтения и записи</p>
+          <h2>Список делится на три зоны</h2>
+          <p class="lead">Решение использует два индекса. <code>r</code> (read) просматривает каждый элемент ровно один раз. <code>w</code> (write) указывает на позицию, куда записывается следующий обычный комментарий. Так как <code>w ≤ r</code>, запись никогда не затирает непросмотренный элемент.</p>
+          <div class="zones">
+            <div class="zk"><b>[0, w) · готово</b><p>Все обычные комментарии из просмотренной части, в исходном порядке. Эта зона и станет ответом.</p></div>
+            <div class="zj"><b>[w, r) · мусор</b><p>Спам и старые копии уже перенесённых комментариев. Содержимое неважно, оно будет обрезано.</p></div>
+            <div class="zu"><b>[r, n) · не просмотрено</b><p>Исходные элементы, к которым цикл ещё не дошёл. Запись сюда не попадает.</p></div>
+          </div>
+          <p class="note">Та же схема встретится на занятии 8 в задачах на удаление дубликатов и сжатие последовательности — там меняется только условие, по которому элемент попадает в зону «готово».</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 31 · демонстрация: удаление на месте -->
+      <section class="slide slide--answer" data-accent="lime">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 6 · демонстрация · remove_spam</p>
+          <h2>Зона «готово» растёт, мусор уходит за <code>w</code></h2>
+          <div class="player" data-scenario="remove"></div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 32 · код и доказательство -->
+      <section class="slide slide--answer" data-accent="lime">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 6 · задача 3 · решение</p>
+          <h2>Один проход, одна обрезка хвоста</h2>
+          <div class="cols cols--wide-right">
+            <figure class="code"><div class="code__head"><span>solution.py</span><span>O(n) · O(1)</span></div>
+<pre><span class="k">def</span> remove_spam(comments):
+    w = <span class="n">0</span>
+    <span class="k">for</span> r <span class="k">in</span> range(len(comments)):
+        <span class="k">if</span> <span class="k">not</span> is_spam(comments[r]):
+            comments[w] = comments[r]
+            w += <span class="n">1</span>
+<span class="ok">    <span class="k">del</span> comments[w:]</span>
+    <span class="k">return</span> w</pre></figure>
+            <div class="stack">
+              <div class="def"><b>Инвариант</b>Перед шагом с номером <code>r</code>: <code>comments[0:w]</code> — все обычные комментарии из <code>comments[0:r]</code>, в исходном порядке.</div>
+              <table class="tbl tbl--dense">
+                <tbody>
+                  <tr><td><b>Инициализация</b></td><td><code>r = 0</code>, <code>w = 0</code>: обе зоны пустые</td></tr>
+                  <tr><td><b>Сохранение</b></td><td>обычный комментарий дописывается в конец зоны «готово», спам пропускается; порядок в зоне совпадает с порядком просмотра</td></tr>
+                  <tr><td><b>Завершение</b></td><td><code>r = n</code>: в <code>[0:w]</code> все обычные комментарии списка. <code>del comments[w:]</code> убирает мусор</td></tr>
+                </tbody>
+              </table>
+              <p class="cap"><code>range(len(comments))</code> здесь безопасен: длина списка во время цикла не меняется, меняется только содержимое ячеек. Обрезка хвоста стоит O(n − w) и выполняется один раз.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 33 · четыре способа и замер -->
+      <section class="slide slide--answer" data-accent="orange">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 6 · замер · Python 3.12, медиана 7 запусков, 30 % спама</p>
+          <h2>Четыре способа удалить спам и их цена</h2>
+          <table class="tbl">
+            <thead><tr><th>Способ</th><th>Время</th><th>Память</th><th>n = 1 000</th><th>n = 10 000</th><th>n = 100 000</th></tr></thead>
+            <tbody>
+              <tr><td><code>del a[i]</code> в <code>while</code> с ручным <code>i</code> (верный, но медленный)</td><td class="bad">O(n²)</td><td>O(1)</td><td class="num">0,05 мс</td><td class="num">1,50 мс</td><td class="num bad">178,31 мс</td></tr>
+              <tr><td>генератор списка <code>a[:] = [x for x in a if …]</code></td><td>O(n)</td><td class="bad">O(n)</td><td class="num">0,01 мс</td><td class="num">0,09 мс</td><td class="num">0,83 мс</td></tr>
+              <tr><td>указатели чтения и записи</td><td>O(n)</td><td class="good">O(1)</td><td class="num">0,02 мс</td><td class="num">0,24 мс</td><td class="num">2,43 мс</td></tr>
+              <tr><td><code>remove()</code> в <code>for</code> или <code>del</code> в <code>for i in range</code></td><td colspan="5" class="bad">неверный ответ или IndexError — экраны 2 и 29</td></tr>
+            </tbody>
+          </table>
+          <div class="cols">
+            <div class="def"><b>Рост O(n²)</b>При росте n в 10 раз время удаления через <code>del</code> выросло примерно в 30 и в 120 раз. Каждое удаление сдвигает весь хвост списка, а удалений около 0,3 · n.</div>
+            <div class="def"><b>Почему генератор быстрее указателей</b>Цикл генератора выполняется внутри интерпретатора на C, цикл с указателями — на Python. Генератор выигрывает по времени и проигрывает по памяти: в момент присваивания в памяти два списка.</div>
+          </div>
+          <p class="cap">Замер на ноутбуке автора, <code>time.perf_counter()</code>, копия входа создаётся вне замера. Числа на другой машине будут другими, соотношение сохранится.</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 34 · порядок не важен -->
+      <section class="slide slide--answer" data-accent="blue">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 6 · если порядок не важен</p>
+          <h2>Обмен с последним элементом</h2>
+          <div class="cols cols--wide-right">
+            <figure class="code"><div class="code__head"><span>вариант без сохранения порядка</span><span>O(n) · O(1)</span></div>
+<pre><span class="k">def</span> remove_spam_unordered(comments):
+    i, n = <span class="n">0</span>, len(comments)
+    <span class="k">while</span> i &lt; n:
+        <span class="k">if</span> is_spam(comments[i]):
+            n -= <span class="n">1</span>
+            comments[i] = comments[n]
+            <span class="c"># i не двигается: на место i пришёл</span>
+            <span class="c"># непроверенный элемент</span>
+        <span class="k">else</span>:
+            i += <span class="n">1</span>
+    <span class="k">del</span> comments[n:]
+    <span class="k">return</span> n</pre></figure>
+            <div class="stack">
+              <div class="def"><b>Инвариант</b><code>comments[0:i]</code> — проверенные обычные комментарии, <code>comments[i:n]</code> — непроверенные, <code>comments[n:]</code> — мусор.</div>
+              <p class="lead" style="margin-top:0">Удаляемый элемент заменяется последним из непроверенных. Число записей равно числу удалённых комментариев; в <code>remove_spam</code> оно равно числу оставшихся. Вариант выгоден, когда спама мало, а порядок в условии не требуется, например в множестве тегов.</p>
+              <p class="cap">В ветке <code>if</code> после замены <code>i</code> остаётся на месте. Если сдвинуть <code>i</code>, пришедший элемент не будет проверен — та же ошибка, что в баг-репорте.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 35 · размер и ёмкость -->
+      <section class="slide slide--answer" data-accent="blue">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 7 · динамический массив</p>
+          <h2>Размер и ёмкость</h2>
+          <p class="lead">Массив занимает непрерывный блок памяти. Чтобы добавить элемент в конец, сразу за последней ячейкой нужна свободная. Если блок заполнен, выделяется новый блок большего размера, все ссылки копируются в него, старый блок освобождается. Это копирование стоит O(n).</p>
+          <div class="cards3">
+            <div><b>Размер · len</b><strong>Сколько элементов в списке</strong><p>Возвращается <code>len(a)</code>. В исходнике CPython — поле <code>ob_size</code>.</p></div>
+            <div><b>Ёмкость · capacity</b><strong>Под сколько ячеек выделена память</strong><p>Всегда не меньше размера. Из Python напрямую не видна, в CPython — поле <code>allocated</code>.</p></div>
+            <div><b>Запас</b><strong>capacity − len</strong><p>Пока запас есть, <code>append</code> записывает ссылку в свободную ячейку за O(1). Когда запас кончился, происходит переезд.</p></div>
+          </div>
+          <div class="def"><b>Динамический массив</b>Массив, который при заполнении сам переезжает в блок большего размера и выделяет место с запасом. Список Python, <code>std::vector</code> в C++ и <code>ArrayList</code> в Java — динамические массивы.</div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 36 · замер getsizeof -->
+      <section class="slide slide--answer" data-accent="orange">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 7 · эксперимент · sys.getsizeof</p>
+          <h2>Размер объекта списка растёт скачками</h2>
+          <div class="cols">
+            <div class="stack">
+              <figure class="code"><div class="code__head"><span>capacity.py</span><span>Python 3.12</span></div>
+<pre><span class="k">import</span> sys
+
+lst = []
+prev = sys.getsizeof(lst)
+print(<span class="n">0</span>, prev)
+<span class="k">for</span> i <span class="k">in</span> range(<span class="n">1</span>, <span class="n">33</span>):
+    lst.append(i)
+    size = sys.getsizeof(lst)
+    <span class="k">if</span> size != prev:
+        print(i, size, (size - <span class="n">56</span>) // <span class="n">8</span>)
+    prev = size</pre></figure>
+              <figure class="term"><div class="term__head"><span>$ python3 capacity.py</span><span>3.12.12</span></div>
+<pre>0 56
+1 88 4
+5 120 8
+9 184 16
+17 248 24
+25 312 32</pre></figure>
+            </div>
+            <div class="stack">
+              <table class="tbl tbl--dense">
+                <thead><tr><th>len после append</th><th>байт</th><th>ёмкость</th></tr></thead>
+                <tbody>
+                  <tr><td>0</td><td class="num">56</td><td class="num">0</td></tr>
+                  <tr><td>1–4</td><td class="num">88</td><td class="num">4</td></tr>
+                  <tr><td>5–8</td><td class="num">120</td><td class="num">8</td></tr>
+                  <tr><td>9–16</td><td class="num">184</td><td class="num">16</td></tr>
+                  <tr><td>17–24</td><td class="num">248</td><td class="num">24</td></tr>
+                  <tr><td>25–32</td><td class="num">312</td><td class="num">32</td></tr>
+                </tbody>
+              </table>
+              <p class="cap"><code>sys.getsizeof</code> возвращает размер объекта списка: 56 байт заголовка и 8 байт на каждую выделенную ячейку. Сами объекты-числа сюда не входят. Отсюда ёмкость: <code>(размер − 56) // 8</code>. За 32 вызова <code>append</code> переездов было 5.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 37 · исходник CPython -->
+      <section class="slide slide--answer" data-accent="blue">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 7 · исходник · CPython 3.12, Objects/listobject.c</p>
+          <h2>Формула запаса в функции <code>list_resize</code></h2>
+          <div class="cols cols--wide-left">
+            <figure class="shot"><img src="assets/cpython-list-resize.png" alt="Фрагмент функции list_resize из файла Objects/listobject.c репозитория CPython, строки 51–79">
+              <figcaption><a href="https://github.com/python/cpython/blob/3.12/Objects/listobject.c#L61-L76" target="_blank" rel="noopener">github.com/python/cpython · 3.12 · listobject.c, строки 61–76</a></figcaption></figure>
+            <div class="stack">
+              <table class="tbl tbl--dense">
+                <tbody>
+                  <tr><td><b>55–59</b></td><td>если новая длина помещается в выделенную память и не меньше её половины, меняется только поле размера: переезда нет</td></tr>
+                  <tr><td><b>67</b></td><td>последовательность ёмкостей 0, 4, 8, 16, 24, 32, 40, 52… — та же, что в замере на прошлом экране</td></tr>
+                  <tr><td><b>71</b></td><td><code>newsize + newsize / 8 + 6</code>, округлённое вниз до кратного 4: запас около 12,5 % плюс константа</td></tr>
+                  <tr><td><b>63–65</b></td><td>комментарий разработчиков: запаса достаточно для линейного общего времени длинной серии <code>append</code></td></tr>
+                </tbody>
+              </table>
+              <p class="cap">Переезд выполняет <code>PyMem_Realloc</code>. Если за блоком свободно, система расширяет его без копирования; если нет — копирует в новый. Анализ считает худший случай, копирование.</p>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 38 · демонстрация: полки -->
+      <section class="slide slide--answer" data-accent="orange">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 7 · демонстрация · стоимость append</p>
+          <h2>Редкий дорогой переезд и средняя стоимость</h2>
+          <p class="lead">Добавьте 64 элемента в каждом из трёх режимов и сравните линию среднего. При запасе, который растёт пропорционально размеру, она выходит на константу. Без запаса переезд происходит на каждом вызове, и среднее растёт вместе с n.</p>
+          <div class="shelves"></div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 39 · амортизация -->
+      <section class="slide slide--answer" data-accent="lime">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 7 · амортизированная стоимость</p>
+          <h2>Один append может стоить O(n), серия из n — O(n)</h2>
+          <div class="def"><b>Определение</b><strong>Амортизированная стоимость</strong> — общая стоимость худшей последовательности из n операций, делённая на n. Вероятности здесь нет: оценка гарантирована для любой последовательности вызовов. Запись «<code>append</code> — O(1) амортизированно» означает, что n вызовов подряд стоят O(n), хотя отдельный вызов с переездом стоит O(n).</div>
+          <div class="cards3">
+            <div><b>Удвоение ёмкости</b><strong>n записей + копирования 1 + 2 + 4 + … &lt; 2n</strong><p>Сумма копирований — геометрическая прогрессия, она меньше удвоенного последнего слагаемого. Всего меньше 3n операций, в среднем меньше 3 на вызов.</p></div>
+            <div><b>CPython: запас ⅛</b><strong>копирований около 8n</strong><p>Ёмкость растёт в 1,125 раза, прогрессия тоже геометрическая. Константа больше, чем при удвоении, но среднее всё равно ограничено числом: O(1).</p></div>
+            <div><b>Без запаса: +1</b><strong>0 + 1 + 2 + … + (n − 1) ≈ n² / 2</strong><p>Переезд на каждом вызове. Серия из n append стоит O(n²), в среднем O(n) на вызов — режим «без запаса» в демонстрации.</p></div>
+          </div>
+          <p class="note">Для КТП достаточно объяснения: отдельный переезд дорогой, но запас растёт пропорционально размеру, поэтому переезды редкие и их суммарная цена распределяется по всем вызовам.</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 40 · цена операций list -->
+      <section class="slide slide--answer" data-accent="orange">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 7 · справка по list</p>
+          <h2>Где у списка дёшево, а где сдвиг хвоста</h2>
+          <table class="tbl tbl--dense">
+            <thead><tr><th>Операция</th><th>Время</th><th>Почему</th></tr></thead>
+            <tbody>
+              <tr><td><code>a[i]</code>, <code>a[i] = x</code>, <code>len(a)</code></td><td class="good">O(1)</td><td>адрес по формуле, длина хранится в объекте</td></tr>
+              <tr><td><code>a.append(x)</code></td><td class="good">O(1) аморт.</td><td>запись в свободную ячейку, редкий переезд</td></tr>
+              <tr><td><code>a.pop()</code></td><td class="good">O(1)</td><td>последний элемент, хвоста за ним нет</td></tr>
+              <tr><td><code>a.pop(0)</code>, <code>a.insert(0, x)</code></td><td class="bad">O(n)</td><td>весь список сдвигается на одну позицию</td></tr>
+              <tr><td><code>del a[i]</code>, <code>a.insert(i, x)</code></td><td class="bad">O(n − i)</td><td>сдвигается хвост после позиции i</td></tr>
+              <tr><td><code>a.remove(x)</code></td><td class="bad">O(n)</td><td>поиск значения и сдвиг хвоста</td></tr>
+              <tr><td><code>x in a</code>, <code>a.index(x)</code></td><td class="bad">O(n)</td><td>просмотр по порядку</td></tr>
+              <tr><td><code>a[l:r]</code></td><td>O(r − l)</td><td>новый список, копирование ссылок</td></tr>
+              <tr><td><code>del a[k:]</code></td><td>O(n − k)</td><td>освобождение ссылок хвоста, без сдвига</td></tr>
+            </tbody>
+          </table>
+          <p class="cap">Оценки по таблице TimeComplexity в вики python.org. Для очереди с добавлением и удалением с обоих концов есть <code>collections.deque</code> — тема занятия 25.</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 41 · практика -->
+      <section class="slide slide--practice" data-accent="blue">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 8 · практика · 30 минут</p>
+          <h2>Три функции по стартовому набору lesson_07</h2>
+          <div class="cols">
+            <ol class="steps">
+              <li>Скопировать <code>lesson_07/</code> в <code>portfolio/lesson_07/</code> личного репозитория, запустить <code>python -m pytest tests.py -v</code>. Все тесты падают с <code>NotImplementedError</code>.</li>
+              <li>До кода записать в <code>initial_attempt.txt</code> вопросы к условию и три своих примера на задачу.</li>
+              <li>Решить <code>max_streak</code>, запустить <code>pytest -k streak</code>. Затем <code>remove_spam</code>, <code>pytest -k remove</code>.</li>
+              <li>Задача 2 <code>reverse_segment</code> — расширение, после двух обязательных.</li>
+              <li>Для каждой функции записать инвариант в <code>complexity_note.md</code>.</li>
+            </ol>
+            <div class="stack">
+              <div class="cards3" style="grid-template-columns:1fr;margin-top:0">
+                <div><b>Запрещено</b><p>Сортировка входа, новые списки в задаче 3, срезы и <code>reversed()</code> в задаче 2, ИИ и поиск до первой собственной версии.</p></div>
+                <div><b>Промежуточная проверка</b><p>На 15-й минуте преподаватель смотрит <code>initial_attempt.txt</code> и первую зелёную задачу.</p></div>
+              </div>
+              <span class="timer" data-timer="30">30:00</span>
+              <div><a class="file-button" href="lesson_07.zip" download>Скачать lesson_07.zip ↓</a> <a class="file-button file-button--light" href="lesson_07/task.md" target="_blank" rel="noopener">task.md</a></div>
+            </div>
+          </div>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 42 · ручная таблица без ИИ -->
+      <section class="slide slide--answer" data-accent="blue">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 8 · без ИИ и без запуска · 5 минут</p>
+          <h2>Таблица состояния указателей на пяти шагах</h2>
+          <p class="lead">Заполните таблицу для <code>remove_spam(["Да", "http://a", "http://b", "Нет", "Ок"])</code> по коду с экрана 32. В строке — состояние после шага с номером <code>r</code>. Последний столбец — содержимое списка после шага.</p>
+          <table class="tbl manual" id="manualTable">
+            <thead><tr><th>r</th><th>comments[r]</th><th>спам</th><th>действие</th><th>w после шага</th><th>список после шага</th></tr></thead>
+            <tbody>
+              <tr><td>0</td><td class="ans">Да</td><td class="ans">нет</td><td class="ans">a[0] = a[0], w += 1</td><td class="ans">1</td><td class="ans">Да, http://a, http://b, Нет, Ок</td></tr>
+              <tr><td>1</td><td class="ans">http://a</td><td class="ans">да</td><td class="ans">пропустить</td><td class="ans">1</td><td class="ans">Да, http://a, http://b, Нет, Ок</td></tr>
+              <tr><td>2</td><td class="ans">http://b</td><td class="ans">да</td><td class="ans">пропустить</td><td class="ans">1</td><td class="ans">Да, http://a, http://b, Нет, Ок</td></tr>
+              <tr><td>3</td><td class="ans">Нет</td><td class="ans">нет</td><td class="ans">a[1] = a[3], w += 1</td><td class="ans">2</td><td class="ans">Да, Нет, http://b, Нет, Ок</td></tr>
+              <tr><td>4</td><td class="ans">Ок</td><td class="ans">нет</td><td class="ans">a[2] = a[4], w += 1</td><td class="ans">3</td><td class="ans">Да, Нет, Ок, Нет, Ок</td></tr>
+            </tbody>
+          </table>
+          <p class="note">После цикла <code>del comments[3:]</code> даёт <code>["Да", "Нет", "Ок"]</code>, функция возвращает 3. В строках 3 и 4 в зоне мусора остаются старые копии «Нет» и «Ок» — это нормально.</p>
+          <button class="reveal-btn" type="button" data-reveal="manualTable">Показать ответы</button>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 43 · карточка изменения -->
+      <section class="slide slide--practice" data-accent="orange">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 8 · карточка изменения условия · после зелёных тестов задачи 3</p>
+          <h2>Удалять нельзя: спам нужен для разбора жалоб</h2>
+          <div class="cols cols--wide-right">
+            <div class="stack">
+              <p class="lead" style="margin-top:0">Напишите <code>split_spam(comments) -&gt; int</code>. Функция переставляет элементы в том же списке: сначала обычные комментарии в исходном порядке, за ними весь спам в любом порядке. Длина списка не меняется, возвращается число обычных комментариев. Время O(n), память O(1).</p>
+              <table class="tbl tbl--dense">
+                <thead><tr><th>До</th><th>Ответ</th><th>После</th></tr></thead>
+                <tbody><tr><td><code>["1", "http://x", "2", "http://y", "3"]</code></td><td class="num">3</td><td><code>["1", "2", "3", …спам…]</code></td></tr></tbody>
+              </table>
+            </div>
+            <ol class="steps">
+              <li>Записать, чем новый инвариант отличается от инварианта <code>remove_spam</code>: что теперь лежит в зоне <code>[w, r)</code>.</li>
+              <li>Добавить три теста: без спама, весь спам, спам в начале и в конце.</li>
+              <li>Прогнать весь набор, включая старые тесты.</li>
+              <li>Дописать строку в <code>complexity_note.md</code>.</li>
+            </ol>
+          </div>
+          <span class="timer" data-timer="10">10:00</span>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 44 · ИИ и evidence -->
+      <section class="slide slide--answer" data-accent="blue">
+        <div class="slide-inner">
+          <p class="eyebrow">Часть 8 · проверка перед сдачей</p>
+          <h2>Что приложить и как использовать ИИ</h2>
+          <div class="cards4">
+            <div><b>Разрешено</b><p>После собственной попытки: попросить модель найти крайние случаи, предложить дополнительные тесты или сделать review кода.</p></div>
+            <div><b>Проверить самим</b><p>Каждый совет модели — запуском тестов. Инвариант и сложность вы доказываете сами, на своём коде.</p></div>
+            <div><b>Недопустимо</b><p>Сдавать первый сгенерированный ответ, скрывать запрос и diff, принимать тесты без запуска, объяснять код словами модели.</p></div>
+            <div><b>Evidence</b><p><code>initial_attempt.txt</code>, <code>ai_usage_note.md</code> при использовании, diff, вывод pytest, исправление и объяснение решения.</p></div>
+          </div>
+          <table class="tbl tbl--dense">
+            <thead><tr><th>Перед сдачей</th><th>Команда или файл</th></tr></thead>
+            <tbody>
+              <tr><td>все тесты проходят одной командой</td><td><code>python -m pytest tests.py -v</code></td></tr>
+              <tr><td>найденная ошибка воспроизведена отдельным тестом</td><td>блок «Мои тесты» в <code>tests.py</code></td></tr>
+              <tr><td>инвариант и сложность записаны своими словами</td><td><code>complexity_note.md</code></td></tr>
+              <tr><td>вопросы и примеры до кода сохранены</td><td><code>initial_attempt.txt</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 45 · справка: симптом → где искать -->
+      <section class="slide slide--answer" data-accent="pink">
+        <div class="slide-inner">
+          <p class="eyebrow">Справка занятия · симптом → где искать</p>
+          <h2>Тест упал: с чего начать поиск</h2>
+          <table class="tbl tbl--dense">
+            <thead><tr><th>Симптом</th><th>Где искать</th><th>Проверка</th></tr></thead>
+            <tbody>
+              <tr><td><code>IndexError</code> на последней итерации</td><td>цикл по парам соседей идёт до <code>len(a)</code></td><td>посчитать итерации при n = 2</td></tr>
+              <tr><td><code>IndexError</code> после удаления</td><td>длина меняется внутри <code>for i in range(len(a))</code></td><td>длина не меняется до конца цикла</td></tr>
+              <tr><td>один элемент из двух подряд не обработан</td><td>удаление или вставка во время <code>for</code> по тому же списку</td><td>прогон на двух одинаковых элементах подряд</td></tr>
+              <tr><td>ответ меньше на последнюю серию или окно</td><td>результат обновляется только при событии «обрыв»</td><td>тест, где лучший участок в конце</td></tr>
+              <tr><td>потерян последний элемент участка</td><td>правая граница «включительно» записана как <code>a[l:r]</code></td><td>участок из одного элемента <code>l == r</code></td></tr>
+              <tr><td>падение на <code>[]</code></td><td><code>a[0]</code> или <code>max(a)</code> до цикла</td><td>первый тест — пустой вход</td></tr>
+              <tr><td>вызывающий код видит изменённый список</td><td>функция меняет аргумент, а по контракту не должна</td><td><code>same is a</code> и сравнение с копией входа</td></tr>
+              <tr><td>ответ верный, но медленно на 10⁵</td><td><code>remove</code>, <code>del a[i]</code>, <code>insert(0, x)</code>, <code>in</code> внутри цикла</td><td>замер на 10⁴ и 10⁵: рост в 100 раз — O(n²)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 46 · итог: три задачи -->
+      <section class="slide slide--answer" data-accent="lime">
+        <div class="slide-inner">
+          <p class="eyebrow">Итог занятия · сравнительная таблица</p>
+          <h2>Три задачи, три инварианта</h2>
+          <table class="tbl">
+            <thead><tr><th>Задача</th><th>Указатели</th><th>Инвариант</th><th>Время</th><th>Память</th><th>Граничные тесты</th></tr></thead>
+            <tbody>
+              <tr><td>максимальная серия</td><td><code>i</code></td><td><code>cur</code> — серия, оканчивающаяся на <code>i</code>; <code>best</code> — лучшая в <code>[0..i]</code></td><td>O(n)</td><td>O(1)</td><td><code>[]</code>, ровно цель, серия в конце</td></tr>
+              <tr><td>разворот участка</td><td><code>i → ← j</code></td><td>всё вне <code>[i..j]</code> на итоговом месте</td><td>O(k)</td><td>O(1)</td><td><code>l == r</code>, чётная длина, неверные границы</td></tr>
+              <tr><td>удаление на месте</td><td><code>w ≤ r</code>, оба вправо</td><td><code>[0, w)</code> — обычные из <code>[0, r)</code> по порядку</td><td>O(n)</td><td>O(1)</td><td>весь спам, два подряд, спам по краям</td></tr>
+              <tr><td>append</td><td>—</td><td><code>len ≤ capacity</code>, запас растёт с размером</td><td>O(1) аморт.</td><td>запас до ⅛ n</td><td>—</td></tr>
+            </tbody>
+          </table>
+          <p class="note">Следующее занятие — два указателя: пара с заданной суммой в отсортированном массиве, удаление дубликатов, сжатие последовательности. Указатели записи и чтения из части 6 используются там без изменений.</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 47 · контрольный вопрос -->
+      <section class="slide slide--question" data-accent="blue">
+        <div class="slide-inner question-layout">
+          <p class="eyebrow">Контрольный вопрос · КТП, занятие 7</p>
+          <h1>Какой инвариант остаётся истинным после каждого перемещения границы?</h1>
+          <p class="lead">Ответ — для любой из трёх функций вашего <code>solution.py</code>: что хранится между итерациями, почему ни один элемент не пропущен и почему отдельный переезд списка дорогой, а серия <code>append</code> оценивается как O(n).</p>
+        </div>
+        <span class="pair-number">07</span>
+      </section>
+
+      <!-- 48 · ДЗ -->
+      <section class="slide slide--answer" data-accent="blue">
+        <div class="slide-inner hw-split">
+          <div>
+            <p class="eyebrow">Домашнее задание № 7 · к занятию 8</p>
+            <h2>Максим Николаевич не хочет задавать домашнее задание. Но очень хочет</h2>
+            <ol class="hw-cards">
+              <li><b>1</b><div><b>Довести <code>solution.py</code></b><p>Все 27 публичных тестов проходят. <code>split_spam</code> из карточки написана и покрыта тремя своими тестами. <code>complexity_note.md</code> заполнен по четырём функциям.</p></div></li>
+              <li><b>2</b><div><b>Три ошибки на границе · <code>bugs_07.py</code></b><p>Для каждой функции: вход, на котором она ошибается, падающий тест, исправление одной строки, повторный прогон.</p></div></li>
+              <li><b>3</b><div><b>Поворот плейлиста · <code>rotate_right</code></b><p>Сдвиг на k позиций вправо на месте тремя вызовами <code>reverse_segment</code>. Тесты для <code>k = 0</code>, <code>k = len</code>, <code>k &gt; len</code> и пустого списка.</p></div></li>
+            </ol>
+          </div>
+          <figure class="meme-frame tilt-right">
+            <img src="../../../shared/memes/meme-remote-worker.jpg" alt="Кот перед консолью с подписью «устроился удалёнщиком (чё удалять, пока непонятно)»">
+          </figure>
+        </div>
+        <span class="pair-number">ДЗ</span>
+      </section>
+
+      <!-- 49 · ДЗ: порядок сдачи -->
+      <section class="slide slide--answer" data-accent="orange">
+        <div class="slide-inner">
+          <p class="eyebrow">Домашнее задание № 7 · порядок сдачи</p>
+          <h2>Куда положить и как сдать</h2>
+          <div class="hw-order">
+            <div><b>Файлы</b><p><code>portfolio/lesson_07/</code>: <code>solution.py</code>, <code>tests.py</code>, <code>tests_bugs_07.py</code>, <code>bugs_07.py</code>, <code>bugs_run.txt</code>, <code>complexity_note.md</code>.</p></div>
+            <div><b>Ветка и PR</b><p>Ветка <code>hw-07</code>, коммиты с содержательными сообщениями, Pull Request в собственную <code>main</code>.</p></div>
+            <div><b>Срок</b><p>До начала занятия 8. На нём указатели записи и чтения используются в задаче сжатия последовательности.</p></div>
+            <div><b>Критерии</b><p>Зелёный pytest по всем файлам, три падающих до исправления теста к <code>bugs_07.py</code>, пять тестов к <code>rotate_right</code>, заметка без пустых пунктов.</p></div>
+          </div>
+          <p class="note">Про ИИ: код и тесты пишете сами — на занятии 8 решение объясняется без подсказок. Оформление <code>.md</code> и редактуру формулировок можно поручить модели. <mark>Я сам так делаю всегда, поэтому и вам запрещать не буду.</mark></p>
+          <div>
+            <button class="file-button" id="hwDownload" type="button">Скачать задание в PDF →</button>
+            <a class="file-button file-button--light" href="lesson_07/homework_07.md" target="_blank" rel="noopener">homework_07.md</a>
+          </div>
+        </div>
+        <span class="pair-number">ДЗ</span>
+      </section>
+
+    </main>
+
+    <footer class="controls">
+      <button class="nav-button" id="prevButton" type="button" aria-label="Предыдущий слайд">←</button>
+      <div class="progress" id="progress" aria-hidden="true"></div>
+      <button class="nav-button" id="nextButton" type="button" aria-label="Следующий слайд">→</button>
+      <span class="key-hint">← → / пробел</span>
+    </footer>
+  </div>
+
+  <aside class="sources-panel" id="sourcesPanel" aria-hidden="true">
+    <div class="sources-backdrop" data-close-sources></div>
+    <div class="sources-sheet" role="dialog" aria-modal="true" aria-labelledby="sourcesTitle">
+      <button class="sources-close" type="button" data-close-sources aria-label="Закрыть">×</button>
+      <p class="eyebrow">Занятие 7 · раздел 2 · КТП ОП.04 · одна пара</p>
+      <h2 id="sourcesTitle">План занятия</h2>
+      <ol class="plan-list">
+        <li><b>Вход и результат · 5 мин</b><span>Экраны 1–4. Баг-репорт модерации, карта занятия, что сдаётся.</span></li>
+        <li><b>1–2 · Память и границы · 12 мин</b><span>Экраны 5–13. Адрес по индексу, полуинтервал, разрезы, подсчёт итераций, ошибки на единицу, пустой вход.</span></li>
+        <li><b>3 · Серия · 8 мин</b><span>Экраны 14–19. Инвариант, решение, демонстрация, потерянная последняя серия, тесты.</span></li>
+        <li><b>4–5 · Разворот и контракт · 7 мин</b><span>Экраны 20–27. Демонстрации можно пройти кнопкой «весь прогон».</span></li>
+        <li><b>6 · Удаление на месте · 8 мин</b><span>Экраны 28–34. Разбор баг-репорта, три зоны, демонстрация, замер.</span></li>
+        <li><b>7 · Ёмкость · 5 мин</b><span>Экраны 35–40. Замер getsizeof, исходник CPython, демонстрация, амортизация.</span></li>
+        <li><b>8 · Практика · 40 мин</b><span>Экраны 41–44. Самостоятельная работа 30 мин, ручная таблица, карточка изменения 10 мин.</span></li>
+        <li><b>Итог и ДЗ · 5 мин</b><span>Экраны 45–49.</span></li>
+      </ol>
+      <p class="plan-foot">Сценарий КТП: 0–10 контекст, 10–35 принцип и демонстрация, 35–65 практика, 65–75 ошибочный сценарий и карточка, 75–85 исправление и review, 85–90 сохранение. Если время поджимает, экраны 11, 24, 34 и 40 пересказываются одной фразой: их содержание есть в справке и в task.md.</p>
+      <h2 style="font-size:22px;margin-top:22px">Источники</h2>
+      <ul>
+        <li><a href="https://github.com/python/cpython/blob/3.12/Objects/listobject.c" target="_blank" rel="noopener">CPython 3.12 · Objects/listobject.c, функция list_resize</a></li>
+        <li><a href="https://wiki.python.org/moin/TimeComplexity" target="_blank" rel="noopener">python.org wiki · TimeComplexity</a></li>
+        <li><a href="https://docs.python.org/3/library/stdtypes.html#sequence-types-list-tuple-range" target="_blank" rel="noopener">Документация Python · последовательности и срезы</a></li>
+        <li><a href="https://pythontutor.com" target="_blank" rel="noopener">Python Tutor · визуализация ссылок</a></li>
+        <li><a href="https://leetcode.com/problems/remove-element/" target="_blank" rel="noopener">LeetCode 27 · Remove Element</a> — контракт «первые k элементов»</li>
+        <li>Т. Кормен и др. Алгоритмы: построение и анализ — глава 2 (инвариант цикла) и глава 17 (амортизационный анализ, динамические таблицы).</li>
+        <li>Замеры времени и вывод <code>getsizeof</code> — Python 3.12.12, macOS, 22.09.2026.</li>
+      </ul>
+    </div>
+  </aside>
+
+  <div class="hw-sheet">
+    <header class="hw-head">
+      <div>
+        <p class="hw-course">ОП.04 · Основы алгоритмизации и программирования · 3 курс</p>
+        <h1>Домашнее задание № 7</h1>
+        <p class="hw-sub">Занятие 7 — массив: индексы, проходы, границы</p>
+      </div>
+      <div class="hw-mark">А/П·07</div>
+    </header>
+
+    <p class="hw-joke">Максим Николаевич не хочет задавать вам домашнее задание. Но очень хочет.</p>
+
+    <figure class="hw-meme"><img src="../../../shared/memes/meme-remote-worker.jpg" alt=""></figure>
+
+    <h2>Что нужно сделать</h2>
+    <ol class="hw-list">
+      <li><b>Довести решения занятия.</b> solution.py проходит все 27 публичных тестов. Функция split_spam из карточки изменения написана и покрыта тремя своими тестами: без спама, весь спам, спам в начале и в конце. complexity_note.md заполнен по max_streak, reverse_segment, remove_spam и split_spam.</li>
+      <li><b>Три ошибки на границе.</b> В bugs_07.py три функции: has_growth, window_sums, last_n. Каждая верно отвечает на обычных входах и ошибается на граничном. Для каждой найдите такой вход, запишите в tests_bugs_07.py падающий тест, исправьте одну строку и прогоните тесты снова. Вывод pytest сохраните в bugs_run.txt, в complexity_note.md добавьте три строки «функция → вход → что было нарушено».</li>
+      <li><b>Поворот плейлиста.</b> Функция rotate_right(tracks, k) сдвигает список на k позиций вправо на месте: последние k треков переходят в начало, порядок внутри частей сохраняется. Пример: A B C D E, k = 2 → D E A B C; при k = 7 ответ тот же. Решение — три вызова reverse_segment, время O(n), память O(1). Не меньше пяти своих тестов, среди них k = 0, k = len, k &gt; len и пустой список. Учтите, что reverse_segment поднимает ValueError на пустом участке.</li>
+    </ol>
+    <p class="hw-note">Тест к bugs_07.py засчитывается, если до исправления он падает, а после — проходит. Тест, который проходит и на ошибочной версии, ошибку не ловит.</p>
+
+    <h2>Как сдавать</h2>
+    <table class="hw-table">
+      <tr><th>Файлы</th><td>portfolio/lesson_07/: solution.py, tests.py, bugs_07.py, tests_bugs_07.py, bugs_run.txt, complexity_note.md.</td></tr>
+      <tr><th>Ветка и PR</th><td>Ветка hw-07, коммиты с содержательными сообщениями, Pull Request в собственную main.</td></tr>
+      <tr><th>Срок</th><td>До начала занятия 8.</td></tr>
+      <tr><th>Проверяем</th><td>Зелёный pytest по всем файлам, три теста к bugs_07.py, которые падают до исправления, пять тестов к rotate_right, заметка без пустых пунктов.</td></tr>
+      <tr><th>ИИ</th><td>Код и тесты пишете сами: на занятии 8 решение объясняется без подсказок. Оформление .md и редактуру формулировок можно поручить модели. <mark>Я сам так делаю всегда, поэтому и вам запрещать не буду.</mark></td></tr>
+    </table>
+
+    <h2>Словарь занятия</h2>
+    <dl class="hw-gloss">
+      <dt>Массив</dt><dd>Элементы лежат в памяти подряд, в ячейках одного размера; адрес элемента вычисляется по индексу за O(1).</dd>
+      <dt>Полуинтервал [l, r)</dt><dd>Участок с индексами l … r − 1: левая граница включена, правая нет. Так устроены срезы и range. Длина r − l.</dd>
+      <dt>Off-by-one</dt><dd>Ошибка, при которой цикл или срез проходит на один элемент больше или меньше нужного.</dd>
+      <dt>Подмассив</dt><dd>Участок подряд без пропусков. Подпоследовательность сохраняет порядок, но допускает пропуски.</dd>
+      <dt>Инвариант прохода</dt><dd>Утверждение о переменных цикла, верное до первой итерации и после каждой. Проверяется тремя шагами: инициализация, сохранение, завершение.</dd>
+      <dt>На месте (in-place)</dt><dd>Алгоритм меняет переданный список и использует O(1) дополнительной памяти.</dd>
+      <dt>Ёмкость</dt><dd>Число ячеек, под которые список уже выделил память. Всегда не меньше длины.</dd>
+      <dt>Амортизированная стоимость</dt><dd>Общая стоимость худшей последовательности из n операций, делённая на n. append — O(1) амортизированно: n вызовов стоят O(n).</dd>
+    </dl>
+
+    <p class="hw-foot">Материалы занятия — в папке lesson_07 рядом с презентацией. Вопросы по заданию — на паре или в чате группы.</p>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="demos.js"></script>
+</body>
+</html>
