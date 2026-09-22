@@ -55,7 +55,7 @@ function unb64url(s) {
   return new TextDecoder().decode(Uint8Array.from(atob(s), c => c.charCodeAt(0)));
 }
 
-const KIND_SHORT = { single: 'выбор', multi: 'несколько', order: 'порядок', slots: 'подстановка', sort: 'группы', line: 'строка', number: 'число', odd: 'лишнее' };
+const KIND_SHORT = { single: 'выбор', multi: 'несколько', order: 'порядок', slots: 'подстановка', sort: 'группы', line: 'строка', number: 'число', odd: 'лишнее', path: 'путь', node: 'дерево' };
 
 async function verify(code) {
   const parts = code.trim().split('.');

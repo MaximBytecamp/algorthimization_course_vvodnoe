@@ -15,14 +15,19 @@
    У line с полем many можно отметить несколько строк; ответ — номера по возрастанию.
    У sort с полем tree группы — каталоги, нарисованные строками дерева;
    с полем start карточки сразу лежат по каталогам (раскладка «плохого сервера») и их переносят.
-   odd — убрать лишнее: карточки переносят из каталога в корзину; ответ — номера убранных. */
+   odd — убрать лишнее: карточки переносят из каталога в корзину; ответ — номера убранных.
+     С view: 'grid' файлы показаны плитками, как в файловом менеджере, с размером.
+   path — собрать путь из сегментов в адресной строке; ответ — номера сегментов по порядку.
+   node — нажать каталоги на нарисованном дереве; many — несколько; ответ — номера узлов.
+   Карточки файлов получают значок по имени: каталог, журнал, база, настройки, PID, сокет… */
 
 const KEY_STATE = QUIZ.id + ':state';
 const KEY_RESULT = QUIZ.id + ':result';
 
 const KIND = {
   single: 'выбор ответа', multi: 'несколько ответов', order: 'порядок',
-  slots: 'подстановка', sort: 'по группам', line: 'строка', number: 'число', odd: 'убрать лишнее'
+  slots: 'подстановка', sort: 'по группам', line: 'строка', number: 'число', odd: 'убрать лишнее',
+  path: 'собрать путь', node: 'дерево каталогов'
 };
 const HINT = {
   multi: 'Несколько верных вариантов · балл только за полностью верный набор',
@@ -33,11 +38,58 @@ const HINT = {
   move: 'Файлы уже разложены. Перенесите те, что лежат не на месте: перетащите или нажмите файл, затем каталог',
   line: 'Нажмите нужную строку',
   lines: 'Нажмите все нужные строки · повторное нажатие снимает отметку',
-  odd: 'Перетащите лишнее в корзину или просто нажмите карточку · нажатие в корзине возвращает её обратно'
+  odd: 'Перетащите лишнее в корзину или просто нажмите карточку · нажатие в корзине возвращает её обратно',
+  path: 'Нажимайте сегменты по порядку или перетаскивайте их в адресную строку · нажатие на сегмент в строке убирает его',
+  node: 'Нажмите каталог на дереве',
+  nodes: 'Нажмите все нужные каталоги на дереве · повторное нажатие снимает отметку'
 };
-const variant = q => q.type === 'line' && q.many ? 'lines' : q.type === 'sort' && q.start ? 'move' : q.type === 'sort' && q.tree ? 'tree' : q.type;
+const variant = q => q.type === 'line' && q.many ? 'lines' : q.type === 'node' && q.many ? 'nodes' : q.type === 'sort' && q.start ? 'move' : q.type === 'sort' && q.tree ? 'tree' : q.type;
 const kindOf = q => ({ lines: 'несколько строк', move: 'перемещение', tree: 'по каталогам' })[variant(q)] || KIND[q.type];
 const hintOf = q => HINT[variant(q)];
+
+/* ---------- значки файлов ----------
+   Вид файла определяется по имени: так же его определяет человек в файловом менеджере. */
+const ICON_PATHS = {
+  dir: '<path d="M2 5.5h6l1.6 2H18v9.5H2z" fill="#F4A27E" stroke="#5E2750" stroke-width="1.4"/>',
+  log: '<path d="M4 2h9l3 3v13H4z" fill="#fff" stroke="#5E2750" stroke-width="1.4"/><path d="M6.5 8h7M6.5 11h7M6.5 14h5" stroke="#E95420" stroke-width="1.4"/>',
+  db: '<ellipse cx="10" cy="5" rx="6" ry="2.5" fill="#F3D9E8" stroke="#5E2750" stroke-width="1.4"/><path d="M4 5v10c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V5" fill="#F3D9E8" stroke="#5E2750" stroke-width="1.4"/><path d="M4 10c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5" fill="none" stroke="#5E2750" stroke-width="1.2"/>',
+  conf: '<path d="M4 2h9l3 3v13H4z" fill="#fff" stroke="#5E2750" stroke-width="1.4"/><path d="M6.5 8.5h7M6.5 13h7" stroke="#5E2750" stroke-width="1.3"/><circle cx="9" cy="8.5" r="1.6" fill="#268A5B"/><circle cx="12" cy="13" r="1.6" fill="#268A5B"/>',
+  key: '<circle cx="6.5" cy="10" r="3.6" fill="#FCE3D6" stroke="#C9353B" stroke-width="1.5"/><path d="M10 10h8M15 10v3M17.5 10v2.5" stroke="#C9353B" stroke-width="1.5"/>',
+  pid: '<rect x="2.5" y="3" width="15" height="14" rx="2" fill="#DDF1E6" stroke="#268A5B" stroke-width="1.4"/><path d="M8 6l-1 8M12 6l-1 8M5.5 8.5h9M5 11.5h9" stroke="#268A5B" stroke-width="1.3"/>',
+  sock: '<path d="M7 3v4M13 3v4" stroke="#0B78C4" stroke-width="1.6"/><path d="M4.5 7h11v3a5.5 5.5 0 0 1-11 0z" fill="#DCEBF7" stroke="#0B78C4" stroke-width="1.4"/><path d="M10 15.5V18" stroke="#0B78C4" stroke-width="1.6"/>',
+  img: '<rect x="2.5" y="3.5" width="15" height="13" fill="#fff" stroke="#5E2750" stroke-width="1.4"/><circle cx="7" cy="7.5" r="1.5" fill="#E95420"/><path d="M3.5 15l4.5-5 3 3 2-2 3.5 4z" fill="#268A5B"/>',
+  doc: '<path d="M4 2h9l3 3v13H4z" fill="#fff" stroke="#5E2750" stroke-width="1.4"/><path d="M6.5 8h7M6.5 10.5h7M6.5 13h7" stroke="#8C8497" stroke-width="1.2"/>',
+  bin: '<rect x="2" y="3.5" width="16" height="13" rx="1.5" fill="#300A24" stroke="#241F2F" stroke-width="1.2"/><path d="M5 8l2.5 2L5 12" fill="none" stroke="#8AE234" stroke-width="1.5"/><path d="M9 12.5h5" stroke="#fff" stroke-width="1.4"/>',
+  tmp: '<circle cx="10" cy="10" r="7" fill="#FFF3D6" stroke="#D69016" stroke-width="1.5"/><path d="M10 6v4.3l2.8 1.8" fill="none" stroke="#D69016" stroke-width="1.5"/>',
+  arch: '<path d="M3 6.5 10 3l7 3.5v8L10 18l-7-3.5z" fill="#F6ECF2" stroke="#5E2750" stroke-width="1.4"/><path d="M3 6.5 10 10l7-3.5M10 10v8" fill="none" stroke="#5E2750" stroke-width="1.2"/>'
+};
+
+function fileKind(name) {
+  const n = name.replace(/<[^>]+>/g, '').trim().toLowerCase();
+  if (n.endsWith('/')) return 'dir';
+  if (/\.(env|pem|key)$/.test(n)) return 'key';
+  if (/(\.log(\.\d+)?|_log)$/.test(n)) return 'log';
+  if (/\.(db|sqlite)$/.test(n)) return 'db';
+  if (/\.(ya?ml|conf|cfg|ini|json|toml)$/.test(n)) return 'conf';
+  if (/\.pid$/.test(n)) return 'pid';
+  if (/\.sock$/.test(n)) return 'sock';
+  if (/\.(png|jpe?g|svg|gif)$/.test(n)) return 'img';
+  if (/\.(md|txt|list)$/.test(n)) return 'doc';
+  if (/\.(tmp|part)$/.test(n)) return 'tmp';
+  if (/\.(zip|gz|deb|tar)$/.test(n)) return 'arch';
+  if (/\.sh$/.test(n) || !n.includes('.')) return 'bin';
+  return 'doc';
+}
+
+function fileIcon(name) {
+  return `<svg class="fi" viewBox="0 0 20 20" aria-hidden="true">${ICON_PATHS[fileKind(name)]}</svg>`;
+}
+
+/* Содержимое карточки файла: значок, имя, пояснение после « · » мелким шрифтом. */
+function fileLabel(text) {
+  const [name, ...rest] = text.split(' · ');
+  return `${fileIcon(name)}<span class="fn">${name.replace(/\/(?=.)/g, '/<wbr>')}</span>${rest.length ? `<small class="fmeta">${rest.join(' · ')}</small>` : ''}`;
+}
 
 const $ = id => document.getElementById(id);
 const screens = { start: $('screen-start'), quiz: $('screen-quiz'), result: $('screen-result') };
@@ -301,7 +353,7 @@ function renderQuestions() {
 function renderBody(q) {
   const card = $('card-' + q.id);
   const body = card.querySelector('.body');
-  ({ single: bodyChoice, multi: bodyChoice, order: bodyOrder, slots: bodySlots, sort: bodySort, line: bodyLine, number: bodyNumber, odd: bodyOdd })[q.type](q, body, card);
+  ({ single: bodyChoice, multi: bodyChoice, order: bodyOrder, slots: bodySlots, sort: bodySort, line: bodyLine, number: bodyNumber, odd: bodyOdd, path: bodyPath, node: bodyNode })[q.type](q, body, card);
 }
 
 function commit(q, value) {
@@ -429,13 +481,13 @@ function bodySlots(q, body, card) {
 function bodySort(q, body, card) {
   const cur = state.answers[q.id] || (q.start ? [...q.start] : q.items.map(() => null));
   const moved = !!state.answers[q.id];
-  const chip = it => `<button type="button" class="chip ${q.tree ? 'file' : ''} ${picked && picked.qid === q.id && picked.index === it ? 'sel' : ''}" data-it="${it}">${q.items[it]}</button>`;
+  const chip = it => `<button type="button" class="chip ${q.tree ? 'file' : ''} ${picked && picked.qid === q.id && picked.index === it ? 'sel' : ''}" data-it="${it}">${q.tree ? fileLabel(q.items[it]) : q.items[it]}</button>`;
   const inPlace = b => state.optOrder[q.id].filter(it => cur[it] === b).map(chip).join('');
   const pool = q.start ? '' : `<div class="pool" data-drop="pool">${inPlace(null)}</div>`;
   const buckets = q.tree
     ? `<div class="dirs">${q.buckets.map((title, b) => `
       <div class="dir" data-drop="bucket" data-b="${b}">
-        <div class="dir-name"><span class="dir-icon" aria-hidden="true"></span>${esc(title)}</div>
+        <div class="dir-name">${fileIcon('/')}${esc(title)}</div>
         <div class="dir-body">${inPlace(b)}</div>
       </div>`).join('')}</div>`
     : `<div class="buckets">${q.buckets.map((title, b) => `
@@ -469,12 +521,12 @@ function bodySort(q, body, card) {
 /* убрать лишнее: каталог и корзина; ответ — номера карточек в корзине по возрастанию */
 function bodyOdd(q, body, card) {
   const out = state.answers[q.id] || [];
-  const chip = it => `<button type="button" class="chip file ${out.includes(it) ? 'gone' : ''}" data-it="${it}">${q.items[it]}</button>`;
+  const chip = it => `<button type="button" class="chip file ${out.includes(it) ? 'gone' : ''}" data-it="${it}">${fileLabel(q.items[it])}</button>`;
   const list = inside => state.optOrder[q.id].filter(it => out.includes(it) !== inside).map(chip).join('');
   body.innerHTML = `
-    <div class="odd">
+    <div class="odd ${q.view === 'grid' ? 'grid' : ''}">
       <div class="dir odd-keep" data-drop="keep">
-        <div class="dir-name"><span class="dir-icon" aria-hidden="true"></span>${esc(q.dir)}</div>
+        <div class="dir-name">${fileIcon('/')}${esc(q.dir)}</div>
         <div class="dir-body">${list(true)}</div>
       </div>
       <div class="trash" data-drop="trash">
@@ -493,6 +545,56 @@ function bodyOdd(q, body, card) {
       onTap: () => set(it, !out.includes(it))
     });
   });
+}
+
+/* собрать путь: адресная строка из сегментов и палитра оставшихся сегментов */
+function pathText(q, segs) {
+  return '/' + segs.map(c => q.chips[c].replace(/\/$/, '')).join('/');
+}
+
+function bodyPath(q, body, card) {
+  const cur = state.answers[q.id] || [];
+  const free = state.optOrder[q.id].filter(c => !cur.includes(c));
+  body.innerHTML = `
+    <div class="pathbar" data-drop="bar">
+      <span class="pb-label">Путь</span>
+      <span class="pb-root">/</span>${cur.map((c, i) => `${i ? '<span class="pb-sep">/</span>' : ''}<button type="button" class="seg" data-pos="${i}" title="убрать">${fileIcon(q.chips[c])}${esc(q.chips[c].replace(/\/$/, ''))}</button>`).join('')}
+      ${cur.length ? '<button type="button" class="pb-clear">очистить</button>' : '<span class="pb-empty">нажмите первый сегмент</span>'}
+    </div>
+    <div class="palette"><p class="palette-note">Сегменты</p>${free.map(c =>
+      `<button type="button" class="chip file" data-c="${c}">${fileIcon(q.chips[c])}<span class="fn">${esc(q.chips[c].replace(/\/$/, ''))}</span></button>`).join('') || '<span class="muted">все сегменты в строке</span>'}</div>`;
+  const set = next => { if (commit(q, next.length ? next : null)) renderBody(q); };
+  body.querySelectorAll('.palette .chip').forEach(el => {
+    const c = Number(el.dataset.c);
+    draggable(el, card, { onDrop: () => set(cur.concat(c)), onTap: () => set(cur.concat(c)) });
+  });
+  body.querySelectorAll('.seg').forEach(el => el.addEventListener('click', () => {
+    const pos = Number(el.dataset.pos);
+    set(cur.filter((_, i) => i !== pos));
+  }));
+  const clr = body.querySelector('.pb-clear');
+  if (clr) clr.addEventListener('click', () => set([]));
+}
+
+/* дерево каталогов: узлы с отступом по глубине, нажатие отмечает узел */
+function treeRows(q, cls) {
+  return q.nodes.map((raw, i) => {
+    const depth = raw.length - raw.trimStart().length >> 1;
+    const name = raw.trim();
+    return `<button type="button" class="node ${cls(i)}" data-n="${i}" style="--d:${depth}">${'<span class="guide"></span>'.repeat(depth)}${fileIcon(name)}<span class="fn">${esc(name)}</span></button>`;
+  }).join('');
+}
+
+function bodyNode(q, body) {
+  const sel = state.answers[q.id] || [];
+  body.innerHTML = `<div class="ftree">${treeRows(q, i => sel.includes(i) ? 'sel' : '')}</div>`;
+  body.querySelectorAll('.node').forEach(el => el.addEventListener('click', () => {
+    const n = Number(el.dataset.n);
+    let next = [n];
+    if (q.many) next = sel.includes(n) ? sel.filter(x => x !== n) : sel.concat(n).sort((a, b) => a - b);
+    else if (sel.includes(n)) next = [];
+    if (commit(q, next.length ? next : null)) renderBody(q);
+  }));
 }
 
 /* строка кода */
@@ -714,13 +816,23 @@ function reviewBody(q, a, key, notes) {
         return `<tr><td>${it}</td>${q.start ? `<td>${cell(q.start[i])}</td>` : ''}<td class="${my === key[i] ? 'right' : 'wrong'}">${my === null ? (q.start ? 'не перемещали' : '—') : cell(my)}</td><td><b>${cell(key[i])}</b></td></tr>`;
       }).join('')}</table></div>${q.start && !a ? '<p class="muted">Файлы не перемещались — засчитана исходная раскладка.</p>' : ''}`;
     }
+    case 'path': {
+      const mine = a || [];
+      const ok = JSON.stringify(mine) === JSON.stringify(key);
+      return `<div class="numrv"><span class="${ok ? 'right' : 'wrong'}">Ваш путь: ${mine.length ? esc(pathText(q, mine)) : '—'}</span><span class="right">Верно: ${esc(pathText(q, key))}</span></div>`;
+    }
+    case 'node': {
+      const mine = a || [];
+      return `<div class="ftree rv-tree">${treeRows(q, i => key.includes(i) ? (mine.includes(i) ? 'right' : 'miss') : mine.includes(i) ? 'wrong' : '')}</div>
+        <p class="muted">Зелёным — верно отмеченные, красным — отмеченные ошибочно, пунктиром — нужные, но не отмеченные.</p>`;
+    }
     case 'odd': {
       const mine = a || [];
       return `<div class="cmp">${q.items.map((it, i) => {
         const extra = key.includes(i), gone = mine.includes(i);
         const cls = extra === gone ? (extra ? 'right' : '') : 'wrong';
         const tag = extra ? (gone ? 'лишний · убран' : 'лишний · остался') : (gone ? 'нужен · убран ошибочно' : 'нужен · остался');
-        return `<div class="cmp-opt ${cls}"><span class="mk">${extra === gone ? '✓' : '✗'}</span><span>${it}${notes && notes[i] ? `<small class="note">${notes[i]}</small>` : ''}</span><span class="tag">${tag}</span></div>`;
+        return `<div class="cmp-opt ${cls}"><span class="mk">${extra === gone ? '✓' : '✗'}</span><span class="fl">${fileLabel(it)}${notes && notes[i] ? `<small class="note">${notes[i]}</small>` : ''}</span><span class="tag">${tag}</span></div>`;
       }).join('')}</div>`;
     }
     case 'line': {
