@@ -2,10 +2,14 @@
 
    Основа — движок занятия 3: показ экранов, очерёдное появление блоков,
    счётчик, полноэкранный режим, свайпы, таймер на экране практики,
-   печать домашнего задания. Добавлена кнопка «Показать ответы» для
-   ручной таблицы: пока она не нажата, ячейки ответов закрыты.          */
+   печать домашнего задания. Добавлены кнопка «Показать ответы» для
+   ручной таблицы и переключатель языка примеров Python / C# (клавиша L).  */
 (() => {
-  const slides = [...document.querySelectorAll('.slide')];
+  // Экраны, которых нет в выбранном языке (.l-py / .l-cs на самом экране), в показ не входят.
+  const allSlides = [...document.querySelectorAll('.slide')];
+  const lang = () => document.documentElement.dataset.lang === 'cs' ? 'cs' : 'py';
+  const inLang = slide => !slide.classList.contains(lang() === 'cs' ? 'l-py' : 'l-cs');
+  let slides = allSlides.filter(inLang);
   const deck = document.getElementById('deck');
   const boot = document.getElementById('boot');
   const prevButton = document.getElementById('prevButton');
@@ -54,7 +58,7 @@
   function revealFragments(slide) {
     revealTimers.forEach(clearTimeout);
     revealTimers = [];
-    const items = [...slide.querySelectorAll('.fragment')];
+    const items = [...slide.querySelectorAll('.fragment')].filter(item => !item.closest(lang() === 'cs' ? '.l-py' : '.l-cs'));
     items.forEach(item => item.classList.remove('revealed'));
     items.forEach((item, itemIndex) => {
       revealTimers.push(window.setTimeout(() => item.classList.add('revealed'), 320 + itemIndex * 90));
@@ -62,7 +66,7 @@
   }
 
   function hiddenFragments() {
-    return [...slides[index].querySelectorAll('.fragment:not(.revealed)')];
+    return [...slides[index].querySelectorAll('.fragment:not(.revealed)')].filter(item => !item.closest(lang() === 'cs' ? '.l-py' : '.l-cs'));
   }
 
   function startTimer(slide) {
@@ -146,8 +150,29 @@
     button.textContent = open ? 'Скрыть ответы' : 'Показать ответы';
   }));
 
-  const hwDownload = document.getElementById('hwDownload');
-  if (hwDownload) hwDownload.addEventListener('click', () => window.print());
+  document.querySelectorAll('.hw-download').forEach(button => button.addEventListener('click', () => window.print()));
+
+  // Язык примеров: Python или C#. Выбор хранится в браузере; если хранилище
+  // недоступно, колода открывается на Python.
+  function setLang(next) {
+    const current = slides[index];
+    document.documentElement.dataset.lang = next;
+    try { localStorage.setItem('op04-l07-lang', next); } catch (_) { /* без хранилища */ }
+    slides = allSlides.filter(inLang);
+    const keep = slides.indexOf(current);
+    // Если текущего экрана в новом языке нет, остаёмся на ближайшем предыдущем.
+    let target = keep;
+    if (keep < 0) {
+      const pos = allSlides.indexOf(current);
+      target = Math.max(0, slides.findIndex(s => allSlides.indexOf(s) >= pos));
+      if (target < 0) target = slides.length - 1;
+    }
+    allSlides.forEach(s => s.classList.remove('is-active', 'is-leaving-left'));
+    index = target;
+    slides[index].classList.add('is-active');
+    updateUi();
+  }
+  document.querySelectorAll('[data-set-lang]').forEach(button => button.addEventListener('click', () => setLang(button.dataset.setLang)));
 
   fullscreenButton.addEventListener('click', async () => {
     try {
@@ -166,6 +191,7 @@
     if (['ArrowLeft', 'PageUp', 'Backspace'].includes(event.key)) { event.preventDefault(); previous(); }
     if (event.key.toLowerCase() === 's') openSources();
     if (event.key.toLowerCase() === 'f') fullscreenButton.click();
+    if (event.key.toLowerCase() === 'l') setLang(lang() === 'py' ? 'cs' : 'py');
     if (event.key === 'Home') render(0, -1);
     if (event.key === 'End') render(slides.length - 1, 1);
   });
@@ -181,6 +207,7 @@
 
   const initial = Math.max(0, Math.min(slides.length - 1, Number(location.hash.slice(1)) - 1 || 0));
   index = initial;
-  slides.forEach((slide, slideIndex) => slide.classList.toggle('is-active', slideIndex === initial));
+  allSlides.forEach(slide => slide.classList.remove('is-active'));
+  slides[initial].classList.add('is-active');
   updateUi();
 })();
