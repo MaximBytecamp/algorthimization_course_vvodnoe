@@ -24,7 +24,7 @@
 
   const pad = value => String(value).padStart(2, '0');
   const staggerSelector = [
-    '.cards3 > div', '.cards4 > div', '.agenda > div', '.zones > div',
+    '.cards3 > div', '.cards4 > div', '.agenda > div', '.zones > div', '.termdef dl > div',
     '.tbl tbody tr', '.steps li', '.hw-cards li', '.hw-order > div'
   ].join(',');
 
