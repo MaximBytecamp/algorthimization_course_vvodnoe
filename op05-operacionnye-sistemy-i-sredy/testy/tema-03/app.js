@@ -227,9 +227,28 @@ function updateLeaves() {
   note.innerHTML = `<b>Вы уходили со вкладки теста: ${state.leaves}.</b> Это записано в код результата. Время при этом не останавливается.`;
 }
 
-['copy', 'cut', 'contextmenu', 'dragstart'].forEach(type => {
-  $('questions').addEventListener(type, e => e.preventDefault());
+/* ---------- защита текста от копирования ----------
+   Текст практики нельзя выделить, скопировать, вырезать, распечатать или сохранить
+   горячими клавишами. Исключения — поля ввода и поле с кодом результата: код нужно
+   скопировать и отправить преподавателю. Это барьер, а не защита: снимок экрана
+   и инструменты разработчика браузер не запрещает. */
+const editable = el => !!(el && el.closest && el.closest('input, textarea'));
+
+['copy', 'cut', 'contextmenu', 'dragstart', 'selectstart'].forEach(type => {
+  document.addEventListener(type, e => { if (!editable(e.target)) e.preventDefault(); }, true);
 });
+
+document.addEventListener('keydown', e => {
+  const k = (e.key || '').toLowerCase();
+  const mod = e.ctrlKey || e.metaKey;
+  const devtools = k === 'f12' || (mod && e.shiftKey && ['i', 'j', 'c'].includes(k)) || (e.metaKey && e.altKey && ['i', 'j', 'c', 'u'].includes(k));
+  const blocked = mod && ['s', 'p', 'u'].includes(k);
+  const copying = mod && ['c', 'x', 'a'].includes(k) && !editable(e.target);
+  if (devtools || blocked || copying) { e.preventDefault(); e.stopPropagation(); }
+}, true);
+
+window.addEventListener('beforeprint', () => document.body.classList.add('no-print'));
+window.addEventListener('afterprint', () => document.body.classList.remove('no-print'));
 
 /* ---------- общие части карточки ---------- */
 
