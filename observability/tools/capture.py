@@ -1,7 +1,8 @@
-"""Снимки учебного API: консоль, Swagger, /metrics и /health. Запуск после старта lab.
+"""Снимки API стенда: консоль, Swagger, /metrics и /health. Запуск после старта lab.
 
 python3 tools/capture.py          — все снимки
 python3 tools/capture.py swagger  — только Swagger
+python3 tools/capture.py console  — только страница /lab
 """
 import sys
 from pathlib import Path
@@ -14,7 +15,7 @@ ONLY = set(sys.argv[1:])
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
     page = browser.new_page(viewport={'width': 1440, 'height': 1080}, device_scale_factor=1)
-    if not ONLY:
+    if not ONLY or 'console' in ONLY:
         page.goto('http://127.0.0.1:8015/lab')
         for scenario, label in [('fast', 'Быстрый 200'), ('slow', 'Медленный 200'), ('error', 'Ошибка 500')]:
             page.get_by_role('button', name=label, exact=True).click()

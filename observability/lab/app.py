@@ -1,4 +1,4 @@
-"""Учебный API: детерминированные сценарии, события и длительности.
+"""API стенда: заданные сценарии, события и длительности.
 Запуск: python -m uvicorn app:app --host 127.0.0.1 --port 8015
 Зависимость моделируется asyncio.sleep; реальной базы данных здесь нет.
 """
@@ -18,7 +18,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, Response
 
 app = FastAPI(title="Telemetry Lab · Макаров М. Н.", version="1.0",
-              description="Учебная модель: fast / slow / error. PostgreSQL заменён управляемым ожиданием.")
+              description="Сценарии fast / slow / error. PostgreSQL заменён управляемым ожиданием.")
 logger = logging.getLogger("telemetry_lab")
 events = deque(maxlen=2000)
 totals = {"200": 0, "500": 0}
@@ -81,7 +81,7 @@ async def products(scenario: Literal["fast", "slow", "error"] = "fast"):
                     headers={"X-Request-ID": request_id, "X-Duration-Ms": str(event["duration_ms"])})
 
 
-@app.get("/events", tags=["Учебные данные"])
+@app.get("/events", tags=["Журнал событий"])
 async def get_events():
     return {"note": "Last 2000 events in this single process; cleared on restart", "events": list(events)}
 

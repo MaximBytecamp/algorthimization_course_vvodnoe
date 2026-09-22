@@ -104,11 +104,24 @@ def _png_size(name):
     return struct.unpack('>II', header[16:24])
 
 
-def shot(name, title, caption):
+# Номер рисунка ставит сборка: знак заменяется на «1.4.2» по порядку внутри главы.
+FIG = '¤'
+
+
+def fig_title(title):
+    return '<b class="fig-title"><span class="fig-no">Рис. ' + FIG + '</span> ' + title + '</b>'
+
+
+def shot(name, title, caption, pins=()):
+    """Снимок экрана. pins — метки поверх снимка: (x %, y %, заголовок, пояснение);
+    под снимком они повторяются нумерованным списком, поэтому читаются и без картинки."""
     width, height = _png_size(name)
+    marks = ''.join(f'<span class="pin" style="left:{x}%;top:{y}%">{i}</span>' for i, (x, y, _, _) in enumerate(pins, 1))
+    legend = ('<ol class="pin-legend">' + ''.join(f'<li><b>{head}.</b> {text}</li>' for _, _, head, text in pins) + '</ol>') if pins else ''
     return (f'<figure class="evidence"><button class="zoom" data-image="../shots/{name}.png" aria-label="Увеличить: {title}">'
-            f'<img src="../shots/{name}.png" alt="{title}" loading="lazy" width="{width}" height="{height}"></button>'
-            f'<figcaption><b>Снимок · {title}</b>{caption}'
+            f'<span class="shot-frame"><img src="../shots/{name}.png" alt="{title}" loading="lazy" width="{width}" height="{height}">'
+            f'<span class="pins" aria-hidden="true">{marks}</span></span></button>'
+            f'<figcaption>{fig_title(title)}{caption}{legend}'
             f'<a href="../shots/{name}.png" target="_blank" rel="noreferrer">Открыть в полном размере ↗</a></figcaption></figure>')
 
 
@@ -120,7 +133,62 @@ def example(title, body):
 def diagram(title, caption, svg):
     """Схема, нарисованная в SVG: подпись читается и без изображения."""
     return ('<figure class="diagram"><div class="diagram-scroll" tabindex="0" role="group" aria-label="Схема · ' + title + '">'
-            + svg + '</div><figcaption><b>Схема · ' + title + '</b>' + p(caption) + '</figcaption></figure>')
+            + svg + '</div><figcaption>' + fig_title(title) + p(caption) + '</figcaption></figure>')
+
+
+def widget(html, title, caption):
+    """Интерактивная схема с номером рисунка и подписью: что на ней показано и как ею пользоваться."""
+    return '<figure class="widget-figure">' + html + '<figcaption>' + fig_title(title) + p(caption) + '</figcaption></figure>'
+
+
+def steps(items):
+    """Нумерованные шаги с крупными номерами: (заголовок, пояснение)."""
+    return '<ol class="steps">' + ''.join('<li><b>' + head + '</b>' + p(text) + '</li>' for head, text in items) + '</ol>'
+
+
+def flow(items, caption=''):
+    """Цепочка этапов слева направо: (название, короткая подпись)."""
+    cells = '<i aria-hidden="true">→</i>'.join('<div><b>' + head + '</b><span>' + sub + '</span></div>' for head, sub in items)
+    return '<div class="flow">' + cells + '</div>' + (('<p class="flow-note">' + caption + '</p>') if caption else '')
+
+
+def cards(items, columns=None):
+    """Карточки понятий: (метка, заголовок, текст). Цвет метки меняется по порядку."""
+    style = f' style="--cols:{columns}"' if columns else ''
+    return (f'<div class="cards"{style}>' + ''.join('<div class="card"><span class="card-tag">' + tag + '</span><h4>' + head + '</h4>' + p(text) + '</div>'
+                                                  for tag, head, text in items) + '</div>')
+
+
+def compare(left, right):
+    """Две колонки рядом: (метка, заголовок, html, вид), вид — bad, good или plain."""
+    def col(tag, head, html, kind):
+        return f'<div class="compare-col {kind}"><span class="compare-tag">{tag}</span><h4>{head}</h4>{html}</div>'
+    return '<div class="compare">' + col(*left) + col(*right) + '</div>'
+
+
+def formula(expr, parts, result=''):
+    """Расчёт крупно и расшифровка каждой части. expr — строка с формулой, parts — (обозначение, смысл)."""
+    legend = ''.join('<div><dt>' + a + '</dt><dd>' + b + '</dd></div>' for a, b in parts)
+    tail = ('<p class="formula-result">' + result + '</p>') if result else ''
+    return '<div class="formula"><div class="formula-expr">' + expr + '</div><dl>' + legend + '</dl>' + tail + '</div>'
+
+
+def stats(items):
+    """Плитки с числами: (значение, подпись, пояснение)."""
+    return '<div class="stats">' + ''.join('<div><b>' + value + '</b><span>' + label + '</span><em>' + note + '</em></div>'
+                                           for value, label, note in items) + '</div>'
+
+
+def meter(rows, caption=''):
+    """Горизонтальные полосы долей: (подпись, процент от 0 до 100, текст справа)."""
+    body = ''.join(f'<div class="meter-row"><span>{label}</span><div class="meter-track"><div style="width:{pct}%"></div></div><b>{value}</b></div>'
+                   for label, pct, value in rows)
+    return '<div class="meter">' + body + (('<p class="flow-note">' + caption + '</p>') if caption else '') + '</div>'
+
+
+def warn(title, s):
+    """Предупреждение: то, на чём чаще всего ошибаются."""
+    return '<aside class="margin-note warn"><b>' + title + '</b>' + p(s) + '</aside>'
 
 
 def source(url, title):
