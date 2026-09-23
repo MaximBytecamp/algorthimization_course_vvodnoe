@@ -25,7 +25,7 @@ const KEY_RESULT = QUIZ.id + ':result';
 const KIND = {
   single: 'выбор ответа', multi: 'несколько ответов', order: 'порядок',
   slots: 'подстановка', sort: 'по группам', line: 'строка', number: 'число', odd: 'убрать лишнее',
-  path: 'собрать адрес', docs: 'сравнение документов'
+  path: 'собрать адрес', docs: 'сравнение документов', urlparts: 'разбор запроса'
 };
 const HINT = {
   multi: 'Несколько верных вариантов · балл только за полностью верный набор',
@@ -38,10 +38,12 @@ const HINT = {
   lines: 'Нажмите все нужные строки · повторное нажатие снимает отметку',
   odd: 'Перетащите лишнее в корзину или просто нажмите карточку · нажатие в корзине возвращает её обратно',
   path: 'Нажимайте сегменты по порядку или перетаскивайте их в адресную строку · нажатие на сегмент в строке убирает его',
-  docs: 'Скачайте оба файла кнопкой «Скачать .md» и сравните их · отметьте тот документ, который выбираете'
+  docs: 'Скачайте оба файла кнопкой «Скачать .md» и сравните их · отметьте тот документ, который выбираете',
+  urlpart: 'Нажмите часть запроса, в которой недочёт',
+  urlparts: 'Нажмите все части запроса, в которых есть недочёт · повторное нажатие снимает отметку'
 };
-const variant = q => q.type === 'line' && q.many ? 'lines' : q.type;
-const kindOf = q => ({ lines: 'несколько строк' })[variant(q)] || KIND[q.type];
+const variant = q => q.type === 'line' && q.many ? 'lines' : q.type === 'urlparts' && !q.many ? 'urlpart' : q.type;
+const kindOf = q => ({ lines: 'несколько строк', urlpart: 'разбор запроса' })[variant(q)] || KIND[q.type];
 const hintOf = q => HINT[variant(q)];
 
 /* Карточки этого теста — обычный текст: значки файловой системы здесь не нужны. */
@@ -238,6 +240,31 @@ function sourceBlock(q) {
   return q.code && q.type !== 'line' ? codeBlock(q.code, '', q.file, q.lang) : '';
 }
 
+/* Карточка проекта: имя, пояснение, дерево файлов и ссылка на репозиторий.
+   Ссылка открывается в новой вкладке; задание при этом решается и без неё —
+   всё нужное есть в дереве на странице. */
+function repoBlock(repo) {
+  if (!repo) return '';
+  const tree = (repo.tree || []).map(raw => {
+    const depth = (raw.length - raw.trimStart().length) >> 1;
+    const name = raw.trim();
+    const cls = name.endsWith('/') ? 'rt-dir' : 'rt-file';
+    return `<span class="rt-row ${cls}" style="--d:${depth}">${esc(name)}</span>`;
+  }).join('');
+  const meta = (repo.meta || []).map(m => `<span>${esc(m)}</span>`).join('');
+  const link = repo.url
+    ? `<a class="repo-link" href="${esc(repo.url)}" target="_blank" rel="noreferrer noopener">Открыть на GitHub ↗</a>`
+    : '';
+  return `<figure class="repo">
+      <figcaption class="repo-head">
+        <span class="repo-name">${esc(repo.name)}</span>${link}
+      </figcaption>
+      ${repo.note ? `<p class="repo-note">${esc(repo.note)}</p>` : ''}
+      ${meta ? `<div class="repo-meta">${meta}</div>` : ''}
+      ${tree ? `<div class="repo-tree">${tree}</div>` : ''}
+    </figure>`;
+}
+
 function imageBlock(img) {
   return img ? `<figure class="q-img">${img.svg}<figcaption>${esc(img.caption)}</figcaption></figure>` : '';
 }
@@ -316,6 +343,7 @@ function renderQuestions() {
     card.className = 'q';
     card.id = 'card-' + q.id;
     card.innerHTML = questionHead(q, pos)
+      + repoBlock(q.repo)
       + imageBlock(q.image)
       + sourceBlock(q)
       + (hintOf(q) ? `<p class="q-hint">${hintOf(q)}</p>` : '')
@@ -329,7 +357,7 @@ function renderQuestions() {
 function renderBody(q) {
   const card = $('card-' + q.id);
   const body = card.querySelector('.body');
-  ({ single: bodyChoice, multi: bodyChoice, order: bodyOrder, slots: bodySlots, sort: bodySort, line: bodyLine, number: bodyNumber, odd: bodyOdd, path: bodyPath, docs: bodyDocs })[q.type](q, body, card);
+  ({ single: bodyChoice, multi: bodyChoice, order: bodyOrder, slots: bodySlots, sort: bodySort, line: bodyLine, number: bodyNumber, odd: bodyOdd, path: bodyPath, docs: bodyDocs, urlparts: bodyUrl })[q.type](q, body, card);
 }
 
 function commit(q, value) {
@@ -597,6 +625,24 @@ function bodyDocs(q, body) {
   }));
 }
 
+/* разбор запроса: адрес разбит на части, нажатие отмечает часть с недочётом */
+function urlRow(q, cls) {
+  return q.parts.map((part, i) =>
+    `<button type="button" class="upart ${cls(i)}" data-p="${i}">${esc(part)}</button>`).join('');
+}
+
+function bodyUrl(q, body) {
+  const sel = state.answers[q.id] || [];
+  body.innerHTML = `<div class="urlbar"><span class="ub-label">Запрос</span>${urlRow(q, i => sel.includes(i) ? 'sel' : '')}</div>`;
+  body.querySelectorAll('.upart').forEach(el => el.addEventListener('click', () => {
+    const n = Number(el.dataset.p);
+    let next = [n];
+    if (q.many) next = sel.includes(n) ? sel.filter(x => x !== n) : sel.concat(n).sort((a, b) => a - b);
+    else if (sel.includes(n)) next = [];
+    if (commit(q, next.length ? next : null)) renderBody(q);
+  }));
+}
+
 /* строка кода */
 function bodyLine(q, body) {
   body.innerHTML = codeBlock(q.code, 'lines', q.file, q.lang);
@@ -745,6 +791,7 @@ async function renderResult(r, returning) {
     const verdict = `<span class="verdict ${d.ok ? 'ok' : 'bad'}">${d.ok ? '✓ верно' : '✗ неверно'}</span>`;
     return `<article class="q rv ${d.ok ? 'ok' : 'bad'}" id="rv-${q.id}">
       ${questionHead(q, pos, verdict)}
+      ${repoBlock(q.repo)}
       ${imageBlock(q.image)}
       ${sourceBlock(q)}
       ${reviewBody(q, raw[q.id], key, secret[q.id].notes)}
@@ -820,6 +867,12 @@ function reviewBody(q, a, key, notes) {
       const mine = a || [];
       const ok = JSON.stringify(mine) === JSON.stringify(key);
       return `<div class="numrv"><span class="${ok ? 'right' : 'wrong'}">Ваш путь: ${mine.length ? esc(pathText(q, mine)) : '—'}</span><span class="right">Верно: ${esc(pathText(q, key))}</span></div>`;
+    }
+    case 'urlparts': {
+      const mine = a || [];
+      return `<div class="urlbar rv-url"><span class="ub-label">Запрос</span>${
+        urlRow(q, i => key.includes(i) ? (mine.includes(i) ? 'right' : 'miss') : mine.includes(i) ? 'wrong' : '')}</div>
+        <p class="muted">Зелёным — верно отмеченные части, красным — отмеченные ошибочно, пунктиром — недочёты, которые вы пропустили.</p>`;
     }
     case 'docs': {
       const mine = a && a.length ? a[0] : null;
