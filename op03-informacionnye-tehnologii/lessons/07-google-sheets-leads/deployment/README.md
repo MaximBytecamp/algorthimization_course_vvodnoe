@@ -1,31 +1,33 @@
 # Подключение существующего учебного сайта
 
-Таблица: https://docs.google.com/spreadsheets/d/1xYN6sEDQG97efB8WeTHvRVWLN-xnVKMnRQVEupNIWNs/edit#gid=947217770
+Таблица: https://docs.google.com/spreadsheets/d/1TFOS0FVQ8sfRwx7Az2jV67n0MGqCPZ-LUVXskLoWeIw/edit
+
+Приёмник: https://script.google.com/macros/s/AKfycbySPuRZPch24mf03CenvwP2E8itXl9JGhTAgHUhKtEXcZJI1L-NgaT_v2uxa53sqt18/exec
 
 Сайт: https://ga4-analytics-lab-ivanov.vercel.app
 Репозиторий: https://github.com/MaximBytecamp/ga4-analytics-lab-ivanov
 
-## Что подготовлено
+## Что сделано
 
-Создана новая пустая нативная таблица согласно шагу 180 исходного сценария. Лист `leads`, A1:I1: request_id, created_at, name, email, direction, utm_source, utm_medium, utm_campaign, status. Первая строка закреплена. Часовой пояс Europe/Moscow, локаль ru_RU.
+Таблица `GA4 Analytics Lab — Leads` создана 24.09.2026 в аккаунте bytecampmm@gmail.com — том же, которому принадлежит учебный ресурс GA4. Лист `leads`, A1:I1: request_id, created_at, name, email, direction, utm_source, utm_medium, utm_campaign, status. Первая строка закреплена, ширина столбцов подобрана по данным.
 
-В I2:I2000 настроен список new / in_progress / done / rejected с отклонением неверного ввода. В A2:I2000 — подсветка неполной заполненной строки, в A2:A2000 — повторяющегося ID. B2:B2000 имеет формат даты и времени. После 2000 строк правила нужно продлить.
+В I2:I1000 настроен список `new` / `in_progress` / `done` / `rejected` с запретом ввода посторонних значений. В A2:I1000 подсвечивается заполненная строка с пропущенным обязательным полем (`=AND($A2<>"";COUNTBLANK($C2:$E2)>0)`), в A2:A1000 — повторяющийся ID (`=AND($A2<>"";COUNTIF(A:A;$A2)>1)`). В листе 1000 строк; если заявок станет больше, диапазоны правил нужно продлить.
 
-Настройки и пустые первые строки проверены по ответу Google Sheets API. Браузерный вид пока не проверен. Демонстрационные заявки вручную не добавлялись: их нужно получить именно через форму.
+`Code.gs` из этой папки вставлен в проект Apps Script `GA4 Analytics Lab — Leads Receiver` и опубликован как веб-приложение: запуск от имени владельца, доступ «Все», версия 1.
 
-`Code.gs` в этой папке уже содержит ID созданной таблицы. Универсальный скачиваемый пример в `../files/Code.gs` оставлен шаблоном для студентов.
+В сайте изменены два файла: `contacts.html` (форма с полями name, email, direction, четырьмя скрытыми полями и скрытым iframe для ответа) и `js/script.js` (подстановка UTM из адреса, генерация `request_id`, событие `generate_lead`). Google Tag `G-2CNN55NJF7` и `js/metrics.js` оставлены как были. Коммит `7e5fba6` «Add Google Sheets lead collection», Vercel собрал его в production.
 
-## Следующее действие в Google
+## Что проверено на живых данных
 
-1. Открыть таблицу → Расширения → Apps Script.
-2. Назвать проект GA4 Analytics Lab — Leads Receiver.
-3. Вставить целиком файл Code.gs из этой папки и сохранить.
-4. Развернуть → Новое развертывание → Веб-приложение.
-5. Выполнять от своего имени; доступ — Все (Anyone). Подтвердить разрешения для собственного учебного проекта.
-6. Скопировать URL, заканчивающийся `/exec`. Это адрес приёмника, его нужно передать для завершения подключения сайта.
+Через форму сайта отправлены две заявки с вымышленными данными (`Иван Тестов`, `student@example.com`), обе записаны листом `leads`:
 
-После получения URL: подставить его в action формы из `../files/form.html`, заменить старый обработчик формы полным `../files/script.js`, сохранить действующие Google Tag и js/metrics.js. Изменения вносить в существующий репозиторий и проект Vercel.
+- без меток — utm_source `direct`, utm_medium `none`, utm_campaign `not_set`;
+- по ссылке с `utm_source=telegram&utm_medium=social&utm_campaign=lesson07` — метки попали в свои столбцы.
 
-## Что ещё не сделано
+Обе строки получили server-side `created_at` и `status` = `new`. Realtime учебного ресурса GA4 показал два события `generate_lead` со страницы Contacts.
 
-Apps Script не опубликован. Сайт ещё не отправляет заявки в эту таблицу. Сквозные проверки direct/UTM, дубля POST и записи времени сервера ожидают публикации приёмника. Browser в сессии не подключён; скриншоты Google Sheets/Apps Script пока не получены. Список кадров — ../SCREENSHOTS.md.
+Отдельно проверены: отклонение недопустимого `status`, подсветка повторяющегося `request_id` (копия строки вставлена вручную и сразу удалена) и встроенная проверка браузера при пустом обязательном поле.
+
+## Про прежнюю таблицу
+
+В инструкции к теме была указана таблица `1xYN6sEDQG97efB8WeTHvRVWLN-xnVKMnRQVEupNIWNs`. Она создана под другим аккаунтом Google и из bytecampmm@gmail.com недоступна — Google отвечает «Нет доступа. Запросите доступ к файлу». Поэтому таблица создана заново, а ID в `Code.gs` обновлён. Универсальный скачиваемый пример в `../files/Code.gs` остаётся шаблоном для студентов: там ID подставляет сам студент.
