@@ -1,4 +1,4 @@
-// Учебная таблица GA4 Analytics Lab — Leads, подготовленная для темы 7.
+// Таблица GA4 Analytics Lab — Leads, подготовленная для темы 7.
 const SPREADSHEET_ID = '1TFOS0FVQ8sfRwx7Az2jV67n0MGqCPZ-LUVXskLoWeIw';
 const HEADERS = ['request_id', 'created_at', 'name', 'email', 'direction',
   'utm_source', 'utm_medium', 'utm_campaign', 'status'];

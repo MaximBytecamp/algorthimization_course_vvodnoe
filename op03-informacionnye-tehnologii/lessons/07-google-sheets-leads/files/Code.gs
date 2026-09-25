@@ -1,4 +1,4 @@
-// Укажите ID собственной учебной таблицы между /d/ и /edit в её URL.
+// Укажите ID своей таблицы между /d/ и /edit в её URL.
 const SPREADSHEET_ID = 'PASTE_YOUR_SPREADSHEET_ID';
 const HEADERS = ['request_id', 'created_at', 'name', 'email', 'direction',
   'utm_source', 'utm_medium', 'utm_campaign', 'status'];

@@ -1,4 +1,4 @@
-# Подключение существующего учебного сайта
+# Подключение существующего сайта
 
 Таблица: https://docs.google.com/spreadsheets/d/1TFOS0FVQ8sfRwx7Az2jV67n0MGqCPZ-LUVXskLoWeIw/edit
 
@@ -9,9 +9,9 @@
 
 ## Что сделано
 
-Таблица `GA4 Analytics Lab — Leads` создана 24.09.2026 в аккаунте bytecampmm@gmail.com — том же, которому принадлежит учебный ресурс GA4. Лист `leads`, A1:I1: request_id, created_at, name, email, direction, utm_source, utm_medium, utm_campaign, status. Первая строка закреплена, ширина столбцов подобрана по данным.
+Таблица `GA4 Analytics Lab — Leads` создана 24.09.2026 в аккаунте bytecampmm@gmail.com — том же, которому принадлежит ресурс GA4. Лист `leads`, A1:I1: request_id, created_at, name, email, direction, utm_source, utm_medium, utm_campaign, status. Первая строка закреплена, ширина столбцов подобрана по данным.
 
-В I2:I1000 настроен список `new` / `in_progress` / `done` / `rejected` с запретом ввода посторонних значений. В A2:I1000 подсвечивается заполненная строка с пропущенным обязательным полем (`=AND($A2<>"";COUNTBLANK($C2:$E2)>0)`), в A2:A1000 — повторяющийся ID (`=AND($A2<>"";COUNTIF(A:A;$A2)>1)`). В листе 1000 строк; если заявок станет больше, диапазоны правил нужно продлить.
+В столбце `status` настроен список `new` / `in_progress` / `done` / `rejected` с запретом ввода посторонних значений. По всей ширине строки подсвечивается заполненная строка с пропущенным обязательным полем (`=AND($A2<>"";COUNTBLANK($C2:$E2)>0)`), в столбце `request_id` — повторяющийся ID (`=AND($A2<>"";COUNTIF(A:A;$A2)>1)`). Правила заведены на весь лист; если строк станет больше, диапазоны нужно продлить.
 
 `Code.gs` из этой папки вставлен в проект Apps Script `GA4 Analytics Lab — Leads Receiver` и опубликован как веб-приложение: запуск от имени владельца, доступ «Все», версия 1.
 
@@ -24,7 +24,7 @@
 - без меток — utm_source `direct`, utm_medium `none`, utm_campaign `not_set`;
 - по ссылке с `utm_source=telegram&utm_medium=social&utm_campaign=lesson07` — метки попали в свои столбцы.
 
-Обе строки получили server-side `created_at` и `status` = `new`. Realtime учебного ресурса GA4 показал два события `generate_lead` со страницы Contacts.
+Обе строки получили server-side `created_at` и `status` = `new`. Realtime ресурса GA4 показал два события `generate_lead` со страницы Contacts.
 
 Отдельно проверены: отклонение недопустимого `status`, подсветка повторяющегося `request_id` (копия строки вставлена вручную и сразу удалена) и встроенная проверка браузера при пустом обязательном поле.
 

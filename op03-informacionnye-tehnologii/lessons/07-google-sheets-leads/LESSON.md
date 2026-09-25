@@ -42,7 +42,7 @@ Code.gs проверен в изолированной модели Google API: 
 
 Съёмка начата с настоящего отдельного окна VS Code через macOS screencapture: два исходных кадра использованы в пяти позициях (225, 227, 228, 233, 234). Остальные 40 кадров пока ожидают съёмки. Кадры фрагментов кода не являются подтверждением публикации: URL Apps Script ещё не подставлен. Открытые браузерные аккаунты недоступны для управления: Browser возвращает No browser is available, список подключений пуст. Системный захват экрана работает.
 
-Google Sheet создана и настроена через подключение Google Drive: [GA4 Analytics Lab — Leads](https://docs.google.com/spreadsheets/d/1xYN6sEDQG97efB8WeTHvRVWLN-xnVKMnRQVEupNIWNs/edit). Проверены 9 заголовков, статусы, формат даты, закрепление и оба правила подсветки через API. Подготовлен deployment/Code.gs с ID таблицы; порядок публикации — deployment/README.md. Apps Script endpoint и записи direct/UTM пока не созданы. Рабочий сайт не менялся; его нельзя публиковать с незаполненным action. Для завершения браузерных кадров требуется подключение Browser к учебным аккаунтам.
+Google Sheet создана и настроена через подключение Google Drive: [GA4 Analytics Lab — Leads](https://docs.google.com/spreadsheets/d/1xYN6sEDQG97efB8WeTHvRVWLN-xnVKMnRQVEupNIWNs/edit). Проверены 9 заголовков, статусы, формат даты, закрепление и оба правила подсветки через API. Подготовлен deployment/Code.gs с ID таблицы; порядок публикации — deployment/README.md. Apps Script endpoint и записи direct/UTM пока не созданы. Рабочий сайт не менялся; его нельзя публиковать с незаполненным action. Для завершения браузерных кадров требуется подключение Browser к аккаунтам Google.
 
 ## Источники
 
