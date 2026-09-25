@@ -23,12 +23,12 @@
 | 33 | 271 | 271-shot.png | Лист leads: красная неполная строка и оранжевый дубль ID. Разный цвет — разное правило | captured |
 | 38 | 199 | 199-shot.png | Google Sheets с раскрытым меню Extensions. Apps Script. | captured |
 | 39 | 200 | 200-shot.png | Apps Script Editor.  Слева `Code.gs`.  | captured |
+| 40 | 212 | 212-shot.png | Apps Script Editor с итоговым кодом.  | captured |
 | 41 | 273 | 273-shot.png | Адресная строка браузера с открытой таблицей. Между /d/ и /edit | captured |
 | 42 | 202 | 202-shot.png | Начало файла Code.gs с константой SPREADSHEET_ID.  | captured |
-| 45 | 205 | 205-shot.png | Код проверки в Apps Script.  | captured |
-| 50 | 210 | 210-shot.png | Apps Script с `appendRow()`.  | captured |
-| 51 | 211 | 211-shot.png | Функция в Apps Script.  | captured |
-| 52 | 212 | 212-shot.png | Apps Script Editor с итоговым кодом.  | captured |
+| 46 | 205 | 205-shot.png | Код проверки в Apps Script.  | captured |
+| 51 | 210 | 210-shot.png | Apps Script с `appendRow()`.  | captured |
+| 52 | 211 | 211-shot.png | Функция в Apps Script.  | captured |
 | 53 | 213 | 213-shot.png | Название проекта и кнопка Save.  | captured |
 | 54 | 214 | 214-shot.png | Apps Script с раскрытым Deploy.  | captured |
 | 55 | 215 | 215-shot.png | New deployment → Select type → Web app.  | captured |

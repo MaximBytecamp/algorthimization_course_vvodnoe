@@ -7,13 +7,22 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 const inline=s=>esc(s).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
 const source=fs.readFileSync(path.join(root,'SOURCE.md'),'utf8');
 const slides=[...source.matchAll(/^# Слайд (\d+)\.([^\n]*)\n([\s\S]*?)(?=^# Слайд |$(?![\s\S]))/gm)].map(m=>{const parts={};for(const p of m[3].split(/^## /m).slice(1)){const at=p.indexOf('\n');parts[p.slice(0,at).trim()]=p.slice(at).replace(/\n---\s*$/,'').trim();}return {id:+m[1],title:parts['Заголовок'],text:parts['Текст'],shot:parts['Скриншот'],accent:parts['Акцент']||'',visual:parts['Визуал'],after:parts['После']?+parts['После']:null};});
-const base=slides.filter(x=>!x.after);
-if(base.length!==93||base.some((x,i)=>x.id!==171+i))throw Error('Ожидались исходные слайды 171–263');
-const added=slides.filter(x=>x.after);
-for(const x of added)if(!base.some(b=>b.id===x.after))throw Error(`Слайд ${x.id}: «После ${x.after}» — такого исходного слайда нет`);
-const deck=[];
-for(const b of base){deck.push(b);for(const x of added.filter(a=>a.after===b.id))deck.push(x);}
-if(deck.length!==slides.length)throw Error('Часть слайдов потерялась при сборке порядка');
+// Порядок: слайды без «После» идут по возрастанию номера, остальные встают за своим якорем.
+const byId=new Map(slides.map(s=>[s.id,s]));
+for(let i=171;i<=263;i++)if(!byId.has(i))throw Error(`Исходный слайд ${i} потерялся`);
+const anchored=slides.filter(x=>x.after);
+for(const x of anchored){
+  if(!byId.has(x.after))throw Error(`Слайд ${x.id}: «После ${x.after}» — такого слайда нет`);
+  if(x.after===x.id)throw Error(`Слайд ${x.id} не может идти после самого себя`);
+}
+const children=new Map();
+for(const x of anchored){if(!children.has(x.after))children.set(x.after,[]);children.get(x.after).push(x);}
+const spine=slides.filter(x=>!x.after).sort((a,b)=>a.id-b.id);
+const deck=[];const seen=new Set();
+const place=s=>{if(seen.has(s.id))throw Error(`Слайд ${s.id} встал в порядок дважды`);
+  seen.add(s.id);deck.push(s);for(const c of (children.get(s.id)||[]))place(c);};
+for(const s of spine)place(s);
+if(deck.length!==slides.length)throw Error('Не встали в порядок: '+slides.filter(s=>!seen.has(s.id)).map(s=>s.id).join(', '));
 const TOTAL=deck.length;
 // Размер PNG из заголовка: нужен, чтобы широкие полоски таблиц класть во всю ширину.
 const pngSize=file=>{try{const b=fs.readFileSync(file);return {w:b.readUInt32BE(16),h:b.readUInt32BE(20)};}catch{return null;}};
@@ -33,7 +42,7 @@ const fileFor={200:'Code.gs',201:'Code.gs',202:'Code.gs',203:'Code.gs',205:'Code
   207:'Code.gs',208:'Code.gs',209:'Code.gs',210:'Code.gs',211:'Code.gs',248:'Code.gs',
   204:'form.html',221:'form.html',222:'form.html',223:'form.html',224:'form.html',225:'form.html',
   226:'form.html',227:'script.js',228:'script.js',230:'script.js',232:'script.js',
-  212:'Code.gs',233:'script.js',234:'form.html'};
+  233:'script.js',234:'form.html'};
 const fileLabel={'Code.gs':'Скачать Code.gs','form.html':'Скачать HTML формы','script.js':'Скачать script.js','lead-form.js':'Скачать lead-form.js'};
 // Архив со всеми заготовками темы: собирается заново при каждой сборке.
 const ARCHIVE='leads-lab.zip';
@@ -71,7 +80,7 @@ const explain={
   ['getSheetByName(\'leads\')','Берём именно нужный лист, а не первый попавшийся: листов в таблице может стать больше.']],
 203:[['String(p[key] || \'\')','Если поля нет совсем, получаем пустую строку, а не ошибку.'],
   ['.trim()','Убирает пробелы по краям: «  Иван » и «Иван» должны считаться одним и тем же.']],
-205:[['required.filter(…)','Оставляет имена тех полей, которые пришли пустыми.'],
+205:[['.filter(key => !clean(key))','Оставляет имена тех полей, которые пришли пустыми.'],
   ['missing.length','Ноль — всё на месте. Больше нуля — запись не делаем.'],
   ['error: \'missing_required\'','Клиент получает причину отказа, а не молчаливое «ок».']],
 206:[['getScriptLock()','Замок один на весь скрипт: две одновременные заявки не смогут писать вместе.'],
@@ -82,8 +91,7 @@ const explain={
 208:[['status = \'new\'','Значение задаёт сервер. Что бы ни прислал клиент, в таблицу попадёт new.']],
 209:[['clean(\'utm_source\') || \'direct\'','Пустая метка заменяется заглушкой: в столбце не будет дыр.'],
   ['direct / none / not_set','Три разных заглушки, чтобы потом отличать «пришёл сам» от «метку забыли».']],
-210:[['appendRow([…])','Дописывает строку сразу после последней заполненной — искать свободное место не нужно.'],
-  ['Порядок значений','Совпадает со столбцами A–I. Переставите — данные уедут не в свои колонки.'],
+210:[['appendRow([…])','Дописывает строку сразу после последней заполненной. Порядок значений совпадает со столбцами A–I: переставите — данные уедут не в свои колонки.'],
   ['textCell(…)','Ставит апостроф перед = + - @, чтобы присланный текст не стал формулой таблицы.']],
 211:[['createTextOutput(…)','Web App умеет отдавать только текст, поэтому объект превращаем в строку.'],
   ['JSON.stringify(data)','Объект → строка вида {"ok":true,…}.'],
@@ -169,6 +177,7 @@ const clicks={
 193:['Выделить A2:I','Формат → Условное форматирование','Добавить правило','Ваша формула'],
 194:['Формат','Условное форматирование','Добавить правило','Ваша формула'],
 199:['Расширения','Apps Script'],
+212:['Скачать Code.gs','Выделить всё в редакторе: ⌘ + A','Вставить','Подставить свой ID в строку 2','⌘ + S'],
 213:['Клик по названию проекта','Ввести имя','Переименовать','⌘ + S'],
 214:['Начать развертывание','Новое развертывание'],
 215:['Шестерёнка «Выберите тип»','Веб-приложение'],
@@ -196,6 +205,7 @@ const results={
 207:'В таблицу попадёт время сервера Google, а не время компьютера посетителя. Из формы это значение не приходит вовсе.',
 210:'После первой настоящей заявки в листе появится строка, где значения стоят ровно по своим столбцам от A до I.',
 211:'Приёмник начнёт отвечать строкой вида `{"ok":true,"request_id":"REQ-…"}` вместо пустого ответа.',
+212:'В редакторе 60 строк, над списком функций появилось имя `doPost` — код разобран без ошибок. ID в строке 2 подставим на следующих двух экранах.',
 213:'Рядом с названием проекта появится облачко с галочкой — код сохранён. В списке функций станет доступна `doPost`.',
 214:'Откроется окно «Новое развертывание»: тип ещё не выбран, кнопка запуска серая.',
 215:'Слева в окне появится строка «Веб-приложение», справа — поля описания и доступа.',
@@ -209,6 +219,11 @@ const results={
 232:'Событие `generate_lead` продолжит приходить в GA4 Realtime — теперь вместе с отправкой POST, а не вместо неё.',
 235:'В Source Control перечислены ровно два изменённых файла с пометкой `M`. Третьего файла быть не должно.',
 236:'Коммит уходит в GitHub, Vercel начинает сборку, и в Deployments появляется новая строка с вашим сообщением.'};
+// Где искать фрагмент в уже вставленном файле.
+const linesBadge=(t)=>`<p class="lines"><b>Code.gs</b>${esc(t)}</p>`;
+const lines={201:'строки 6–8',202:'строка 2 и строка 28',203:'строки 7–8',204:'строки 9–23',
+ 205:'строки 9–10',206:'строки 24–34',207:'строка 35',208:'строка 39',209:'строки 36–38',
+ 210:'строки 40–42',211:'строки 57–60',248:'строки 32–34'};
 const custom={
 
 225:`<p>Внутрь формы добавьте четыре скрытых поля — по одному на каждое системное значение.</p>${code('<input type="hidden" name="request_id" id="request_id">\n<input type="hidden" name="utm_source" id="utm_source">\n<input type="hidden" name="utm_medium" id="utm_medium">\n<input type="hidden" name="utm_campaign" id="utm_campaign">','contacts.html')}<p>Пользователь их не заполняет — значения подставит JavaScript.</p>`,
@@ -233,7 +248,7 @@ const custom={
 202:`<p>Вставьте скопированный ID в константу в самом начале файла. Ниже, внутри <code>doPost</code>, по этому ID открывается лист.</p>${code("// строка 2 — сюда вставляется ID\nconst SPREADSHEET_ID = 'ВАШ_ID_ТАБЛИЦЫ';\n\n// ниже, внутри doPost\nconst sheet = SpreadsheetApp\n  .openById(SPREADSHEET_ID)\n  .getSheetByName('leads');",'Code.gs')}${note('getActiveSpreadsheet() не используем: в контексте Web App активной таблицы нет.')}`,
 206:`<p>Проверяем ID и записываем строку под одной блокировкой.</p>${code("const lock = LockService.getScriptLock();\nlock.waitLock(10000);\ntry {\n  // Найти ID → отклонить дубль → appendRow\n  SpreadsheetApp.flush();\n} finally {\n  lock.releaseLock();\n}",'ФРАГМЕНТ · полный файл дальше по теме и в материалах')}${note('Без блокировки два одновременных запроса могут оба пройти проверку до первой записи.')}`,
 210:`<p>Порядок значений совпадает с A–I. Пользовательский текст записываем через <code>textCell()</code>.</p>${code("sheet.appendRow([\n  id, createdAt,\n  textCell(clean('name')),\n  textCell(clean('email')), clean('direction'),\n  textCell(source), textCell(medium),\n  textCell(campaign), status\n]);",'Code.gs')}${note('textCell() не даёт строке, начинающейся с =, превратиться в формулу. Функция есть в полном файле.')}`,
-212:`<p class="lead">Скачайте готовый <code>Code.gs</code>, вставьте целиком и укажите ID своей таблицы.</p>${cards([['Вход','Обязательные поля, email, direction, формат ID.'],['Запись','Блокировка, поиск дубля, timestamp и status=new.'],['Ответ','JSON: ok, request_id или код ошибки.']])}${note('Полный файл дополнен проверкой заголовков и длины полей. Это простой приёмник, не production API.')}`,
+212:`<p class="lead">Сначала <a class="ext" href="files/Code.gs" download>скачайте Code.gs</a> и вставьте его целиком. Дальше разберём файл по частям — по тому коду, который уже лежит у вас в редакторе.</p>${cards([['Вход · строки 6–23','Обязательные поля, формат ID, email, направление, длина значений.'],['Запись · строки 24–42','Блокировка, проверка листа, поиск дубля, время и status = new.'],['Ответ · строки 43–60','JSON с ok и request_id либо код ошибки.']])}`,
 216:`<p>Описание: <code>Приём заявок с сайта GA4 Analytics Lab</code>.</p>${cards([['Запуск от имени','«От моего имени» — скрипт пишет в вашу таблицу.'],['У кого есть доступ','«Все» (Anyone) — форму отправит посетитель, не входивший в Google.']])}${note('Приёмник принимает только вымышленные данные. Если политика Workspace запрещает доступ «Все», не обходите её: возьмите аккаунт, где это разрешено.')}`,
 224:flow(['Форма','POST в named iframe','Apps Script'])+code('<iframe name="submission-frame"\n  id="submission-frame"\n  title="Ответ приёмника" hidden></iframe>','contacts.html')+note('Имя iframe совпадает с target формы. Скрытый ответ с другого origin нельзя прочитать из страницы: сохранение проверяем в Sheets.'),
 228:`<p>Этот код выполняется внутри <code>if (leadForm)</code>: на Home и About формы нет.</p>${code("const defaults = {\n  utm_source: 'direct',\n  utm_medium: 'none',\n  utm_campaign: 'not_set'\n};\nfor (const [key, fallback] of Object.entries(defaults)) {\n  leadForm.elements.namedItem(key).value =\n    params.get(key)?.trim() || fallback;\n}",'js/script.js')}`,
@@ -282,6 +297,7 @@ if(fileFor[s.id]&&!body.includes('class="download"')){const f=fileFor[s.id];
   body=body.includes('<button data-copy')
     ?body.replace('<button data-copy',`<a class="dl" href="files/${f}" download>${f} ↓</a><button data-copy`)
     :body+download(f,fileLabel[f]);}
+if(lines[s.id])body=linesBadge(lines[s.id])+body;
 if(clicks[s.id])body=clickPath(clicks[s.id])+body;
 if(explain[s.id]){const w=walk(explain[s.id]);const at=body.indexOf('<aside class="note">');body=at>=0?body.slice(0,at)+w+body.slice(at):body+w;}
 if(s.id===174)body+=`<aside class="note">Готовый код всех изменений можно скачать со слайдов: <a class="ext" href="files/${ARCHIVE}" download>архив со всеми файлами темы</a>. Переписывать вручную не нужно.</aside>`;
