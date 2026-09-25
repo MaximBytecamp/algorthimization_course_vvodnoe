@@ -32,7 +32,7 @@ const resource=(href,label,hint)=>`<a class="resource" href="${href}" target="_b
 const fileFor={200:'Code.gs',201:'Code.gs',202:'Code.gs',203:'Code.gs',205:'Code.gs',206:'Code.gs',
   207:'Code.gs',208:'Code.gs',209:'Code.gs',210:'Code.gs',211:'Code.gs',248:'Code.gs',
   204:'form.html',221:'form.html',222:'form.html',223:'form.html',224:'form.html',225:'form.html',
-  226:'lead-form.js',227:'script.js',228:'script.js',230:'script.js',232:'script.js',
+  226:'form.html',227:'script.js',228:'script.js',230:'script.js',232:'script.js',
   212:'Code.gs',233:'script.js',234:'form.html'};
 const fileLabel={'Code.gs':'Скачать Code.gs','form.html':'Скачать HTML формы','script.js':'Скачать script.js','lead-form.js':'Скачать lead-form.js'};
 // Архив со всеми заготовками темы: собирается заново при каждой сборке.
@@ -43,6 +43,27 @@ try{
 }catch(e){console.warn('Архив не собран:',e.message);}
 // Разбор кода по слайдам: добавляется под блоком кода.
 const explain={
+200:[['Code.gs','Файл со скриптом. Он уже создан, отдельно заводить ничего не нужно.'],
+  ['myFunction','Демонстрационная заготовка Google. Нам она не нужна — удаляем целиком.'],
+  ['doPost(e)','Имя не произвольное: Google ищет функцию именно с таким именем, когда на адрес приходит POST.']],
+204:[['required','Браузер не даст отправить форму с пустым полем — но это только удобство для посетителя.'],
+  ['DevTools','Атрибут снимается в браузере за пару кликов, а запрос можно отправить и вовсе мимо формы.'],
+  ['Вывод','Те же поля проверяются второй раз в Apps Script — там, где посетитель ничего изменить не может.']],
+221:[['id="lead-form"','По этому имени форму находит JavaScript. Менять его нельзя: на него завязан код из темы 6.'],
+  ['Где искать','Форма лежит внутри блока contact-grid, ближе к концу файла.']],
+222:[['name','Имя поля. Ровно под этим именем значение придёт в Apps Script и попадёт в свой столбец.'],
+  ['required','Поле обязательное: браузер не отправит форму, пока оно пустое.'],
+  ['type="email"','Браузер сам проверит, что в поле похоже на адрес — есть собака и точка в домене.'],
+  ['select','Выпадающий список: посетитель не сможет придумать своё направление.']],
+224:[['name и target','Значения совпадают — по ним браузер понимает, куда положить ответ приёмника.'],
+  ['hidden','Рамка есть в разметке, но на странице её не видно и места она не занимает.'],
+  ['Зачем это нужно','Без iframe браузер ушёл бы на адрес Apps Script и показал посетителю голый JSON вместо сайта.']],
+226:[['Поля status нет','Состояние заявки в форме не передаётся: его назначает сервер.'],
+  ['Если добавить','Apps Script проигнорирует значение — в таблицу всё равно уйдёт new. Иначе любой посетитель прислал бы заявку сразу со статусом done.']],
+234:[['Три видимых поля','name, email, direction — их заполняет человек.'],
+  ['Четыре скрытых','request_id и три UTM — их заполняет JavaScript перед отправкой.'],
+  ['form-status','Абзац под кнопкой: сюда скрипт пишет сообщение после отправки.'],
+  ['iframe после формы','Стоит снаружи form, а не внутри: иначе target не сработает.']],
 201:[['doPost(e)','Google вызывает эту функцию, когда в адрес /exec приходит POST-запрос.'],
   ['e.parameter','Объект с полями формы: ключ — атрибут name, значение — то, что отправил браузер.'],
   ['doGet','Отдельная функция для обычного открытия адреса. Форме она не нужна.']],
@@ -77,8 +98,7 @@ const explain={
 228:[['params.get(key)','Вернёт значение метки или null, если её в адресе нет.'],
   ['?.trim()','Обрежет пробелы, но не упадёт, когда метки нет.'],
   ['|| fallback','Вместо пустоты подставляет direct, none или not_set.']],
-230:[['crypto.randomUUID()','Браузер сам делает случайный идентификатор — совпадения практически исключены.'],
-  ['toUpperCase()','Приёмник ждёт верхний регистр: так проверка ID на сервере строже.'],
+230:[['crypto.randomUUID()','Браузер сам делает случайный идентификатор; toUpperCase() приводит его к верхнему регистру, которого ждёт приёмник.'],
   ['if (!requestId.value)','ID создаётся один раз. Повторная отправка той же формы придёт с тем же ID, и таблица отклонит дубль.']],
 232:[['typeof gtag === \'function\'','Если тег не загрузился или его заблокировали, строка просто не выполнится и форма не сломается.'],
   ['lead_source','Единственный параметр события. Имя и email в GA4 не отправляем.']],
@@ -146,7 +166,7 @@ const clicks={
 181:['Клик по названию «Новая таблица»','Ввести GA4 Analytics Lab — Leads','Enter'],
 182:['Двойной клик по ярлыку «Лист1»','Ввести leads','Enter'],
 189:['Выделить I2:I','Данные','Настроить проверку данных','Добавить правило','Раскрывающийся список'],
-193:['Выделить A2:I','Формат','Условное форматирование','Добавить правило','Ваша формула'],
+193:['Выделить A2:I','Формат → Условное форматирование','Добавить правило','Ваша формула'],
 194:['Формат','Условное форматирование','Добавить правило','Ваша формула'],
 199:['Расширения','Apps Script'],
 213:['Клик по названию проекта','Ввести имя','Переименовать','⌘ + S'],
@@ -162,6 +182,33 @@ const clicks={
 266:['Заголовок столбца B','Формат','Числа','Дата и время'],
 267:['Заголовки A…I','Правый клик','Изменить размер столбцов A–I','Автоподбор размера','ОК'],
 268:['Клик по A2','⌘ + Shift + ↓','Добавить правило']};
+const result=t=>`<p class="result"><b>Должно получиться</b><span>${inline(t)}</span></p>`;
+const plain=t=>`<p class="plain"><b>Словами:</b> ${inline(t)}</p>`;
+const results={
+181:'В шапке документа вместо «Новая таблица» стоит ваше название, а рядом ненадолго появляется надпись «Сохранено на Диске».',
+183:'Первая строка занята девятью заголовками. Пока это просто текст — закрепление и формат даты делаем на следующих трёх шагах.',
+267:'`request_id` виден целиком, без многоточия. Остальные столбцы сузились до ширины своего содержимого.',
+189:'В ячейках столбца `status` появился серый чип со стрелкой. По стрелке открываются ровно четыре значения и ничего больше.',
+194:'Правил в панели стало два. Одинаковый `request_id` в двух строках теперь красится оранжевым.',
+200:'Слева остался один файл `Code.gs`, а в редакторе — пустое место под вашу функцию.',
+202:'Над списком функций появится имя `doPost`: редактор разобрал код и не нашёл ошибок.',
+206:'Внешне ничего не изменится — блокировка видна только под нагрузкой. Её работу проверим позже, отправив две заявки подряд.',
+207:'В таблицу попадёт время сервера Google, а не время компьютера посетителя. Из формы это значение не приходит вовсе.',
+210:'После первой настоящей заявки в листе появится строка, где значения стоят ровно по своим столбцам от A до I.',
+211:'Приёмник начнёт отвечать строкой вида `{"ok":true,"request_id":"REQ-…"}` вместо пустого ответа.',
+213:'Рядом с названием проекта появится облачко с галочкой — код сохранён. В списке функций станет доступна `doPost`.',
+214:'Откроется окно «Новое развертывание»: тип ещё не выбран, кнопка запуска серая.',
+215:'Слева в окне появится строка «Веб-приложение», справа — поля описания и доступа.',
+216:'Кнопка «Начать развертывание» станет активной. После нажатия Google попросит разрешения — для своего проекта это нормально.',
+220:'В Explorer виден тот же набор файлов, что и в репозитории: css, js, about.html, contacts.html, index.html.',
+223:'На странице ничего не изменится: форма выглядит как раньше. Изменится адрес, по которому уйдут данные после нажатия кнопки.',
+224:'Рамка на странице не видна. Зато после отправки браузер останется на Contacts, а не уйдёт на адрес Apps Script с голым JSON.',
+225:'Новых полей на странице не видно — они скрытые. Найти их можно только в DevTools: четыре `input` внутри формы.',
+227:'Внешне ничего не меняется. В DevTools видно, что скрытые поля UTM заполнились значениями из адреса страницы.',
+230:'После нажатия «Отправить» в скрытом поле `request_id` окажется строка вида `REQ-031A5470-9AE5-4305-B6A1-095B91D9C278`.',
+232:'Событие `generate_lead` продолжит приходить в GA4 Realtime — теперь вместе с отправкой POST, а не вместо неё.',
+235:'В Source Control перечислены ровно два изменённых файла с пометкой `M`. Третьего файла быть не должно.',
+236:'Коммит уходит в GitHub, Vercel начинает сборку, и в Deployments появляется новая строка с вашим сообщением.'};
 const custom={
 
 225:`<p>Внутрь формы добавьте четыре скрытых поля — по одному на каждое системное значение.</p>${code('<input type="hidden" name="request_id" id="request_id">\n<input type="hidden" name="utm_source" id="utm_source">\n<input type="hidden" name="utm_medium" id="utm_medium">\n<input type="hidden" name="utm_campaign" id="utm_campaign">','contacts.html')}<p>Пользователь их не заполняет — значения подставит JavaScript.</p>`,
@@ -177,24 +224,24 @@ const custom={
 175:cards([['Идентичность','request_id · created_at'],['Содержание','name · email · direction'],['Источник','utm_source · utm_medium · utm_campaign'],['Состояние','status']])+note('Девять столбцов. У каждого поля есть назначение.'),
 177:cards([['Человек','name · email · direction'],['Адрес страницы','utm_source · utm_medium · utm_campaign'],['Код','request_id — браузер; created_at и status — сервер']]),
 178:cards([['В форме','Имя, email и направление.'],['В коде браузера','request_id и UTM можно изменить через DevTools: сервер проверяет их.'],['Только на сервере','created_at и status создаёт Apps Script.']]),
-183:`<p>Вставьте заголовки в <strong>A1:I1</strong>, закрепите строку 1. Для даты в B выберите формат даты и времени.</p>${code('request_id\tcreated_at\tname\temail\tdirection\tutm_source\tutm_medium\tutm_campaign\tstatus','TSV · копировать в A1')}`,
-189:`<p>Выделите <code>I2:I</code> → <strong>Данные → Проверка данных</strong>. Заголовок не включаем.</p>${code('new\nin_progress\ndone\nrejected','DROPDOWN')}${walk([['I2:I','Правило начинается со второй строки: в первой лежит заголовок столбца.'],['Раскрывающийся список','Sheets рисует в ячейке чип со стрелкой и не даёт набрать своё.'],['Запрещать ввод данных','Любое значение, кроме этих четырёх, ячейка не примет совсем.']])}`,
-193:`<p>Для диапазона <code>A2:I</code> выберите «Ваша формула». Подсвечиваем только начатые строки с пропущенным обязательным полем.</p>${code('=AND($A2<>"";COUNTBLANK($C2:$E2)>0)','GOOGLE SHEETS')}${walk([['$A2<>""','Строка уже начата: в ней есть request_id. Пустые строки не трогаем.'],['COUNTBLANK($C2:$E2)','Считает пустые ячейки среди name, email и direction — это обязательные поля.'],['>0','Хотя бы одна пустая — значит заявка неполная.'],['AND(…)','Подсветка включается, только когда оба условия верны сразу.'],['Знак $ перед буквой','Столбец закреплён, номер строки Sheets подставляет свой для каждой строки диапазона.']])}${note('Формула записана для русской локали, где аргументы разделяет «;». Если в вашей таблице разделитель «,» — замените его.')}`,
-194:`<p>Диапазон <code>A2:A</code> → Условное форматирование → Ваша формула.</p>${code('=AND($A2<>"";COUNTIF(A:A;$A2)>1)','GOOGLE SHEETS')}${walk([['COUNTIF(A:A;$A2)','Сколько раз этот request_id встречается во всём столбце A.'],['>1','Ячейка считает и саму себя, поэтому дубль начинается с двух.'],['$A2<>""','Пустые ячейки одинаковы между собой, но дублями не считаются.']])}${note('Номер строки в формуле совпадает с началом диапазона. В локали с разделителем «,» замените «;» на «,».')}`,
+183:`<p>Вставьте заголовки в <strong>A1:I1</strong>. Закрепление строки и формат даты — три следующих шага.</p>${code('request_id\tcreated_at\tname\temail\tdirection\tutm_source\tutm_medium\tutm_campaign\tstatus','TSV · копировать в A1')}`,
+189:`<p>Выделите <code>I2:I</code> → <strong>Данные → Настроить проверку данных</strong>. Заголовок не включаем.</p>${code('new\nin_progress\ndone\nrejected','DROPDOWN')}${walk([['I2:I','Правило начинается со второй строки: в первой лежит заголовок столбца.'],['Раскрывающийся список','Sheets рисует в ячейке чип со стрелкой и не даёт набрать своё.'],['Запрещать ввод данных','Любое значение, кроме этих четырёх, ячейка не примет совсем.']])}`,
+193:`<p>Для диапазона <code>A2:I</code> выберите «Ваша формула». Подсвечиваем только начатые строки с пропущенным обязательным полем.</p>${code('=AND($A2<>"";COUNTBLANK($C2:$E2)>0)','GOOGLE SHEETS')}${plain('если в строке уже есть ID, но имя, email или направление не заполнены — покрасить строку.')}${walk([['$A2<>""','«В ячейке A2 не пусто». Знак <> читается как «не равно», а две кавычки подряд означают пустоту.'],['COUNTBLANK($C2:$E2)','«Посчитай пустые ячейки с C по E» — это name, email и direction.'],['>0','«Пустых больше нуля», то есть хотя бы одна пустая нашлась.'],['AND(…;…)','«И то, и другое сразу». Знак $ закрепляет столбец, а номер строки Sheets подставляет свой.']])}${note('Пока заявок нет, лист не изменится: подсветка включится на первой строке с пропущенным полем. Аргументы разделяет «;» — так в русской локали.')}`,
+194:`<p>Диапазон <code>A2:A</code> → Условное форматирование → Ваша формула.</p>${code('=AND($A2<>"";COUNTIF(A:A;$A2)>1)','GOOGLE SHEETS')}${plain('если ID заполнен и точно такой же ID уже есть в столбце — покрасить ячейку.')}${walk([['COUNTIF(A:A;$A2)','«Посчитай, сколько раз значение из A2 встречается в столбце A».'],['A:A','Весь столбец целиком, вместе со строками, которых пока нет.'],['>1','«Больше одного раза». Ячейка считает и саму себя, поэтому обычный ID даёт единицу, а дубль — два и больше.'],['$A2<>""','«В A2 не пусто». Пустые ячейки одинаковы между собой, но дублями заявок не считаются.']])}`,
 196:flow(['Структура ✓','Статусы ✓','Обязательные поля ✓','Дубли ✓'])+note('Таблица подготовлена. Следующий этап — приём настоящего POST.'),
 197:flow(['Форма на Vercel','POST','Apps Script','Лист leads'])+note('Доступ к таблице остаётся у скрипта. Браузер знает только URL приёмника.'),
 202:`<p>Скопируйте ID таблицы из адреса между <code>/d/</code> и <code>/edit</code>. Web App открывает её явно.</p>${code("const SPREADSHEET_ID = 'ВАШ_ID_ТАБЛИЦЫ';\nconst sheet = SpreadsheetApp\n  .openById(SPREADSHEET_ID)\n  .getSheetByName('leads');",'Code.gs')}${note('getActiveSpreadsheet() не используем: в контексте Web App активной таблицы нет.')}`,
-206:`<p>Проверяем ID и записываем строку под одной блокировкой.</p>${code("const lock = LockService.getScriptLock();\nlock.waitLock(10000);\ntry {\n  // Найти ID → отклонить дубль → appendRow\n  SpreadsheetApp.flush();\n} finally {\n  lock.releaseLock();\n}",'ФРАГМЕНТ · полный файл на слайде 212')}${note('Без блокировки два одновременных запроса могут оба пройти проверку до первой записи.')}`,
+206:`<p>Проверяем ID и записываем строку под одной блокировкой.</p>${code("const lock = LockService.getScriptLock();\nlock.waitLock(10000);\ntry {\n  // Найти ID → отклонить дубль → appendRow\n  SpreadsheetApp.flush();\n} finally {\n  lock.releaseLock();\n}",'ФРАГМЕНТ · полный файл дальше по теме и в материалах')}${note('Без блокировки два одновременных запроса могут оба пройти проверку до первой записи.')}`,
 210:`<p>Порядок значений совпадает с A–I. Пользовательский текст записываем через <code>textCell()</code>.</p>${code("sheet.appendRow([\n  id, createdAt,\n  textCell(clean('name')),\n  textCell(clean('email')), clean('direction'),\n  textCell(source), textCell(medium),\n  textCell(campaign), status\n]);",'Code.gs')}${note('textCell() не даёт строке, начинающейся с =, превратиться в формулу. Функция есть в полном файле.')}`,
 212:`<p class="lead">Скачайте готовый <code>Code.gs</code>, вставьте целиком и укажите ID своей таблицы.</p>${cards([['Вход','Обязательные поля, email, direction, формат ID.'],['Запись','Блокировка, поиск дубля, timestamp и status=new.'],['Ответ','JSON: ok, request_id или код ошибки.']])}${note('Полный файл дополнен проверкой заголовков и длины полей. Это учебный приёмник, не production API.')}`,
-216:`<p>Описание: <code>GA4 Leads Receiver v1</code>.</p>${cards([['Execute as','Me / Я — скрипт пишет в вашу таблицу.'],['Who has access','Anyone / Все — для посетителя без входа в Google.']])}${note('Публикуем только учебный приёмник с тестовыми данными. Если политика Workspace запрещает доступ «Все», не обходите её: используйте разрешённый учебный аккаунт.')}`,
+216:`<p>Описание: <code>Приём заявок с сайта GA4 Analytics Lab</code>.</p>${cards([['Запуск от имени','«От моего имени» — скрипт пишет в вашу таблицу.'],['У кого есть доступ','«Все» (Anyone) — форму отправит посетитель, не входивший в Google.']])}${note('Публикуем только учебный приёмник с тестовыми данными. Если политика Workspace запрещает доступ «Все», не обходите её: используйте разрешённый учебный аккаунт.')}`,
 224:flow(['Форма','POST в named iframe','Apps Script'])+code('<iframe name="submission-frame"\n  id="submission-frame"\n  title="Ответ приёмника" hidden></iframe>','contacts.html')+note('Имя iframe совпадает с target формы. Скрытый ответ с другого origin нельзя прочитать из страницы: сохранение проверяем в Sheets.'),
 228:`<p>Этот код выполняется внутри <code>if (leadForm)</code>: на Home и About формы нет.</p>${code("const defaults = {\n  utm_source: 'direct',\n  utm_medium: 'none',\n  utm_campaign: 'not_set'\n};\nfor (const [key, fallback] of Object.entries(defaults)) {\n  leadForm.elements.namedItem(key).value =\n    params.get(key)?.trim() || fallback;\n}",'js/script.js')}`,
 230:`<p>Создаём полный UUID перед первой отправкой. Для повторной доставки сохраняем тот же ID.</p>${code("if (!requestId.value) {\n  requestId.value = 'REQ-' +\n    crypto.randomUUID().toUpperCase();\n}",'js/script.js')}${note('Не обрезаем UUID до 8 символов. Новая заявка — кнопка «Новая заявка» / reset. Сервер всё равно проверяет формат и дубль.')}`,
 232:`<p>Событие остаётся в обработчике <code>submit</code>. Имя и email в параметры не передаём.</p>${code("if (typeof window.gtag === 'function') {\n  window.gtag('event', 'generate_lead', {\n    lead_source: 'contact_form'\n  });\n}",'js/script.js')}${note('В этой версии событие означает попытку отправки. Доказательство сохранения — строка в Sheets, а не событие GA4.')}`,
 233:`<p>Замените старый submit-обработчик из темы 6. Остальные события оставьте.</p>${code("leadForm.addEventListener('submit', () => {\n  if (!requestId.value) {\n    requestId.value = 'REQ-' + crypto.randomUUID().toUpperCase();\n  }\n  if (typeof window.gtag === 'function') {\n    window.gtag('event', 'generate_lead', {\n      lead_source: 'contact_form'\n    });\n  }\n  // Браузер выполняет обычный POST.\n});",'КЛЮЧЕВОЙ ФРАГМЕНТ')}${note('Старый preventDefault() остановит POST, даже если новый обработчик правильный. Не оставляйте два обработчика формы.')}`,
 234:`<p>Одна существующая форма; три видимых поля, четыре hidden-поля и iframe после формы.</p>${code('<form id="lead-form"\n  action="ВАШ_APPS_SCRIPT_URL"\n  method="POST" target="submission-frame">\n  <!-- name, email, direction -->\n  <!-- request_id, utm_source, utm_medium, utm_campaign -->\n  <button type="submit">Отправить заявку</button>\n  <button type="reset">Новая заявка</button>\n</form>\n<iframe name="submission-frame" hidden></iframe>','СТРУКТУРА · полный код в файле')}${note('Hidden не означает защищённый. Timestamp и status отсутствуют в форме и создаются сервером.')}`,
-239:`<p>Найдите новую строку на листе <code>leads</code>. Сверьте ID из сообщения под формой.</p>${code('REQ-…  |  дата и время  |  Иван Тестов\nstudent@example.com  |  backend\ndirect  |  none  |  not_set  |  new','ОЖИДАЕМЫЕ ЗНАЧЕНИЯ')}${note('Сообщение «POST отправляется» не подтверждает результат. Если строки нет — проверьте Executions в Apps Script, URL /exec и права Web App.')}`,
+239:`<p>Найдите новую строку на листе <code>leads</code>. Сверьте ID из сообщения под формой.</p>${code('REQ-…  |  дата и время  |  Иван Тестов\nstudent@example.com  |  frontend\ndirect  |  none  |  not_set  |  new','ОЖИДАЕМЫЕ ЗНАЧЕНИЯ')}${note('Сообщение под формой «Заявка отправлена» говорит только о том, что POST ушёл. Если строки нет — проверьте Executions в Apps Script, адрес /exec и права Web App.')}`,
 243:`<p>Откройте Realtime или DebugView и найдите <code>generate_lead</code> после теста формы.</p><p>${ext('https://analytics.google.com/analytics/web/','analytics.google.com')}</p>${cards([['GA4','Есть событие попытки отправки.'],['Google Sheets','Есть строка с тем же учебным сценарием и нужными UTM.']])}${note('Эти проверки независимы. Блокировщик может остановить GA4, а ошибка приёмника — запись в таблицу.')}`,
 248:`<p>Повторный POST с тем же ID не должен добавлять строку. Это отдельная проверка от ручного копирования строки.</p>${code("{\n  \"ok\": false,\n  \"error\": \"duplicate_request_id\"\n}",'ОЖИДАЕМЫЙ JSON')}${note('Отправьте повторно без «Новая заявка», сравните число строк. Для просмотра JSON временно задайте target="_blank". Проверка и запись защищены ScriptLock.')}`,
 250:`<p>Откройте dropdown одной тестовой заявки. Пройдите допустимые состояния.</p>${flow(['new','in_progress','done'])}${note('После демонстрации дубля удалите только добавленную тестовую копию строки. Оригинал оставьте.')}`,
@@ -238,7 +285,7 @@ if(fileFor[s.id]&&!body.includes('class="download"')){const f=fileFor[s.id];
 if(clicks[s.id])body=clickPath(clicks[s.id])+body;
 if(explain[s.id]){const w=walk(explain[s.id]);const at=body.indexOf('<aside class="note">');body=at>=0?body.slice(0,at)+w+body.slice(at):body+w;}
 if(s.id===174)body+=`<aside class="note">Готовый код всех изменений можно скачать со слайдов: <a class="ext" href="files/${ARCHIVE}" download>архив со всеми файлами темы</a>. Переписывать вручную не нужно.</aside>`;
-if(corrections[s.id])body+=note(corrections[s.id]);if(s.id===246)body=simulation+flow(['HTML required','Серверная проверка','Запись или отказ']);if([260,261].includes(s.id))body=`<div class="checklist">${s.text.split(/\n\s*\n/).filter(p=>p&&p!=='Сделайте скриншоты:'&&p!=='После занятия студент должен объяснить:').map(p=>p.split(/\n/).map(t=>`<label><input type="checkbox">${inline(t.replace(/^\d+\. /,''))}</label>`).join('')).join('')}</div>`;return `<section class="lesson-slide ${dark.has(s.id)?'dark':''} ${s.shot?'with-shot':''}" id="slide-${s.id}" data-stage="${stage(s.id)}"><div class="inner"><div class="kicker">${stage(s.id)}<span>ИСХОДНИК ${s.id} · ${i+1} / ${TOTAL}</span></div><h${i===0?1:2}>${inline(s.title)}</h${i===0?1:2}><div class="${s.shot?(isWide(s.id)?'workbench wide':'workbench'):'content'}"><div class="copy">${body}</div>${s.shot?shot(s):''}</div></div></section>`;}).join('\n');
+if(corrections[s.id])body+=note(corrections[s.id]);if(results[s.id])body+=result(results[s.id]);if(s.id===246)body=simulation+flow(['HTML required','Серверная проверка','Запись или отказ']);if([260,261].includes(s.id))body=`<div class="checklist">${s.text.split(/\n\s*\n/).filter(p=>p&&p!=='Сделайте скриншоты:'&&p!=='После занятия студент должен объяснить:').map(p=>p.split(/\n/).map(t=>`<label><input type="checkbox">${inline(t.replace(/^\d+\. /,''))}</label>`).join('')).join('')}</div>`;return `<section class="lesson-slide ${dark.has(s.id)?'dark':''} ${s.shot?'with-shot':''}" id="slide-${s.id}" data-stage="${stage(s.id)}"><div class="inner"><div class="kicker">${stage(s.id)}<span>ИСХОДНИК ${s.id} · ${i+1} / ${TOTAL}</span></div><h${i===0?1:2}>${inline(s.title)}</h${i===0?1:2}><div class="${s.shot?(isWide(s.id)?'workbench wide':'workbench'):'content'}"><div class="copy">${body}</div>${s.shot?shot(s):''}</div></div></section>`;}).join('\n');
 const head=`<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0c2733"><title>ОП.03 · Тема 7 · Контролируемая таблица заявок</title><link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="styles.css"></head>`;
 const sources=[['Apps Script Web Apps','https://developers.google.com/apps-script/guides/web'],['Доступ к связанным файлам из Web App','https://developers.google.com/apps-script/guides/bound'],['ScriptLock','https://developers.google.com/apps-script/reference/lock/lock-service'],['appendRow и формулы','https://developers.google.com/apps-script/reference/spreadsheet/sheet'],['Content Service','https://developers.google.com/apps-script/guides/content']];
 fs.writeFileSync(path.join(root,'index.html'),head+`<body class="leads"><a class="skip" href="#slides">К слайдам</a><div class="presentation"><header><a class="brand" href="../../index.html"><b>И/Т</b><span>ОП.03 · ТЕМА 07<small>Форма → заявка → качество данных</small></span></a><nav><button data-open="contents">Содержание</button><a href="materials.html">Материалы</a><button data-open="sources" aria-label="Источники">S</button><button id="fullscreen" aria-label="Полный экран">⛶</button><span class="counter"><b id="current">01</b> / ${TOTAL}</span></nav></header><main id="slides" tabindex="-1">${html}</main><footer><span id="chapter">${stage(171)}</span><small>← → листать · M содержание · F полный экран</small><button id="prev" aria-label="Предыдущий слайд">←</button><button id="next">Дальше →</button><div class="progress" role="progressbar" aria-label="Прогресс" aria-valuemin="1" aria-valuemax="${TOTAL}"><i id="progress"></i></div></footer></div><dialog id="contents"><div class="dialog-head"><h2>Содержание</h2><button data-close>Закрыть ×</button></div><p>${TOTAL} экранов · исходные номера 171–263, добавленные — с 264.</p><div class="contents">${deck.map((s,i)=>`<button data-go="${s.id}"><b>${String(i+1).padStart(2,'0')}</b>${inline(s.title)}<small>${s.id}</small></button>`).join('')}</div></dialog><dialog id="sources"><div class="dialog-head"><h2>Источники и материалы</h2><button data-close>Закрыть ×</button></div>${sources.map(([t,u])=>`<p><a href="${u}" target="_blank" rel="noopener noreferrer">${t} ↗</a></p>`).join('')}<p>Официальные источники проверены 23.09.2026. Сценарий сохранён; технические уточнения — в LESSON.md.</p><button id="print">Печать / PDF</button></dialog><dialog id="visual"><div class="dialog-head"><h2>Скриншот</h2><button data-close>Закрыть ×</button></div><img alt=""></dialog><script src="script.js"></script></body></html>`);
