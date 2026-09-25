@@ -382,7 +382,7 @@ function bodySlots(q, body, card) {
   const mono = q.chips.every(c => c.length < 16);
   body.innerHTML = `
     <div class="palette"><p class="palette-note">Карточки</p>${state.optOrder[q.id].map(c =>
-      `<button type="button" class="chip ${mono ? 'mono' : ''} ${picked && picked.qid === q.id && picked.index === c ? 'sel' : ''}" data-c="${c}">${q.chips[c]}</button>`).join('')}</div>
+      `<button type="button" class="chip ${mono ? 'mono' : ''} ${picked && picked.qid === q.id && picked.index === c ? 'sel' : ''}" data-c="${c}">${esc(q.chips[c])}</button>`).join('')}</div>
     <div class="slots">${q.slots.map((label, s) => `
       <div class="slot-row">
         <div class="slot-label">${esc(label)}</div>
