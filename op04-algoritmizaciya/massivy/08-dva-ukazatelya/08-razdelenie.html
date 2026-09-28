@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>8.8 Разделение списка на две группы · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 8 · Два указателя · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 8 · два указателя</p>
+          <p class="running__folio">Глава 8.8</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">8.8</span>
+          <h1>Разделение списка<br>на две группы</h1>
+          <p class="lead">В этой главе одна задача — разложить элементы списка на две группы на месте — решается двумя способами. Первый использует указатели в одну сторону и сохраняет порядок внутри групп. Второй использует указатели навстречу и делает меньше обменов, но порядок не сохраняет. В конце — как тот же приём раскладывает список на три группы.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Алгоритм</dd></div>
+          <div><dt>Уровень</dt><dd>Средний</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 8.4 и 8.7</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Разделение — основной шаг быстрой сортировки</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Что такое разделение</a></li>
+            <li><a href="#s2">Перенос нулей: указатели в одну сторону</a></li>
+            <li><a href="#s3">Код и прогон переноса нулей</a></li>
+            <li><a href="#s4">Разделение по порогу: указатели навстречу</a></li>
+            <li><a href="#s5">Сравнение двух способов</a></li>
+            <li><a href="#s6">Три группы за один проход</a></li>
+            <li><a href="#s7">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Что такое разделение</h2>
+        <div class="term-card">
+          <p class="term-card__head"><b>Разделение</b><span>partition</span></p>
+          <div class="term-card__body">
+            <p>Перестановка элементов списка на месте, после которой в начале стоят все элементы, для которых условие верно, а за ними — все остальные. Функция обычно возвращает границу между группами: сколько элементов попало в первую.</p>
+            <p>Условие может быть любым: «не ноль», «меньше порога», «не спам». В быстрой сортировке условие — «меньше опорного элемента»: после разделения опорный элемент встаёт на своё место, а две группы сортируются отдельно.</p>
+          </div>
+        </div>
+        <p>Разделение отличается от сортировки: внутри групп порядок не определён. Поэтому оно дешевле — O(n) за один проход, тогда как сортировка стоит O(n log n). Способ зависит от одного вопроса к условию: нужно ли сохранить порядок элементов внутри групп.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Нужно сохранить порядок?</th><th>Способ</th><th>Задача</th></tr></thead>
+            <tbody>
+              <tr><td>Да</td><td>Указатели в одну сторону, обмен <code>nums[w]</code> и <code>nums[r]</code></td><td>Перенос нулей в конец, LeetCode 283</td></tr>
+              <tr><td>Нет</td><td>Указатели навстречу, обмен элементов, которые стоят не на своих сторонах</td><td>Разделение по порогу; шаг быстрой сортировки</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s2"><span class="sec">§2</span>Перенос нулей: указатели в одну сторону</h2>
+        <div class="term-card">
+          <p class="term-card__head"><b>move_zeros(nums)</b><span>расширение · LeetCode 283</span></p>
+          <div class="term-card__body">
+            <p>Перенести все нули в конец списка, сохранив порядок остальных чисел. Список меняется на месте, функция возвращает <code>None</code>.</p>
+            <p>Пример: <code>[0, 4, 0, 0, 7, 2]</code> → <code>[4, 7, 2, 0, 0, 0]</code>.</p>
+          </div>
+        </div>
+        <p>Схема та же, что в главе 8.7: <code>r</code> читает каждое число, <code>w</code> показывает место для следующего ненулевого. Отличие в одном: вместо записи <code>nums[w] = nums[r]</code> выполняется обмен <code>nums[w], nums[r] = nums[r], nums[w]</code>. Ноль, который стоял в позиции <code>w</code>, при этом переезжает на место <code>r</code>. Поэтому после цикла обрезать хвост не нужно: в нём и так стоят нули, и длина списка не меняется.</p>
+        <p>Пройдите алгоритм сами: на каждом шаге решите, переносить прочитанное число вперёд или пропустить.</p>
+        <div class="rwg" data-mode="zeros" data-a="[0,4,0,0,7,2]"></div>
+
+        <details class="pyhint"><summary>Python в этой строке: обмен <code>nums[w], nums[r] = nums[r], nums[w]</code></summary><div><p>Справа сначала вычисляются оба значения, и только потом они записываются слева по порядку. Поэтому два элемента меняются местами без временной переменной.</p><pre>&gt;&gt;&gt; nums = [0, 4]
+&gt;&gt;&gt; nums[0], nums[1] = nums[1], nums[0]
+&gt;&gt;&gt; nums
+[4, 0]</pre></div></details>
+        <p>Напишите функцию сами в окне ниже, прямо на странице. «Запустить тесты» проверяет код на четырёх входах; часть из них заготовка проходит сразу. Строка «Свой вызов» выполняет любой код с вашей функцией и печатает результат. Первый запуск загружает Python в браузер, около 10 МБ.</p>
+        <div class="sandbox" data-title="Напишите move_zeros сами" data-call="a = [0, 4, 0, 7]; move_zeros(a); print(a)">
+<script type="text/plain" class="sandbox__start">
+def move_zeros(nums):
+    w = 0
+    # r читает все позиции; ненулевое число
+    # меняется местами с nums[w], и w сдвигается.
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """[0, 4, 0, 0, 7, 2] → [4, 7, 2, 0, 0, 0]"""
+    nums = [0, 4, 0, 0, 7, 2]
+    move_zeros(nums)
+    assert nums == [4, 7, 2, 0, 0, 0], f"получено {nums!r}"
+
+def test_no_zeros():
+    """нулей нет, порядок тот же"""
+    nums = [3, 1, 2]
+    move_zeros(nums)
+    assert nums == [3, 1, 2], f"получено {nums!r}"
+
+def test_all_zeros():
+    """одни нули"""
+    nums = [0, 0, 0]
+    move_zeros(nums)
+    assert nums == [0, 0, 0], f"получено {nums!r}"
+
+def test_returns_none():
+    """функция меняет список на месте и возвращает None"""
+    nums = [0, 1]
+    r = move_zeros(nums)
+    assert r is None and nums == [1, 0], f"вернула {r!r}, список {nums!r}"
+</script>
+</div>
+        
+        <h2 id="s3"><span class="sec">§3</span>Код и прогон переноса нулей</h2>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(1)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">move_zeros</span>(nums):
+    w = <span class="n">0</span>
+    <span class="k">for</span> r <span class="k">in</span> <span class="k">range</span>(<span class="k">len</span>(nums)):
+        <span class="k">if</span> nums[r] != <span class="n">0</span>:
+            nums[w], nums[r] = nums[r], nums[w]
+            w += <span class="n">1</span></pre>
+        </figure>
+        <div class="tracer" data-trace="zeros" data-zone="rw" data-title="Перенос нулей"></div>
+        <p>Инвариант: перед шагом <code>r</code> в <code>nums[0:w]</code> стоят все ненулевые числа из прочитанной части в исходном порядке, а в <code>nums[w:r]</code> — только нули. Обмен сохраняет его: ненулевое число встаёт в конец первой зоны, ноль из позиции <code>w</code> уходит в конец второй. Порядок ненулевых не меняется, потому что каждое следующее встаёт правее предыдущего.</p>
+        <div class="margin-note margin-note--steel">
+          <b>На полях: обмен с самим собой</b>
+          <p>Пока нулей не встретилось, <code>w == r</code>, и строка обмена меняет элемент местами с самим собой. Список от этого не меняется. Можно добавить проверку <code>if w != r</code>, но код станет длиннее, а число операций почти не изменится.</p>
+        </div>
+
+        <h2 id="s4"><span class="sec">§4</span>Разделение по порогу: указатели навстречу</h2>
+        <p>Второй способ подходит, когда порядок внутри групп не важен. Задача: переставить числа так, чтобы все числа меньше порога <code>limit</code> стояли в начале, и вернуть их количество. Указатели стартуют с двух концов. <code>i</code> идёт вправо, пока число под ним уже на своей стороне — меньше порога. <code>j</code> идёт влево, пока число под ним не меньше порога. Когда оба остановились, числа под ними стоят не на своих сторонах, и их меняют местами.</p>
+        <figure class="code">
+          <figcaption><span>вариант навстречу</span><span>время O(n) · память O(1)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">split_by_limit</span>(nums, limit):
+    i, j = <span class="n">0</span>, <span class="k">len</span>(nums) - <span class="n">1</span>
+    <span class="k">while</span> i &lt;= j:
+        <span class="k">if</span> nums[i] &lt; limit:
+            i += <span class="n">1</span>
+        <span class="k">elif</span> nums[j] &gt;= limit:
+            j -= <span class="n">1</span>
+        <span class="k">else</span>:
+            nums[i], nums[j] = nums[j], nums[i]
+            i += <span class="n">1</span>
+            j -= <span class="n">1</span>
+    <span class="k">return</span> i</pre>
+        </figure>
+        <details class="pyhint"><summary>Python в этой строке: <code>if … elif … else</code></summary><div><p>Условия проверяются сверху вниз, выполняется ветка первого истинного. <code>elif</code> проверяется, только если все условия выше ложны; <code>else</code> — если ложны все.</p><pre>&gt;&gt;&gt; x = 5
+&gt;&gt;&gt; if x &lt; 0:
+...     print(&quot;меньше нуля&quot;)
+... elif x == 0:
+...     print(&quot;ноль&quot;)
+... else:
+...     print(&quot;больше нуля&quot;)
+...
+больше нуля</pre></div></details>
+        <p>Условие цикла здесь <code>i &lt;= j</code>. Когда указатели стоят на одном элементе, его тоже нужно проверить, иначе он останется неотнесённым ни к одной группе и возвращённое <code>i</code> окажется неверным. Например, на <code>[8, 0, 12, 9, 5, 3]</code> с порогом 10 версия с <code>i &lt; j</code> возвращает 4, хотя чисел меньше 10 пять. В задаче 1 условие строже, <code>i &lt; j</code>: один элемент пары не образует.</p>
+        <p>Зелёные ячейки в прогоне — числа, которые уже стоят на своих сторонах: слева от <code>i</code> — меньше 10, справа от <code>j</code> — не меньше.</p>
+        <div class="tracer" data-trace="split" data-zone="split" data-title="Разделение по порогу 10"></div>
+        <p>Инвариант: всё левее <code>i</code> меньше порога, всё правее <code>j</code> — не меньше. После цикла <code>i = j + 1</code>, и граница между группами проходит по индексу <code>i</code>. В примере функция вернула 4: числа 5, 1, 3, 7 меньше 10.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Сравнение двух способов</h2>
+        <p>Посмотрим на результат второго способа внимательнее. Исходный список <code>[5, 12, 3, 18, 7, 25, 1]</code>, результат <code>[5, 1, 3, 7, 18, 25, 12]</code>. Числа 12, 18, 25 шли в исходном списке в этом порядке, а в результате стоят как 18, 25, 12: порядок внутри группы не сохранился. Для разделения это допустимо, для переноса нулей по условию — нет.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th></th><th>В одну сторону</th><th>Навстречу</th></tr></thead>
+            <tbody>
+              <tr><td><b>Порядок внутри групп</b></td><td>Сохраняется в первой группе</td><td>Не сохраняется</td></tr>
+              <tr><td><b>Сколько элементов читается</b></td><td>Каждый ровно один раз</td><td>Каждый не больше одного раза</td></tr>
+              <tr><td><b>Число обменов</b></td><td>По одному на каждый элемент первой группы, стоящий правее <code>w</code></td><td>По одному на пару элементов, стоящих не на своих сторонах</td></tr>
+              <tr><td><b>На примерах главы</b></td><td>3 обмена для <code>[0, 4, 0, 0, 7, 2]</code></td><td>2 обмена для <code>[5, 12, 3, 18, 7, 25, 1]</code></td></tr>
+              <tr><td><b>Где применяют</b></td><td>Перенос нулей, «обычные комментарии, потом спам»</td><td>Разделение Хоара в быстрой сортировке</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>В карточке изменения занятия 7 была задача <code>split_spam</code>: сначала обычные комментарии в исходном порядке, потом спам в любом порядке. Это разделение с сохранением порядка первой группы — то есть первый способ.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Три группы за один проход</h2>
+        <p>Задача LeetCode 75 Sort Colors просит разложить список из чисел 0, 1 и 2 по возрастанию за один проход. Её решают тремя указателями: <code>low</code> — граница нулей, <code>high</code> — граница двоек, <code>mid</code> читает. Нули обмениваются к <code>low</code>, двойки — к <code>high</code>, единицы остаются посередине. Это сочетание обеих форм: <code>low</code> и <code>mid</code> идут в одну сторону, <code>mid</code> и <code>high</code> — навстречу. Ниже код, пошаговый прогон на списке <code>[2, 0, 2, 1, 1, 0]</code> и проверка запуском. Зелёные ячейки в прогоне — готовые группы: нули левее <code>low</code> и двойки правее <code>high</code>.</p>
+        <figure class="code">
+          <figcaption><span>LeetCode 75 · Sort Colors</span><span>время O(n) · память O(1)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">sort_colors</span>(nums):
+    low, mid, high = <span class="n">0</span>, <span class="n">0</span>, <span class="k">len</span>(nums) - <span class="n">1</span>
+    <span class="k">while</span> mid &lt;= high:
+        <span class="k">if</span> nums[mid] == <span class="n">0</span>:
+            nums[low], nums[mid] = nums[mid], nums[low]
+            low += <span class="n">1</span>
+            mid += <span class="n">1</span>
+        <span class="k">elif</span> nums[mid] == <span class="n">1</span>:
+            mid += <span class="n">1</span>
+        <span class="k">else</span>:
+            nums[mid], nums[high] = nums[high], nums[mid]
+            high -= <span class="n">1</span></pre>
+        </figure>
+        <div class="tracer" data-trace="colors" data-zone="colors" data-title="Три группы: 0, 1, 2"></div>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>python -i · Python 3.12</span></figcaption>
+<pre>&gt;&gt;&gt; nums = [<span class="n">2</span>, <span class="n">0</span>, <span class="n">2</span>, <span class="n">1</span>, <span class="n">1</span>, <span class="n">0</span>]
+&gt;&gt;&gt; sort_colors(nums)
+&gt;&gt;&gt; nums
+[0, 0, 1, 1, 2, 2]</pre>
+        </figure>
+        <p>После обмена с <code>high</code> указатель <code>mid</code> не двигается: на его место пришло число из непрочитанной части, и его ещё нужно проверить. После обмена с <code>low</code> двигать <code>mid</code> можно: оттуда пришло уже прочитанное число, ноль или единица.</p>
+
+        <h2 id="s7"><span class="sec">§7</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>Список заказов нужно разложить так, чтобы сначала шли оплаченные в исходном порядке, а за ними неоплаченные. Какой способ подходит?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button>Указатели в одну сторону с обменом</button><p class="quiz__why">Верно. Оплаченные заказы встают в позицию <code>w</code> по очереди и сохраняют исходный порядок.</p></li>
+            <li><button>Указатели навстречу с обменом</button><p class="quiz__why">Обмены с правого конца переставят оплаченные заказы, как 12, 18, 25 в примере главы.</p></li>
+            <li><button>Новый список через <code>sorted</code> с ключом «оплачен»</button><p class="quiz__why">Устойчивая сортировка даст нужный порядок, но создаст новый список и потратит O(n log n) времени.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>Почему в <code>split_by_limit</code> условие цикла <code>i &lt;= j</code>, а в <code>pair_sum</code> — <code>i &lt; j</code>?</p>
+          <ul class="quiz__opts">
+            <li><button>В <code>split_by_limit</code> список длиннее</button><p class="quiz__why">Длина списка на выбор условия не влияет.</p></li>
+            <li data-ok><button>Каждый элемент нужно отнести к группе</button><p class="quiz__why">Верно. Элемент, на котором сошлись указатели, при разделении ещё не проверен. В задаче 1 одного элемента для пары недостаточно.</p></li>
+            <li><button>Это стилистический выбор, оба варианта работают одинаково</button><p class="quiz__why">В <code>pair_sum</code> условие <code>i &lt;= j</code> даёт ответ <code>(1, 1)</code> на <code>[100, 250, 600]</code> с целью 500.</p></li>
+          </ul>
+        </div>
+
+        <div class="pager"><a href="07-v-odnu-storonu.html">← 8.7 Указатели в одну сторону</a><a href="09-oshibki.html">8.9 Типичные ошибки в решениях →</a></div>
+        <div class="colophon">
+          <span>Модуль 8 · Два указателя · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>

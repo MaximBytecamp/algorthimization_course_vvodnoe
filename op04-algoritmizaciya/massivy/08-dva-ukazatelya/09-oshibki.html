@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>8.9 Типичные ошибки в решениях · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+  <style>
+    figure.code pre .bad { background: #F8E1DE; color: #8A1C15; font-weight: 700; }
+    figure.code pre .good { background: #E2F0E7; color: #1F5A37; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 8 · Два указателя · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 8 · два указателя</p>
+          <p class="running__folio">Глава 8.9</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">8.9</span>
+          <h1>Типичные ошибки<br>в решениях</h1>
+          <p class="lead">В этой главе пять ошибочных версий функций модуля. Каждая отличается от верной одной-двумя строками, и каждая даёт верный ответ на части входов. Для каждой ошибки есть пошаговый прогон или настоящий вывод, объяснение, где нарушен инвариант, исправление и тесты из стартового набора, которые её ловят.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Отладка</dd></div>
+          <div><dt>Уровень</dt><dd>Средний</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 8.4–8.8</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Находить ошибку по прогону и тестам</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Как читать ошибочный прогон</a></li>
+            <li><a href="#s2">Один товар дважды</a></li>
+            <li><a href="#s3">Указатель сдвигается не в ту сторону</a></li>
+            <li><a href="#s4">Запись вместо обмена</a></li>
+            <li><a href="#s5">Сравнение с соседом справа</a></li>
+            <li><a href="#s6">Длина серии одной строкой</a></li>
+            <li><a href="#s7">Сводка ошибок</a></li>
+            <li><a href="#s8">Найдите ошибку</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Как читать ошибочный прогон</h2>
+        <p>Все прогоны в главе получены запуском ошибочного кода, подписи к шагам описывают, что делает строка, без оценки. При чтении нужно найти шаг, после которого нарушается инвариант функции. Удобно идти так:</p>
+        <ol class="steps">
+          <li>Вспомнить инвариант: что должно быть верно перед каждым шагом. Для задачи 1 — «если пара есть, она внутри участка с <code>i</code> по <code>j</code>».</li>
+          <li>Прокрутить прогон до конца и сравнить результат с ожидаемым.</li>
+          <li>Идти по шагам с начала и после каждого проверять инвариант.</li>
+          <li>На первом шаге, где инвариант нарушен, искать строку кода, которая выполнилась прямо перед ним.</li>
+        </ol>
+        <p>В коде каждой версии ошибочная строка выделена красным, исправление — зелёным.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Один товар дважды</h2>
+        <p>В условии цикла <code>pair_sum</code> стоит <code>&lt;=</code> вместо <code>&lt;</code>. Когда указатели сходятся на одном элементе, цикл выполняется ещё раз, и цена складывается сама с собой.</p>
+        <figure class="code">
+          <figcaption><span>ошибочная версия</span><span>одна строка</span></figcaption>
+<pre>    i, j = <span class="n">0</span>, <span class="k">len</span>(prices) - <span class="n">1</span>
+<span class="bad">    while i &lt;= j:</span>
+<span class="good">    while i &lt; j:          # исправление</span></pre>
+        </figure>
+        <div class="tracer tracer--bug" data-trace="bug_same_item" data-zone="between" data-title="Ошибочная версия: i &lt;= j"></div>
+        <p>На <code>[100, 250, 600]</code> с целью 500 функция вернула <code>(1, 1)</code>: 250 + 250 = 500, но это один товар. Верный ответ — <code>None</code>. На большинстве входов ошибки не видно, потому что пара находится раньше, чем указатели сойдутся.</p>
+        <div class="margin-note">
+          <b>Какие тесты ловят</b>
+          <p><code>test_pair_single_item_is_not_a_pair[pair_sum]</code> — на <code>[250]</code> ошибочная версия возвращает <code>(0, 0)</code>. <code>test_pair_answers_match_on_many_inputs</code> — среди случайных входов находятся такие, где перебор отвечает <code>None</code>, а ошибочная версия — пару.</p>
+        </div>
+
+        <h2 id="s3"><span class="sec">§3</span>Указатель сдвигается не в ту сторону</h2>
+        <p>Ветки перепутаны: при сумме меньше цели сдвигается <code>j</code>, при сумме больше — <code>i</code>. Код выглядит почти как верный, и в нём нет ни одной ошибки синтаксиса.</p>
+        <figure class="code">
+          <figcaption><span>ошибочная версия</span><span>две строки</span></figcaption>
+<pre>        <span class="k">if</span> s &lt; target:
+<span class="bad">            j -= 1</span>
+        <span class="k">else</span>:
+<span class="bad">            i += 1</span></pre>
+        </figure>
+        <div class="tracer tracer--bug" data-trace="bug_wrong_move" data-zone="between" data-title="Ошибочная версия: ветки перепутаны"></div>
+        <p>На каталоге из примера функция вернула <code>None</code>, хотя пара <code>(2, 3)</code> есть. Инвариант нарушен на первом же ходе: сумма 1800 больше цели, а сдвигается <code>i</code>, то есть исключается цена 300. У 300 пары действительно нет, но исключили её без основания: правило требовало исключить 1500. На следующих ходах сумма уходит всё дальше от цели.</p>
+        <div class="margin-note">
+          <b>Какие тесты ловят</b>
+          <p>Четыре: <code>test_pair_example</code>, <code>test_pair_neighbours_in_the_middle</code>, <code>test_pair_negative_numbers</code> для <code>pair_sum</code> и <code>test_pair_answers_match_on_many_inputs</code>.</p>
+        </div>
+
+        <h2 id="s4"><span class="sec">§4</span>Запись вместо обмена</h2>
+        <p>В <code>move_zeros</code> вместо обмена стоит запись, как в задаче 2. Ненулевое число копируется вперёд, а ноль из позиции <code>w</code> пропадает. В задаче 2 после цикла хвост обрезался, и потерянные значения были не нужны. Здесь длина списка не меняется, и в хвосте остаются старые копии.</p>
+        <figure class="code">
+          <figcaption><span>ошибочная версия</span><span>одна строка</span></figcaption>
+<pre>        <span class="k">if</span> nums[r] != <span class="n">0</span>:
+<span class="bad">            nums[w] = nums[r]</span>
+<span class="good">            nums[w], nums[r] = nums[r], nums[w]   # исправление</span>
+            w += <span class="n">1</span></pre>
+        </figure>
+        <div class="tracer tracer--bug" data-trace="bug_zeros_assign" data-zone="rw" data-title="Ошибочная версия: запись вместо обмена"></div>
+        <p>Результат <code>[4, 7, 2, 0, 7, 2]</code> вместо <code>[4, 7, 2, 0, 0, 0]</code>: нулей стало меньше, числа 7 и 2 повторились. Инвариант «в <code>nums[w:r]</code> только нули» нарушен на первом копировании: в позиции 1 осталась копия 4.</p>
+        <div class="margin-note">
+          <b>Какие тесты ловят</b>
+          <p><code>test_zeros_example</code> и <code>test_zeros_returns_none_and_keeps_object</code>. Тест <code>test_zeros_none</code> эту ошибку не ловит: без нулей копирование ничего не портит.</p>
+        </div>
+
+        <h2 id="s5"><span class="sec">§5</span>Сравнение с соседом справа</h2>
+        <p>Другой способ убрать повторы: оставить элемент, если он отличается от соседа справа. Цикл тогда идёт до предпоследнего элемента, потому что у последнего соседа справа нет. Последний элемент при этом не записывается никогда.</p>
+        <figure class="code">
+          <figcaption><span>ошибочная версия</span><span>три строки</span></figcaption>
+<pre><span class="bad">    w = 0
+    for r in range(len(ids) - 1):
+        if ids[r] != ids[r + 1]:</span>
+            ids[w] = ids[r]
+            w += <span class="n">1</span>
+    <span class="k">del</span> ids[w:]</pre>
+        </figure>
+        <div class="tracer tracer--bug" data-trace="bug_dedup_neighbour" data-zone="rw" data-title="Ошибочная версия: сравнение с соседом"></div>
+        <p>На <code>[101, 101, 102, 105]</code> результат <code>[101, 102]</code>: значение 105 потеряно. Это ошибка на единицу из занятия 7: элементов n, а пар соседей n − 1, и цикл по парам не доходит до последнего элемента. На списке из одного элемента функция вернёт 0 и удалит его.</p>
+        <p>Идею можно исправить — после цикла отдельно записать последний элемент. Но проще вернуться к сравнению с последним записанным <code>ids[w - 1]</code>: там последний элемент обрабатывается так же, как остальные.</p>
+        <div class="margin-note">
+          <b>Какие тесты ловят</b>
+          <p>Пять из шести тестов задачи 2: <code>test_dedup_example</code>, <code>test_dedup_single</code>, <code>test_dedup_all_equal</code>, <code>test_dedup_no_duplicates</code>, <code>test_dedup_duplicates_at_the_end</code>. Проходит только тест на пустом списке.</p>
+        </div>
+
+        <h2 id="s6"><span class="sec">§6</span>Длина серии одной строкой</h2>
+        <p>В <code>compress</code> длина серии записывается одним элементом <code>str(count)</code>, без разбиения на цифры. Пока серии короче десяти символов, разницы нет: строка из одной цифры совпадает с самой цифрой.</p>
+        <figure class="code">
+          <figcaption><span>ошибочная версия</span><span>цикл по цифрам заменён одной записью</span></figcaption>
+<pre>        <span class="k">if</span> count &gt; <span class="n">1</span>:
+<span class="bad">            chars[w] = str(count)
+            w += 1</span>
+<span class="good">            for d in str(count):      # исправление
+                chars[w] = d
+                w += 1</span></pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>ошибочная версия · Python 3.12</span></figcaption>
+<pre>&gt;&gt;&gt; x = [<span class="s">"x"</span>] * <span class="n">12</span>
+&gt;&gt;&gt; compress_bug(x)
+2
+&gt;&gt;&gt; x
+['x', '12']</pre>
+        </figure>
+        <p>В списке символов появился элемент из двух символов <code>'12'</code>, и длина ответа 2 вместо 3. Условие LeetCode 443 требует, чтобы каждый элемент был одним символом.</p>
+        <div class="margin-note">
+          <b>Какие тесты ловят</b>
+          <p>Один тест: <code>test_compress_one_long_run</code> с серией из 12 символов. Остальные тесты задачи 3 используют серии короче десяти и эту ошибку пропускают. Поэтому в наборе и нужен тест на длинную серию.</p>
+        </div>
+
+        <h2 id="s7"><span class="sec">§7</span>Сводка ошибок</h2>
+        <p>Таблица собирает ошибки главы и ошибку с неотсортированным входом из главы 8.5. Её удобно держать рядом при решении задач практики.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Симптом</th><th>Где искать</th><th>Вход, который показывает ошибку</th></tr></thead>
+            <tbody>
+              <tr><td>Ответ — пара вида <code>(k, k)</code></td><td>Условие цикла <code>&lt;=</code> вместо <code>&lt;</code></td><td>Один элемент, цена которого — половина цели</td></tr>
+              <tr><td><code>None</code>, хотя пара есть</td><td>Перепутаны ветки сдвига или вход не отсортирован</td><td>Каталог из примера; тот же каталог с переставленными ценами</td></tr>
+              <tr><td>Значения повторились, нулей меньше</td><td>Запись вместо обмена</td><td>Любой список, где ноль стоит перед ненулевым числом</td></tr>
+              <tr><td>Пропал последний элемент</td><td>Цикл по парам соседей вместо цикла по элементам</td><td>Список, где последнее значение встречается один раз</td></tr>
+              <tr><td>В списке символов элемент из двух символов</td><td>Длина серии записана одной строкой</td><td>Серия из десяти и более одинаковых символов</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s8"><span class="sec">§8</span>Найдите ошибку</h2>
+        <p>В каждом вопросе — код, который проходит часть тестов. Выберите вход, на котором он даёт неверный ответ.</p>
+        <div class="quiz">
+          <div class="quiz__q"><b>Код 1</b>Функция должна вернуть пару индексов с суммой <code>target</code> в отсортированном списке.<pre>def pair_sum(prices, target):
+    i, j = 0, len(prices) - 1
+    while i &lt; j:
+        s = prices[i] + prices[j]
+        if s == target:
+            return (i, j)
+        if s &lt; target:
+            i += 1
+        else:
+            j -= 1
+            i += 1
+    return None</pre></div>
+          <ul class="quiz__opts">
+            <li><button><code>[100, 200, 300, 400]</code>, цель 500</button><p class="quiz__why">Первая же сумма 100 + 400 = 500, ошибочная ветка не выполняется, ответ <code>(0, 3)</code> верный.</p></li>
+            <li><button><code>[]</code>, цель 400</button><p class="quiz__why">На пустом списке цикл не выполняется, функция возвращает <code>None</code> — это верный ответ.</p></li>
+            <li data-ok><button><code>[100, 200, 300, 900]</code>, цель 400</button><p class="quiz__why">Верно. 100 + 900 = 1000 больше цели, ветка <code>else</code> сдвигает оба указателя и исключает 100 без основания. Пара <code>(0, 2)</code>, 100 + 300, потеряна.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <div class="quiz__q"><b>Код 2</b>Функция должна удалить повторы из отсортированного списка на месте и вернуть число различных значений.<pre>def dedup_sorted(ids):
+    if not ids:
+        return 0
+    w = 1
+    for r in range(1, len(ids)):
+        if ids[r] != ids[w - 1]:
+            ids[w] = ids[r]
+            w += 1
+    return w</pre></div>
+          <ul class="quiz__opts">
+            <li data-ok><button><code>[4, 4, 5]</code></button><p class="quiz__why">Верно. Функция вернёт 2, но в списке останется <code>[4, 5, 5]</code>: нет строки <code>del ids[w:]</code>, хвост не обрезан.</p></li>
+            <li><button><code>[4, 5, 6]</code></button><p class="quiz__why">Повторов нет, все значения записываются на свои же места, список не меняется. Ответ 3 и список <code>[4, 5, 6]</code> верные.</p></li>
+            <li><button><code>[4]</code></button><p class="quiz__why">Цикл не выполняется, функция возвращает 1, список <code>[4]</code> — верно.</p></li>
+          </ul>
+        </div>
+
+        <div class="pager"><a href="08-razdelenie.html">← 8.8 Разделение списка на две группы</a><a href="10-zamery.html">8.10 Замер четырёх способов найти пару →</a></div>
+        <div class="colophon">
+          <span>Модуль 8 · Два указателя · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>

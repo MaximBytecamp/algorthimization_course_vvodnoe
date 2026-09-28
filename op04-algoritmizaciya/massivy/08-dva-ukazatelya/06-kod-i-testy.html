@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>8.6 Код, крайние случаи и тесты задачи 1 · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 8 · Два указателя · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 8 · два указателя</p>
+          <p class="running__folio">Глава 8.6</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">8.6</span>
+          <h1>Код, крайние случаи<br>и тесты задачи 1</h1>
+          <p class="lead">В этой главе функция <code>pair_sum</code> разбирается построчно: за что отвечает каждая строка и что сломается, если её изменить. Затем — как функция ведёт себя на крайних входах и почему для них не нужны отдельные проверки. В конце — тесты из стартового набора и их запуск.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Код и тесты</dd></div>
+          <div><dt>Уровень</dt><dd>Начальный</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 8.4 и 8.5</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Написать решение без подсказок и доказать его тестами</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Код функции</a></li>
+            <li><a href="#s2">Разбор по строкам</a></li>
+            <li><a href="#s3">Крайние входы</a></li>
+            <li><a href="#s4">Индексы с единицы на LeetCode</a></li>
+            <li><a href="#s5">Тесты задачи 1</a></li>
+            <li><a href="#s6">Запуск тестов</a></li>
+            <li><a href="#s7">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Код функции</h2>
+        <p>В главе 8.4 функция собрана из строк и пройдена по шагам. Здесь она записана целиком, как в <code>solution.py</code>, чтобы разобрать каждую строку отдельно.</p>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(1)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">pair_sum</span>(prices, target):
+    i, j = <span class="n">0</span>, <span class="k">len</span>(prices) - <span class="n">1</span>
+    <span class="k">while</span> i &lt; j:
+        s = prices[i] + prices[j]
+        <span class="k">if</span> s == target:
+            <span class="k">return</span> (i, j)
+        <span class="k">if</span> s &lt; target:
+            i += <span class="n">1</span>
+        <span class="k">else</span>:
+            j -= <span class="n">1</span>
+    <span class="k">return</span> <span class="k">None</span></pre>
+        </figure>
+
+        <h2 id="s2"><span class="sec">§2</span>Разбор по строкам</h2>
+        <p>Каждая строка ниже связана с ответом интервьюера из главы 8.3 или с проверкой инварианта из главы 8.5. В последнем столбце — что изменится, если строку записать иначе. </p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Строка</th><th>Что делает</th><th>Если записать иначе</th></tr></thead>
+            <tbody>
+              <tr><td><code>i, j = 0, len(prices) - 1</code></td><td>Указатели на самую дешёвую и самую дорогую цену. Участок — весь список</td><td><code>j = len(prices)</code>: первое же обращение <code>prices[j]</code> даст <code>IndexError</code></td></tr>
+              <tr><td><code>while i &lt; j:</code></td><td>Пока на участке больше одного товара, пары ещё возможны</td><td><code>i &lt;= j</code>: указатели сойдутся на одном товаре и сложат его цену с ней же</td></tr>
+              <tr><td><code>s = prices[i] + prices[j]</code></td><td>Сумма текущей пары, считается один раз за шаг</td><td>Без переменной сумма считается в двух условиях дважды, результат тот же</td></tr>
+              <tr><td><code>if s == target: return (i, j)</code></td><td>Пара найдена — сразу выходим</td><td>Если поставить после сдвига, вернутся сдвинутые индексы: на каталоге из примера — <code>(2, 2)</code>, один товар дважды</td></tr>
+              <tr><td><code>if s &lt; target: i += 1</code></td><td>Сумма мала — исключаем левую цену</td><td>Двигать <code>j</code> вместо <code>i</code> — ответ теряется</td></tr>
+              <tr><td><code>else: j -= 1</code></td><td>Сумма велика — исключаем правую цену</td><td>Двигать оба указателя — одна из цен может входить в ответ</td></tr>
+              <tr><td><code>return None</code></td><td>Указатели встретились, пары нет</td><td>Если забыть строку, функция всё равно вернёт <code>None</code> неявно, но контракт в коде не виден</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s3"><span class="sec">§3</span>Крайние входы</h2>
+        <p>Крайние входы из главы 8.3 проверим запуском. Ни для одного из них в функции нет отдельного <code>if</code>: их обрабатывают те же строки, что и обычный случай.</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>python -i · Python 3.12</span></figcaption>
+<pre>&gt;&gt;&gt; <span class="k">from</span> solution <span class="k">import</span> pair_sum
+&gt;&gt;&gt; <span class="k">print</span>(pair_sum([], 500))
+None
+&gt;&gt;&gt; <span class="k">print</span>(pair_sum([250], 500))
+None
+&gt;&gt;&gt; pair_sum([250, 250], 500)
+(0, 1)
+&gt;&gt;&gt; pair_sum([100, 250, 400], 500)
+(0, 2)
+&gt;&gt;&gt; pair_sum([-7, -3, 0, 2, 9], -1)
+(1, 3)</pre>
+        </figure>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Вход</th><th>Почему ответ верный без отдельной проверки</th></tr></thead>
+            <tbody>
+              <tr><td><code>[]</code></td><td><code>j = -1</code>, условие <code>0 &lt; -1</code> ложно, цикл не выполняется, функция возвращает <code>None</code>. Обращения к <code>prices[-1]</code> не происходит.</td></tr>
+              <tr><td><code>[250]</code></td><td><code>j = 0</code>, условие <code>0 &lt; 0</code> ложно. Цена 250 не складывается сама с собой, хотя 250 + 250 = 500.</td></tr>
+              <tr><td><code>[250, 250]</code></td><td>Два разных товара с одной ценой: <code>i = 0</code>, <code>j = 1</code>, сумма 500 — пара найдена.</td></tr>
+              <tr><td><code>[100, 250, 400]</code></td><td>100 + 400 = 500 найдено первым ходом. Товар 250 сам с собой не рассматривается, потому что до <code>i == j</code> цикл не доходит.</td></tr>
+              <tr><td><code>[-7, -3, 0, 2, 9]</code></td><td>Правило сдвига сравнивает суммы и знака чисел не касается.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="margin-note margin-note--steel">
+          <b>На полях: отрицательный индекс</b>
+          <p>На пустом списке <code>j = -1</code>. В занятии 7 разобрано, что <code>prices[-1]</code> — это последний элемент, и исключения при таком обращении не будет. Если бы условие цикла пропустило такой <code>j</code>, код прочитал бы чужую ячейку без исключения. Условие <code>i &lt; j</code> отсекает этот случай до обращения к списку.</p>
+        </div>
+
+        <h2 id="s4"><span class="sec">§4</span>Индексы с единицы на LeetCode</h2>
+        <p>В условии LeetCode 167 индексы в ответе нумеруются с единицы: для пары на позициях 2 и 3 нужно вернуть <code>[3, 4]</code>, причём списком. Алгоритм от этого не меняется, меняется только строка с ответом. Такие детали и выясняют вопросом «в каком виде вернуть ответ».</p>
+        <figure class="code">
+          <figcaption><span>LeetCode 167</span><span>отличается одна строка</span></figcaption>
+<pre>        <span class="k">if</span> s == target:
+            <span class="k">return</span> [i + <span class="n">1</span>, j + <span class="n">1</span>]   <span class="c"># нумерация с единицы по условию задачи</span></pre>
+        </figure>
+
+        <h2 id="s5"><span class="sec">§5</span>Тесты задачи 1</h2>
+        <p>В стартовом наборе 11 тестов задачи 1. Десять из них запускаются дважды — для перебора и для указателей, поэтому в выводе pytest 21 строка. Каждый тест проверяет свой класс входа, и имя теста его называет. Последний тест сравнивает две функции между собой на трёхстах случайных входах: если указатели где-то пропускают пару, тест это найдёт.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Тест</th><th>Вход</th><th>Что проверяет</th></tr></thead>
+            <tbody>
+              <tr><td><code>test_pair_example</code></td><td>каталог из шести цен, 1600</td><td>обычный случай</td></tr>
+              <tr><td><code>test_pair_first_and_last</code></td><td><code>[100, 200, 300, 400]</code>, 500</td><td>пар несколько, подходит любая</td></tr>
+              <tr><td><code>test_pair_neighbours_in_the_middle</code></td><td><code>[100, 200, 300, 400, 1000]</code>, 500</td><td>правый указатель сначала уходит с 1000</td></tr>
+              <tr><td><code>test_pair_not_found</code></td><td><code>[300, 450, 700, 900]</code>, 100</td><td>пары нет</td></tr>
+              <tr><td><code>test_pair_empty</code></td><td><code>[]</code></td><td>пустой вход</td></tr>
+              <tr><td><code>test_pair_single_item_is_not_a_pair</code></td><td><code>[250]</code>, 500</td><td>товар не складывается сам с собой</td></tr>
+              <tr><td><code>test_pair_equal_prices</code></td><td><code>[250, 250]</code>, 500</td><td>равные цены у разных товаров</td></tr>
+              <tr><td><code>test_pair_same_item_twice_is_forbidden</code></td><td><code>[100, 250, 400]</code>, 500</td><td>ответ <code>(0, 2)</code>; <code>(1, 1)</code> — один товар дважды</td></tr>
+              <tr><td><code>test_pair_negative_numbers</code></td><td><code>[-7, -3, 0, 2, 9]</code>, −1</td><td>отрицательные числа</td></tr>
+              <tr><td><code>test_pair_does_not_change_input</code></td><td>каталог из четырёх цен</td><td>список после вызова тот же</td></tr>
+              <tr><td><code>test_pair_answers_match_on_many_inputs</code></td><td>300 случайных отсортированных списков</td><td>указатели находят пару тогда же, когда перебор</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Вспомогательная функция <code>check_pair</code> в тестах не требует конкретной пары. Она проверяет, что индексы идут по порядку и сумма равна цели. Поэтому и перебор, и указатели проходят его, даже если находят разные пары.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Запуск тестов</h2>
+        <p>Ключ <code>-k pair</code> оставляет только тесты, в имени которых есть слово <code>pair</code>, ключ <code>-v</code> печатает каждый тест отдельной строкой. На заготовке из стартового набора все 21 падают с <code>NotImplementedError</code>. Ниже — вывод после того, как обе функции написаны.</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>python -m pytest tests.py -k pair -v</span></figcaption>
+<pre>collected 37 items / 16 deselected / 21 selected
+
+tests.py::test_pair_example[pair_sum_brute] PASSED                       [  4%]
+tests.py::test_pair_example[pair_sum] PASSED                             [  9%]
+tests.py::test_pair_first_and_last[pair_sum_brute] PASSED                [ 14%]
+tests.py::test_pair_first_and_last[pair_sum] PASSED                      [ 19%]
+<span class="c">…</span>
+tests.py::test_pair_does_not_change_input[pair_sum] PASSED               [ 95%]
+tests.py::test_pair_answers_match_on_many_inputs PASSED                  [100%]
+
+====================== 21 passed, 16 deselected in 0.02s =======================</pre>
+        </figure>
+        <p>Строка <code>[pair_sum_brute]</code> в квадратных скобках — это параметр теста: один и тот же тест запущен для двух функций. Это делает декоратор <code>@pytest.mark.parametrize</code>, он стоит перед десятью тестами задачи 1.</p>
+
+        <h2 id="s7"><span class="sec">§7</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>Проверку <code>if s == target: return (i, j)</code> перенесли в конец тела цикла, после блока <code>if s &lt; target … else …</code>. Что вернёт функция на каталоге <code>[300, 450, 700, 900, 1200, 1500]</code> с целью 1600?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button><code>(2, 2)</code>: индекс одного товара дважды</button><p class="quiz__why">Верно, так показывает запуск. Сумма 700 + 900 равна цели, но сначала выполняется <code>j -= 1</code>, и возвращаются уже сдвинутые индексы.</p></li>
+            <li><button><code>(2, 3)</code>, как и до переноса строки проверки</button><p class="quiz__why">Когда сумма равна 1600, условие <code>s &lt; target</code> ложно, и ветка <code>else</code> успевает сдвинуть <code>j</code> до того, как функция вернёт индексы.</p></li>
+            <li><button><code>None</code>: пара будет пропущена</button><p class="quiz__why">Равенство проверяется по старому значению <code>s</code>, поэтому функция всё же выходит из цикла — но с неверными индексами.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>Зачем нужен тест <code>test_pair_single_item_is_not_a_pair</code> с входом <code>[250]</code> и целью 500?</p>
+          <ul class="quiz__opts">
+            <li><button>Проверяет, что функция не падает на коротком списке</button><p class="quiz__why">Для этого хватило бы любой цели. Цель 500 выбрана так, что 250 + 250 = 500.</p></li>
+            <li data-ok><button>Ловит версию, где цена товара складывается сама с собой</button><p class="quiz__why">Верно. С условием <code>i &lt;= j</code> функция вернула бы <code>(0, 0)</code>, и тест упадёт.</p></li>
+            <li><button>Проверяет, что функция работает с одним элементом быстро</button><p class="quiz__why">На одном элементе скорость не измерить, и тест её не проверяет.</p></li>
+          </ul>
+        </div>
+
+        <div class="pager"><a href="05-pochemu-rabotaet.html">← 8.5 Почему указатели не пропускают ответ</a><a href="07-v-odnu-storonu.html">8.7 Указатели в одну сторону →</a></div>
+        <div class="colophon">
+          <span>Модуль 8 · Два указателя · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>
