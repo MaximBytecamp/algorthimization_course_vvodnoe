@@ -74,7 +74,8 @@ SPECIAL = {
     ('man', '"copy files"'): 'образец поиска: слова «copy files»',
     ('help', 'cd'): 'справка по cd', ('type', 'help'): 'имя help', ('type', 'ls'): 'имя ls', ('type', 'cd'): 'имя cd', ('type', 'tree'): 'имя tree',
     ('which', 'ls'): 'программа ls', ('which', 'tree'): 'программа tree', ('which', 'locate'): 'программа locate', ('which', 'cd'): 'имя cd',
-    ('command', 'locate'): 'имя locate', ('locate', 'new-note.txt'): 'имя файла', ('locate', 'os-release'): 'имя файла',
+    ('command', 'locate'): 'имя locate', ('locate', 'new-note.txt'): 'образец: ищется в любом месте полного пути',
+    ('locate', 'os-release'): 'образец: ищется в любом месте полного пути',
     ('ls', 'my'): 'первый аргумент: оболочка отрезала часть имени по пробелу',
     ('ls', 'report.txt'): 'второй аргумент: вторая часть имени',
     ('ls', 'my\\ report.txt'): 'один аргумент: \\ перед пробелом сохраняет пробел в имени',
@@ -101,6 +102,7 @@ def shape(tok):
     if quoted and any(ch in t for ch in '*?['): notes.append('в кавычках: маску получает сама команда, оболочка её не раскрывает')
     elif any(ch in t for ch in '*?[') or '{' in t:
         parts = []
+        if t.startswith('.'): parts.append('точка в начале — только скрытые имена')
         if '*' in t: parts.append('* — любые символы')
         if '?' in t: parts.append('? — один символ')
         if '[!' in t: parts.append('[!…] — один символ, кроме перечисленных')
@@ -159,6 +161,13 @@ def explain(cmdline):
             parts.append((tok, FLAG.get((cmd, tok), ''))); i += 1; continue
         roles = ROLE.get(cmd, [''])
         role = roles[min(argn, len(roles) - 1)]
+        if cmd in ('cp', 'mv'):
+            # Последний аргумент — куда, все предыдущие — что: mv a b dir/ переносит a и b.
+            rest = []
+            for t in tokens[i + 1:]:
+                if t in OPS: break
+                rest.append(t)
+            role = roles[0] if any(not t.startswith('-') for t in rest) else roles[1]
         argn += 1
         text = SPECIAL.get((cmd, tok))
         if not text:

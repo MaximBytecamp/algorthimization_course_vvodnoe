@@ -59,6 +59,7 @@ dict(title='Проверка результата', blocks=[
 ]),
 dict(title='Уборка после работы', blocks=[
   P('Учебные учётные записи после сдачи работы удаляют: лишняя учётная запись с паролем — лишняя возможность войти в систему. Команда <code>userdel</code> принимает одно имя, поэтому для нескольких записей удобно использовать цикл <code>for</code>: он выполняет команду для каждого имени из списка по очереди.'),
+  P('Запись <code>for u in lead dev qa guest anna boris; do sudo userdel -r $u; done</code> читается так: переменная <code>u</code> по очереди принимает каждое имя из списка после <code>in</code>; между <code>do</code> и <code>done</code> стоит команда, которая выполняется для каждого значения; вместо <code>$u</code> оболочка подставляет текущее имя. В итоге выполняются шесть команд: <code>sudo userdel -r lead</code>, <code>sudo userdel -r dev</code> и так далее.'),
   STEPS('Удаление учебных записей', [
     'Проверьте, какие записи будут удалены: <code>id lead dev qa guest anna boris</code>.',
     'Удалите записи с домашними каталогами: <code>for u in lead dev qa guest anna boris; do sudo userdel -r $u; done</code>.',
