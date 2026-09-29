@@ -31,15 +31,23 @@
 разделы с объяснением, частые ошибки, «Проверьте себя» с раскрываемыми ответами,
 шпаргалка и первоисточники. Вопросы к читателю — только в «Проверьте себя».
 
+## Модуль 2 · реализован
+
+Как работает Prometheus: 2.1 что такое Prometheus, 2.2 target, 2.3 endpoint /metrics,
+2.4 scrape, 2.5 pull-модель, 2.6 первый запуск (практика). Отдельная книга
+в визуале ОП.04 — `modul-02-prometheus/`, стенд Prometheus 3.5.0 + FastAPI.
+Порядок глав — по движению данных; каждое утверждение о поведении Prometheus
+проверено опытом на стенде или сверено с документацией.
+
 ## Дальнейшая карта · план
 
-2. Метрика как данные: timestamp, sample, labels, Counter, Gauge, Histogram, cardinality.
-3. Сбор и хранение: /metrics, jobs/instances, scrape, targets, exporters, discovery, TSDB.
-4. PromQL: селекторы, окна, rate/increase, агрегации, перцентили, сопоставление рядов.
-5. Grafana: источники, панели, единицы, переменные, сравнения, annotations, связи сигналов.
-6. Python и зависимости: FastAPI, PostgreSQL, Redis, RabbitMQ, Celery, процесс и узел.
-7. Алерты и надёжность: SLI/SLO, budget, rules, Alertmanager, runbooks, тесты правил.
-8. OpenTelemetry: ресурсы и контекст, spans, сообщения, Collector, sampling, Loki/Tempo, profiles.
+3. Метрика как данные: timestamp, sample, labels, Counter, Gauge, Histogram, cardinality.
+4. Сбор и хранение: exporters, discovery и relabeling, лимиты, TSDB, Pushgateway, remote_write.
+5. PromQL: селекторы, окна, rate/increase, агрегации, перцентили, сопоставление рядов.
+6. Grafana: источники, панели, единицы, переменные, сравнения, annotations, связи сигналов.
+7. Python и зависимости: FastAPI, PostgreSQL, Redis, RabbitMQ, Celery, процесс и узел.
+8. Алерты и надёжность: SLI/SLO, budget, rules, Alertmanager, runbooks, тесты правил.
+9. OpenTelemetry: ресурсы и контекст, spans, сообщения, Collector, sampling, Loki/Tempo, profiles.
 
 Готовность обозначена явно. Будущие темы не оформлены как доступные пустые ссылки.
 
