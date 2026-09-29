@@ -80,14 +80,14 @@ def homework():
             '<h2>Максим Николаевич не хочет задавать домашнее задание. Но очень хочет</h2>'
             '<figure class="hw-meme"><img src="img/meme-password-taken.jpg" alt="Форма регистрации сообщает, что пароль уже занят другим пользователем; ниже подпись «Круто напрограммировали»" width="803" height="877" loading="lazy"></figure>'
             '<h3>Модель доступа своего проекта</h3>'
-            '<p>Возьмите проект, над которым вы работаете или хотели бы работать, — сайт, бот, мобильное приложение — и составьте для него модель доступа в файле <code>access-model.md</code>.</p>'
+            '<p>Возьмите проект, над которым вы работаете или хотели бы работать, — сайт, бот, мобильное приложение — и составьте для него модель доступа в разделе 4 бланка <code>homework_03.md</code>.</p>'
             '<ul class="summary"><li>Четыре роли, для каждой — учётная запись, группы, каталоги, что роль может и чего не может.</li>'
             '<li>Каталоги проекта в <code>/srv</code> с группой и правами числом и буквами.</li>'
             '<li>Скрипт <code>setup-team.sh</code>, который создаёт группы, пользователей и каталоги. Запустите его в учебной виртуальной машине и приложите вывод <code>id</code> для каждого пользователя и <code>ls -l</code> каталогов.</li>'
             '<li>Пять строк таблицы тестов доступа с ожидаемым и фактическим результатом.</li></ul>'
             '<h3>Порядок сдачи</h3><ul class="hw-rules">'
-            '<li><b>Файлы</b><span><code>labs/lab04-users/</code> в репозитории <code>os-linux-course</code>: <code>README.md</code> со снимками, <code>access-tests.md</code>, <code>access-model.md</code>, <code>setup-team.sh</code>.</span></li>'
-            '<li><b>Ветка и PR</b><span>ветка <code>lab04-users</code>, Pull Request в <code>main</code> с названием «Пользователи, группы и sudo».</span></li>'
+            '<li><b>Файлы</b><span>папка <code>lesson_03</code> в своём репозитории по шаблону <a href="https://github.com/MaximBytecamp/os-environments-template">os-environments-template</a>: бланк <code>homework_03.md</code> с тестами доступа и моделью своего проекта, <code>setup-team.sh</code>, 10 снимков в <code>screens/</code>.</span></li>'
+            '<li><b>Ветка и PR</b><span>ветка <code>hw-03</code>, Pull Request в свою <code>main</code>.</span></li>'
             '<li><b>Срок</b><span>до начала следующего занятия.</span></li>'
             '<li><b>Критерии</b><span>практическая работа — 10 баллов по критериям выше; модель доступа принимается, если скрипт выполнен в виртуальной машине и вывод приложен.</span></li>'
             '<li><b>ИИ</b><span>нейросеть можно попросить причесать формулировки и оформить таблицы в <code>.md</code> — <mark>я сам так делаю всегда, поэтому и вам запрещать не буду</mark>. Команды и вывод — только из вашей виртуальной машины.</span></li></ul>'
@@ -174,7 +174,7 @@ practice = (f'# Практическая работа · модель досту
             '## Оценка · 10 баллов\n\n' + ''.join(f'- {p} — {t}\n' for p, t in CRITERIA)
             + '\n## Уборка\n\n```bash\nfor u in lead dev qa guest anna boris; do sudo userdel -r $u; done\nsudo groupdel mobile-dev; sudo groupdel mobile-qa; sudo groupdel devteam\nsudo rm -r /srv/mobile /srv/devteam   # после проверки содержимого\n```\n\n'
             '## Домашнее задание\n\nМодель доступа своего проекта: четыре роли, каталоги в /srv, скрипт setup-team.sh, пять тестов доступа.\n'
-            'Сдача: labs/lab04-users/ в репозитории os-linux-course, ветка lab04-users, Pull Request в main, до начала следующего занятия.\n')
+            'Сдача: папка lesson_03 в своём репозитории по шаблону https://github.com/MaximBytecamp/os-environments-template, ветка hw-03, Pull Request в main, до начала следующего занятия.\n')
 (B / 'materials/practice.md').write_text(practice)
 
 with zipfile.ZipFile(B / 'materials/users-lab.zip', 'w', zipfile.ZIP_DEFLATED) as z:

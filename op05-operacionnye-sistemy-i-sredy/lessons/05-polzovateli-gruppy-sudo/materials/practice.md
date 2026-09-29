@@ -35,4 +35,4 @@ sudo rm -r /srv/mobile /srv/devteam   # после проверки содерж
 ## Домашнее задание
 
 Модель доступа своего проекта: четыре роли, каталоги в /srv, скрипт setup-team.sh, пять тестов доступа.
-Сдача: labs/lab04-users/ в репозитории os-linux-course, ветка lab04-users, Pull Request в main, до начала следующего занятия.
+Сдача: папка lesson_03 в своём репозитории по шаблону https://github.com/MaximBytecamp/os-environments-template, ветка hw-03, Pull Request в main, до начала следующего занятия.
