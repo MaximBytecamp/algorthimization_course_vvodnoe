@@ -1,0 +1,23 @@
+# Стенд модуля 2: приложение FastAPI и Prometheus в одной сети Compose.
+# Внутри сети приложение доступно Prometheus по имени сервиса: api:8000.
+name: prometheus-start
+services:
+  api:
+    build: .
+    ports: ['127.0.0.1:8020:8000']
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/${PROM_CONFIG:-prometheus.yml}
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    ports: ['127.0.0.1:9092:9090']
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus-errors.yml:/etc/prometheus/prometheus-errors.yml:ro
+      - prometheus-data:/prometheus
+    depends_on: [api]
+
+volumes:
+  prometheus-data:

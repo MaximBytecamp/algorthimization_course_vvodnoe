@@ -1,0 +1,205 @@
+/* Модуль 2 «Как работает Prometheus» — палитра и блоки модуля.
+   Каркас страницы (styles.css, algo.css, book.js, algo.js) взят из книги
+   ОП.04 «Алгоритмы на массивах». Здесь — оранжевый акцент Prometheus
+   и интерактивы модуля: путь данных, разбор строки, проверка формата,
+   модель scrape, выбор адреса target, диаграммы последовательности.
+
+   Части файла:
+     1. палитра                      5. модель scrape
+     2. путь данных                  6. адрес target
+     3. разбор строки /metrics       7. диаграмма последовательности
+     4. проверка формата             8. обложка модуля и адаптив       */
+
+/* ── 1. Палитра ──────────────────────────────────────────────── */
+:root {
+  --ink: #1D1A1F;
+  --ink-soft: #4E4852;
+  --ink-faint: #8E8791;
+  --fire: #E6522C;          /* оранжевый Prometheus: первый акцент */
+  --fire-deep: #A8391A;
+  --fire-pale: #FBE2D8;
+  --steel: #2C6E9B;         /* синий: второй акцент, служебные метки */
+  --steel-pale: #DDEBF5;
+  --moss: #2F7D4F;          /* успешный scrape, UP */
+  --moss-pale: #DDF0E3;
+  --err: #B3261E;           /* неуспешный scrape, DOWN */
+  --err-pale: #F8DEDC;
+  --rule: rgba(29, 26, 31, .16);
+}
+body {
+  background-image:
+    linear-gradient(rgba(29, 26, 31, .05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(29, 26, 31, .05) 1px, transparent 1px);
+}
+figure.code--out pre, details.pyhint pre { background: #1D1A1F; }
+.ok { color: var(--moss); font-weight: 700; }
+.bad { color: var(--err); font-weight: 700; }
+code.up, code.down { padding: 1px 6px; font-weight: 700; }
+code.up { background: var(--moss-pale); color: var(--moss); }
+code.down { background: var(--err-pale); color: var(--err); }
+
+/* ── 2. Путь данных ──────────────────────────────────────────── */
+.pipe__stages { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; margin: 0 0 14px; }
+.pipe__stages button {
+  flex: 1 1 120px; min-width: 0; padding: 10px 10px 9px; cursor: pointer; text-align: left;
+  border: 3px solid var(--ink); background: var(--page); color: var(--ink);
+  font: 600 14px/1.25 var(--body); position: relative;
+}
+.pipe__stages button small { display: block; margin-bottom: 4px; font: 600 10px/1.2 var(--pixel); letter-spacing: 1px; text-transform: uppercase; color: var(--ink-faint); }
+.pipe__stages button:not(:last-child)::after {
+  content: "→"; position: absolute; right: -14px; top: 50%; transform: translateY(-50%);
+  z-index: 1; font: 700 15px/1 var(--mono); color: var(--ink); background: var(--page);
+}
+.pipe__stages button[aria-pressed="true"] { background: var(--ink); color: var(--fire-pale); }
+.pipe__stages button[aria-pressed="true"] small { color: var(--fire); }
+.pipe__stages button.is-past { background: var(--fire-pale); }
+.pipe__pane { border: 2px solid var(--rule); padding: 14px 16px; background: #fff; }
+.pipe__pane h4 { margin: 0 0 6px; font-family: var(--display); font-size: 18px; }
+.pipe__pane p { margin: 0 0 10px; font-size: 15.5px; }
+.pipe__pane pre { margin: 0 0 10px; padding: 10px 12px; background: #1D1A1F; color: #EDE6E1; font: 400 13px/1.6 var(--mono); overflow-x: auto; white-space: pre; }
+.pipe__pane pre mark { background: rgba(230, 82, 44, .35); color: #fff; padding: 0 2px; }
+.js .pipe__pane[hidden] { display: none; }
+.pipe .btnrow { margin-top: 12px; }
+
+/* ── 3. Разбор строки /metrics ───────────────────────────────── */
+.anat__line {
+  margin: 0 0 14px; padding: 16px 14px; background: #1D1A1F; color: #EDE6E1;
+  font: 500 clamp(12.5px, 1.6vw, 16px)/2.1 var(--mono); overflow-x: auto; white-space: pre;
+}
+.anat__line [data-part] { cursor: pointer; padding: 2px 1px; border-bottom: 3px solid transparent; }
+.anat__line [data-part]:hover { background: rgba(255, 255, 255, .08); }
+.anat__line [data-part].is-on { background: rgba(230, 82, 44, .3); border-bottom-color: var(--fire); color: #fff; }
+.anat__line .p-name { color: #FFB38F; }
+.anat__line .p-label { color: #9FD0F5; }
+.anat__line .p-value { color: #B7E4A5; }
+.anat__line .p-meta { color: #B9B0BD; }
+.anat__notes { display: grid; gap: 8px; }
+.anat__note { padding: 10px 14px; border-left: 5px solid var(--fire); background: var(--fire-pale); font-size: 15.5px; }
+.anat__note b { display: block; margin-bottom: 3px; font: 600 10.5px/1.3 var(--pixel); letter-spacing: 1.1px; text-transform: uppercase; color: var(--fire-deep); }
+.anat__note p { margin: 0 0 6px; }
+.anat__note p:last-child { margin: 0; }
+.js .anat__note { display: none; }
+.js .anat__note.is-on { display: block; }
+.anat__hint { font-size: 14px; color: var(--ink-soft); margin: 0 0 8px; }
+
+/* ── 4. Проверка формата ─────────────────────────────────────── */
+.expo__area {
+  display: block; width: 100%; min-height: 190px; resize: vertical; padding: 12px 14px;
+  border: 2px solid var(--ink); background: #1D1A1F; color: #EDE6E1;
+  font: 400 13.5px/1.6 var(--mono); tab-size: 4;
+}
+.expo__area:focus { outline: 3px solid var(--fire); outline-offset: 2px; }
+.expo .btnrow { margin: 10px 0 12px; }
+.expo__out { margin: 0; padding: 0; list-style: none; border: 2px solid var(--rule); background: #fff; font-size: 14px; }
+.expo__out li { display: grid; grid-template-columns: 42px 1fr; gap: 10px; padding: 7px 12px; border-bottom: 1px solid var(--rule); }
+.expo__out li:last-child { border-bottom: 0; }
+.expo__out li > span:first-child { font: 600 12px/1.6 var(--mono); color: var(--ink-faint); }
+.expo__out li.is-err { background: var(--err-pale); }
+.expo__out li.is-warn { background: #FFF3D6; }
+.expo__out li.is-ok { color: var(--ink-soft); }
+.expo__out code { font-size: 13px; }
+.expo__sum { margin: 10px 0 0; font: 600 13px/1.5 var(--mono); }
+
+/* ── 5. Модель scrape ────────────────────────────────────────── */
+.sim__controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px 18px; margin-bottom: 14px; }
+.sim__controls label { display: grid; gap: 4px; font: 600 13px/1.3 var(--body); }
+.sim__controls label span { font: 600 10.5px/1.3 var(--pixel); letter-spacing: 1px; text-transform: uppercase; color: var(--fire-deep); }
+.sim__controls output { font: 700 14px/1 var(--mono); }
+.sim__controls input[type="range"] { width: 100%; accent-color: var(--fire); }
+.sim__check { display: flex !important; grid-template-columns: none; align-items: center; gap: 8px !important; font-weight: 500 !important; }
+.sim__svg { display: block; width: 100%; height: auto; border: 2px solid var(--rule); background: #fff; }
+.sim__svg text { font: 500 11px var(--mono); fill: var(--ink-soft); }
+.sim__svg .lane { font: 600 10px var(--pixel); letter-spacing: 1px; fill: var(--fire-deep); }
+.sim__svg .grid { stroke: var(--rule); stroke-width: 1; }
+.sim__svg .truth { fill: none; stroke: var(--ink-faint); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.sim__svg .stored { fill: none; stroke: var(--fire); stroke-width: 2.5; }
+.sim__svg .dot { fill: var(--fire); }
+.sim__svg .tick-ok { fill: var(--moss); }
+.sim__svg .tick-bad { fill: var(--err); }
+.sim__svg .span-ok { fill: var(--moss-pale); stroke: var(--moss); }
+.sim__svg .span-bad { fill: var(--err-pale); stroke: var(--err); }
+.sim__svg .upline { fill: none; stroke: var(--moss); stroke-width: 2.5; }
+.sim__svg .outage { fill: rgba(179, 38, 30, .07); }
+.sim__svg .spike { fill: rgba(44, 110, 155, .09); }
+.sim__stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 12px 0 0; }
+.sim__stats div { padding: 8px 12px; border: 2px solid var(--ink); background: var(--page); }
+.sim__stats b { display: block; font: 700 20px/1.2 var(--mono); }
+.sim__stats span { font-size: 12.5px; color: var(--ink-soft); }
+.sim__err { margin: 12px 0 0; padding: 9px 13px; border-left: 5px solid var(--err); background: var(--err-pale); font: 500 13px/1.5 var(--mono); }
+.sim__err[hidden] { display: none; }
+.sim__legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 8px 0 0; font-size: 13px; color: var(--ink-soft); }
+.sim__legend i { display: inline-block; width: 18px; height: 0; margin-right: 6px; vertical-align: middle; border-top: 3px solid var(--fire); }
+.sim__legend i.t { border-top: 2px dashed var(--ink-faint); }
+.sim__legend i.u { border-top-color: var(--moss); }
+
+/* ── 6. Адрес target ─────────────────────────────────────────── */
+.resolve__pick { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px; }
+.resolve__pick fieldset { margin: 0; padding: 10px 14px 12px; border: 2px solid var(--ink); background: #fff; }
+.resolve__pick legend { padding: 0 6px; font: 600 10.5px/1.3 var(--pixel); letter-spacing: 1px; text-transform: uppercase; color: var(--fire-deep); }
+.resolve__pick label { display: flex; gap: 8px; align-items: baseline; margin: 5px 0; font-size: 15px; cursor: pointer; }
+.resolve__pick input { accent-color: var(--fire); }
+.resolve__out { padding: 12px 16px; border: 3px solid var(--ink); background: var(--page); }
+.resolve__out .state { display: inline-block; margin-right: 8px; padding: 2px 9px; font: 700 12px/1.6 var(--mono); }
+.resolve__out .state.up { background: var(--moss-pale); color: var(--moss); }
+.resolve__out .state.down { background: var(--err-pale); color: var(--err); }
+.resolve__out pre { margin: 8px 0; padding: 8px 12px; background: #1D1A1F; color: #EDE6E1; font: 400 13px/1.55 var(--mono); white-space: pre-wrap; word-break: break-word; }
+.resolve__out p { margin: 6px 0 0; font-size: 15px; }
+.resolve__out small { display: block; margin-top: 8px; font-size: 12.5px; color: var(--ink-faint); }
+.resolve__static { margin: 0; }
+
+/* ── 7. Диаграмма последовательности ─────────────────────────── */
+.seq__svg { display: block; width: 100%; height: auto; background: #fff; border: 2px solid var(--rule); }
+.seq__svg text { font: 500 12.5px var(--body); fill: var(--ink); }
+.seq__svg .actor rect { fill: var(--page); stroke: var(--ink); stroke-width: 2.5; }
+.seq__svg .actor text { font: 700 13px var(--mono); text-anchor: middle; }
+.seq__svg .life { stroke: var(--ink-faint); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.seq__svg .msg line, .seq__svg .msg path { stroke: var(--ink); stroke-width: 2; fill: none; }
+.seq__svg .msg polygon { fill: var(--ink); }
+.seq__svg .msg text { font: 500 12px var(--mono); }
+.seq__svg .msg.data line, .seq__svg .msg.data path { stroke: var(--fire); }
+.seq__svg .msg.data polygon { fill: var(--fire); }
+.seq__svg .msg.data text { fill: var(--fire-deep); }
+.seq__svg .note rect { fill: var(--steel-pale); stroke: var(--steel); }
+.seq__svg .note text { font: 500 11.5px var(--body); fill: var(--ink); }
+.js .seq [data-step] { opacity: .12; transition: opacity .25s; }
+.js .seq [data-step].is-on { opacity: 1; }
+.seq__notes { margin: 12px 0 0; padding-left: 22px; font-size: 15px; }
+.seq__notes li { margin-bottom: 5px; }
+.js .seq__notes li { opacity: .35; }
+.js .seq__notes li.is-on { opacity: 1; }
+.js .seq__notes li.is-now { font-weight: 600; }
+.seq .btnrow { margin-top: 12px; }
+@media (prefers-reduced-motion: reduce) { .js .seq [data-step] { transition: none; } }
+
+/* ── 8. Обложка модуля, мелочи и адаптив ─────────────────────── */
+.cover { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(260px, .8fr); gap: clamp(24px, 4vw, 56px); align-items: start; }
+.cover h1 { margin: 12px 0 10px; font-family: var(--display); font-size: clamp(34px, 5.2vw, 64px); line-height: 1.04; letter-spacing: -.5px; }
+.cover__sub { margin: 0 0 22px; font-family: var(--display); font-size: clamp(17px, 1.8vw, 25px); color: var(--fire-deep); }
+.cover__meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0 0; }
+.cover__meta span { padding: 8px 12px; border: 2px solid var(--ink); background: #fff; font: 600 11px/1 var(--mono); letter-spacing: .6px; }
+.hint { border: 3px solid var(--ink); background: var(--page); box-shadow: 7px 7px 0 var(--ink); overflow: hidden; }
+.hint__bar { display: flex; align-items: center; gap: 8px; padding: 9px 13px; background: var(--ink); color: var(--fire-pale); font: 600 10px/1.4 var(--pixel); letter-spacing: 1.2px; text-transform: uppercase; }
+.hint__bar b { margin-left: auto; padding: 2px 7px; background: var(--moss); color: #fff; font-family: var(--mono); }
+.hint pre { margin: 0; padding: 14px; font: 500 11px/1.75 var(--mono); background: #1D1A1F; color: #EDE6E1; overflow-x: auto; }
+.hint pre .n1 { color: #B9B0BD; } .hint pre .n2 { color: #FFB38F; } .hint pre .n3 { color: #B7E4A5; }
+.hint__foot { padding: 10px 14px; border-top: 3px solid var(--ink); background: var(--fire-pale); font: 500 12.5px/1.5 var(--mono); color: var(--fire-deep); }
+.toc { margin: 0; padding: 0; list-style: none; border-top: 2px solid var(--rule); }
+.toc li { border-bottom: 2px solid var(--rule); margin: 0; }
+.toc a { display: flex; align-items: baseline; gap: 12px; padding: 11px 0; text-decoration: none; color: var(--ink); font-weight: 600; }
+.toc a:hover { color: var(--fire-deep); }
+.toc i { flex: 0 0 auto; min-width: 34px; font: 600 13px/1.4 var(--mono); font-style: normal; color: var(--ink-faint); }
+.toc span { flex: 1 1 auto; line-height: 1.35; }
+.toc span small { display: block; margin-top: 3px; font-weight: 400; font-size: 14px; color: var(--ink-soft); }
+.toc em { flex: 0 0 auto; font: 600 10px/1 var(--pixel); letter-spacing: 1px; text-transform: uppercase; font-style: normal; color: var(--fire-deep); }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; font-size: 15px; }
+.kv dt { font: 600 13px/1.6 var(--mono); color: var(--fire-deep); }
+.kv dd { margin: 0; }
+@media (max-width: 860px) { .cover { grid-template-columns: 1fr; } }
+@media (max-width: 620px) {
+  .pipe__stages button:not(:last-child)::after { content: none; }
+  .pipe__stages button { flex-basis: 45%; }
+}
+
+/* Длинные адреса и подписи не расширяют страницу на узком экране. */
+.sources a, .widget__head b, figure.code figcaption span, .leaf p code, .leaf td code { overflow-wrap: anywhere; }
+figure.code figcaption { flex-wrap: wrap; row-gap: 2px; }

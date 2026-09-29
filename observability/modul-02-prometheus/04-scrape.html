@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <meta name="description" content="Глава 2.4 модуля «Как работает Prometheus»: scrape: как prometheus собирает значения.">
+  <title>2.4 Scrape: как Prometheus собирает значения · Как работает Prometheus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&amp;family=Pixelify+Sans:wght@500;600;700&amp;family=Roboto+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="algo.css">
+  <link rel="stylesheet" href="prom.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 2 · Как работает Prometheus · Макаров М. Н.</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Модуль 2 · как работает prometheus</a> · сбор метрик</p>
+          <p class="running__folio">Глава 2.4</p>
+        </div>
+        <header class="chapter-head">
+          <span class="chapter-num">2.4</span>
+          <h1>Scrape: как Prometheus<br>собирает значения</h1>
+          <p class="lead">Target и ответ <code>/metrics</code> описывают, откуда и в каком виде берутся метрики. Scrape — действие, которое их соединяет: Prometheus периодически запрашивает <code>/metrics</code> и сохраняет полученные значения. В этой главе один scrape разобран по шагам, затем — два параметра, от которых зависит сбор: интервал и предельное время ожидания. Вторая половина главы посвящена результату: какой scrape успешный, как выглядят шесть настоящих ошибок сбора и что остаётся в базе, когда приложение недоступно.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Механизм сбора</dd></div>
+          <div><dt>Уровень</dt><dd>Средний и продвинутый</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 2.2 и 2.3</dd></div>
+          <div><dt>Результат</dt><dd>Диагностика target по up, scrape_* и тексту ошибки</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Понятие scrape</a></li>
+            <li><a href="#s2">Один scrape по шагам</a></li>
+            <li><a href="#s3">Scrape interval</a></li>
+            <li><a href="#s4">Scrape timeout</a></li>
+            <li><a href="#s5">Модель сбора</a></li>
+            <li><a href="#s6">Успешный scrape и ряды о сборе</a></li>
+            <li><a href="#s7">Неуспешный scrape: шесть ошибок</a></li>
+            <li><a href="#s8">Что остаётся в базе</a></li>
+            <li><a href="#s9">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Понятие scrape</h2>
+        <div class="term-card">
+          <p class="term-card__head"><b>Scrape</b><span>сбор · один опрос одного target</span></p>
+          <div class="term-card__body">
+            <p>Один HTTP-запрос Prometheus к target и обработка ответа: разбор текста, добавление меток target и запись отсчётов в базу. Scrape повторяется для каждого target с периодом <code>scrape_interval</code>; ответ ждут не дольше <code>scrape_timeout</code>.</p>
+            <p>Упрощённо scrape — это <code>GET /metrics</code> раз в 15 секунд и сохранение того, что пришло. В этой главе разобрано, что стоит за словами «сохранение» и «раз в 15 секунд».</p>
+          </div>
+        </div>
+        <p>Слово заимствовано из английского <i>scrape</i> — «соскоблить, собрать с поверхности». В русских текстах пишут «скрейп», «сбор» или «опрос»; в интерфейсе, документации и именах метрик Prometheus используется английское слово, поэтому здесь оно сохранено.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Один scrape по шагам</h2>
+        <p>Диаграмма показывает один scrape target <code>api:8000</code> на стенде. Три вертикальные линии — участники: Prometheus, приложение и хранилище TSDB. Стрелки — сообщения между ними, оранжевые стрелки несут данные. Кнопка «шаг →» открывает шаги по одному.</p>
+        <div class="widget seq">
+          <div class="widget__head"><b>Scrape target api:8000</b><span>шаги одного сбора</span></div>
+          <div class="widget__body">
+<svg class="seq__svg" viewBox="0 0 760 452" role="img" aria-label="Один scrape: Prometheus запрашивает /metrics у приложения и записывает отсчёты в TSDB">
+<g class="actor"><rect x="22" y="10" width="176" height="36" rx="4"/><text x="110" y="33">Prometheus</text></g>
+<line class="life" x1="110" x2="110" y1="46" y2="444"/>
+<g class="actor"><rect x="292" y="10" width="176" height="36" rx="4"/><text x="380" y="33">api:8000</text></g>
+<line class="life" x1="380" x2="380" y1="46" y2="444"/>
+<g class="actor"><rect x="562" y="10" width="176" height="36" rx="4"/><text x="650" y="33">TSDB</text></g>
+<line class="life" x1="650" x2="650" y1="46" y2="444"/>
+<g class="note" data-step="1"><rect x="6" y="65" width="219" height="26" rx="3"/><text x="16" y="83">прошло 15 с с прошлого сбора</text></g>
+<g class="msg" data-step="2"><line x1="110" y1="120" x2="369" y2="120"/><polygon points="378,120 367,115 367,125"/><text x="245" y="113" text-anchor="middle">GET /metrics · Accept · timeout 10</text></g>
+<g class="note" data-step="3"><rect x="281" y="145" width="198" height="26" rx="3"/><text x="291" y="163">generate_latest(registry)</text></g>
+<g class="msg data" data-step="4"><line x1="380" y1="200" x2="121" y2="200"/><polygon points="112,200 123,195 123,205"/><text x="245" y="193" text-anchor="middle">200 OK · text/plain · 3 строки</text></g>
+<g class="note" data-step="5"><rect x="6" y="225" width="240" height="26" rx="3"/><text x="16" y="243">разбор текста, + job и instance</text></g>
+<g class="msg data" data-step="6"><line x1="110" y1="280" x2="639" y2="280"/><polygon points="648,280 637,275 637,285"/><text x="380" y="273" text-anchor="middle">3 отсчёта, время = начало сбора</text></g>
+<g class="msg data" data-step="7"><line x1="110" y1="320" x2="639" y2="320"/><polygon points="648,320 637,315 637,325"/><text x="380" y="313" text-anchor="middle">up = 1, scrape_duration_seconds, …</text></g>
+<g class="msg" data-step="8"><line x1="110" y1="360" x2="639" y2="360"/><polygon points="648,360 637,355 637,365"/><text x="380" y="353" text-anchor="middle">stale-метки рядам, которых нет в ответе</text></g>
+<g class="note" data-step="9"><rect x="8" y="385" width="205" height="26" rx="3"/><text x="18" y="403">ждать следующего интервала</text></g>
+</svg>
+            <ol class="seq__notes">
+              <li>У каждого target свой цикл сбора. Цикл просыпается раз в <code>scrape_interval</code>, со своим смещением внутри интервала (§3).</li>
+              <li>Prometheus отправляет <code>GET</code> на адрес из служебных меток target. В заголовках — предпочтительные форматы и <code>X-Prometheus-Scrape-Timeout-Seconds: 10</code>.</li>
+              <li>Приложение превращает текущие значения метрик в текст. Этот код выполняется внутри процесса приложения при каждом сборе.</li>
+              <li>Ответ приходит целиком: статус 200, заголовок <code>Content-Type</code>, текст. Если он не пришёл за <code>scrape_timeout</code>, запрос прерывается.</li>
+              <li>Разборщик проходит текст построчно. К каждому ряду добавляются <code>job</code> и <code>instance</code>; если заданы правила <code>metric_relabel_configs</code>, они применяются здесь.</li>
+              <li>Отсчёты дописываются к рядам в TSDB. Отметка времени у всех отсчётов одного scrape одинаковая — момент начала запроса.</li>
+              <li>Prometheus записывает пять рядов о самом сборе: <code>up</code>, <code>scrape_duration_seconds</code>, <code>scrape_samples_scraped</code>, <code>scrape_samples_post_metric_relabeling</code>, <code>scrape_series_added</code>.</li>
+              <li>Ряды, которые были в прошлом ответе и пропали в этом, получают метку устаревания (stale marker). После неё запросы перестают возвращать ряд.</li>
+              <li>Цикл засыпает до следующего интервала. Повторных попыток при ошибке нет: следующая попытка — по расписанию.</li>
+            </ol>
+          </div>
+        </div>
+        <p>Scrape — обычный HTTP-запрос, и приложение обрабатывает его как любой другой. Поэтому <code>GET /metrics</code> попадает в журнал доступа: за время работы стенда uvicorn записал 363 строки <code>"GET /metrics HTTP/1.1" 200 OK</code>. По той же причине приложение стенда исключает путь <code>/metrics</code> из своего счётчика запросов, иначе счётчик рос бы от каждого сбора.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Scrape interval</h2>
+        <p><code>scrape_interval</code> — период между началами двух scrape одного target. Он задаётся в <code>global</code> для всех заданий и может быть переопределён в отдельном задании. Если не задать его совсем, Prometheus использует <b>1 минуту</b>. Это видно в загруженной конфигурации (Status → Configuration или <code>/api/v1/status/config</code>) для файла, где интервал не указан:</p>
+        <figure class="code code--out">
+          <figcaption><span>Загруженная конфигурация, в файле только job и target</span><span>Prometheus 3.5.0</span></figcaption>
+<pre>global:
+  scrape_interval: 1m
+  scrape_timeout: 10s
+  evaluation_interval: 1m
+scrape_configs:
+- job_name: api
+  scrape_interval: 1m
+  scrape_timeout: 10s
+  metrics_path: /metrics
+  scheme: http</pre>
+        </figure>
+        <p>Обычные значения — 15 или 30 секунд; стенд использует 15. От интервала зависят три вещи.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Что</th><th>Как зависит от интервала</th><th>Пример</th></tr></thead>
+            <tbody>
+              <tr><td>Подробность истории</td><td>Отсчётов в ряду — один на интервал. Изменение между двумя scrape для gauge не видно совсем</td><td>Очередь выросла на 7 секунд и вернулась: при интервале 15 с этого всплеска может не быть в данных</td></tr>
+              <tr><td>Нагрузка и объём</td><td>Отсчётов в минуту = число рядов × 60 / интервал</td><td>10 000 рядов при 15 с — 40 000 отсчётов в минуту; при 60 с — 10 000</td></tr>
+              <tr><td>Скорость реакции</td><td>Падение target обнаруживается не раньше следующего scrape</td><td>При 1 минуте <code>up</code> станет 0 в худшем случае через минуту</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Для счётчика потеря между сборами другая. Counter накапливает события сам, и следующий scrape увидит сумму: 7-секундный всплеск запросов отразится в приросте счётчика, хотя форма всплеска пропадёт. Gauge показывает только значение в момент scrape. Поэтому события считают счётчиками, а gauge используют для величин, которые меняются медленнее интервала.</p>
+        <p>Scrape разных target не начинаются одновременно. Prometheus вычисляет для каждого target постоянное смещение внутри интервала по хешу его меток и адреса. На стенде с шестью заданиями и интервалом 15 с остатки отметок времени от деления на 15 были такими:</p>
+        <figure class="code code--out">
+          <figcaption><span>Остаток отметки времени scrape по модулю 15 с · четыре подряд</span><span>стенд, конфигурация с ошибками</span></figcaption>
+<pre>api         0.025  0.021  0.021  0.021
+broken      1.562  1.566  1.562  1.569
+wrong-path  1.766  1.766  1.766  1.766
+html        4.960  4.959  4.959  4.964
+slow        6.974  6.973  6.970  6.976
+localhost  13.667 13.670 13.667 13.671</pre>
+        </figure>
+        <p>Каждый target собирается в «свою» секунду интервала, и она сохраняется от сбора к сбору с точностью до миллисекунд. Так нагрузка на Prometheus и на сеть распределена по интервалу, а тысяча target не получают запрос в один момент. Этот приём старше Prometheus: в главе о системе Borgmon книги Google SRE сказано, что Borgmon распределяет сбор с каждого target по всему интервалу, чтобы target не опрашивались синхронно.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Scrape timeout</h2>
+        <p><code>scrape_timeout</code> — сколько Prometheus ждёт ответа. Отсчёт идёт от начала запроса до конца чтения тела ответа. По умолчанию — <b>10 секунд</b>. Два правила проверены на стенде.</p>
+        <ol class="steps">
+          <li><b>Timeout не больше interval.</b> Иначе конфигурация не загружается. Проверка файла с <code>scrape_interval: 15s</code> и <code>scrape_timeout: 20s</code>:<br><code>FAILED: parsing YAML file …: scrape timeout greater than scrape interval for scrape config with job name "api"</code></li>
+          <li><b>Если timeout не задан, а interval меньше 10 с, timeout равен interval.</b> Для <code>scrape_interval: 5s</code> без timeout Prometheus загрузил <code>scrape_timeout: 5s</code>.</li>
+        </ol>
+        <p>Значение timeout Prometheus передаёт приложению в заголовке <code>X-Prometheus-Scrape-Timeout-Seconds</code>. Exporter, который опрашивает медленную систему, может по нему закончить работу раньше и вернуть частичный результат.</p>
+        <p>На стенде путь <code>/metrics/slow</code> отвечает через 3 секунды, а для задания <code>slow</code> timeout — 2 секунды:</p>
+        <figure class="code code--out">
+          <figcaption><span>Задание slow · scrape_timeout: 2s</span><span>Prometheus 3.5.0</span></figcaption>
+<pre>Error scraping target: Get "http://api:8000/metrics/slow": context deadline exceeded
+scrape_duration_seconds{job="slow"}  2.001425834</pre>
+        </figure>
+        <p>Prometheus прервал запрос ровно по истечении timeout, и <code>scrape_duration_seconds</code> показывает время ожидания — 2,001 с. Приложение при этом продолжает готовить ответ: прерывание происходит на стороне Prometheus. Если <code>/metrics</code> работает медленно, увеличение timeout скрывает причину; обычно ищут, что в приложении делает ответ медленным — запрос к базе при каждом сборе, блокировка, огромное число рядов.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Модель сбора</h2>
+        <p>Модель ниже воспроизводит правила из §3 и §4 на трёх минутах работы одного target. Пунктир — настоящая длина очереди в приложении, она меняется непрерывно; на 62-й секунде очередь на 7 секунд вырастает. Оранжевая линия — то, что сохранит Prometheus. Меняйте интервал, timeout и время ответа; флажок останавливает приложение на 35 секунд.</p>
+        <div class="widget sim">
+          <div class="widget__head"><b>Scrape одного target за 180 секунд</b><span>модель</span></div>
+          <div class="widget__body">
+            <div class="sim__controls">
+              <label><span>scrape_interval</span><input type="range" name="interval" min="0" max="4" step="1" value="2"><output data-out="interval">15 с</output></label>
+              <label><span>scrape_timeout</span><input type="range" name="timeout" min="1" max="30" step="1" value="10"><output data-out="timeout">10 с</output></label>
+              <label><span>время ответа /metrics</span><input type="range" name="response" min="0" max="10" step="1" value="1"><output data-out="response">0.05 с</output></label>
+              <label class="sim__check"><input type="checkbox" name="outage"> приложение остановлено с 95-й по 130-ю секунду</label>
+            </div>
+            <svg class="sim__svg" viewBox="0 0 760 290" role="img" aria-label="Шкала времени: моменты scrape, сохранённые значения и ряд up"></svg>
+            <div class="sim__legend"><span><i class="t"></i>настоящее значение</span><span><i></i>сохранённые отсчёты</span><span><i class="u"></i>up</span></div>
+            <div class="sim__stats"></div>
+            <p class="sim__err" hidden></p>
+          </div>
+          <div class="widget__foot">Модель: одно значение gauge и один target, данные сгенерированы, со стендом не связаны. Смещение первого scrape в модели — 27 % интервала; в Prometheus оно вычисляется по хешу target.</div>
+        </div>
+        <p>Что стоит проверить в модели. При интервале 15 с всплеск на 62-й секунде попадает в данные, при 30 и 60 с — пропадает целиком. Если время ответа больше timeout, каждый scrape неуспешный, <code>up</code> лежит на нуле, а оранжевой линии нет. Timeout больше интервала — конфигурация не загружается. При остановке приложения линия прерывается и возобновляется после первого успешного scrape.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Успешный scrape и ряды о сборе</h2>
+        <p>Scrape успешен, если выполнены все условия ниже. Нарушение любого из них делает весь scrape неуспешным.</p>
+        <div class="checklist">
+          <p class="checklist__head">Условия успешного scrape</p>
+          <div class="checklist__item"><span><b>Соединение</b>Имя target разрешилось, TCP-соединение установлено, TLS (для <code>https</code>) прошёл проверку.</span></div>
+          <div class="checklist__item"><span><b>Время</b>Ответ прочитан целиком до истечения <code>scrape_timeout</code>.</span></div>
+          <div class="checklist__item"><span><b>Статус</b>HTTP 200. Любой другой код, включая 3xx после исчерпания перенаправлений, 404 и 500, — ошибка.</span></div>
+          <div class="checklist__item"><span><b>Content-Type</b>Заголовок указывает поддерживаемый формат или в задании есть <code>fallback_scrape_protocol</code>.</span></div>
+          <div class="checklist__item"><span><b>Разбор</b>Текст без синтаксических ошибок (глава 2.3, §3).</span></div>
+          <div class="checklist__item"><span><b>Ограничения</b>Не превышены <code>sample_limit</code>, <code>label_limit</code>, <code>body_size_limit</code> и другие лимиты задания. По умолчанию все они равны 0, то есть выключены; при превышении документация предписывает считать неуспешным весь scrape.</span></div>
+        </div>
+        <p>После каждого scrape, успешного или нет, Prometheus записывает пять рядов о самом сборе. Их нет в ответе приложения; они получают метки target. Значения ниже — последний scrape target <code>api:8000</code> на стенде:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Ряд</th><th>Значение</th><th>Что означает</th></tr></thead>
+            <tbody>
+              <tr><td><code>up</code></td><td>1</td><td>1 — scrape успешен, 0 — неуспешен. Основной признак доступности target</td></tr>
+              <tr><td><code>scrape_duration_seconds</code></td><td>0.006035834</td><td>Сколько длился scrape: 6 мс. У неуспешного по timeout — примерно timeout</td></tr>
+              <tr><td><code>scrape_samples_scraped</code></td><td>3</td><td>Сколько отсчётов было в ответе</td></tr>
+              <tr><td><code>scrape_samples_post_metric_relabeling</code></td><td>3</td><td>Сколько осталось после правил <code>metric_relabel_configs</code>; на стенде правил нет</td></tr>
+              <tr><td><code>scrape_series_added</code></td><td>0</td><td>Приблизительно сколько новых рядов появилось в этом scrape. Все три ряда уже существовали, поэтому 0</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Рост <code>scrape_samples_scraped</code> без изменений в коде обычно означает рост кардинальности: в метку попало значение из неограниченного набора. <code>scrape_duration_seconds</code>, приближающийся к timeout, предупреждает о будущих ошибках сбора раньше, чем <code>up</code> станет 0. С флагом <code>--enable-feature=extra-scrape-metrics</code> добавляются ещё три ряда: настроенный timeout, настроенный <code>sample_limit</code> и размер ответа в байтах.</p>
+        <div class="margin-note margin-note--steel">
+          <b>На полях: откуда взялись эти ряды</b>
+          <p>В описании Borgmon в книге Google SRE сказано, что Borgmon записывает для каждого target «синтетические» переменные: разрешилось ли имя в хост и порт, ответил ли target на сбор, ответил ли на проверку здоровья и когда сбор закончился. По ним легко писать правила, находящие недоступные задачи. <code>up</code> и <code>scrape_*</code> в Prometheus решают ту же задачу.</p>
+        </div>
+
+        <h2 id="s7"><span class="sec">§7</span>Неуспешный scrape: шесть ошибок</h2>
+        <p>Для опыта стенд запускается с файлом <code>prometheus-errors.yml</code>. В нём, кроме рабочего задания <code>api</code>, пять заданий, каждое с одной ошибкой. Все пять обращаются к тому же приложению.</p>
+        <figure class="shot"><img src="shots/targets-errors.png" alt="Status → Target health: задание api в состоянии UP и пять заданий DOWN с текстами ошибок" loading="lazy"><figcaption>Status → Target health при конфигурации prometheus-errors.yml · Prometheus 3.5.0</figcaption></figure>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Задание</th><th>Текст ошибки</th><th>Причина</th><th>Что проверить</th></tr></thead>
+            <tbody>
+              <tr><td><code>slow</code></td><td><code>Get "http://api:8000/metrics/slow": context deadline exceeded</code></td><td>Ответ дольше timeout</td><td>Время ответа <code>/metrics</code> через <code>curl -w '%{time_total}'</code>; что делает обработчик</td></tr>
+              <tr><td><code>wrong-path</code></td><td><code>server returned HTTP status 404 Not Found</code></td><td>Неверный <code>metrics_path</code></td><td>Путь в браузере; у фреймворка может быть свой путь</td></tr>
+              <tr><td><code>localhost</code></td><td><code>Get "http://localhost:8000/metrics": dial tcp [::1]:8000: connect: connection refused</code></td><td>По адресу никто не слушает порт</td><td>Откуда смотрит Prometheus (глава 2.2); запущено ли приложение</td></tr>
+              <tr><td><code>broken</code></td><td><code>expected label value, got "G" ("INVALID") while parsing: "http_requests_total{method=G"</code></td><td>Синтаксическая ошибка в тексте</td><td>Строку, на которой остановился разбор; код, который собирает текст</td></tr>
+              <tr><td><code>html</code></td><td><code>received unsupported Content-Type "text/html; charset=utf-8" and no fallback_scrape_protocol specified for target</code></td><td>Неверный заголовок</td><td><code>curl -i</code>; <code>fallback_scrape_protocol</code> для программ, которые нельзя исправить</td></tr>
+              <tr><td><code>api</code>, приложение остановлено</td><td><code>Get "http://api:8000/metrics": EOF</code>, затем <code>context deadline exceeded</code></td><td>Контейнер приложения остановлен</td><td><code>docker compose ps</code>; журнал приложения</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Текст ошибки начинается с того шага §2, на котором сбор остановился. <code>dial tcp</code> — соединение не установлено. <code>HTTP status</code> — соединение есть, приложение ответило не 200. <code>while parsing</code> — ответ получен, текст не разобран. <code>context deadline exceeded</code> — время вышло на любом шаге. Последняя строка таблицы зависит от окружения: в Docker Desktop после остановки контейнера сначала была ошибка <code>EOF</code>, затем <code>context deadline exceeded</code>.</p>
+        <p>У опыта есть побочный эффект. Задание <code>wrong-path</code> каждые 15 секунд запрашивает <code>/stats</code>, приложение отвечает 404 и засчитывает этот ответ в <code>http_requests_total{status="404"}</code>. За несколько минут опыта значение выросло до 59. Ошибочно настроенный сбор искажает метрики самого приложения.</p>
+
+        <h2 id="s8"><span class="sec">§8</span>Что остаётся в базе</h2>
+        <p>Опыт на рабочей конфигурации: в 13:22:41 приложение остановлено командой <code>docker compose stop api</code>, в 13:23:32 запущено снова, затем на него отправлено 90 запросов тремя порциями. Ниже — отсчёты двух рядов за это время, как их вернул Prometheus.</p>
+        <figure class="code code--out">
+          <figcaption><span>up{job="api"} и http_requests_total{status="200"} · отсчёты</span><span>время UTC</span></figcaption>
+<pre>время      up   http_requests_total{status="200"}
+13:22:07   1    125
+13:22:22   1    125
+13:22:37   1    125
+13:22:52   <b>0</b>    —
+13:23:07   <b>0</b>    —
+13:23:22   <b>0</b>    —
+13:23:37   1    —
+13:23:52   1    30
+13:24:07   1    60
+13:24:22   1    90</pre>
+        </figure>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>Те же ряды на графике</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>up{job="api"}</button>
+            <button>http_requests_total{status="200"}</button>
+          </div>
+          <div class="demo__pane">
+            <figure class="shot"><img src="shots/graph-up.png" alt="График up{job=api}: значение 1, провал до 0 примерно с 13:22:50 до 13:23:30, затем снова 1" loading="lazy"><figcaption>up: три отсчёта со значением 0 — три неуспешных scrape</figcaption></figure>
+          </div>
+          <div class="demo__pane">
+            <figure class="shot"><img src="shots/graph-requests.png" alt="График http_requests_total: 125 до 13:22:37, разрыв, затем рост 30, 60, 90" loading="lazy"><figcaption>http_requests_total: разрыв линии и новый отсчёт с нуля после перезапуска</figcaption></figure>
+          </div>
+        </div>
+        <p>В этих данных четыре наблюдения.</p>
+        <ol class="steps">
+          <li><b><code>up</code> записан и во время остановки.</b> Prometheus пишет его после каждого scrape, поэтому по <code>up</code> видно и начало, и конец недоступности. Точность — один интервал: остановка в 13:22:41 заметна в отсчёте 13:22:52.</li>
+          <li><b>Ряд приложения прерван сразу.</b> После неуспешного scrape в 13:22:52 ряд <code>http_requests_total</code> получил метку устаревания. Мгновенный запрос <code>http_requests_total{job="api"}</code> во время остановки вернул пустой результат, а <code>last_over_time(http_requests_total{job="api"}[5m])</code> — последние значения. Без метки устаревания Prometheus продолжал бы показывать последнее значение ещё 5 минут (lookback delta — окно, в котором запрос ищет последний отсчёт ряда).</li>
+          <li><b>После запуска ряда нет до первого запроса.</b> В 13:23:37 <code>up</code> уже 1, но новый процесс ещё не создал ряд счётчика (глава 2.3, §5).</li>
+          <li><b>Часть событий потеряна.</b> Прямо перед остановкой на приложение было отправлено ещё 20 запросов. Последний успешный scrape прошёл в 13:22:37, до них, и эти 20 запросов не попали в Prometheus ни в каком виде. Счётчик нового процесса начался с нуля.</li>
+        </ol>
+        <p>Сброс счётчика с 125 до 30 — обычное событие для counter. Функции запросов, считающие скорость роста, распознают уменьшение значения как перезапуск и не показывают отрицательной скорости. Потерянные 20 запросов они восстановить не могут. Это одна из причин, по которым документация не советует Prometheus для точного учёта (глава 2.1, §7).</p>
+
+        <h2 id="s9"><span class="sec">§9</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>В задании <code>scrape_interval: 15s</code> и <code>scrape_timeout: 20s</code>. Что произойдёт?</p>
+          <ul class="quiz__opts">
+            <li><button>Scrape будет ждать 20 с, а следующий начнётся сразу после ответа</button><p class="quiz__why">До сбора дело не дойдёт: конфигурация не пройдёт проверку.</p></li>
+            <li data-ok><button>Конфигурация не загрузится: timeout больше interval</button><p class="quiz__why">Верно. <code>promtool check config</code> на стенде выдал <code>scrape timeout greater than scrape interval</code>.</p></li>
+            <li><button>Prometheus уменьшит timeout до 15 с</button><p class="quiz__why">Timeout подстраивается под interval, только когда timeout не задан. Явно заданное неверное значение — ошибка.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>Какую отметку времени получит отсчёт <code>http_requests_total</code>, если scrape начался в 12:00:00.000, а ответ пришёл через 40 мс?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button>12:00:00.000 — начало scrape</button><p class="quiz__why">Верно. Все отсчёты одного scrape получают время начала запроса, если приложение не указало своё время.</p></li>
+            <li><button>12:00:00.040 — приход ответа</button><p class="quiz__why">Время ответа видно в <code>scrape_duration_seconds</code>, но отметка времени отсчётов — начало scrape.</p></li>
+            <li><button>Время, когда приложение увеличило счётчик</button><p class="quiz__why">Библиотека не хранит время изменения и не передаёт его в ответе.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 3</b>Ошибка target: <code>server returned HTTP status 404 Not Found</code>. На каком шаге остановился scrape?</p>
+          <ul class="quiz__opts">
+            <li><button>Соединение не установлено</button><p class="quiz__why">Тогда в тексте было бы <code>dial tcp</code>. Код 404 значит, что приложение ответило.</p></li>
+            <li data-ok><button>Приложение ответило, но по этому пути метрик нет</button><p class="quiz__why">Верно. Проверяют <code>metrics_path</code> задания и путь, по которому приложение отдаёт метрики.</p></li>
+            <li><button>Ответ не разобран</button><p class="quiz__why">До разбора дело не дошло: тело ответа с кодом, отличным от 200, не разбирается.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 4</b>Приложение упало в 12:00:05, последний успешный scrape был в 12:00:00, интервал 15 с. Что вернёт мгновенный запрос <code>http_requests_total</code> в 12:00:30?</p>
+          <ul class="quiz__opts">
+            <li><button>Значение из 12:00:00: Prometheus показывает последний отсчёт 5 минут</button><p class="quiz__why">Так было бы без меток устаревания. Неуспешный scrape в 12:00:15 пометил ряды приложения устаревшими.</p></li>
+            <li data-ok><button>Пустой результат: после неуспешного scrape ряды помечены устаревшими</button><p class="quiz__why">Верно, так было на стенде. Последние значения можно получить функцией <code>last_over_time</code>.</p></li>
+            <li><button>Значение 0: упавшее приложение отдаёт нули</button><p class="quiz__why">Упавшее приложение не отдаёт ничего. Нулём становится только <code>up</code>.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 5</b>Почему очередь, выросшая на 7 секунд, может не попасть в данные при интервале 30 с, а число запросов за те же 7 секунд попадёт?</p>
+          <ul class="quiz__opts">
+            <li><button>Счётчики Prometheus собирает чаще, чем gauge</button><p class="quiz__why">Интервал общий для всех рядов target, от типа он не зависит.</p></li>
+            <li data-ok><button>Gauge показывает значение в момент scrape, а counter накапливает события между scrape</button><p class="quiz__why">Верно. Прирост счётчика за 7 секунд будет в следующем отсчёте; величина очереди в момент scrape уже вернулась к норме.</p></li>
+            <li><button>Всплеск gauge отбрасывается правилами <code>metric_relabel_configs</code></button><p class="quiz__why">Эти правила меняют и отбрасывают ряды по меткам; значения они не сравнивают.</p></li>
+          </ul>
+        </div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Prometheus. Configuration: scrape_config — <a href="https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/configuration/configuration</a></li>
+            <li>Prometheus. Jobs and instances: automatically generated labels and time series — <a href="https://prometheus.io/docs/concepts/jobs_instances/" target="_blank" rel="noopener">prometheus.io/docs/concepts/jobs_instances</a></li>
+            <li>Prometheus. Querying basics: staleness — <a href="https://prometheus.io/docs/prometheus/latest/querying/basics/#staleness" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/querying/basics</a></li>
+            <li>Beyer B. и др. Site Reliability Engineering. Глава 10. Practical Alerting from Time-Series Data — <a href="https://sre.google/sre-book/practical-alerting/" target="_blank" rel="noopener">sre.google/sre-book/practical-alerting</a></li>
+            <li>Стенд модуля: опыты с ошибками, остановкой приложения и конфигурацией выполнены 29.09.2026, Prometheus 3.5.0</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="03-endpoint-metrics.html">← 2.3 Endpoint /metrics и текстовый формат</a><a href="05-pull-model.html">2.5 Pull-модель: Prometheus приходит сам →</a></div>
+        <div class="colophon">
+          <span>Метрики и наблюдаемость · Модуль 2 · Как работает Prometheus</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="book.js"></script>
+  <script src="algo.js"></script>
+  <script src="prom.js"></script>
+</body>
+</html>

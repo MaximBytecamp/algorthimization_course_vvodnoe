@@ -1,0 +1,341 @@
+        <header class="chapter-head">
+          <span class="chapter-num">2.6</span>
+          <h1>Первый запуск:<br>Prometheus и FastAPI</h1>
+          <p class="lead">Практическая глава модуля. Здесь запускается весь путь из главы 2.1: приложение FastAPI с одной метрикой, Prometheus, который собирает её раз в 15 секунд, и первый запрос к сохранённым данным. Каждый файл стенда разобран по строкам, каждая команда показана с ожидаемым выводом. Результат работы — target в состоянии <code>UP</code> на странице Status → Target health и ответ на запрос <code>up</code>.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Практика</dd></div>
+          <div><dt>Уровень</dt><dd>Начальный</dd></div>
+          <div><dt>Нужно</dt><dd>Docker Desktop или Docker Engine с Compose v2; браузер</dd></div>
+          <div><dt>Результат</dt><dd>Target UP, запросы <code>up</code> и <code>http_requests_total</code></dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Состав стенда</a></li>
+            <li><a href="#s2">Приложение app.py</a></li>
+            <li><a href="#s3">Конфигурация и Compose</a></li>
+            <li><a href="#s4">Запуск</a></li>
+            <li><a href="#s5">Status → Target health</a></li>
+            <li><a href="#s6">Первые запросы</a></li>
+            <li><a href="#s7">Остановка приложения</a></li>
+            <li><a href="#s8">Если target не UP</a></li>
+            <li><a href="#s9">Вариант без Docker</a></li>
+            <li><a href="#s10">Задания и проверка</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Состав стенда</h2>
+        <p>Стенд — папка <code>prometheus-start</code> из архива модуля. Приложение и Prometheus работают в двух контейнерах одной сети Docker Compose; Python на компьютере для основного варианта не нужен.</p>
+        <p><a class="btn btn--main" href="prometheus-start.zip" download>↓ Скачать prometheus-start.zip</a></p>
+        <div class="tree">
+          <div class="tree__head">prometheus-start/</div>
+          <div class="tree__body">
+            <div class="tree__row tree__row--hi"><span>app.py</span><em>приложение: /, /items/{id}, /metrics и три пути для опыта главы 2.4</em></div>
+            <div class="tree__row"><span>requirements.txt</span><em>fastapi 0.115.6, uvicorn 0.34.0, prometheus-client 0.26.0</em></div>
+            <div class="tree__row"><span>Dockerfile</span><em>образ приложения на python:3.12-slim</em></div>
+            <div class="tree__row tree__row--hi"><span>compose.yaml</span><em>сервисы api и prometheus</em></div>
+            <div class="tree__row tree__row--hi"><span>prometheus.yml</span><em>job api, target api:8000, интервал 15 с</em></div>
+            <div class="tree__row"><span>prometheus-errors.yml</span><em>пять неуспешных target для главы 2.4</em></div>
+            <div class="tree__row"><span>prometheus-local.yml</span><em>target localhost:8020 для запуска без Docker</em></div>
+            <div class="tree__row"><span>README.md</span><em>команды для macOS, Linux и Windows</em></div>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Адрес на компьютере</th><th>Что открывается</th></tr></thead>
+            <tbody>
+              <tr><td><code>http://localhost:8020/</code></td><td>Приложение: JSON с названием сервиса</td></tr>
+              <tr><td><code>http://localhost:8020/metrics</code></td><td>Ответ /metrics — то же, что получает Prometheus</td></tr>
+              <tr><td><code>http://localhost:9092/</code></td><td>Веб-интерфейс Prometheus</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Порты 8020 и 9092 выбраны так, чтобы не пересекаться со стендом модуля 1 и с программами, которые часто занимают 8000 и 9090. Оба порта открыты только на <code>127.0.0.1</code>: с других компьютеров сети стенд недоступен.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Приложение app.py</h2>
+        <p>Ниже — рабочая часть файла. Три пути для опыта с ошибками (<code>/metrics/slow</code>, <code>/metrics/broken</code>, <code>/metrics/html</code>) опущены: рабочая конфигурация к ним не обращается.</p>
+        <figure class="code">
+          <figcaption><span>stand/app.py</span><span>рабочая часть</span></figcaption>
+<pre><span class="k">from</span> fastapi <span class="k">import</span> FastAPI, Request
+<span class="k">from</span> fastapi.responses <span class="k">import</span> PlainTextResponse, Response
+<span class="k">from</span> prometheus_client <span class="k">import</span> (
+    CONTENT_TYPE_LATEST, CollectorRegistry, Counter,
+    disable_created_metrics, generate_latest,
+)
+
+disable_created_metrics()
+registry = CollectorRegistry()
+
+HTTP_REQUESTS = Counter(
+    <span class="s">"http_requests_total"</span>,
+    <span class="s">"Total HTTP requests"</span>,
+    [<span class="s">"method"</span>, <span class="s">"status"</span>],
+    registry=registry,
+)
+
+SERVICE_PATHS = {<span class="s">"/metrics"</span>, <span class="s">"/metrics/slow"</span>, <span class="s">"/metrics/broken"</span>, <span class="s">"/metrics/html"</span>}
+
+app = FastAPI(title=<span class="s">"Prometheus start"</span>)
+
+
+<span class="k">@app.middleware</span>(<span class="s">"http"</span>)
+<span class="k">async def</span> <span class="f">count_requests</span>(request: Request, call_next):
+    response = <span class="k">await</span> call_next(request)
+    <span class="k">if</span> request.url.path <span class="k">not in</span> SERVICE_PATHS:
+        HTTP_REQUESTS.labels(request.method, <span class="k">str</span>(response.status_code)).inc()
+    <span class="k">return</span> response
+
+
+<span class="k">@app.get</span>(<span class="s">"/items/{item_id}"</span>)
+<span class="k">async def</span> <span class="f">get_item</span>(item_id: <span class="k">int</span>):
+    <span class="k">if</span> item_id &gt; <span class="n">100</span>:
+        <span class="k">return</span> PlainTextResponse(<span class="s">"not found"</span>, status_code=<span class="n">404</span>)
+    <span class="k">return</span> {<span class="s">"item_id"</span>: item_id}
+
+
+<span class="k">@app.get</span>(<span class="s">"/metrics"</span>)
+<span class="k">async def</span> <span class="f">metrics</span>():
+    <span class="k">return</span> Response(generate_latest(registry), media_type=CONTENT_TYPE_LATEST)</pre>
+        </figure>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Строка</th><th>Что делает</th><th>Если убрать или изменить</th></tr></thead>
+            <tbody>
+              <tr><td><code>disable_created_metrics()</code></td><td>Отключает служебные ряды <code>_created</code></td><td>В ответе появится второй ряд на каждое сочетание меток (глава 2.3, §5)</td></tr>
+              <tr><td><code>registry = CollectorRegistry()</code></td><td>Отдельный реестр только для метрик приложения</td><td>С глобальным реестром в ответе будут и <code>python_gc_*</code>, <code>python_info</code>, в Linux — <code>process_*</code></td></tr>
+              <tr><td><code>Counter("http_requests_total", …)</code></td><td>Счётчик с HELP «Total HTTP requests» и метками <code>method</code>, <code>status</code></td><td>Другие имена меток — другие ряды; метка с неограниченными значениями (путь с id) — рост кардинальности</td></tr>
+              <tr><td><code>@app.middleware("http")</code></td><td>Функция, через которую проходит каждый запрос; увеличивает счётчик после ответа</td><td>Счётчик придётся увеличивать в каждом обработчике вручную</td></tr>
+              <tr><td><code>if … not in SERVICE_PATHS</code></td><td>Не считает запросы Prometheus к <code>/metrics</code></td><td>Счётчик <code>GET 200</code> будет расти на 4 в минуту без пользователей</td></tr>
+              <tr><td><code>str(response.status_code)</code></td><td>Статус как строка: значение метки всегда строка</td><td><code>labels()</code> приведёт число к строке сам; явное <code>str</code> показывает, что метка — текст</td></tr>
+              <tr><td><code>generate_latest(registry)</code></td><td>Текст всех метрик реестра в формате Prometheus</td><td>—</td></tr>
+              <tr><td><code>media_type=CONTENT_TYPE_LATEST</code></td><td>Заголовок <code>text/plain; version=1.0.0; charset=utf-8</code></td><td>У <code>Response</code> без <code>media_type</code> заголовка <code>Content-Type</code> нет совсем, и Prometheus 3 отклонит ответ (глава 2.3, §6)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <details class="pyhint"><summary>Python в этой строке: <code>@app.middleware("http")</code> и <code>await call_next(request)</code></summary><div><p>Декоратор регистрирует функцию как промежуточный обработчик: FastAPI вызывает её для каждого запроса и передаёт <code>call_next</code> — функцию, которая выполняет обычный обработчик пути. Всё, что стоит до <code>await call_next(request)</code>, выполняется до обработчика; всё после — когда ответ уже готов и известен его статус. Поэтому счётчик увеличивается после <code>call_next</code>: только там есть <code>response.status_code</code>.</p></div></details>
+        <details class="pyhint"><summary>Python в этой строке: <code>HTTP_REQUESTS.labels("GET", "200").inc()</code></summary><div><p><code>labels()</code> возвращает дочерний счётчик для конкретного сочетания меток и создаёт его при первом вызове. <code>inc()</code> увеличивает его на 1, <code>inc(5)</code> — на 5. Уменьшить counter нельзя: библиотека вызовет исключение.</p><pre>&gt;&gt;&gt; from prometheus_client import Counter, CollectorRegistry, generate_latest
+&gt;&gt;&gt; r = CollectorRegistry()
+&gt;&gt;&gt; c = Counter("demo_total", "Demo", ["method"], registry=r)
+&gt;&gt;&gt; c.labels("GET").inc(); c.labels("GET").inc()
+&gt;&gt;&gt; print(generate_latest(r).decode())
+# HELP demo_total Demo
+# TYPE demo_total counter
+demo_total{method="GET"} 2.0
+# HELP demo_created Demo
+# TYPE demo_created gauge
+demo_created{method="GET"} 1.790692138359471e+09
+
+&gt;&gt;&gt; c.labels("GET").inc(-1)
+Traceback (most recent call last):
+  ...
+ValueError: Counters can only be incremented by non-negative amounts.</pre></div></details>
+
+        <h2 id="s3"><span class="sec">§3</span>Конфигурация и Compose</h2>
+        <p>Файл <code>prometheus.yml</code> разобран в главе 2.2: одно задание <code>api</code>, target <code>api:8000</code>, интервал 15 с, timeout 10 с. Файл <code>compose.yaml</code> связывает два сервиса.</p>
+        <figure class="code">
+          <figcaption><span>stand/compose.yaml</span><span>Docker Compose v2</span></figcaption>
+<pre><span class="k">name</span>: prometheus-start
+<span class="k">services</span>:
+  <span class="k">api</span>:
+    <span class="k">build</span>: .
+    <span class="k">ports</span>: [<span class="s">'127.0.0.1:8020:8000'</span>]
+
+  <span class="k">prometheus</span>:
+    <span class="k">image</span>: prom/prometheus:v3.5.0
+    <span class="k">command</span>:
+      - --config.file=/etc/prometheus/${PROM_CONFIG:-prometheus.yml}
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    <span class="k">ports</span>: [<span class="s">'127.0.0.1:9092:9090'</span>]
+    <span class="k">volumes</span>:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus-errors.yml:/etc/prometheus/prometheus-errors.yml:ro
+      - prometheus-data:/prometheus
+    <span class="k">depends_on</span>: [api]
+
+<span class="k">volumes</span>:
+  <span class="k">prometheus-data</span>:</pre>
+        </figure>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Строка</th><th>Смысл</th></tr></thead>
+            <tbody>
+              <tr><td><code>build: .</code></td><td>Образ приложения собирается из <code>Dockerfile</code> в этой папке</td></tr>
+              <tr><td><code>127.0.0.1:8020:8000</code></td><td>Порт 8000 контейнера доступен на компьютере как <code>localhost:8020</code>. Prometheus этот порт не использует: он обращается к <code>api:8000</code> внутри сети</td></tr>
+              <tr><td><code>prom/prometheus:v3.5.0</code></td><td>Официальный образ с зафиксированной версией. Тег <code>latest</code> не используется, чтобы результат не менялся с выходом новых версий</td></tr>
+              <tr><td><code>--config.file=…${PROM_CONFIG:-prometheus.yml}</code></td><td>Файл конфигурации; переменная <code>PROM_CONFIG</code> подставляет файл опыта из главы 2.4, по умолчанию — рабочий</td></tr>
+              <tr><td><code>--storage.tsdb.path=/prometheus</code></td><td>Каталог TSDB внутри контейнера. Флаг <code>command</code> заменяет все аргументы образа по умолчанию, поэтому путь указан явно</td></tr>
+              <tr><td><code>--web.enable-lifecycle</code></td><td>Разрешает <code>POST /-/reload</code> — перечитать конфигурацию без перезапуска</td></tr>
+              <tr><td><code>./prometheus.yml:…:ro</code></td><td>Файл с компьютера виден в контейнере, только для чтения. Правка файла на компьютере + reload меняют конфигурацию</td></tr>
+              <tr><td><code>prometheus-data:/prometheus</code></td><td>Именованный том: данные переживают пересоздание контейнера и удаляются только <code>docker compose down -v</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s4"><span class="sec">§4</span>Запуск</h2>
+        <p>Команды выполняются в папке <code>prometheus-start</code>. Переключатель системы вверху страницы показывает команды для вашей ОС; в macOS и Linux они совпадают.</p>
+        <ol class="steps">
+          <li><b>Собрать образ и запустить оба сервиса.</b> Первый запуск скачивает образы Python и Prometheus, это занимает от одной до нескольких минут.
+            <figure class="code code--out"><figcaption><span>Терминал</span><span>папка prometheus-start</span></figcaption><pre>docker compose up -d --build</pre></figure></li>
+          <li><b>Проверить, что контейнеры работают.</b>
+            <figure class="code code--out"><figcaption><span>docker compose ps</span><span>вывод на стенде, колонки сокращены</span></figcaption><pre>NAME                            IMAGE                    STATUS             PORTS
+prometheus-start-api-1          prometheus-start-api     Up 17 seconds      127.0.0.1:8020-&gt;8000/tcp
+prometheus-start-prometheus-1   prom/prometheus:v3.5.0   Up About an hour   127.0.0.1:9092-&gt;9090/tcp</pre></figure></li>
+          <li><b>Отправить запросы к приложению</b>, чтобы у счётчика появились ряды.
+            <div data-os="mac linux"><figure class="code code--out"><figcaption><span>macOS, Linux</span><span>bash, zsh</span></figcaption><pre>for i in $(seq 1 20); do curl -s -o /dev/null http://localhost:8020/items/$i; done
+curl -s -o /dev/null http://localhost:8020/items/500</pre></figure></div>
+            <div data-os="win"><figure class="code code--out"><figcaption><span>Windows</span><span>PowerShell</span></figcaption><pre>1..20 | ForEach-Object { Invoke-WebRequest -UseBasicParsing "http://localhost:8020/items/$_" | Out-Null }
+curl.exe -s -o NUL http://localhost:8020/items/500</pre></figure></div></li>
+          <li><b>Посмотреть ответ /metrics.</b> В Windows вместо <code>curl</code> пишут <code>curl.exe</code>: в PowerShell слово <code>curl</code> — псевдоним другой команды.
+            <figure class="code code--out"><figcaption><span>curl http://localhost:8020/metrics</span><span>после 20 запросов и одного 404</span></figcaption><pre># HELP http_requests_total Total HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{method="GET",status="200"} 20.0
+http_requests_total{method="GET",status="404"} 1.0</pre></figure></li>
+          <li><b>Открыть Prometheus</b>: <code>http://localhost:9092</code>, меню <b>Status → Target health</b>.</li>
+        </ol>
+        <div class="margin-note">
+          <b>На полях: название пункта меню</b>
+          <p>В Prometheus 2.x страница называлась <b>Status → Targets</b>. В интерфейсе Prometheus 3 она переименована в <b>Status → Target health</b>; адрес страницы прежний — <code>/targets</code>. Во многих инструкциях в интернете встречается старое название.</p>
+        </div>
+
+        <h2 id="s5"><span class="sec">§5</span>Status → Target health</h2>
+        <figure class="shot"><img src="shots/targets-up.png" alt="Status → Target health: scrape pool api, 1/1 up, http://api:8000/metrics, instance=api:8000, job=api, 4.335s ago, 4ms, UP" loading="lazy"><figcaption>Target стенда в состоянии UP · Prometheus 3.5.0</figcaption></figure>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Элемент страницы</th><th>Значение на снимке</th><th>Что означает</th></tr></thead>
+            <tbody>
+              <tr><td>Заголовок блока</td><td><code>api</code></td><td>Scrape pool — имя задания <code>job_name</code></td></tr>
+              <tr><td>Счётчик справа</td><td><code>1 / 1 up</code></td><td>Сколько target задания доступны из скольких</td></tr>
+              <tr><td>Endpoint</td><td><code>http://api:8000/metrics</code></td><td>Полный URL, собранный из служебных меток (глава 2.2, §2). Ссылка ведёт на этот адрес, но из браузера на компьютере имя <code>api</code> не откроется: оно существует только в сети Compose</td></tr>
+              <tr><td>Labels</td><td><code>instance="api:8000"</code>, <code>job="api"</code></td><td>Метки target, которые получит каждый ряд. Стрелка раскрывает служебные метки</td></tr>
+              <tr><td>Last scrape</td><td><code>4.335s ago</code>, <code>4ms</code></td><td>Сколько прошло с начала последнего scrape и сколько он длился — то же, что <code>scrape_duration_seconds</code></td></tr>
+              <tr><td>State</td><td><code class="up">UP</code></td><td>Последний scrape успешен, <code>up = 1</code>. При ошибке — <code class="down">DOWN</code> и красный блок с текстом ошибки</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Сразу после запуска состояние может быть <code>UNKNOWN</code>: target уже в списке, но его первый scrape ещё не наступил. Из-за смещения внутри интервала (глава 2.4, §3) ожидание бывает почти 15 секунд.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Первые запросы</h2>
+        <p>Вкладка <b>Query</b> принимает выражение PromQL. Для этой главы достаточно самого простого выражения — имени метрики: оно выбирает все ряды с этим именем. Вкладка <b>Table</b> показывает последнее значение каждого ряда, <b>Graph</b> — историю.</p>
+        <figure class="shot"><img src="shots/query-up.png" alt="Query: выражение up, один ряд up{instance=api:8000, job=api} со значением 1" loading="lazy"><figcaption>Запрос <code>up</code>: один target, значение 1</figcaption></figure>
+        <figure class="shot"><img src="shots/query-requests.png" alt="Query: выражение http_requests_total, три ряда со значениями 125, 3 и 1" loading="lazy"><figcaption>Запрос <code>http_requests_total</code>: к меткам приложения добавлены instance и job</figcaption></figure>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Выражение</th><th>Что показывает</th></tr></thead>
+            <tbody>
+              <tr><td><code>up</code></td><td>Доступность всех target: 1 или 0</td></tr>
+              <tr><td><code>http_requests_total</code></td><td>Все ряды счётчика запросов</td></tr>
+              <tr><td><code>http_requests_total{status="404"}</code></td><td>Только ряды с меткой <code>status="404"</code>: фигурные скобки отбирают ряды по меткам</td></tr>
+              <tr><td><code>scrape_duration_seconds</code></td><td>Сколько длился последний scrape каждого target</td></tr>
+              <tr><td><code>up[2m]</code></td><td>Все отсчёты <code>up</code> за 2 минуты с отметками времени (только во вкладке Table)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Значения в таблице меняются только после очередного scrape. Если отправить 10 запросов и сразу нажать Execute, число может не измениться: новые значения появятся не позже чем через 15 секунд.</p>
+
+        <h2 id="s7"><span class="sec">§7</span>Остановка приложения</h2>
+        <p>Опыт повторяет главу 2.4, §8 на своём компьютере.</p>
+        <ol class="steps">
+          <li>Остановить приложение: <code>docker compose stop api</code>.</li>
+          <li>Через 15–30 секунд обновить Target health: состояние <code class="down">DOWN</code>, под target — текст ошибки. Текст зависит от окружения: на стенде в Docker Desktop это был <code>EOF</code>, затем <code>context deadline exceeded</code>.</li>
+          <li>В Query выполнить <code>up</code> — значение 0; <code>http_requests_total</code> — пустой результат.</li>
+          <li>Запустить приложение: <code>docker compose start api</code>. Через интервал — <code>UP</code>. <code>http_requests_total</code> остаётся пустым до первого запроса к приложению: счётчик нового процесса начинается с нуля.</li>
+          <li>Во вкладке Graph выражение <code>up</code> за 5 минут: провал до 0 на время остановки.</li>
+        </ol>
+
+        <h2 id="s8"><span class="sec">§8</span>Если target не UP</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Что видно</th><th>Причина</th><th>Что сделать</th></tr></thead>
+            <tbody>
+              <tr><td>Страница <code>localhost:9092</code> не открывается</td><td>Контейнер Prometheus не запущен или завершился</td><td><code>docker compose ps</code>; <code>docker compose logs prometheus</code> — ошибка в конфигурации видна в конце журнала</td></tr>
+              <tr><td>Target <code>UNKNOWN</code></td><td>Первый scrape ещё не прошёл</td><td>Подождать до 15 секунд</td></tr>
+              <tr><td><code>connection refused</code> для <code>localhost:…</code></td><td>В <code>targets</code> записан localhost, а Prometheus в контейнере</td><td>Записать <code>api:8000</code> (глава 2.2, §4)</td></tr>
+              <tr><td><code>404 Not Found</code></td><td>Неверный путь</td><td>Проверить <code>metrics_path</code> и путь в <code>app.py</code></td></tr>
+              <tr><td><code>unsupported Content-Type</code></td><td>Обработчик <code>/metrics</code> не задаёт <code>media_type</code></td><td>Вернуть <code>media_type=CONTENT_TYPE_LATEST</code></td></tr>
+              <tr><td><code>UP</code>, но запрос <code>http_requests_total</code> пустой</td><td>К приложению ещё не было запросов, или прошло меньше интервала</td><td>Отправить запросы (§4, шаг 3), подождать 15 с</td></tr>
+              <tr><td>Порт 8020 или 9092 занят</td><td>Другая программа на компьютере</td><td>Изменить левое число в <code>ports</code> в <code>compose.yaml</code>, например <code>127.0.0.1:8021:8000</code>; правый порт не трогать</td></tr>
+              <tr><td>Изменения в <code>prometheus.yml</code> не видны</td><td>Конфигурация читается при запуске</td><td><code>curl -X POST http://localhost:9092/-/reload</code> или <code>docker compose restart prometheus</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Перед перезагрузкой полезно проверить файл программой <code>promtool</code>, которая входит в образ Prometheus:</p>
+        <figure class="code code--out">
+          <figcaption><span>Проверка конфигурации</span><span>вывод на стенде</span></figcaption>
+<pre>$ docker compose exec prometheus promtool check config /etc/prometheus/prometheus.yml
+Checking /etc/prometheus/prometheus.yml
+ SUCCESS: /etc/prometheus/prometheus.yml is valid prometheus config file syntax</pre>
+        </figure>
+
+        <h2 id="s9"><span class="sec">§9</span>Вариант без Docker</h2>
+        <p>Если Docker недоступен, приложение и Prometheus запускаются как обычные программы. Вариант проверен на стенде в macOS с архивом <code>prometheus-3.5.0.darwin-arm64</code>: target <code>localhost:8020</code> получил состояние <code>up</code>.</p>
+        <ol class="steps">
+          <li>Скачать архив Prometheus 3.5.0 для своей системы со страницы <a href="https://prometheus.io/download/" target="_blank" rel="noopener">prometheus.io/download</a> и распаковать. В архиве — программы <code>prometheus</code> и <code>promtool</code>.</li>
+          <li>В папке стенда создать окружение Python и установить зависимости: <code>python -m venv .venv</code>, затем <code>.venv/bin/pip install -r requirements.txt</code> (в Windows — <code>.venv\Scripts\pip</code>).</li>
+          <li>Запустить приложение: <code>.venv/bin/uvicorn app:app --port 8020</code>.</li>
+          <li>Во втором терминале запустить Prometheus с конфигурацией из стенда: <code>./prometheus --config.file=prometheus-local.yml</code>. Интерфейс откроется на <code>http://localhost:9090</code>, данные — в папке <code>data</code> рядом.</li>
+        </ol>
+        <p>В <code>prometheus-local.yml</code> target — <code>localhost:8020</code>: оба процесса работают на одном компьютере и видят один <code>localhost</code>.</p>
+
+        <h2 id="s10"><span class="sec">§10</span>Задания и проверка</h2>
+        <div class="checklist">
+          <p class="checklist__head">Готово, если</p>
+          <div class="checklist__item"><span><b>Target</b>На Status → Target health задание <code>api</code>: <code>1 / 1 up</code>, состояние <code>UP</code>.</span></div>
+          <div class="checklist__item"><span><b>Запрос up</b>Возвращает один ряд со значением 1 и метками <code>instance="api:8000"</code>, <code>job="api"</code>.</span></div>
+          <div class="checklist__item"><span><b>Запрос счётчика</b><code>http_requests_total</code> возвращает не меньше двух рядов, значения совпадают с <code>/metrics</code>.</span></div>
+          <div class="checklist__item"><span><b>Отказ</b>После остановки приложения <code>up</code> = 0 и состояние <code>DOWN</code>; после запуска — снова <code>UP</code>.</span></div>
+        </div>
+        <p>Задания для самостоятельной работы. Каждое меняет один параметр; результат проверяется в интерфейсе Prometheus.</p>
+        <ol class="steps">
+          <li><b>Интервал.</b> Установите в <code>prometheus.yml</code> <code>scrape_interval: 5s</code>, перезагрузите конфигурацию и выполните <code>up[1m]</code>. Сколько отсчётов стало за минуту и какой <code>scrape_timeout</code> показывает Status → Configuration?</li>
+          <li><b>Метка target.</b> Добавьте target метку <code>env: dev</code> (глава 2.2, §5). На каких рядах она появилась?</li>
+          <li><b>Ошибка пути.</b> Добавьте в задание <code>metrics_path: /stats</code>. Запишите текст ошибки и найдите, что изменилось в ответе <code>/metrics</code> приложения через минуту.</li>
+          <li><b>Вторая метрика.</b> Добавьте в <code>app.py</code> gauge <code>items_in_progress</code>, который увеличивается в начале обработки <code>/items/{id}</code> и уменьшается в конце. Пересоберите образ (<code>docker compose up -d --build</code>) и найдите метрику в Query.</li>
+        </ol>
+        <div class="cheat">
+          <div><b>Запуск и остановка</b><code>docker compose up -d --build
+docker compose ps
+docker compose stop api
+docker compose start api
+docker compose down</code><p><code>down -v</code> удаляет и данные Prometheus.</p></div>
+          <div><b>Конфигурация</b><code>promtool check config prometheus.yml
+curl -X POST localhost:9092/-/reload</code><p>Reload работает благодаря <code>--web.enable-lifecycle</code>.</p></div>
+          <div><b>Адреса стенда</b><code>localhost:8020/metrics
+localhost:9092/targets
+localhost:9092/query</code><p>Внутри сети Compose приложение — <code>api:8000</code>.</p></div>
+          <div><b>Первые запросы</b><code>up
+http_requests_total
+http_requests_total{status="404"}
+scrape_duration_seconds</code><p>Значения обновляются раз в <code>scrape_interval</code>.</p></div>
+        </div>
+
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>Ссылка <code>http://api:8000/metrics</code> в колонке Endpoint не открывается в браузере. Что это значит?</p>
+          <ul class="quiz__opts">
+            <li><button>Target недоступен, хотя показан UP</button><p class="quiz__why">UP означает, что Prometheus успешно собрал метрики. Он делает это изнутри сети Compose.</p></li>
+            <li data-ok><button>Имя <code>api</code> существует только в сети Compose; с компьютера приложение доступно как <code>localhost:8020</code></button><p class="quiz__why">Верно. Адрес target записан так, как его видит Prometheus, а браузер работает на компьютере.</p></li>
+            <li><button>Нужно включить <code>--web.enable-lifecycle</code></button><p class="quiz__why">Этот флаг разрешает перезагрузку конфигурации и к адресам target отношения не имеет.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>Отправили 10 запросов и сразу выполнили <code>http_requests_total</code>. Значение не изменилось. Почему?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button>Prometheus ещё не выполнил следующий scrape</button><p class="quiz__why">Верно. Prometheus видит значения на момент последнего scrape; новое появится не позже чем через <code>scrape_interval</code>.</p></li>
+            <li><button>Middleware считает запросы с задержкой</button><p class="quiz__why">Счётчик увеличивается сразу после ответа; <code>/metrics</code> покажет новое значение немедленно.</p></li>
+            <li><button>Запросы к <code>/items</code> исключены из счётчика</button><p class="quiz__why">Исключены только служебные пути <code>/metrics…</code>.</p></li>
+          </ul>
+        </div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Prometheus. Getting started — <a href="https://prometheus.io/docs/prometheus/latest/getting_started/" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/getting_started</a></li>
+            <li>Prometheus. Installation: using Docker — <a href="https://prometheus.io/docs/prometheus/latest/installation/" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/installation</a></li>
+            <li>prometheus-client для Python: FastAPI и ASGI — <a href="https://prometheus.github.io/client_python/exporting/http/fastapi-gunicorn/" target="_blank" rel="noopener">prometheus.github.io/client_python</a></li>
+            <li>FastAPI. Middleware — <a href="https://fastapi.tiangolo.com/tutorial/middleware/" target="_blank" rel="noopener">fastapi.tiangolo.com/tutorial/middleware</a></li>
+            <li>Стенд модуля: Docker Desktop, Prometheus 3.5.0, образ python:3.12-slim; все выводы получены 29.09.2026</li>
+          </ol>
+        </div>

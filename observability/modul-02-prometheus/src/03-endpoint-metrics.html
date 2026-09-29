@@ -1,0 +1,302 @@
+        <header class="chapter-head">
+          <span class="chapter-num">2.3</span>
+          <h1>Endpoint /metrics<br>и текстовый формат</h1>
+          <p class="lead">Target указывает, куда обратиться. В этой главе разобрано, что Prometheus получает по этому адресу: настоящий ответ приложения стенда, каждая часть строки с метрикой, правила текстового формата и то, как их применяет библиотека <code>prometheus-client</code>. В конце — заголовок <code>Content-Type</code>, форматы, между которыми выбирает Prometheus 3, и проверка собственных строк по правилам формата.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Формат данных</dd></div>
+          <div><dt>Уровень</dt><dd>Средний, с подробностями спецификации</dd></div>
+          <div><dt>Опирается на</dt><dd>Глава 2.1: временной ряд; глава 2.2: target</dd></div>
+          <div><dt>Результат</dt><dd>Чтение и проверка любого ответа /metrics</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Ответ приложения стенда</a></li>
+            <li><a href="#s2">Строка по частям</a></li>
+            <li><a href="#s3">Правила текстового формата</a></li>
+            <li><a href="#s4">Типы метрик в тексте</a></li>
+            <li><a href="#s5">Как ответ готовит prometheus-client</a></li>
+            <li><a href="#s6">Content-Type и выбор формата</a></li>
+            <li><a href="#s7">Проверка своих строк</a></li>
+            <li><a href="#s8">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Ответ приложения стенда</h2>
+        <p><code>/metrics</code> — обычный HTTP-путь приложения. На запрос <code>GET</code> он возвращает текст с текущими значениями всех метрик процесса. Имя пути — соглашение: Prometheus обращается к <code>/metrics</code>, если в задании не указан другой <code>metrics_path</code>. Ответ можно получить командой <code>curl</code>, браузером или самим Prometheus — это один и тот же запрос.</p>
+        <p>Перед запросом на стенд отправлено 125 запросов <code>GET /items/…</code>, три запроса к несуществующим товарам и один <code>POST</code>. Ключ <code>-i</code> показывает заголовки ответа.</p>
+        <figure class="code code--out">
+          <figcaption><span>curl -i http://localhost:8020/metrics</span><span>стенд модуля</span></figcaption>
+<pre>HTTP/1.1 200 OK
+server: uvicorn
+content-length: 236
+content-type: text/plain; version=1.0.0; charset=utf-8
+
+# HELP http_requests_total Total HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{method="GET",status="200"} 125.0
+http_requests_total{method="GET",status="404"} 3.0
+http_requests_total{method="POST",status="405"} 1.0</pre>
+        </figure>
+        <p>Ответ состоит из двух строк описания и трёх строк со значениями. Каждая строка со значением — один временной ряд из главы 2.1. Меток <code>job</code> и <code>instance</code> в ответе нет: их Prometheus добавляет при сборе. Отметок времени тоже нет: время ставит Prometheus.</p>
+        <figure class="shot"><img src="shots/metrics-browser.png" alt="Страница http://localhost:8020/metrics в браузере: строки HELP, TYPE и три строки http_requests_total" loading="lazy"><figcaption>Тот же ответ в браузере: страница — обычный текст</figcaption></figure>
+
+        <h2 id="s2"><span class="sec">§2</span>Строка по частям</h2>
+        <p>Ниже три строки ответа, относящиеся к ряду <code>GET 200</code>. Нажмите на любую часть, чтобы увидеть её роль и правила записи.</p>
+        <div class="widget anat">
+          <div class="widget__head"><b>http_requests_total{method="GET",status="200"} 125</b><span>разбор строки</span></div>
+          <div class="widget__body">
+            <p class="anat__hint">Части строки выделены цветом: имя — оранжевым, метки — голубым, значение — зелёным.</p>
+<div class="anat__line"><span class="p-meta" data-part="help"># HELP http_requests_total Total HTTP requests</span>
+<span class="p-meta" data-part="type"># TYPE http_requests_total counter</span>
+<span class="p-name" data-part="name">http_requests_total</span>{<span class="p-label" data-part="lname">method</span>=<span class="p-label" data-part="lvalue">"GET"</span>,<span class="p-label" data-part="labels">status="200"</span>} <span class="p-value" data-part="value">125</span></div>
+            <div class="anat__notes">
+              <div class="anat__note" data-note="help"><b>Строка HELP · описание</b><p>Комментарий со словом <code>HELP</code>, затем имя метрики, затем произвольный текст описания. Prometheus сохраняет его как метаданные и показывает в подсказках интерфейса. Строка необязательна; для одного имени допускается одна. Обратная косая черта и перевод строки внутри описания записываются как <code>\\</code> и <code>\n</code>.</p></div>
+              <div class="anat__note" data-note="type"><b>Строка TYPE · тип</b><p>Комментарий со словом <code>TYPE</code>, именем и одним из типов: <code>counter</code>, <code>gauge</code>, <code>histogram</code>, <code>summary</code>, <code>untyped</code>. Должна стоять до первой строки со значением этой метрики. Если её нет, тип — <code>untyped</code>.</p><p>Тип не меняет того, как хранится отсчёт: в TSDB это то же число. Тип нужен людям и функциям запросов, чтобы понимать, можно ли считать скорость роста.</p></div>
+              <div class="anat__note" data-note="name"><b>Имя метрики</b><p>Начинается с буквы, <code>_</code> или <code>:</code>, дальше — буквы, цифры, <code>_</code>, <code>:</code>. Двоеточие по соглашению оставлено для правил записи (recording rules), в коде приложения его не используют.</p><p>Соглашения об именах: единица измерения в конце (<code>_seconds</code>, <code>_bytes</code>), у счётчика — суффикс <code>_total</code>, единицы базовые: секунды, байты, метры. Префикс обычно называет подсистему: <code>http_</code>, <code>process_</code>.</p></div>
+              <div class="anat__note" data-note="lname"><b>Имя метки</b><p>Буквы, цифры и <code>_</code>, первая — не цифра. Имена, начинающиеся с <code>__</code>, зарезервированы для внутренних меток Prometheus, как <code>__address__</code> из главы 2.2.</p><p>Внутри фигурных скобок метки разделяются запятыми; запятая после последней метки допустима. Порядок меток значения не имеет: <code>{status="200",method="GET"}</code> — тот же ряд.</p></div>
+              <div class="anat__note" data-note="lvalue"><b>Значение метки</b><p>Всегда строка в двойных кавычках, даже если выглядит как число: <code>status="200"</code>. Внутри допустим любой текст UTF-8; обратная косая черта, кавычка и перевод строки экранируются как <code>\\</code>, <code>\"</code>, <code>\n</code>.</p><p>Метка с пустым значением <code>method=""</code> для Prometheus равна отсутствию метки.</p></div>
+              <div class="anat__note" data-note="labels"><b>Набор меток и идентичность ряда</b><p>Имя вместе со всем набором меток определяет ряд. <code>{method="GET",status="200"}</code> и <code>{method="GET",status="404"}</code> — два ряда одной метрики. В одном ответе каждое сочетание имени и меток должно встречаться один раз.</p></div>
+              <div class="anat__note" data-note="value"><b>Значение</b><p>Число с плавающей точкой в записи, которую понимает функция <code>ParseFloat</code> языка Go: <code>125</code>, <code>125.0</code>, <code>1.25e2</code>. Допустимы <code>NaN</code>, <code>+Inf</code>, <code>-Inf</code>. Библиотека Python пишет <code>125.0</code>; для Prometheus это то же значение 125.</p><p>После значения через пробел может стоять отметка времени — целое число миллисекунд с 1970 года. Библиотеки её не ставят, и Prometheus записывает время начала сбора.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <h2 id="s3"><span class="sec">§3</span>Правила текстового формата</h2>
+        <p>Формат описан в документации Prometheus в разделе Exposition formats. Он появился в апреле 2014 года и с тех пор меняется только расширениями. Ниже — правила спецификации. Как их применяет сам Prometheus, показано после списка.</p>
+        <div class="checklist">
+          <p class="checklist__head">Текстовый формат Prometheus</p>
+          <div class="checklist__item"><span><b>Строки</b>Кодировка UTF-8, строки разделены символом <code>\n</code>. Последняя строка тоже заканчивается <code>\n</code>. Пустые строки пропускаются. Пробелы и табуляции между частями допустимы в любом количестве.</span></div>
+          <div class="checklist__item"><span><b>Комментарии</b>Строка, начинающаяся с <code>#</code>, — комментарий. Разбирается, только если следующее слово <code>HELP</code> или <code>TYPE</code>; остальные комментарии пропускаются.</span></div>
+          <div class="checklist__item"><span><b>HELP</b>Не больше одной строки на имя. В тексте экранируются <code>\\</code> и <code>\n</code>.</span></div>
+          <div class="checklist__item"><span><b>TYPE</b>Ровно два слова после <code>TYPE</code>: имя и тип. Не больше одной строки на имя, до первого значения. Без неё тип <code>untyped</code>.</span></div>
+          <div class="checklist__item"><span><b>Строка значения</b><code>имя{метки} значение [отметка_времени]</code>. Метки необязательны; фигурные скобки без меток допустимы.</span></div>
+          <div class="checklist__item"><span><b>Группировка</b>Все строки одной метрики идут одной группой, HELP и TYPE — в её начале. Нельзя вывести часть рядов, затем другую метрику, затем остальные ряды первой.</span></div>
+          <div class="checklist__item"><span><b>Уникальность</b>Каждое сочетание имени и меток встречается один раз. При повторе поведение по спецификации не определено. Имя метки внутри одной строки не повторяется.</span></div>
+          <div class="checklist__item"><span><b>Имена UTF-8</b>Имена вне обычного набора символов (например, с точками) записываются в кавычках внутри скобок: <code>{"my.dotted.metric", "error.message"="Not Found"}</code>. Prometheus 3 такие имена принимает.</span></div>
+        </div>
+        <p>Разборщик Prometheus проверяет правила не одинаково строго. Чтобы это выяснить, на стенде был запущен сервер, отдающий по разным путям ответы с одним нарушением каждый, и Prometheus 3.5.0 собирал их все.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Нарушение в ответе</th><th>Результат сбора</th><th>Что сохранено</th></tr></thead>
+            <tbody>
+              <tr><td>Значение метки без кавычек: <code>{method=GET}</code></td><td><code class="down">DOWN</code> <code>expected label value, got "G" ("INVALID")</code></td><td>Ничего</td></tr>
+              <tr><td>Запятая в числе: <code>c 61,5</code></td><td><code class="down">DOWN</code> <code>strconv.ParseFloat: parsing "61,5": invalid syntax</code></td><td>Ничего</td></tr>
+              <tr><td>Неизвестный тип: <code># TYPE h countr</code></td><td><code class="down">DOWN</code> <code>invalid metric type "countr"</code></td><td>Ничего</td></tr>
+              <tr><td>Метка дважды: <code>g{a="1",a="2"}</code></td><td><code class="down">DOWN</code> <code>label name "a" is not unique: invalid sample</code></td><td>Ничего</td></tr>
+              <tr><td>Один ряд дважды с разными значениями</td><td><code class="up">UP</code>, в журнале <code>Error on ingesting samples with different value but same timestamp</code></td><td>Первое значение, второе отброшено</td></tr>
+              <tr><td>TYPE после значений; разорванная группа; два TYPE; два HELP</td><td><code class="up">UP</code></td><td>Все значения; из двух HELP — последний</td></tr>
+              <tr><td>Нет перевода строки в конце ответа</td><td><code class="up">UP</code></td><td>Все значения</td></tr>
+              <tr><td>Последовательность <code>\D</code> в значении метки</td><td><code class="up">UP</code></td><td>Значение <code>C:\DIR</code> как есть</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Итог опыта: синтаксическая ошибка в любой строке прерывает разбор, и Prometheus отклоняет ответ целиком — ни одно значение не сохраняется, сбор считается неуспешным. Нарушения порядка и уникальности Prometheus 3.5 пропускает. На них нельзя полагаться: разборщик OpenMetrics и другие программы, читающие <code>/metrics</code>, проверяют эти правила строго, а при повторе ряда часть данных теряется без ошибки в интерфейсе.</p>
+        <h2 id="s4"><span class="sec">§4</span>Типы метрик в тексте</h2>
+        <p>Четыре типа по-разному выглядят в ответе. Counter и gauge — одна строка на ряд. Histogram и summary описывают распределение и занимают несколько строк с суффиксами. Пример из документации Prometheus:</p>
+        <figure class="code">
+          <figcaption><span>Histogram в текстовом формате</span><span>пример из документации</span></figcaption>
+<pre><span class="c"># HELP http_request_duration_seconds A histogram of the request duration.</span>
+<span class="c"># TYPE http_request_duration_seconds histogram</span>
+http_request_duration_seconds_bucket{le="0.05"} 24054
+http_request_duration_seconds_bucket{le="0.1"} 33444
+http_request_duration_seconds_bucket{le="0.2"} 100392
+http_request_duration_seconds_bucket{le="0.5"} 129389
+http_request_duration_seconds_bucket{le="1"} 133988
+http_request_duration_seconds_bucket{le="+Inf"} 144320
+http_request_duration_seconds_sum 53423
+http_request_duration_seconds_count 144320</pre>
+        </figure>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Тип</th><th>Что означает значение</th><th>Строки в ответе</th></tr></thead>
+            <tbody>
+              <tr><td><code>counter</code></td><td>Сколько событий произошло с запуска процесса; только растёт, при перезапуске — с нуля</td><td>Одна на ряд, имя с <code>_total</code></td></tr>
+              <tr><td><code>gauge</code></td><td>Текущая величина: очередь, память, температура</td><td>Одна на ряд</td></tr>
+              <tr><td><code>histogram</code></td><td>Сколько наблюдений попало в корзины «не больше <code>le</code>», их сумма и число</td><td><code>_bucket</code> на каждую корзину, <code>_sum</code>, <code>_count</code>; корзина <code>+Inf</code> обязательна и равна <code>_count</code></td></tr>
+              <tr><td><code>summary</code></td><td>Квантили, посчитанные в самом приложении, сумма и число</td><td>Строки с меткой <code>quantile</code>, <code>_sum</code>, <code>_count</code></td></tr>
+              <tr><td><code>untyped</code></td><td>Тип неизвестен</td><td>Одна на ряд</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Корзины гистограммы накопительные: в корзину <code>le="0.1"</code> входят и наблюдения из <code>le="0.05"</code>. Поэтому значения корзин не убывают сверху вниз. Как из корзин получают перцентили, разбирается вместе с запросами PromQL.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Как ответ готовит prometheus-client</h2>
+        <p>Текст можно собрать и вручную, но обычно его готовит клиентская библиотека. В приложении стенда метрика объявлена так:</p>
+        <figure class="code">
+          <figcaption><span>stand/app.py</span><span>объявление метрики и /metrics</span></figcaption>
+<pre>registry = CollectorRegistry()
+
+HTTP_REQUESTS = Counter(
+    <span class="s">"http_requests_total"</span>,
+    <span class="s">"Total HTTP requests"</span>,
+    [<span class="s">"method"</span>, <span class="s">"status"</span>],
+    registry=registry,
+)
+
+<span class="k">@app.get</span>(<span class="s">"/metrics"</span>)
+<span class="k">async def</span> <span class="f">metrics</span>():
+    <span class="k">return</span> Response(generate_latest(registry), media_type=CONTENT_TYPE_LATEST)</pre>
+        </figure>
+        <p>Первый аргумент <code>Counter</code> — имя, второй — текст строки HELP, третий — имена меток. <code>generate_latest</code> превращает все метрики реестра в текст, <code>CONTENT_TYPE_LATEST</code> — заголовок <code>Content-Type</code>. Счётчик увеличивается в middleware — функции, через которую проходит каждый запрос к приложению (полный код — в главе 2.6).</p>
+        <p>У библиотеки есть поведение, которое заметно только в ответе. Все примеры ниже получены запуском prometheus-client 0.26.0.</p>
+        <div class="myths">
+          <div class="myth">
+            <p class="myth__no"><b>Ряд появляется после первого события</b>Счётчик с метками не знает заранее, какие сочетания меток будут. Пока не было ни одного <code>.inc()</code>, в ответе только HELP и TYPE.</p>
+            <p class="myth__yes"><b>Что видно в Prometheus</b>После перезапуска приложения на стенде <code>up</code> был равен 1, а запрос <code>http_requests_total</code> возвращал пустой результат, пока не пришёл первый запрос. Отсутствие ряда и значение 0 — разные состояния. Если нулевые ряды нужны сразу, их создают вызовом <code>HTTP_REQUESTS.labels("GET", "500")</code> без <code>.inc()</code>. Gauge без меток появляется сразу со значением <code>0.0</code>.</p>
+          </div>
+          <div class="myth">
+            <p class="myth__no"><b>Ряд _created</b>Без настройки у каждого ряда счётчика появляется второй ряд — время его создания:</p>
+            <p class="myth__yes"><b>Вывод библиотеки</b><code>http_requests_created{method="GET",status="200"} 1.790686414305862e+09</code><br>В тексте Prometheus это отдельный gauge, и он удваивает число рядов счётчиков. В стенде ряд отключён вызовом <code>disable_created_metrics()</code>; то же делает переменная окружения <code>PROMETHEUS_DISABLE_CREATED_SERIES=True</code>.</p>
+          </div>
+          <div class="myth">
+            <p class="myth__no"><b>Стандартные сборщики</b>Если не создавать свой <code>CollectorRegistry</code>, метрики попадают в глобальный реестр вместе с метриками самого Python.</p>
+            <p class="myth__yes"><b>Что добавляется</b><code>python_gc_objects_collected_total</code>, <code>python_gc_collections_total</code>, <code>python_info</code>; в Linux ещё <code>process_cpu_seconds_total</code>, <code>process_resident_memory_bytes</code> и другие <code>process_*</code>. В macOS группы <code>process_*</code> нет: сборщик читает файлы <code>/proc</code>, которые есть только в Linux. В рабочем сервисе эти метрики полезны; в стенде свой реестр оставляет в ответе одну метрику.</p>
+          </div>
+        </div>
+        <div class="margin-note">
+          <b>На полях: имя с _total и без</b>
+          <p>В prometheus-client имя счётчика можно передать с суффиксом <code>_total</code> или без него — в тексте Prometheus строка значения всё равно получит <code>_total</code>. Разница видна в формате OpenMetrics (§6): там имя семейства в HELP и TYPE пишется без суффикса.</p>
+        </div>
+
+        <h2 id="s6"><span class="sec">§6</span>Content-Type и выбор формата</h2>
+        <p>Текстовый формат Prometheus — один из нескольких. Какой формат нужен, Prometheus сообщает в заголовке <code>Accept</code> каждого запроса, а приложение отвечает заголовком <code>Content-Type</code>. Запрос Prometheus 3.5.0 был записан на стенде отдельным сервером, который печатает входящие заголовки:</p>
+        <figure class="code code--out">
+          <figcaption><span>Запрос Prometheus к target</span><span>записан на стенде</span></figcaption>
+<pre>GET /metrics HTTP/1.1
+Host: echo:8000
+User-Agent: Prometheus/3.5.0
+Accept: application/openmetrics-text;version=1.0.0;escaping=allow-utf-8;q=0.6,
+        application/openmetrics-text;version=0.0.1;q=0.5,
+        text/plain;version=1.0.0;escaping=allow-utf-8;q=0.4,
+        text/plain;version=0.0.4;q=0.3,*/*;q=0.2
+Accept-Encoding: gzip
+X-Prometheus-Scrape-Timeout-Seconds: 10</pre>
+        </figure>
+        <p>Строка Accept на стенде одна; здесь она перенесена для чтения. Числа <code>q</code> — предпочтения: OpenMetrics 1.0 (0,6) выше, чем текст Prometheus (0,4 и 0,3). Порядок задаёт параметр <code>scrape_protocols</code>; по умолчанию в нём четыре текстовых формата. Двоичный формат protobuf добавляется в список, когда включены нативные гистограммы. <code>Accept-Encoding: gzip</code> разрешает сжатый ответ, а <code>X-Prometheus-Scrape-Timeout-Seconds</code> сообщает приложению, сколько Prometheus будет ждать.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Формат</th><th>Content-Type</th><th>Отличия</th></tr></thead>
+            <tbody>
+              <tr><td>Текст Prometheus 0.0.4</td><td><code>text/plain; version=0.0.4</code></td><td>Формат из §3</td></tr>
+              <tr><td>Текст Prometheus 1.0.0</td><td><code>text/plain; version=1.0.0</code></td><td>Тот же текст с поддержкой имён UTF-8 в кавычках; его отдаёт стенд</td></tr>
+              <tr><td>OpenMetrics 1.0</td><td><code>application/openmetrics-text; version=1.0.0</code></td><td>Стандарт на основе текста Prometheus: обязательная строка <code># EOF</code> в конце, имя семейства счётчика без <code>_total</code>, ряды <code>_created</code>, единицы и exemplars</td></tr>
+              <tr><td>Protobuf</td><td><code>application/vnd.google.protobuf; …</code></td><td>Двоичный; нужен для нативных гистограмм</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Та же метрика в OpenMetrics, как её выводит prometheus-client:</p>
+        <figure class="code code--out">
+          <figcaption><span>prometheus_client.openmetrics.exposition.generate_latest</span><span>prometheus-client 0.26.0</span></figcaption>
+<pre># HELP http_requests Total HTTP requests
+# TYPE http_requests counter
+http_requests_total{method="GET",status="200"} 125.0
+http_requests_created{method="GET",status="200"} 1.79068992362875e+09
+# EOF</pre>
+        </figure>
+        <p>Приложение стенда отвечает текстом Prometheus на любой Accept: <code>generate_latest</code> заголовок запроса не читает. Выбирать формат по заголовку умеет готовый обработчик библиотеки <code>make_asgi_app()</code>.</p>
+        <p>С Prometheus 3.0 правильный <code>Content-Type</code> обязателен. Если заголовка нет, он не разбирается или указывает неподдерживаемый тип, сбор завершается ошибкой. На стенде путь <code>/metrics/html</code> отдаёт те же строки с заголовком <code>text/html</code>:</p>
+        <figure class="code code--out">
+          <figcaption><span>Status → Target health, job html</span><span>Prometheus 3.5.0</span></figcaption>
+<pre>Error scraping target: received unsupported Content-Type "text/html; charset=utf-8" and no fallback_scrape_protocol specified for target</pre>
+        </figure>
+        <p>Prometheus 2 в таком случае разбирал ответ как текст. Для программ, которые нельзя исправить, в задании указывают <code>fallback_scrape_protocol: PrometheusText0.0.4</code> — формат, которым разбирать ответ с неправильным заголовком.</p>
+
+        <h2 id="s7"><span class="sec">§7</span>Проверка своих строк</h2>
+        <p>В поле ниже — ответ стенда. Измените его или выберите пример и нажмите «проверить» (или Ctrl+Enter). Проверка выполняет правила из §3 построчно и делит замечания на два уровня: <b>ошибки</b> — то, на чём Prometheus 3.5 отклоняет ответ, и <b>нарушения спецификации</b> — то, что он пропускает. Уровни взяты из опыта в §3. Имена в кавычках проверка не разбирает.</p>
+        <div class="widget expo">
+          <div class="widget__head"><b>Проверка текстового формата</b><span>правила Prometheus 0.0.4</span></div>
+          <div class="widget__body">
+            <textarea class="expo__area" spellcheck="false" aria-label="Текст ответа /metrics"># HELP http_requests_total Total HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{method="GET",status="200"} 125.0
+http_requests_total{method="GET",status="404"} 3.0
+http_requests_total{method="POST",status="405"} 1.0
+</textarea>
+            <script type="text/plain" class="expo__preset" data-title="ответ стенда">
+# HELP http_requests_total Total HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{method="GET",status="200"} 125.0
+http_requests_total{method="GET",status="404"} 3.0
+http_requests_total{method="POST",status="405"} 1.0
+</script>
+            <script type="text/plain" class="expo__preset" data-title="/metrics/broken">
+# TYPE http_requests_total counter
+http_requests_total{method=GET} 1
+</script>
+            <script type="text/plain" class="expo__preset" data-title="TYPE после значения">
+http_requests_total{method="GET"} 5
+# TYPE http_requests_total counter
+</script>
+            <script type="text/plain" class="expo__preset" data-title="разорванная группа">
+# TYPE http_requests_total counter
+http_requests_total{method="GET"} 5
+# TYPE queue_length gauge
+queue_length 3
+http_requests_total{method="POST"} 1
+</script>
+            <script type="text/plain" class="expo__preset" data-title="повтор и запятая">
+# TYPE queue_length gauge
+queue_length{queue="emails"} 3
+queue_length{queue="emails"} 4
+cpu_temperature_celsius 61,5
+</script>
+            <script type="text/plain" class="expo__preset" data-title="метка job и экранирование">
+# TYPE files_total counter
+files_total{job="backup",path="C:\\DIR\\FILE.TXT"} 12
+files_total{job="backup",path="C:\DIR"} 1
+</script>
+            <ol class="expo__out"></ol>
+            <p class="expo__sum"></p>
+          </div>
+        </div>
+        <p>В примере «повтор и запятая» два замечания разного уровня. Ряд <code>queue_length{queue="emails"}</code> встречается дважды — это нарушение спецификации: Prometheus сохранит 3 и отбросит 4. Значение <code>61,5</code> записано с запятой — это ошибка: дробная часть отделяется только точкой, и весь ответ будет отклонён.</p>
+
+        <h2 id="s8"><span class="sec">§8</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>Почему в ответе <code>/metrics</code> нет меток <code>job</code> и <code>instance</code>?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button>Их добавляет Prometheus при сборе, по конфигурации и адресу target</button><p class="quiz__why">Верно. Приложение не знает, под каким заданием и адресом его собирают. Если оно всё же отдаст <code>job</code>, метка станет <code>exported_job</code>.</p></li>
+            <li><button>Библиотека скрывает их в браузере и показывает только Prometheus</button><p class="quiz__why">Ответ одинаков для любого клиента: Prometheus, curl и браузер получают один и тот же текст.</p></li>
+            <li><button>Они записаны в строке TYPE</button><p class="quiz__why">В строке TYPE только имя и тип метрики.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>В ответе 200 строк, одна из них — <code>queue_length{queue=emails} 3</code>. Что сохранит Prometheus?</p>
+          <ul class="quiz__opts">
+            <li><button>199 строк, ошибочная будет пропущена</button><p class="quiz__why">Разборщик не пропускает строки: ошибка в любой строке прерывает разбор всего ответа.</p></li>
+            <li data-ok><button>Ничего: ответ отклоняется целиком, сбор неуспешный</button><p class="quiz__why">Верно. Значение метки без кавычек — синтаксическая ошибка; <code>up</code> станет 0, и ни одно значение из ответа не попадёт в TSDB.</p></li>
+            <li><button>Все 200 строк: метка будет прочитана как emails</button><p class="quiz__why">Значение метки должно быть в двойных кавычках; Prometheus не угадывает его.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 3</b>Приложение только что перезапущено, запросов ещё не было. Что вернёт Prometheus на запрос <code>http_requests_total</code>?</p>
+          <ul class="quiz__opts">
+            <li><button>Три ряда со значением 0</button><p class="quiz__why">Счётчик с метками не создаёт рядов до первого события: сочетания меток ещё неизвестны.</p></li>
+            <li data-ok><button>Пустой результат, хотя <code>up</code> равен 1</button><p class="quiz__why">Верно, так было на стенде. В ответе <code>/metrics</code> только HELP и TYPE. Нулевые ряды создают заранее вызовом <code>.labels(...)</code>.</p></li>
+            <li><button>Последние значения до перезапуска</button><p class="quiz__why">Старые ряды после неуспешного сбора помечены устаревшими, а новый процесс отдаёт только свои значения.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 4</b>Приложение отдаёт правильный текст с заголовком <code>Content-Type: text/html</code>. Что произойдёт в Prometheus 3.5?</p>
+          <ul class="quiz__opts">
+            <li><button>Ответ будет разобран как текст Prometheus</button><p class="quiz__why">Так вёл себя Prometheus 2. С версии 3.0 для этого нужен параметр <code>fallback_scrape_protocol</code>.</p></li>
+            <li data-ok><button>Сбор завершится ошибкой unsupported Content-Type</button><p class="quiz__why">Верно, это сообщение получено на стенде для пути <code>/metrics/html</code>.</p></li>
+            <li><button>Prometheus повторит запрос с другим заголовком Accept</button><p class="quiz__why">Повторного запроса нет: следующая попытка будет только в следующем интервале сбора.</p></li>
+          </ul>
+        </div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Prometheus. Exposition formats — <a href="https://prometheus.io/docs/instrumenting/exposition_formats/" target="_blank" rel="noopener">prometheus.io/docs/instrumenting/exposition_formats</a></li>
+            <li>Prometheus. Metric and label naming — <a href="https://prometheus.io/docs/practices/naming/" target="_blank" rel="noopener">prometheus.io/docs/practices/naming</a></li>
+            <li>Prometheus. Migration to 3.0: scrape protocols — <a href="https://prometheus.io/docs/prometheus/latest/migration/" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/migration</a></li>
+            <li>OpenMetrics specification — <a href="https://github.com/prometheus/OpenMetrics/blob/main/specification/OpenMetrics.md" target="_blank" rel="noopener">github.com/prometheus/OpenMetrics</a></li>
+            <li>prometheus-client для Python — <a href="https://prometheus.github.io/client_python/" target="_blank" rel="noopener">prometheus.github.io/client_python</a></li>
+            <li>Стенд модуля: запросы и вывод библиотеки получены 29.09.2026</li>
+          </ol>
+        </div>

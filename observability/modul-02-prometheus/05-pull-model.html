@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <meta name="description" content="Глава 2.5 модуля «Как работает Prometheus»: pull-модель: prometheus приходит сам.">
+  <title>2.5 Pull-модель: Prometheus приходит сам · Как работает Prometheus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&amp;family=Pixelify+Sans:wght@500;600;700&amp;family=Roboto+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="algo.css">
+  <link rel="stylesheet" href="prom.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 2 · Как работает Prometheus · Макаров М. Н.</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Модуль 2 · как работает prometheus</a> · сбор метрик</p>
+          <p class="running__folio">Глава 2.5</p>
+        </div>
+        <header class="chapter-head">
+          <span class="chapter-num">2.5</span>
+          <h1>Pull-модель:<br>Prometheus приходит сам</h1>
+          <p class="lead">В предыдущих главах запрос всегда шёл от Prometheus к приложению. В этой главе у этого порядка появляется название — pull-модель — и сравнение с противоположным способом, push. Разобрано, куда направлен запрос и куда идут данные, почему Prometheus построен на pull и что было до него, какие ограничения у такого сбора и как экосистема Prometheus обходит их, когда без push не обойтись.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Архитектура сбора</dd></div>
+          <div><dt>Уровень</dt><dd>Средний</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 2.2–2.4</dd></div>
+          <div><dt>Результат</dt><dd>Выбор способа сбора для сервиса, задачи или устройства</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Два способа доставки метрик</a></li>
+            <li><a href="#s2">Push и pull по шагам</a></li>
+            <li><a href="#s3">Направление запроса и данных</a></li>
+            <li><a href="#s4">Откуда взялась pull-модель</a></li>
+            <li><a href="#s5">Что даёт pull</a></li>
+            <li><a href="#s6">Ограничения pull</a></li>
+            <li><a href="#s7">Push в экосистеме Prometheus</a></li>
+            <li><a href="#s8">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Два способа доставки метрик</h2>
+        <p>Значения метрик возникают в приложении, а хранятся на сервере мониторинга. Доставить их можно двумя способами, и они различаются тем, кто начинает обмен.</p>
+        <div class="analogy">
+          <div class="analogy__head">Для наглядности</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Показания счётчика воды</b><p>Жилец сам передаёт показания в управляющую компанию раз в месяц — это push. Контролёр обходит квартиры по списку и снимает показания сам — это pull. Если жилец забыл или уехал, в первом случае компания видит только отсутствие письма. Контролёр же знает, в какую квартиру не смог попасть.</p></div>
+            <div class="analogy__side"><b>Что это в мониторинге</b><p>Жилец — приложение, компания — сервер мониторинга, список квартир — список target в <code>prometheus.yml</code>. «Не смог попасть» — неуспешный scrape и <code>up = 0</code>.</p></div>
+          </div>
+        </div>
+        <div class="term-card">
+          <p class="term-card__head"><b>Push-модель</b><span>приложение → мониторинг</span></p>
+          <div class="term-card__body">
+            <p>Приложение само отправляет значения на сервер мониторинга: знает его адрес, решает, когда отправлять, и отвечает за повтор при ошибке. Так работают StatsD, Graphite, InfluxDB в обычной настройке, протокол OTLP в OpenTelemetry.</p>
+          </div>
+        </div>
+        <div class="term-card">
+          <p class="term-card__head"><b>Pull-модель</b><span>Prometheus → приложение</span></p>
+          <div class="term-card__body">
+            <p>Сервер мониторинга сам запрашивает значения у приложений по списку target и по своему расписанию. Приложение только держит текущие значения и отвечает на запрос. Так устроен сбор в Prometheus: scrape из главы 2.4 и есть pull.</p>
+          </div>
+        </div>
+
+        <h2 id="s2"><span class="sec">§2</span>Push и pull по шагам</h2>
+        <p>Две диаграммы показывают одну и ту же ситуацию: два обмена данными, затем приложение падает. Различие видно на последнем шаге: что знает сервер мониторинга после падения.</p>
+        <div class="widget seq">
+          <div class="widget__head"><b>Push</b><span>приложение отправляет само</span></div>
+          <div class="widget__body">
+<svg class="seq__svg" viewBox="0 0 760 332" role="img" aria-label="Push: приложение само отправляет значения серверу мониторинга">
+<g class="actor"><rect x="492" y="10" width="176" height="36" rx="4"/><text x="580" y="33">Приложение</text></g>
+<line class="life" x1="580" x2="580" y1="46" y2="324"/>
+<g class="actor"><rect x="92" y="10" width="176" height="36" rx="4"/><text x="180" y="33">Сервер мониторинга</text></g>
+<line class="life" x1="180" x2="180" y1="46" y2="324"/>
+<g class="note" data-step="1"><rect x="467" y="65" width="226" height="26" rx="3"/><text x="477" y="83">в конфигурации: адрес сервера</text></g>
+<g class="msg data" data-step="2"><line x1="580" y1="120" x2="191" y2="120"/><polygon points="182,120 193,115 193,125"/><text x="380" y="113" text-anchor="middle">POST · значения метрик</text></g>
+<g class="note" data-step="3"><rect x="88" y="145" width="183" height="26" rx="3"/><text x="98" y="163">записать то, что пришло</text></g>
+<g class="msg data" data-step="4"><line x1="580" y1="200" x2="191" y2="200"/><polygon points="182,200 193,195 193,205"/><text x="380" y="193" text-anchor="middle">POST · значения метрик</text></g>
+<g class="note" data-step="5"><rect x="478" y="225" width="205" height="26" rx="3"/><text x="488" y="243">процесс упал: отправок нет</text></g>
+<g class="note" data-step="6"><rect x="67" y="265" width="226" height="26" rx="3"/><text x="77" y="283">тишина: упал или нет событий?</text></g>
+</svg>
+            <ol class="seq__notes">
+              <li>Приложение знает адрес сервера мониторинга: он записан в его конфигурации.</li>
+              <li>Приложение отправляет значения, когда решит само: по таймеру или после события.</li>
+              <li>Сервер записывает то, что пришло. О приложении, которое ничего не отправило, сервер не знает.</li>
+              <li>Следующая отправка.</li>
+              <li>Процесс упал; отправок больше нет.</li>
+              <li>Для сервера это выглядит как тишина. Отличить упавшее приложение от приложения, которому нечего сообщить, по одному отсутствию данных нельзя.</li>
+            </ol>
+          </div>
+        </div>
+        <div class="widget seq">
+          <div class="widget__head"><b>Pull</b><span>Prometheus запрашивает сам</span></div>
+          <div class="widget__body">
+<svg class="seq__svg" viewBox="0 0 760 412" role="img" aria-label="Pull: Prometheus сам запрашивает значения у приложения и замечает, что оно недоступно">
+<g class="actor"><rect x="92" y="10" width="176" height="36" rx="4"/><text x="180" y="33">Prometheus</text></g>
+<line class="life" x1="180" x2="180" y1="46" y2="404"/>
+<g class="actor"><rect x="492" y="10" width="176" height="36" rx="4"/><text x="580" y="33">Приложение</text></g>
+<line class="life" x1="580" x2="580" y1="46" y2="404"/>
+<g class="note" data-step="1"><rect x="67" y="65" width="226" height="26" rx="3"/><text x="77" y="83">в конфигурации: список target</text></g>
+<g class="msg" data-step="2"><line x1="180" y1="120" x2="569" y2="120"/><polygon points="578,120 567,115 567,125"/><text x="380" y="113" text-anchor="middle">GET /metrics</text></g>
+<g class="msg data" data-step="3"><line x1="580" y1="160" x2="191" y2="160"/><polygon points="182,160 193,155 193,165"/><text x="380" y="153" text-anchor="middle">200 OK · текущие значения</text></g>
+<g class="note" data-step="4"><rect x="85" y="185" width="190" height="26" rx="3"/><text x="95" y="203">up = 1, записать отсчёты</text></g>
+<g class="msg" data-step="5"><line x1="180" y1="240" x2="569" y2="240"/><polygon points="578,240 567,235 567,245"/><text x="380" y="233" text-anchor="middle">GET /metrics</text></g>
+<g class="note" data-step="6"><rect x="481" y="265" width="198" height="26" rx="3"/><text x="491" y="283">процесс упал: порт закрыт</text></g>
+<g class="msg data" data-step="7"><line x1="580" y1="320" x2="191" y2="320"/><polygon points="182,320 193,315 193,325"/><text x="380" y="313" text-anchor="middle">connection refused</text></g>
+<g class="note" data-step="8"><rect x="81" y="345" width="198" height="26" rx="3"/><text x="91" y="363">up = 0: target недоступен</text></g>
+</svg>
+            <ol class="seq__notes">
+              <li>Prometheus знает список target: из файла или из service discovery.</li>
+              <li>По расписанию Prometheus отправляет <code>GET /metrics</code>.</li>
+              <li>Приложение отвечает текущими значениями.</li>
+              <li>Prometheus записывает отсчёты и <code>up = 1</code>.</li>
+              <li>Следующий scrape по расписанию.</li>
+              <li>Процесс упал, порт закрыт.</li>
+              <li>Запрос завершается ошибкой соединения.</li>
+              <li>Prometheus записывает <code>up = 0</code>: известно, какой target и с какого момента недоступен.</li>
+            </ol>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Вопрос</th><th>Push</th><th>Pull</th></tr></thead>
+            <tbody>
+              <tr><td>Кто знает адрес другой стороны</td><td>Приложение знает адрес сервера</td><td>Сервер знает адреса приложений</td></tr>
+              <tr><td>Кто решает, когда передавать</td><td>Приложение</td><td>Сервер: <code>scrape_interval</code></td></tr>
+              <tr><td>Как замечают падение приложения</td><td>По отсутствию данных; нужен отдельный механизм проверки</td><td>По неуспешному scrape: <code>up = 0</code></td></tr>
+              <tr><td>Кто управляет нагрузкой на сервер</td><td>Отправители; тысяча приложений может отправить данные одновременно</td><td>Сервер: интервал и смещения scrape</td></tr>
+              <tr><td>Что нужно от сети</td><td>Приложение достаёт до сервера</td><td>Сервер достаёт до каждого приложения</td></tr>
+              <tr><td>Короткая задача (работает 3 с)</td><td>Успевает отправить результат</td><td>Может завершиться до первого scrape</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s3"><span class="sec">§3</span>Направление запроса и данных</h2>
+        <p>В pull-модели легко спутать два направления. HTTP-запрос идёт от Prometheus к приложению. Данные идут обратно — в теле ответа на этот запрос. Когда говорят «Prometheus собирает метрики с приложения», имеют в виду оба направления сразу.</p>
+        <div class="swap">
+          <div class="swap__row">
+            <div class="swap__old"><b>Запрос</b><code>GET /metrics</code> от Prometheus к <code>api:8000</code></div>
+            <div class="swap__arrow">→</div>
+            <div class="swap__new"><b>Сетевое правило</b>Входящие соединения на порт приложения должны быть разрешены с адреса Prometheus</div>
+          </div>
+          <div class="swap__row">
+            <div class="swap__old"><b>Данные</b>Тело ответа <code>200 OK</code> от приложения к Prometheus</div>
+            <div class="swap__arrow">→</div>
+            <div class="swap__new"><b>Отдельного соединения нет</b>Ответ идёт по тому же TCP-соединению, которое открыл Prometheus</div>
+          </div>
+        </div>
+        <p>Отсюда практическое следствие: при pull порт <code>/metrics</code> открыт для входящих соединений. На нём видны внутренние числа сервиса, поэтому его не публикуют в интернет. В Kubernetes и Compose метрики отдают на внутреннем адресе, а при необходимости закрывают TLS и авторизацией; в задании Prometheus для этого есть параметры <code>scheme: https</code>, <code>tls_config</code>, <code>basic_auth</code>, <code>authorization</code>.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Откуда взялась pull-модель</h2>
+        <p>Pull-модель Prometheus повторяет устройство внутренней системы мониторинга Google — Borgmon. Её подробно описывает глава 10 книги Google «Site Reliability Engineering» (2016). Приложения Google отдавали внутренние переменные по HTTP-пути <code>/varz</code>, простым текстом — пары «ключ значение» по одной в строке. В книге приведён пример ручного просмотра:</p>
+        <figure class="code code--out">
+          <figcaption><span>Страница /varz из главы о Borgmon</span><span>Site Reliability Engineering, гл. 10</span></figcaption>
+<pre>% curl https://webserver:80/varz
+http_requests 37
+errors_total 12</pre>
+        </figure>
+        <p>По описанию в книге, Borgmon через заданные интервалы запрашивает <code>/varz</code> у каждого target, разбирает ответ и хранит значения в памяти; список target он получает через службы разрешения имён; сбор с разных target распределяется по интервалу; для каждого target записываются «синтетические» переменные о том, удался ли сбор. Все эти черты есть в Prometheus: <code>/metrics</code>, <code>scrape_interval</code>, service discovery, смещения scrape и <code>up</code>. В той же главе книги Prometheus назван среди открытых систем, очень похожих на Borgmon.</p>
+        <div class="era era--days">
+          <div class="era__item"><span class="era__year">до 2012</span><div class="era__card"><b>Borgmon в Google</b><p>Внутренняя система: pull по HTTP, <code>/varz</code>, правила на языке временных рядов. По книге SRE (2016), основа мониторинга Google почти 10 лет.</p></div></div>
+          <div class="era__item era__item--key"><span class="era__year">2012</span><div class="era__card"><b>Prometheus в SoundCloud</b><p>Открытая система с той же моделью сбора и многомерными метками.</p></div></div>
+          <div class="era__item"><span class="era__year">2014</span><div class="era__card"><b>Текстовый формат</b><p>Формат экспозиции, разобранный в главе 2.3, появился в апреле 2014 года.</p></div></div>
+          <div class="era__item"><span class="era__year">2016</span><div class="era__card"><b>CNCF</b><p>Prometheus — второй проект фонда после Kubernetes.</p></div></div>
+        </div>
+
+        <h2 id="s5"><span class="sec">§5</span>Что даёт pull</h2>
+        <p>В FAQ Prometheus на вопрос, почему сбор идёт через pull, дан короткий ответ:</p>
+        <div class="pull-quote">
+          <p>«Pulling over HTTP offers a number of advantages: You can start extra monitoring instances as needed, e.g. on your laptop when developing changes. You can more easily and reliably tell if a target is down. You can manually go to a target and inspect its health with a web browser.»</p>
+          <footer><cite>Prometheus FAQ, «Why do you pull rather than push?» · <a href="https://prometheus.io/docs/introduction/faq/" target="_blank" rel="noopener">prometheus.io/docs/introduction/faq</a></cite></footer>
+        </div>
+        <p>Перевод: pull по HTTP даёт ряд преимуществ. Можно запускать дополнительные экземпляры мониторинга по мере надобности, например на своём ноутбуке при разработке. Проще и надёжнее определить, что target не работает. Можно вручную открыть target в браузере и посмотреть его состояние. Каждое из этих преимуществ видно на стенде модуля, и к ним добавляются ещё два.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Преимущество</th><th>Как это выглядит на практике</th></tr></thead>
+            <tbody>
+              <tr><td><b>Доступность видна сразу</b></td><td><code>up = 0</code> и текст ошибки в Target health (глава 2.4, §7). В push нужно отдельно решать, через сколько минут тишины считать отправителя упавшим</td></tr>
+              <tr><td><b>Второй Prometheus без изменений в приложении</b></td><td>Для отказоустойчивости два одинаковых сервера собирают одни и те же target. Для отладки — Prometheus на ноутбуке. Приложение не знает, сколько серверов его опрашивает</td></tr>
+              <tr><td><b>Проверка вручную</b></td><td><code>curl http://localhost:8020/metrics</code> или браузер показывают ровно то, что получит Prometheus (глава 2.3, §1)</td></tr>
+              <tr><td><b>Нагрузку задаёт сервер</b></td><td>Интервал и смещения scrape распределяют запросы. Перегруженный Prometheus не получает всплеск отправок от тысячи клиентов одновременно</td></tr>
+              <tr><td><b>Список target — описание того, что должно работать</b></td><td>Target из конфигурации или service discovery, который не ответил, виден как DOWN. В push-модели сервис, который ни разу не отправил данные, серверу неизвестен</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Приложению при pull тоже проще: не нужно знать адрес мониторинга, буферизовать данные при недоступности сервера и повторять отправку. Библиотека держит числа в памяти и отдаёт их по запросу.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Ограничения pull</h2>
+        <p>У pull-модели три ограничения, и каждое следует из того, что инициатор — сервер.</p>
+        <div class="myths">
+          <div class="myth">
+            <p class="myth__no"><b>Сервер должен достать до target</b>Приложение за NAT или файрволом, который не пропускает входящие соединения, собрать нельзя.</p>
+            <p class="myth__yes"><b>Решения</b>Документация советует ставить Prometheus в ту же сеть, что и target. Если это невозможно — PushProx: клиент за файрволом сам держит соединение с прокси, и Prometheus собирает через него.</p>
+          </div>
+          <div class="myth">
+            <p class="myth__no"><b>Короткая задача завершается раньше scrape</b>Скрипт резервного копирования работает 40 секунд и выходит. При интервале 60 с его <code>/metrics</code> никто не увидит.</p>
+            <p class="myth__yes"><b>Решения</b>Задача перед выходом отправляет результат в Pushgateway, а Prometheus собирает Pushgateway как обычный target. Для задач, привязанных к машине (cron, обновления), — файл для textfile collector в node exporter.</p>
+          </div>
+          <div class="myth">
+            <p class="myth__no"><b>Нужно знать список target</b>В облаке экземпляры появляются и исчезают, и файл с адресами устаревает за минуты.</p>
+            <p class="myth__yes"><b>Решения</b>Service discovery из главы 2.2: Kubernetes, Consul, облачные API, DNS.</p>
+          </div>
+        </div>
+        <p>Документация Prometheus рекомендует Pushgateway только в ограниченных случаях и перечисляет, что теряется при его использовании вместо pull:</p>
+        <ul class="why__list">
+          <li><b>Единая точка отказа.</b> Когда много экземпляров отправляют данные через один Pushgateway, он становится и единой точкой отказа, и узким местом.</li>
+          <li><b>Нет <code>up</code> для источника.</b> Автоматическая проверка доступности по <code>up</code> относится к самому Pushgateway; для задач, которые в него пишут, её нет.</li>
+          <li><b>Данные не забываются.</b> Pushgateway хранит последние отправленные ряды и отдаёт их Prometheus вечно, пока их не удалят через его API. Ряды удалённого экземпляра остаются, хотя в pull-модели они исчезли бы вместе с экземпляром.</li>
+        </ul>
+        <p>По документации, обычно единственный обоснованный случай для Pushgateway — результат пакетной задачи уровня сервиса, не привязанной к конкретной машине или экземпляру. У её метрик не должно быть метки <code>instance</code>. Так как Pushgateway передаёт чужие метки <code>job</code> и <code>instance</code>, в его задании включают <code>honor_labels: true</code> (глава 2.2, §6).</p>
+
+        <h2 id="s7"><span class="sec">§7</span>Push в экосистеме Prometheus</h2>
+        <p>Pull остаётся основным способом сбора, но передача данных в push-направлении в экосистеме тоже есть. Флаги ниже проверены в <code>prometheus --help</code> версии 3.5.0.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Механизм</th><th>Кто кому отправляет</th><th>Для чего</th></tr></thead>
+            <tbody>
+              <tr><td>Pushgateway</td><td>Задача → Pushgateway; Prometheus собирает Pushgateway через pull</td><td>Результаты коротких пакетных задач</td></tr>
+              <tr><td><code>remote_write</code> в конфигурации</td><td>Prometheus → другое хранилище</td><td>Долгое хранение и объединение нескольких серверов (Thanos, Mimir, VictoriaMetrics)</td></tr>
+              <tr><td><code>--web.enable-remote-write-receiver</code></td><td>Другой Prometheus или агент → этот Prometheus</td><td>Приём данных от серверов в режиме агента, которые сами собирают target через pull</td></tr>
+              <tr><td><code>--web.enable-otlp-receiver</code></td><td>Приложение с OpenTelemetry SDK или OpenTelemetry Collector → Prometheus</td><td>Приём метрик по протоколу OTLP без <code>/metrics</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Оба приёмника по умолчанию выключены. Данные, которые пришли через них, не проходят scrape: для их источников нет <code>up</code> и рядов <code>scrape_*</code>, и доступность отправителя приходится отслеживать отдельно. Это та же цена push-модели, что в §2.</p>
+        <div class="checklist">
+          <p class="checklist__head">Выбор способа сбора</p>
+          <div class="checklist__item"><span><b>Веб-сервис, воркер, база</b>Долго работающий процесс в той же сети — pull: <code>/metrics</code> или exporter.</span></div>
+          <div class="checklist__item"><span><b>Пакетная задача уровня сервиса</b>Pushgateway, без метки <code>instance</code>, с <code>honor_labels: true</code> в задании.</span></div>
+          <div class="checklist__item"><span><b>Задача cron на конкретной машине</b>Файл для textfile collector node exporter.</span></div>
+          <div class="checklist__item"><span><b>Target за NAT</b>Prometheus или агент в той же сети; PushProx.</span></div>
+          <div class="checklist__item"><span><b>Приложение уже с OpenTelemetry</b>OTLP через Collector или приёмник OTLP; доступность проверять отдельно.</span></div>
+        </div>
+
+        <h2 id="s8"><span class="sec">§8</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>Между Prometheus и приложением стоит файрвол. Какое соединение он должен разрешить для pull?</p>
+          <ul class="quiz__opts">
+            <li><button>От приложения к Prometheus на порт 9090</button><p class="quiz__why">Так было бы при push. В pull приложение соединений не открывает.</p></li>
+            <li data-ok><button>От Prometheus к приложению на порт <code>/metrics</code></button><p class="quiz__why">Верно. Prometheus открывает соединение, а данные приходят в ответе по нему же.</p></li>
+            <li><button>Оба направления: запрос в одну сторону, данные в другую</button><p class="quiz__why">Ответ идёт по уже открытому TCP-соединению; второго соединения нет.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>Какое преимущество pull приведено в FAQ Prometheus?</p>
+          <ul class="quiz__opts">
+            <li><button>Pull передаёт меньше данных по сети, чем push</button><p class="quiz__why">Объём одинаковый — те же значения. FAQ этого не утверждает.</p></li>
+            <li data-ok><button>Проще и надёжнее определить, что target не работает</button><p class="quiz__why">Верно, это одно из трёх преимуществ в FAQ, вместе с дополнительными экземплярами мониторинга и проверкой в браузере.</p></li>
+            <li><button>Pull работает через NAT без настройки</button><p class="quiz__why">NAT и файрвол, закрывающие входящие соединения, — одно из ограничений pull (§6).</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 3</b>Скрипт очистки базы запускается раз в сутки и работает 20 секунд. Как передать в Prometheus время его последнего успешного запуска?</p>
+          <ul class="quiz__opts">
+            <li><button>Добавить в скрипт <code>/metrics</code> и target с интервалом 15 с</button><p class="quiz__why">Scrape может не попасть в 20 секунд работы, а после выхода target будет DOWN до следующих суток.</p></li>
+            <li data-ok><button>Отправлять результат перед выходом в Pushgateway</button><p class="quiz__why">Верно. Это пакетная задача уровня сервиса — случай, для которого документация рекомендует Pushgateway.</p></li>
+            <li><button>Писать время в лог, Prometheus прочитает его</button><p class="quiz__why">Prometheus не читает логи; для логов нужны другие системы.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 4</b>Экземпляр сервиса удалён. Что станет с его рядами в Pushgateway?</p>
+          <ul class="quiz__opts">
+            <li><button>Исчезнут, как при pull</button><p class="quiz__why">Pushgateway не связан с жизнью экземпляра и сам ничего не удаляет.</p></li>
+            <li data-ok><button>Останутся и будут отдаваться Prometheus, пока их не удалят через API</button><p class="quiz__why">Верно. Документация называет это одной из проблем Pushgateway.</p></li>
+            <li><button>Получат <code>up = 0</code></button><p class="quiz__why"><code>up</code> относится к scrape самого Pushgateway. Для экземпляров, которые в него писали, отдельного <code>up</code> нет.</p></li>
+          </ul>
+        </div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Prometheus. FAQ: Why do you pull rather than push? — <a href="https://prometheus.io/docs/introduction/faq/" target="_blank" rel="noopener">prometheus.io/docs/introduction/faq</a></li>
+            <li>Prometheus. When to use the Pushgateway — <a href="https://prometheus.io/docs/practices/pushing/" target="_blank" rel="noopener">prometheus.io/docs/practices/pushing</a></li>
+            <li>Beyer B. и др. Site Reliability Engineering. Глава 10. Practical Alerting from Time-Series Data — <a href="https://sre.google/sre-book/practical-alerting/" target="_blank" rel="noopener">sre.google/sre-book/practical-alerting</a></li>
+            <li>Prometheus. Overview — <a href="https://prometheus.io/docs/introduction/overview/" target="_blank" rel="noopener">prometheus.io/docs/introduction/overview</a></li>
+            <li>PushProx — <a href="https://github.com/prometheus-community/PushProx" target="_blank" rel="noopener">github.com/prometheus-community/PushProx</a></li>
+            <li>Флаги <code>--web.enable-remote-write-receiver</code> и <code>--web.enable-otlp-receiver</code> проверены в <code>prometheus --help</code>, образ prom/prometheus:v3.5.0</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="04-scrape.html">← 2.4 Scrape: как Prometheus собирает значения</a><a href="06-pervyj-zapusk.html">2.6 Первый запуск: Prometheus и FastAPI →</a></div>
+        <div class="colophon">
+          <span>Метрики и наблюдаемость · Модуль 2 · Как работает Prometheus</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="book.js"></script>
+  <script src="algo.js"></script>
+  <script src="prom.js"></script>
+</body>
+</html>

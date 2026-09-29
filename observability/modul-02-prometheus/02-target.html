@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <meta name="description" content="Глава 2.2 модуля «Как работает Prometheus»: target: куда обращаться за метриками.">
+  <title>2.2 Target: куда обращаться за метриками · Как работает Prometheus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&amp;family=Pixelify+Sans:wght@500;600;700&amp;family=Roboto+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="algo.css">
+  <link rel="stylesheet" href="prom.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 2 · Как работает Prometheus · Макаров М. Н.</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Модуль 2 · как работает prometheus</a> · сбор метрик</p>
+          <p class="running__folio">Глава 2.2</p>
+        </div>
+        <header class="chapter-head">
+          <span class="chapter-num">2.2</span>
+          <h1>Target: куда обращаться<br>за метриками</h1>
+          <p class="lead">Первое, что нужно знать Prometheus о приложении, — по какому адресу лежат его метрики. В этой главе разобрано понятие target: из каких частей Prometheus собирает адрес запроса, какие метки получает каждый target, что такое job и instance. Отдельно разобрано, почему один и тот же адрес работает с компьютера и не работает из контейнера, и откуда Prometheus берёт список target.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Конфигурация сбора</dd></div>
+          <div><dt>Уровень</dt><dd>Средний</dd></div>
+          <div><dt>Опирается на</dt><dd>Глава 2.1: части системы; основы Docker</dd></div>
+          <div><dt>Результат</dt><dd>Правильный адрес target для своего окружения</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Понятие target</a></li>
+            <li><a href="#s2">Как собирается адрес запроса</a></li>
+            <li><a href="#s3">Job и instance</a></li>
+            <li><a href="#s4">Адрес зависит от места Prometheus</a></li>
+            <li><a href="#s5">Откуда берётся список target</a></li>
+            <li><a href="#s6">Метки target и метки приложения</a></li>
+            <li><a href="#s7">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Понятие target</h2>
+        <p>Приложение с метриками — это процесс, который слушает сетевой порт и отвечает на HTTP-запросы. Prometheus не знает о нём ничего, пока адрес процесса не записан в конфигурацию или не получен из системы обнаружения. Адрес, по которому Prometheus регулярно запрашивает метрики, называется target.</p>
+        <div class="term-card">
+          <p class="term-card__head"><b>Target</b><span>цель сбора · один адрес</span></p>
+          <div class="term-card__body">
+            <p>Конечная точка, с которой Prometheus собирает метрики: пара «хост — порт» вместе с протоколом и путём. Обычно один target соответствует одному процессу приложения.</p>
+            <p>Target отвечает на вопрос: <b>куда обратиться, чтобы получить метрики</b>. В конфигурации его записывают как <code>host:port</code>, например <code>localhost:8000</code> или <code>api:8000</code>. Протокол и путь Prometheus подставляет сам.</p>
+          </div>
+        </div>
+        <p>На стенде модуля target один. Он записан в файле <code>prometheus.yml</code>:</p>
+        <figure class="code">
+          <figcaption><span>stand/prometheus.yml</span><span>рабочая конфигурация</span></figcaption>
+<pre><span class="k">global</span>:
+  <span class="k">scrape_interval</span>: <span class="n">15s</span>
+  <span class="k">scrape_timeout</span>: <span class="n">10s</span>
+
+<span class="k">scrape_configs</span>:
+  - <span class="k">job_name</span>: api
+    <span class="k">static_configs</span>:
+      - <span class="k">targets</span>: [<span class="s">'api:8000'</span>]</pre>
+        </figure>
+        <p><code>scrape_configs</code> — список заданий сбора. Задание <code>api</code> содержит один статический target — <code>api:8000</code>. Строки <code>global</code> задают частоту и предельное время сбора; они разобраны в главе 2.4.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Как собирается адрес запроса</h2>
+        <p>Строка <code>api:8000</code> — только часть адреса. Для каждого target Prometheus заводит набор служебных меток, имена которых начинаются с двух подчёркиваний. Из них собирается полный URL запроса. Эти метки видны в интерфейсе: <b>Status → Target health</b>, стрелка рядом с метками target.</p>
+        <figure class="shot"><img src="shots/target-labels.png" alt="Target health в Prometheus 3.5: target http://api:8000/metrics, метки instance и job, ниже раскрытый список Discovered labels" loading="lazy"><figcaption>Status → Target health, раскрыт список Discovered labels · стенд модуля</figcaption></figure>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Служебная метка</th><th>Значение на стенде</th><th>Откуда</th><th>Роль в запросе</th></tr></thead>
+            <tbody>
+              <tr><td><code>__scheme__</code></td><td><code>http</code></td><td>Параметр <code>scheme</code> задания, по умолчанию <code>http</code></td><td>Протокол: <b>http</b>://api:8000/metrics</td></tr>
+              <tr><td><code>__address__</code></td><td><code>api:8000</code></td><td>Строка из <code>targets</code></td><td>Хост и порт: http://<b>api:8000</b>/metrics</td></tr>
+              <tr><td><code>__metrics_path__</code></td><td><code>/metrics</code></td><td>Параметр <code>metrics_path</code>, по умолчанию <code>/metrics</code></td><td>Путь: http://api:8000<b>/metrics</b></td></tr>
+              <tr><td><code>__scrape_interval__</code></td><td><code>15s</code></td><td><code>scrape_interval</code> задания или <code>global</code></td><td>Как часто выполнять запрос</td></tr>
+              <tr><td><code>__scrape_timeout__</code></td><td><code>10s</code></td><td><code>scrape_timeout</code> задания или <code>global</code></td><td>Сколько ждать ответа</td></tr>
+              <tr><td><code>job</code></td><td><code>api</code></td><td><code>job_name</code></td><td>Остаётся на рядах как метка</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Служебные метки существуют только до начала сбора. После обработки target все метки с префиксом <code>__</code> удаляются, а на рядах остаются обычные: <code>job</code> и <code>instance</code>. Если <code>instance</code> не задан явно, Prometheus берёт его из <code>__address__</code>. Поэтому на стенде <code>instance="api:8000"</code>.</p>
+        <p>Порт в <code>targets</code> можно не писать. Тогда запрос идёт на стандартный порт схемы: 80 для <code>http</code>, 443 для <code>https</code>. На стенде target <code>api</code> без порта Prometheus 3.5.0 превратил в URL <code>http://api/metrics</code> и метку <code>instance="api"</code> — без номера порта. Приложение на порту 80 не слушает, и сбор не прошёл.</p>
+        <div class="margin-note">
+          <b>На полях: что писать в targets</b>
+          <p>В <code>targets</code> записывают только <code>host:port</code>. Строка <code>http://api:8000/metrics</code> в этом поле — ошибка конфигурации; <code>promtool check config</code> сообщает: <code>"http://api:8000/metrics" is not a valid hostname</code>. Протокол задаётся параметром <code>scheme</code>, путь — параметром <code>metrics_path</code>. Путь меняют, когда метрики отдаются не по <code>/metrics</code>, например у Spring Boot это <code>/actuator/prometheus</code>.</p>
+        </div>
+
+        <h2 id="s3"><span class="sec">§3</span>Job и instance</h2>
+        <p>Один сервис обычно работает в нескольких экземплярах: так он выдерживает нагрузку и переживает падение одного процесса. Prometheus различает сам сервис и его экземпляры двумя метками.</p>
+        <div class="term-card">
+          <p class="term-card__head"><b>Instance и job</b><span>экземпляр и задание</span></p>
+          <div class="term-card__body">
+            <p><b>Instance</b> — конечная точка, с которой можно собрать метрики; обычно один процесс. Метка <code>instance</code> по умолчанию равна <code>host:port</code> этого процесса.</p>
+            <p><b>Job</b> — группа instance с одинаковым назначением, например копии одного сервиса. Метка <code>job</code> равна имени задания в <code>scrape_configs</code>. Все target одного задания в интерфейсе называются <b>scrape pool</b>.</p>
+          </div>
+        </div>
+        <p>Пример из документации Prometheus — задание <code>api-server</code> с четырьмя экземплярами:</p>
+        <figure class="code">
+          <figcaption><span>prometheus.yml</span><span>один job, четыре instance</span></figcaption>
+<pre>  - <span class="k">job_name</span>: api-server
+    <span class="k">static_configs</span>:
+      - <span class="k">targets</span>:
+          - <span class="s">'1.2.3.4:5670'</span>
+          - <span class="s">'1.2.3.4:5671'</span>
+          - <span class="s">'5.6.7.8:5670'</span>
+          - <span class="s">'5.6.7.8:5671'</span></pre>
+        </figure>
+        <p>Каждый ряд каждого экземпляра получит <code>job="api-server"</code> и свой <code>instance</code>. Благодаря этим меткам запрос может сложить значения по всему сервису или выбрать один экземпляр. На одном хосте <code>1.2.3.4</code> работают два процесса на разных портах, поэтому instance — это пара хост — порт целиком.</p>
+        <figure class="shot"><img src="shots/targets-up.png" alt="Status → Target health: scrape pool api, 1/1 up, target http://api:8000/metrics в состоянии UP" loading="lazy"><figcaption>Scrape pool <code>api</code> на стенде: один instance, состояние UP, последний сбор 4,3 с назад и занял 4 мс</figcaption></figure>
+
+        <h2 id="s4"><span class="sec">§4</span>Адрес зависит от места Prometheus</h2>
+        <p>Адрес target Prometheus разрешает из своего сетевого окружения. Один и тот же <code>localhost:8000</code> означает разные машины для процесса на компьютере и для процесса в контейнере. У каждого контейнера Docker своё сетевое пространство: свой <code>localhost</code>, свои порты и свои имена.</p>
+        <div class="analogy">
+          <div class="analogy__head">Для наглядности</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>«Квартира 5» в разных домах</b><p>Записка «зайди в квартиру 5» понятна, только если известно, в каком доме находится тот, кто её читает. Жилец соседнего дома попадёт в свою квартиру 5.</p></div>
+            <div class="analogy__side"><b>Что это в сети</b><p><code>localhost</code> — «этот же дом». Для Prometheus в контейнере это сам контейнер Prometheus, где на порту 8000 никто не слушает. Приложение в соседнем контейнере доступно по имени сервиса Compose: <code>api:8000</code>.</p></div>
+          </div>
+        </div>
+        <p>На стенде приложение описано в <code>compose.yaml</code> как сервис <code>api</code>, порт внутри контейнера — 8000. Строка <code>ports: ['127.0.0.1:8020:8000']</code> открывает его на компьютере как <code>localhost:8020</code>. Внутри сети Compose встроенный DNS Docker разрешает имя <code>api</code> в адрес контейнера приложения. Ниже — какие адреса работают из разных мест. Результаты с пометкой «проверено» получены на стенде.</p>
+        <div class="widget resolve">
+          <div class="widget__head"><b>Где работает Prometheus и какой target записан</b><span>выберите оба варианта</span></div>
+          <div class="widget__body">
+            <div class="resolve__pick">
+              <fieldset>
+                <legend>Prometheus работает</legend>
+                <label><input type="radio" name="where" value="compose" checked> в контейнере, в сети Compose стенда</label>
+                <label><input type="radio" name="where" value="separate"> в отдельном контейнере вне этой сети</label>
+                <label><input type="radio" name="where" value="host"> на компьютере, без Docker</label>
+              </fieldset>
+              <fieldset>
+                <legend>Target в prometheus.yml</legend>
+                <label><input type="radio" name="addr" value="api:8000" checked> <code>api:8000</code></label>
+                <label><input type="radio" name="addr" value="localhost:8000"> <code>localhost:8000</code></label>
+                <label><input type="radio" name="addr" value="localhost:8020"> <code>localhost:8020</code></label>
+                <label><input type="radio" name="addr" value="host.docker.internal:8020"> <code>host.docker.internal:8020</code></label>
+                <label><input type="radio" name="addr" value="api"> <code>api</code> (без порта)</label>
+              </fieldset>
+            </div>
+            <div class="resolve__out" aria-live="polite"></div>
+            <div class="table-scroll resolve__static">
+              <table>
+                <thead><tr><th>Prometheus</th><th>Target</th><th>Результат</th></tr></thead>
+                <tbody>
+                  <tr><td>В сети Compose</td><td><code>api:8000</code></td><td>UP</td></tr>
+                  <tr><td>В сети Compose</td><td><code>localhost:8000</code></td><td>DOWN: connection refused</td></tr>
+                  <tr><td>Вне сети</td><td><code>host.docker.internal:8020</code></td><td>UP</td></tr>
+                  <tr><td>На компьютере</td><td><code>localhost:8020</code></td><td>UP</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <script type="application/json" class="resolve__data">{
+"compose|api:8000": {"up": true, "verified": true, "note": "Имя сервиса Compose разрешает встроенный DNS Docker в сети проекта. Порт 8000 — порт приложения внутри его контейнера. Это рабочая конфигурация стенда."},
+"compose|localhost:8000": {"up": false, "verified": true, "error": "Get \"http://localhost:8000/metrics\": dial tcp [::1]:8000: connect: connection refused", "note": "localhost внутри контейнера Prometheus — это сам контейнер Prometheus. Он слушает только порт 9090; соединение на 8000 отклонено."},
+"compose|localhost:8020": {"up": false, "verified": true, "error": "Get \"http://localhost:8020/metrics\": dial tcp [::1]:8020: connect: connection refused", "note": "Порт 8020 опубликован на компьютере. Внутри контейнера на нём никто не слушает."},
+"compose|host.docker.internal:8020": {"up": true, "verified": true, "note": "host.docker.internal — имя компьютера, видимое из контейнера. Docker Desktop (macOS, Windows) задаёт его сам; в Linux нужна строка extra_hosts: ['host.docker.internal:host-gateway']. Запрос выходит из сети Compose на компьютер и возвращается в контейнер через опубликованный порт. Работает, но внутри одной сети короче и надёжнее адрес api:8000."},
+"compose|api": {"up": false, "verified": false, "error": "Get \"http://api/metrics\": dial tcp <IP api>:80: connect: connection refused", "note": "Без порта Prometheus идёт на порт 80 схемы http. Имя api разрешается, но приложение слушает порт 8000; на порту 80 никого нет."},
+"separate|api:8000": {"up": false, "verified": true, "error": "Get \"http://api:8000/metrics\": EOF", "note": "Контейнер вне сети Compose не знает имени api: встроенный DNS отвечает только контейнерам своей сети. На стенде в Docker Desktop ошибка выглядела как EOF; в Linux обычно видна ошибка поиска имени вида lookup api … no such host."},
+"separate|localhost:8000": {"up": false, "verified": false, "error": "Get \"http://localhost:8000/metrics\": dial tcp [::1]:8000: connect: connection refused", "note": "localhost — снова собственный контейнер Prometheus."},
+"separate|localhost:8020": {"up": false, "verified": true, "error": "Get \"http://localhost:8020/metrics\": dial tcp [::1]:8020: connect: connection refused", "note": "Порт 8020 опубликован на компьютере, а localhost контейнера — не компьютер."},
+"separate|host.docker.internal:8020": {"up": true, "verified": true, "note": "Контейнер обращается к компьютеру, а компьютер пересылает порт 8020 в контейнер приложения. Так Prometheus в Docker собирает метрики приложения, запущенного без Docker или в другой сети. Этот способ используется в стенде модуля 1."},
+"separate|api": {"up": false, "verified": true, "error": "Get \"http://api/metrics\": EOF", "note": "Имя api вне сети Compose неизвестно, и порт 80 приложение не слушает."},
+"host|api:8000": {"up": false, "verified": false, "error": "Get \"http://api:8000/metrics\": dial tcp: lookup api: no such host", "note": "Имена сервисов Compose существуют только внутри сети Docker. Процесс на компьютере их не разрешает."},
+"host|localhost:8000": {"up": false, "verified": false, "error": "зависит от компьютера", "note": "На компьютере порт 8000 контейнера не опубликован. Если порт свободен — connection refused. Если его занимает другая программа, Prometheus обратится к ней и получит чужой ответ: на компьютере автора порт 8000 занят другим сервисом."},
+"host|localhost:8020": {"up": true, "verified": false, "note": "Порт 8020 опубликован на 127.0.0.1 компьютера и ведёт в контейнер приложения. Для Prometheus без Docker это рабочий адрес; он записан в prometheus-local.yml."},
+"host|host.docker.internal:8020": {"up": false, "verified": false, "error": "обычно: lookup host.docker.internal: no such host", "note": "Имя предназначено для процессов в контейнерах. На самом компьютере оно обычно не разрешается; Docker Desktop для Windows может добавить его в файл hosts."},
+"host|api": {"up": false, "verified": false, "error": "Get \"http://api/metrics\": dial tcp: lookup api: no such host", "note": "Имя api на компьютере неизвестно."}
+}</script>
+          </div>
+        </div>
+        <p>Отсюда правило для конфигурации: адрес target записывают так, как его видит процесс Prometheus. В одной сети Compose — имя сервиса и внутренний порт. Для Prometheus на компьютере — <code>localhost</code> и опубликованный порт.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Откуда берётся список target</h2>
+        <p>На стенде список target записан в файле вручную — это <code>static_configs</code>. Так делают, когда адреса постоянны. В облаке и в Kubernetes экземпляры появляются и исчезают каждые несколько минут, и вручную список не поддержать. Для этого есть <span class="term">service discovery</span> — получение списка target из внешнего источника.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Способ</th><th>Параметр в задании</th><th>Откуда адреса</th></tr></thead>
+            <tbody>
+              <tr><td>Статический список</td><td><code>static_configs</code></td><td>Файл <code>prometheus.yml</code>; изменения — после перезагрузки конфигурации</td></tr>
+              <tr><td>Файлы с адресами</td><td><code>file_sd_configs</code></td><td>JSON или YAML, которые пишет другая программа; Prometheus следит за изменениями без перезагрузки</td></tr>
+              <tr><td>DNS</td><td><code>dns_sd_configs</code></td><td>Записи A, AAAA или SRV</td></tr>
+              <tr><td>Kubernetes</td><td><code>kubernetes_sd_configs</code></td><td>API Kubernetes: pod, service, endpoints, node</td></tr>
+              <tr><td>Consul, EC2 и другие</td><td><code>consul_sd_configs</code>, <code>ec2_sd_configs</code>, …</td><td>Реестр сервисов или API облака</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Любой способ даёт одно и то же: набор служебных меток для каждого target, как в §2. Источник может добавить свои метки, например <code>__meta_kubernetes_pod_name</code>. До начала сбора их можно преобразовать правилами <code>relabel_configs</code>: переименовать, скопировать в обычные метки, отбросить target. После этого метки с <code>__</code> удаляются.</p>
+        <p>Свои постоянные метки можно добавить и к статическому target. Они окажутся на всех его рядах, включая <code>up</code>:</p>
+        <figure class="code">
+          <figcaption><span>prometheus.yml</span><span>метка env для target</span></figcaption>
+<pre>    <span class="k">static_configs</span>:
+      - <span class="k">targets</span>: [<span class="s">'api:8000'</span>]
+        <span class="k">labels</span>:
+          <span class="k">env</span>: dev</pre>
+        </figure>
+
+        <h2 id="s6"><span class="sec">§6</span>Метки target и метки приложения</h2>
+        <p>Ряд получает метки из двух источников: от приложения (в ответе <code>/metrics</code>) и от target (<code>job</code>, <code>instance</code>, <code>labels</code> из конфигурации). Если приложение само отдаёт метку <code>job</code> или <code>instance</code>, возникает конфликт. Его разрешает параметр задания <code>honor_labels</code>. Опыт на стенде: программа отдаёт ряд с метками <code>job="nightly-report"</code> и <code>instance="worker-7"</code>, её собирают два задания.</p>
+        <figure class="code code--out">
+          <figcaption><span>Ответ программы и сохранённые ряды</span><span>Prometheus 3.5.0</span></figcaption>
+<pre>ответ: batch_last_success_timestamp_seconds{job="nightly-report",instance="worker-7"} 1790640000
+
+honor_labels: false (по умолчанию), labels: {env: dev}
+{env="dev", <b>exported_instance="worker-7", exported_job="nightly-report"</b>,
+ instance="echo2:8000", job="default-labels"}
+
+honor_labels: true
+{instance="worker-7", job="nightly-report"}</pre>
+        </figure>
+        <p>По умолчанию побеждают метки target, а метки приложения сохраняются с префиксом <code>exported_</code>. С <code>honor_labels: true</code> побеждают метки приложения, а метки target на этих рядах теряются. Ряд <code>up</code> при этом по-прежнему получает метки target: <code>job="honor"</code>, <code>instance="echo2:8000"</code>.</p>
+        <p><code>honor_labels: true</code> включают для источников, которые передают чужие метрики: Pushgateway и федерация Prometheus. Там <code>job</code> и <code>instance</code> в ответе описывают настоящий источник данных; промежуточный сервер только передаёт их. Для обычного приложения параметр оставляют выключенным.</p>
+
+        <h2 id="s7"><span class="sec">§7</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>Prometheus и приложение запущены в одной сети Compose, сервис приложения называется <code>api</code>, порт внутри контейнера 8000, на компьютере опубликован как 8020. Какой target записать?</p>
+          <ul class="quiz__opts">
+            <li><button><code>localhost:8020</code></button><p class="quiz__why">Этот адрес работает с компьютера. Внутри контейнера Prometheus localhost — сам контейнер, на стенде ошибка <code>connection refused</code>.</p></li>
+            <li data-ok><button><code>api:8000</code></button><p class="quiz__why">Верно. Имя сервиса разрешает DNS сети Compose, а внутри сети доступен порт контейнера 8000.</p></li>
+            <li><button><code>http://api:8000/metrics</code></button><p class="quiz__why">В <code>targets</code> пишут только хост и порт. Схема и путь задаются параметрами <code>scheme</code> и <code>metrics_path</code>.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>Какой будет метка <code>instance</code> у рядов target <code>api:8000</code>, если её не задавать?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button><code>api:8000</code></button><p class="quiz__why">Верно. По умолчанию <code>instance</code> берётся из служебной метки <code>__address__</code>.</p></li>
+            <li><button><code>http://api:8000/metrics</code></button><p class="quiz__why">Полный URL в метки не записывается. Он виден только в колонке Endpoint на странице Target health.</p></li>
+            <li><button>IP-адрес контейнера, в который разрешилось имя</button><p class="quiz__why">Prometheus записывает адрес так, как он указан в конфигурации, без разрешения имени.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 3</b>Приложение отдаёт ряд с меткой <code>job="worker"</code>, задание называется <code>api</code>, <code>honor_labels</code> не указан. Какие метки получит ряд?</p>
+          <ul class="quiz__opts">
+            <li><button><code>job="worker"</code></button><p class="quiz__why">Так будет с <code>honor_labels: true</code>. По умолчанию побеждает метка target.</p></li>
+            <li data-ok><button><code>job="api"</code> и <code>exported_job="worker"</code></button><p class="quiz__why">Верно. Метка приложения не теряется, а переименовывается с префиксом <code>exported_</code>.</p></li>
+            <li><button>Сбор завершится ошибкой из-за конфликта меток</button><p class="quiz__why">Конфликт меток ошибкой не считается: его разрешает <code>honor_labels</code>.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 4</b>Чем job отличается от instance?</p>
+          <ul class="quiz__opts">
+            <li><button>Job — хост, instance — порт на этом хосте</button><p class="quiz__why">Instance — это пара хост — порт целиком. Job к адресам не привязан.</p></li>
+            <li data-ok><button>Job — группа экземпляров с одним назначением, instance — один экземпляр, обычно один процесс</button><p class="quiz__why">Верно. Так эти понятия определены в документации Prometheus.</p></li>
+            <li><button>Job задаёт приложение, instance — Prometheus</button><p class="quiz__why">Обе метки ставит Prometheus: <code>job</code> из имени задания, <code>instance</code> из адреса target.</p></li>
+          </ul>
+        </div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Prometheus. Jobs and instances — <a href="https://prometheus.io/docs/concepts/jobs_instances/" target="_blank" rel="noopener">prometheus.io/docs/concepts/jobs_instances</a></li>
+            <li>Prometheus. Configuration: scrape_config, static_config, relabel_config — <a href="https://prometheus.io/docs/prometheus/latest/configuration/configuration/" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/configuration/configuration</a></li>
+            <li>Docker. Networking in Compose — <a href="https://docs.docker.com/compose/how-tos/networking/" target="_blank" rel="noopener">docs.docker.com/compose/how-tos/networking</a></li>
+            <li>Стенд модуля: Prometheus 3.5.0, Docker Desktop; опыты с адресами и honor_labels выполнены 29.09.2026</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="01-chto-takoe-prometheus.html">← 2.1 Что такое Prometheus</a><a href="03-endpoint-metrics.html">2.3 Endpoint /metrics и текстовый формат →</a></div>
+        <div class="colophon">
+          <span>Метрики и наблюдаемость · Модуль 2 · Как работает Prometheus</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="book.js"></script>
+  <script src="algo.js"></script>
+  <script src="prom.js"></script>
+</body>
+</html>

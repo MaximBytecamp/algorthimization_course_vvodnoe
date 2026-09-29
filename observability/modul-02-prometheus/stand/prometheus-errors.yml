@@ -1,0 +1,40 @@
+# Конфигурация для опыта из главы 2.4: рабочий target и пять неуспешных.
+# Запуск: PROM_CONFIG=prometheus-errors.yml docker compose up -d
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+
+scrape_configs:
+  - job_name: api
+    static_configs:
+      - targets: ['api:8000']
+
+  # Ответ приходит через 3 с, а ждать разрешено 2 с.
+  - job_name: slow
+    scrape_timeout: 2s
+    metrics_path: /metrics/slow
+    static_configs:
+      - targets: ['api:8000']
+
+  # Такого пути в приложении нет: ответ 404.
+  - job_name: wrong-path
+    metrics_path: /stats
+    static_configs:
+      - targets: ['api:8000']
+
+  # Внутри контейнера Prometheus localhost — это сам контейнер Prometheus.
+  - job_name: localhost
+    static_configs:
+      - targets: ['localhost:8000']
+
+  # Ответ 200, но в тексте синтаксическая ошибка: значение метки без кавычек.
+  - job_name: broken
+    metrics_path: /metrics/broken
+    static_configs:
+      - targets: ['api:8000']
+
+  # Метрики правильные, но заголовок Content-Type: text/html.
+  - job_name: html
+    metrics_path: /metrics/html
+    static_configs:
+      - targets: ['api:8000']
