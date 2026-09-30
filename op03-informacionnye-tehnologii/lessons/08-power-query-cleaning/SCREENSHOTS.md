@@ -1,66 +1,61 @@
-# ОП.03 · Тема 8 · 54 кадров
+# ОП.03 · Тема 8 · 49 кадров
 
 Папка: op03-informacionnye-tehnologii/lessons/08-power-query-cleaning/shots/
 
-Снимать реальные интерфейсы Excel / Power Query, текстового редактора и учебного Google Sheets. ОС и версия Excel должны быть согласованы между кадрами. Поля и названия команд должны читаться. Не заменять интерфейс рисованными макетами. Примеры только вымышленные.
+Снимать настоящие интерфейсы Google Таблиц, Finder и текстового редактора. Все кадры таблицы — в одной таблице leads_cleaning одного аккаунта. Поля и названия команд должны читаться. Не заменять интерфейс рисованными макетами. Примеры только вымышленные.
 
-Порядок: распаковать files/power-query-lab.zip; пройти слайды, сохранить кадры; заменить источник v2; Refresh и снять результат. Ошибки даты не удалять. Для демонстрации ошибки схемы использовать отдельную копию запроса и CSV.
+Порядок: распаковать files/data-cleaning-lab.zip; пройти слайды по порядку; импортировать v2 на лист source и снять результат. Ошибки даты не удалять. Проверку структуры показывать на копии таблицы.
 
 Номера 264–353 сохранены. Суффикс a/b обозначает добавленный шаг. Сохранять файлы по точным именам. После добавления PNG выполнить node build.mjs и проверить увеличенный кадр в презентации. Описание фактической съёмки записать в shots/evidence.json.
 
 | Экран | Исходник | Файл | Что снять | Статус |
 |---|---|---|---|---|
-| 10 | 272a | 272a-shot.png | Google Sheets: выбран лист leads, раскрыто Файл → Скачать, пункт CSV. Текущий лист и пункт CSV. | pending |
-| 13 | 273a | 273a-shot.png | Проводник или Finder: распакованная lesson_power_query, папки data и result; в data видны три CSV.  | pending |
-| 14 | 274 | 274-shot.png | Исходный leads_dirty.csv в текстовом редакторе: заголовок и пять строк; видны wrong_date, TG и пробелы.  | pending |
-| 15 | 275 | 275-shot.png | Тот же CSV крупно: выделены проблемы формата, структуры и даты.  | pending |
-| 18 | 277a | 277a-shot.png | Excel: вкладка Данные и доступная команда получения данных / Power Query; зафиксировать ОС и версию в evidence.json.  | pending |
-| 19 | 278 | 278-shot.png | Пустая книга Excel.  | pending |
-| 20 | 279 | 279-shot.png | Excel Ribbon → Data. Get & Transform Data. | pending |
-| 21 | 280 | 280-shot.png | Раскрытое меню Get Data. From Text/CSV. | pending |
-| 22 | 281 | 281-shot.png | Диалог выбора файла. `leads_dirty.csv`. | pending |
-| 23 | 282 | 282-shot.png | Окно Text/CSV preview.  | pending |
-| 24 | 282a | 282a-shot.png | Окно импорта: UTF-8, Comma и список Data Type Detection, если доступен в установленной версии.  | pending |
-| 26 | 284 | 284-shot.png | Preview CSV. Transform Data. | pending |
-| 27 | 285 | 285-shot.png | Power Query Editor целиком. Пять подписей поверх интерфейса. | pending |
-| 28 | 285a | 285a-shot.png | Power Query: имена восьми столбцов и пять записей; при необходимости команда Use First Row as Headers.  | pending |
-| 29 | 286 | 286-shot.png | Левая панель Queries.  | pending |
-| 30 | 287 | 287-shot.png | Таблица Power Query.  | pending |
-| 31 | 288 | 288-shot.png | Query Settings. Applied Steps. | pending |
-| 33 | 290 | 290-shot.png | Applied Steps с выбранным Source.  | pending |
-| 35 | 292 | 292-shot.png | Query Settings → Name.  | pending |
-| 36 | 293 | 293-shot.png | Значок типа данных в заголовке столбца.  | pending |
-| 38 | 295 | 295-shot.png | Applied Steps → Changed Type.  | pending |
-| 39 | 296 | 296-shot.png | Заголовки восьми столбцов Power Query со значками назначенных типов.  | pending |
-| 40 | 296a | 296a-shot.png | Выделенные текстовые столбцы и меню Data Type → Text.  | pending |
-| 41 | 297 | 297-shot.png | Меню типов данных. Date/Time. | pending |
-| 42 | 298 | 298-shot.png | Ячейка Error в created_at.  | pending |
-| 44 | 300 | 300-shot.png | Error details в Power Query.  | pending |
-| 46 | 302 | 302-shot.png | Transform → Format → Trim.  | pending |
-| 48 | 303a | 303a-shot.png | Replace Values для name: два пробела заменяются одним. Рядом результат Иван Тестов. В подписи пояснить невидимые символы: 2 пробела → 1 пробел. | pending |
-| 49 | 304 | 304-shot.png | Transform → Format → Clean.  | pending |
-| 52 | 307 | 307-shot.png | Split Column menu.  | pending |
-| 53 | 308 | 308-shot.png | Split Column by Delimiter dialog.  | pending |
-| 54 | 309 | 309-shot.png | Два новых столбца.  | pending |
-| 55 | 310 | 310-shot.png | Rename column.  | pending |
-| 56 | 311 | 311-shot.png | Applied Steps.  | pending |
-| 57 | 312 | 312-shot.png | Два выделенных столбца + Trim.  | pending |
-| 58 | 312a | 312a-shot.png | Выделены utm_campaign и status, раскрыта команда Trim.  | pending |
-| 59 | 313 | 313-shot.png | Transform → Format → lowercase.  | pending |
-| 62 | 316 | 316-shot.png | Replace Values dialog.  | pending |
-| 64 | 318 | 318-shot.png | Отфильтрованные уникальные status.  | pending |
-| 65 | 319 | 319-shot.png | Filter dropdown status.  | pending |
-| 70 | 324 | 324-shot.png | Formula Bar Power Query.  | pending |
-| 71 | 325 | 325-shot.png | CSV рядом с очищенным Power Query preview.  | pending |
-| 72 | 326 | 326-shot.png | Home → Close & Load.  | pending |
-| 73 | 327 | 327-shot.png | Excel с загруженной таблицей.  | pending |
-| 74 | 328 | 328-shot.png | Вкладка листа `leads_clean`.  | pending |
-| 76 | 330 | 330-shot.png | leads_dirty_v2.csv в текстовом редакторе: новые строки REQ-006…REQ-008.  | pending |
-| 77 | 330a | 330a-shot.png | Папка data: рабочий leads_dirty.csv, резервная v1 и файл leads_dirty_v2.csv.  | pending |
-| 78 | 331 | 331-shot.png | Два файла в редакторе перед заменой: источник leads_dirty.csv и версия leads_dirty_v2.csv.  | pending |
-| 79 | 331a | 331a-shot.png | Текстовый редактор: рабочий leads_dirty.csv после замены, видны REQ-006…REQ-008.  | pending |
-| 81 | 333 | 333-shot.png | Excel → Data → Refresh All.  | pending |
-| 84 | 336 | 336-shot.png | Новая строка после Refresh.  | pending |
-| 85 | 337 | 337-shot.png | Applied Steps после Refresh.  | pending |
-| 86 | 337a | 337a-shot.png | Excel: результат после Refresh и сохранение книги result/power_query_leads.xlsx.  | pending |
-| 90 | 341 | 341-shot.png | Диагностика на отдельной копии запроса: первый ошибочный шаг и предыдущий рабочий шаг. Рабочий источник не портить.  | pending |
+| 10 | 272a | 272a-shot.png | Google Sheets: выбран лист leads, раскрыто Файл → Скачать, пункт CSV. Текущий лист и пункт CSV. | captured |
+| 13 | 273a | 273a-shot.png | Finder: распакованная lesson_data_cleaning, папки data и result; в data видны три CSV.  | captured |
+| 14 | 274 | 274-shot.png | Исходный leads_dirty.csv в текстовом редакторе: заголовок и пять строк; видны wrong_date, TG и пробелы.  | captured |
+| 15 | 275 | 275-shot.png | Тот же CSV крупно: видны пробелы, TG, wrong_date и разный регистр.  | captured |
+| 18 | 277a | 277a-shot.png | Главная страница Google Таблиц с кнопкой создания пустой таблицы.  | captured |
+| 19 | 278 | 278-shot.png | Пустая таблица с названием leads_cleaning.  | captured |
+| 20 | 279 | 279-shot.png | Раскрытое меню Файл. Пункт Импортировать. | captured |
+| 21 | 280 | 280-shot.png | Окно импорта на вкладке Добавить.  | captured |
+| 22 | 281 | 281-shot.png | Окно «Импорт файла» с именем leads_dirty.csv. Имя файла. | captured |
+| 23 | 282 | 282-shot.png | Раскрытый список целей импорта. Заменить текущий лист. | captured |
+| 25 | 284 | 284-shot.png | Окно импорта: Заменить текущий лист, Запятая, флажок преобразования снят. Снятый флажок. | captured |
+| 26 | 285 | 285-shot.png | Лист после импорта: 8 столбцов, 5 заявок, в строке формул имя с пробелами.  | captured |
+| 27 | 286 | 286-shot.png | Ярлык листа в режиме переименования: имя source введено.  | captured |
+| 28 | 287 | 287-shot.png | Лист leads_clean с девятью заголовками; внизу ярлыки source и leads_clean.  | captured |
+| 29 | 288 | 288-shot.png | Ячейка A2 с формулой в строке формул; столбец request_id заполнен.  | captured |
+| 31 | 290 | 290-shot.png | Выделена ячейка A4: в строке формул только значение.  | captured |
+| 33 | 292 | 292-shot.png | Окно настроек таблицы: региональные настройки Россия.  | captured |
+| 34 | 293 | 293-shot.png | Лист source: значения created_at прижаты к левому краю, в строке формул текст с апострофом.  | captured |
+| 38 | 297 | 297-shot.png | Формула в B2, в столбце created_at видны числа.  | captured |
+| 39 | 298 | 298-shot.png | Ошибка #VALUE! в created_at у строки REQ-003.  | captured |
+| 41 | 300 | 300-shot.png | Подсказка ошибки у ячейки B4: значение wrong_date в функции VALUE.  | captured |
+| 43 | 302 | 302-shot.png | Меню Формат → Числа с пунктом Дата и время. Дата и время. | captured |
+| 44 | 303 | 303-shot.png | Формула в C2; в столбце name значение Иван Тестов.  | captured |
+| 45 | 304 | 304-shot.png | Формула в D2 со СЖПРОБЕЛЫ и ПЕЧСИМВ.  | captured |
+| 48 | 307 | 307-shot.png | Формула SPLIT в F2.  | captured |
+| 50 | 309 | 309-shot.png | Столбцы utm_source и utm_medium после SPLIT: видны пробелы и разный регистр.  | captured |
+| 51 | 310 | 310-shot.png | Формула F2 со СЖПРОБЕЛЫ; пробелы в utm_source и utm_medium убраны.  | captured |
+| 52 | 311 | 311-shot.png | Формула в I2; значение « new » стало new без пробелов.  | captured |
+| 53 | 312 | 312-shot.png | Формула F2 со СТРОЧН; в utm_source только строчные буквы.  | captured |
+| 57 | 316 | 316-shot.png | Формула F2 с LET и заменой; в utm_source у REQ-005 стоит telegram. ЕСЛИ(v="tg";"telegram";v). | captured |
+| 59 | 318 | 318-shot.png | Меню Данные с пунктом Создать фильтр.  | captured |
+| 60 | 319 | 319-shot.png | Раскрытый фильтр status: только done и new.  | captured |
+| 61 | 319a | 319a-shot.png | Меню Данные с пунктом Удалить фильтр. Удалить фильтр. | captured |
+| 66 | 324 | 324-shot.png | Меню Вид → Показать с пунктом Формулы. Формулы. | captured |
+| 67 | 324a | 324a-shot.png | Лист leads_clean в режиме показа формул.  | captured |
+| 68 | 325 | 325-shot.png | Сверху лист source, снизу leads_clean: одни и те же заявки до и после правил.  | captured |
+| 70 | 327 | 327-shot.png | Итоговый лист leads_clean: 9 столбцов, 5 заявок, ошибка у REQ-003.  | captured |
+| 73 | 330 | 330-shot.png | leads_dirty_v2.csv в текстовом редакторе: новые строки REQ-006…REQ-008.  | captured |
+| 74 | 330a | 330a-shot.png | Папка data: leads_dirty.csv, резервная v1 и leads_dirty_v2.csv.  | captured |
+| 76 | 332 | 332-shot.png | Ошибка #REF! в A2 после ручного ввода в A7, подсказка с причиной.  | captured |
+| 77 | 333 | 333-shot.png | Окно импорта для leads_dirty_v2.csv: Заменить текущий лист, Запятая, флажок снят.  | captured |
+| 78 | 334 | 334-shot.png | Лист leads_clean после импорта v2: 8 заявок.  | captured |
+| 80 | 336 | 336-shot.png | Строка REQ-006 после импорта v2: Елена, telegram, social, lesson08, new.  | captured |
+| 81 | 337 | 337-shot.png | Режим показа формул после импорта v2: формулы второй строки не изменились.  | captured |
+| 82 | 337a | 337a-shot.png | Лист leads_clean: раскрыто Файл → Скачать, пункт CSV.  | captured |
+| 83 | 337b | 337b-shot.png | Папка result с файлом leads_clean.csv.  | captured |
+| 85 | 339 | 339-shot.png | Лист check: в A1 сообщение «структура source: OK».  | captured |
+| 87 | 340a | 340a-shot.png | Окно «Копировать файл»: название копии и кнопка Создать копию.  | captured |
+| 88 | 341 | 341-shot.png | Копия таблицы: сверху source с заголовком traffic, снизу лист check с сообщением СТОП.  | captured |
