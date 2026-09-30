@@ -11,7 +11,7 @@
 | 14 | 183 | 183-shot.png | Первая строка Google Sheets со всеми заголовками.  | captured |
 | 15 | 265 | 265-shot.png | Google Sheets с раскрытым меню Вид и подменю Закрепить. Вид → Закрепить → 1 строку | captured |
 | 16 | 272 | 272-shot.png | Прокрученный лист leads с закреплённой первой строкой. Серая полоса под строкой 1 | captured |
-| 17 | 266 | 266-shot.png | Меню Формат → Числа с пунктом даты и времени. Столбец B целиком, а не отдельные ячейки | captured |
+| 17 | 266 | 266-shot.png | Меню Формат → Числа с пунктом даты и времени. Выделен весь столбец B | captured |
 | 18 | 267 | 267-shot.png | Диалог изменения размера столбцов с выбранным автоподбором. Автоподбор размера | captured |
 | 24 | 189 | 189-shot.png | Google Sheets → Data validation rules. Dropdown и четыре значения. | captured |
 | 26 | 191 | 191-shot.png | Попытка ввести invalid status.  | captured |
@@ -20,7 +20,7 @@
 | 30 | 268 | 268-shot.png | Выделенный столбец A2:A1000 и открытая панель условного форматирования. Сначала выделение в сетке, потом «Добавить правило» | captured |
 | 31 | 194 | 194-shot.png | Conditional formatting rule. Custom formula. | captured |
 | 32 | 269 | 269-shot.png | Панель условного форматирования со списком из двух правил. Разные диапазоны у разных правил | captured |
-| 33 | 271 | 271-shot.png | Лист leads: красная неполная строка и оранжевый дубль ID. Разный цвет — разное правило | captured |
+| 33 | 271 | 271-shot.png | Лист leads: красная неполная строка и оранжевый дубль ID. Красная строка и оранжевая ячейка | captured |
 | 38 | 199 | 199-shot.png | Google Sheets с раскрытым меню Extensions. Apps Script. | captured |
 | 39 | 200 | 200-shot.png | Apps Script Editor.  Слева `Code.gs`.  | captured |
 | 40 | 212 | 212-shot.png | Apps Script Editor с итоговым кодом.  | captured |
