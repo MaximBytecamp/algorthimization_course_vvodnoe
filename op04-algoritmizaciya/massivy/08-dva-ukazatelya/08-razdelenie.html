@@ -40,11 +40,12 @@
           <ol>
             <li><a href="#s1">Что такое разделение</a></li>
             <li><a href="#s2">Перенос нулей: указатели в одну сторону</a></li>
-            <li><a href="#s3">Код и прогон переноса нулей</a></li>
-            <li><a href="#s4">Разделение по порогу: указатели навстречу</a></li>
-            <li><a href="#s5">Сравнение двух способов</a></li>
-            <li><a href="#s6">Три группы за один проход</a></li>
-            <li><a href="#s7">Проверьте себя</a></li>
+            <li><a href="#s3">Сборка move_zeros из строк</a></li>
+            <li><a href="#s4">Код и прогон переноса нулей</a></li>
+            <li><a href="#s5">Разделение по порогу: указатели навстречу</a></li>
+            <li><a href="#s6">Сравнение двух способов</a></li>
+            <li><a href="#s7">Три группы за один проход</a></li>
+            <li><a href="#s8">Проверьте себя</a></li>
           </ol>
         </nav>
 
@@ -76,9 +77,18 @@
           </div>
         </div>
         <p>Схема та же, что в главе 8.7: <code>r</code> читает каждое число, <code>w</code> показывает место для следующего ненулевого. Отличие в одном: вместо записи <code>nums[w] = nums[r]</code> выполняется обмен <code>nums[w], nums[r] = nums[r], nums[w]</code>. Ноль, который стоял в позиции <code>w</code>, при этом переезжает на место <code>r</code>. Поэтому после цикла обрезать хвост не нужно: в нём и так стоят нули, и длина списка не меняется.</p>
+        <ol class="steps">
+          <li><b>Прочитать.</b> Взять <code>nums[r]</code>.</li>
+          <li><b>Не ноль.</b> Поменять местами <code>nums[w]</code> и <code>nums[r]</code> и сдвинуть <code>w</code>: число встало в конец группы ненулевых.</li>
+          <li><b>Ноль.</b> Ничего не делать, <code>w</code> остаётся на месте.</li>
+          <li><b>Следующий.</b> Сдвинуть <code>r</code> и повторить до конца списка. Возвращать ничего не нужно: список изменён на месте.</li>
+        </ol>
         <p>Пройдите алгоритм сами: на каждом шаге решите, переносить прочитанное число вперёд или пропустить.</p>
         <div class="rwg" data-mode="zeros" data-a="[0,4,0,0,7,2]"></div>
 
+        <h2 id="s3"><span class="sec">§3</span>Сборка move_zeros из строк</h2>
+        <p>Функция короткая — шесть строк, но в ней легко перепутать уровни отступа: <code>w += 1</code> выполняется только для ненулевого числа, внутри <code>if</code>. Расставьте строки, затем напишите функцию сами.</p>
+        <div class="parsons" data-title="Соберите move_zeros" data-lines='["def move_zeros(nums):", "    w = 0", "    for r in range(len(nums)):", "        if nums[r] != 0:", "            nums[w], nums[r] = nums[r], nums[w]", "            w += 1"]'></div>
         <details class="pyhint"><summary>Python в этой строке: обмен <code>nums[w], nums[r] = nums[r], nums[w]</code></summary><div><p>Справа сначала вычисляются оба значения, и только потом они записываются слева по порядку. Поэтому два элемента меняются местами без временной переменной.</p><pre>&gt;&gt;&gt; nums = [0, 4]
 &gt;&gt;&gt; nums[0], nums[1] = nums[1], nums[0]
 &gt;&gt;&gt; nums
@@ -118,7 +128,7 @@ def test_returns_none():
 </script>
 </div>
         
-        <h2 id="s3"><span class="sec">§3</span>Код и прогон переноса нулей</h2>
+        <h2 id="s4"><span class="sec">§4</span>Код и прогон переноса нулей</h2>
         <figure class="code">
           <figcaption><span>solution.py</span><span>время O(n) · память O(1)</span></figcaption>
 <pre><span class="k">def</span> <span class="f">move_zeros</span>(nums):
@@ -135,8 +145,16 @@ def test_returns_none():
           <p>Пока нулей не встретилось, <code>w == r</code>, и строка обмена меняет элемент местами с самим собой. Список от этого не меняется. Можно добавить проверку <code>if w != r</code>, но код станет длиннее, а число операций почти не изменится.</p>
         </div>
 
-        <h2 id="s4"><span class="sec">§4</span>Разделение по порогу: указатели навстречу</h2>
+        <h2 id="s5"><span class="sec">§5</span>Разделение по порогу: указатели навстречу</h2>
         <p>Второй способ подходит, когда порядок внутри групп не важен. Задача: переставить числа так, чтобы все числа меньше порога <code>limit</code> стояли в начале, и вернуть их количество. Указатели стартуют с двух концов. <code>i</code> идёт вправо, пока число под ним уже на своей стороне — меньше порога. <code>j</code> идёт влево, пока число под ним не меньше порога. Когда оба остановились, числа под ними стоят не на своих сторонах, и их меняют местами.</p>
+        <ol class="steps">
+          <li><b>Левый на месте.</b> Если <code>nums[i]</code> меньше порога, оно уже в своей группе: сдвинуть <code>i</code> вправо.</li>
+          <li><b>Правый на месте.</b> Иначе, если <code>nums[j]</code> не меньше порога, оно тоже на месте: сдвинуть <code>j</code> влево.</li>
+          <li><b>Оба не на месте.</b> Иначе слева стоит большое число, а справа маленькое: поменять их местами и сдвинуть оба указателя.</li>
+          <li><b>Конец.</b> Повторять, пока <code>i &lt;= j</code>. После цикла <code>i</code> — число элементов меньше порога.</li>
+        </ol>
+        <div class="parsons" data-title="Соберите split_by_limit" data-lines='["def split_by_limit(nums, limit):", "    i, j = 0, len(nums) - 1", "    while i &lt;= j:", "        if nums[i] &lt; limit:", "            i += 1", "        elif nums[j] &gt;= limit:", "            j -= 1", "        else:", "            nums[i], nums[j] = nums[j], nums[i]", "            i += 1", "            j -= 1", "    return i"]'></div>
+        
         <figure class="code">
           <figcaption><span>вариант навстречу</span><span>время O(n) · память O(1)</span></figcaption>
 <pre><span class="k">def</span> <span class="f">split_by_limit</span>(nums, limit):
@@ -166,7 +184,7 @@ def test_returns_none():
         <div class="tracer" data-trace="split" data-zone="split" data-title="Разделение по порогу 10"></div>
         <p>Инвариант: всё левее <code>i</code> меньше порога, всё правее <code>j</code> — не меньше. После цикла <code>i = j + 1</code>, и граница между группами проходит по индексу <code>i</code>. В примере функция вернула 4: числа 5, 1, 3, 7 меньше 10.</p>
 
-        <h2 id="s5"><span class="sec">§5</span>Сравнение двух способов</h2>
+        <h2 id="s6"><span class="sec">§6</span>Сравнение двух способов</h2>
         <p>Посмотрим на результат второго способа внимательнее. Исходный список <code>[5, 12, 3, 18, 7, 25, 1]</code>, результат <code>[5, 1, 3, 7, 18, 25, 12]</code>. Числа 12, 18, 25 шли в исходном списке в этом порядке, а в результате стоят как 18, 25, 12: порядок внутри группы не сохранился. Для разделения это допустимо, для переноса нулей по условию — нет.</p>
         <div class="table-scroll">
           <table>
@@ -182,8 +200,16 @@ def test_returns_none():
         </div>
         <p>В карточке изменения занятия 7 была задача <code>split_spam</code>: сначала обычные комментарии в исходном порядке, потом спам в любом порядке. Это разделение с сохранением порядка первой группы — то есть первый способ.</p>
 
-        <h2 id="s6"><span class="sec">§6</span>Три группы за один проход</h2>
+        <h2 id="s7"><span class="sec">§7</span>Три группы за один проход</h2>
         <p>Задача LeetCode 75 Sort Colors просит разложить список из чисел 0, 1 и 2 по возрастанию за один проход. Её решают тремя указателями: <code>low</code> — граница нулей, <code>high</code> — граница двоек, <code>mid</code> читает. Нули обмениваются к <code>low</code>, двойки — к <code>high</code>, единицы остаются посередине. Это сочетание обеих форм: <code>low</code> и <code>mid</code> идут в одну сторону, <code>mid</code> и <code>high</code> — навстречу. Ниже код, пошаговый прогон на списке <code>[2, 0, 2, 1, 1, 0]</code> и проверка запуском. Зелёные ячейки в прогоне — готовые группы: нули левее <code>low</code> и двойки правее <code>high</code>.</p>
+        <ol class="steps">
+          <li><b>Ноль.</b> Если <code>nums[mid]</code> — ноль, обменять его с <code>nums[low]</code> и сдвинуть и <code>low</code>, и <code>mid</code>.</li>
+          <li><b>Единица.</b> Если единица, она уже посередине: сдвинуть только <code>mid</code>.</li>
+          <li><b>Двойка.</b> Если двойка, обменять её с <code>nums[high]</code> и сдвинуть <code>high</code> влево. <code>mid</code> не двигается: пришедшее число ещё не проверено.</li>
+          <li><b>Конец.</b> Повторять, пока <code>mid &lt;= high</code>.</li>
+        </ol>
+        <div class="parsons" data-title="Соберите sort_colors" data-lines='["def sort_colors(nums):", "    low, mid, high = 0, 0, len(nums) - 1", "    while mid &lt;= high:", "        if nums[mid] == 0:", "            nums[low], nums[mid] = nums[mid], nums[low]", "            low += 1", "            mid += 1", "        elif nums[mid] == 1:", "            mid += 1", "        else:", "            nums[mid], nums[high] = nums[high], nums[mid]", "            high -= 1"]'></div>
+        
         <figure class="code">
           <figcaption><span>LeetCode 75 · Sort Colors</span><span>время O(n) · память O(1)</span></figcaption>
 <pre><span class="k">def</span> <span class="f">sort_colors</span>(nums):
@@ -209,7 +235,7 @@ def test_returns_none():
         </figure>
         <p>После обмена с <code>high</code> указатель <code>mid</code> не двигается: на его место пришло число из непрочитанной части, и его ещё нужно проверить. После обмена с <code>low</code> двигать <code>mid</code> можно: оттуда пришло уже прочитанное число, ноль или единица.</p>
 
-        <h2 id="s7"><span class="sec">§7</span>Проверьте себя</h2>
+        <h2 id="s8"><span class="sec">§8</span>Проверьте себя</h2>
         <div class="quiz">
           <p class="quiz__q"><b>Вопрос 1</b>Список заказов нужно разложить так, чтобы сначала шли оплаченные в исходном порядке, а за ними неоплаченные. Какой способ подходит?</p>
           <ul class="quiz__opts">
