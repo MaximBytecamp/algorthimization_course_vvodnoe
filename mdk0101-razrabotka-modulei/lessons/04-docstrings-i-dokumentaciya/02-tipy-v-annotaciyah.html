@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>4.2 Типы в аннотациях · Аннотации типов и документация</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Тема 04 · Аннотации типов и документация кода</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Аннотации типов и документация кода</a> · МДК.01.01 · разработка программных модулей</p>
+          <p class="running__folio">Глава 4.2</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">4.2</span>
+          <h1>Типы<br>в аннотациях</h1>
+          <p class="lead">В этой главе собраны типы, которые встречаются в аннотациях учебного проекта: простые значения, списки, словари и кортежи, собственные классы, вариант «значение или <code>None</code>», итераторы и функции, псевдонимы типов и тип <code>Any</code>. Для каждого показано, как он записывается и что сообщает проверка, когда вызов ему не соответствует.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Синтаксис</dd></div>
+          <div><dt>Уровень</dt><dd>Начальный</dd></div>
+          <div><dt>Опирается на</dt><dd>Глава 4.1</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Записать тип любого значения из проекта</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Простые типы</a></li>
+            <li><a href="#s2">Списки, словари, кортежи, множества</a></li>
+            <li><a href="#s3">Собственные классы</a></li>
+            <li><a href="#s4">Значение или None</a></li>
+            <li><a href="#s5">Несколько возможных типов</a></li>
+            <li><a href="#s6">Итераторы и функции</a></li>
+            <li><a href="#s7">Псевдонимы типов</a></li>
+            <li><a href="#s8">Тип Any</a></li>
+            <li><a href="#s9">Аннотации переменных и полей</a></li>
+            <li><a href="#s10">Как узнать, какой тип вывела проверка</a></li>
+            <li><a href="#s11">Проверьте себя</a></li>
+            <li><a href="#s12">Шпаргалка по главе</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Простые типы</h2>
+        <p>Простые типы записываются своими именами — теми же, что используются в коде для преобразований: <code>int(...)</code>, <code>str(...)</code>.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Тип</th><th>Какие значения</th><th>Пример из проекта</th></tr></thead>
+            <tbody>
+              <tr><td><code>int</code></td><td>целые числа</td><td><code>kopeks: int</code> — сумма заказа</td></tr>
+              <tr><td><code>float</code></td><td>дробные числа</td><td><code>-&gt; float</code> у <code>calculate_average</code></td></tr>
+              <tr><td><code>str</code></td><td>строки</td><td><code>name: str</code> у <code>normalize_name</code></td></tr>
+              <tr><td><code>bool</code></td><td><code>True</code> и <code>False</code></td><td>флаги вида <code>strict: bool = False</code></td></tr>
+              <tr><td><code>None</code></td><td>отсутствие значения</td><td><code>-&gt; None</code> у <code>print_report</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Запись <code>-&gt; None</code> означает, что функция ничего не возвращает. Её ставят и у функций, которые только печатают или записывают файл: проверка тогда предупредит, если результат такой функции случайно попытаются использовать.</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy: результат функции с -&gt; None</span></figcaption>
+<pre><span class="c"># result = print_report(["Смена"])</span>
+proba.py:3: error: "print_report" does not return a value
+(it only ever returns None)  [func-returns-value]</pre>
+        </figure>
+
+        <h2 id="s2"><span class="sec">§2</span>Списки, словари, кортежи, множества</h2>
+        <p>Для коллекции указывают, что в ней лежит. Тип элементов пишется в квадратных скобках после имени коллекции.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Запись</th><th>Что означает</th><th>Где в проекте</th></tr></thead>
+            <tbody>
+              <tr><td><code>list[int]</code></td><td>список целых чисел любой длины</td><td>оценки в <code>calculate_average</code></td></tr>
+              <tr><td><code>list[Order]</code></td><td>список заказов</td><td>результат <code>load_orders</code></td></tr>
+              <tr><td><code>dict[str, int]</code></td><td>словарь: ключ — строка, значение — целое</td><td>выручка по официантам</td></tr>
+              <tr><td><code>tuple[int, int]</code></td><td>ровно два целых числа</td><td>результат <code>grade_bounds</code></td></tr>
+              <tr><td><code>tuple[int, ...]</code></td><td>сколько угодно целых чисел</td><td>неизменяемый набор оценок</td></tr>
+              <tr><td><code>set[str]</code></td><td>множество строк без повторов</td><td>имена официантов смены</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>У кортежа запись зависит от длины. <code>tuple[int, int]</code> — ровно два элемента, и кортеж из трёх проверка отклонит. Многоточие в <code>tuple[int, ...]</code> означает «любое количество элементов этого типа».</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy: кортеж не той длины</span></figcaption>
+<pre><span class="c"># pair: tuple[int, int] = (3, 5, 4)</span>
+proba.py:3: error: Incompatible types in assignment (expression has type
+"tuple[int, int, int]", variable has type "tuple[int, int]")  [assignment]</pre>
+        </figure>
+        <div class="swap">
+          <div class="swap__row">
+            <div class="swap__old"><b>Старая запись</b>
+              <p><code>from typing import List, Dict</code><br><code>def f(x: List[int]) -&gt; Dict[str, int]:</code></p>
+            </div>
+            <div class="swap__arrow">→</div>
+            <div class="swap__new"><b>Запись в Python 3.9 и новее</b>
+              <p><code>def f(x: list[int]) -&gt; dict[str, int]:</code></p>
+              <p>Импорт не нужен: встроенные коллекции принимают тип в скобках.</p>
+            </div>
+          </div>
+        </div>
+        <p>Запись с заглавной буквы и импортом из <code>typing</code> встречается в старом коде и в старых статьях. В проектах курса используется запись со встроенными именами.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Собственные классы</h2>
+        <p>Класс, объявленный в проекте, — тоже тип. Его имя пишется в аннотации так же, как <code>int</code>. Чтобы имя было доступно в файле, класс импортируют.</p>
+        <figure class="code">
+          <figcaption><span>app/services/orders.py</span><span>класс Order в аннотациях</span></figcaption>
+<pre><span class="k">from</span> pathlib <span class="k">import</span> Path
+
+<span class="k">from</span> app.domain.order <span class="k">import</span> Order
+
+
+<span class="k">def</span> <span class="f">load_orders</span>(path: Path) -&gt; <span class="k">list</span>[Order]:
+    ...
+
+
+<span class="k">def</span> <span class="f">revenue_by_waiter</span>(orders: <span class="k">list</span>[Order], top: <span class="k">int</span> = <span class="n">0</span>) -&gt; <span class="k">dict</span>[<span class="k">str</span>, <span class="k">int</span>]:
+    ...</pre>
+        </figure>
+        <p><code>Path</code> из стандартной библиотеки и <code>Order</code> из проекта записываются одинаково. Когда тип параметра — класс, редактору доступны его поля: после <code>order.</code> в автодополнении появятся <code>waiter</code> и <code>kopeks</code>.</p>
+        <div class="margin-note">
+          <b>На полях: импорт только ради аннотации</b>
+          <p>В архиве без аннотаций остались строки вроде <code>from datetime import date</code> в <code>app/domain/shift.py</code>, хотя <code>date</code> в коде не используется. Импорт стоял там ради аннотации <code>day: date</code>. Когда аннотации возвращаются на место, эти импорты снова нужны.</p>
+        </div>
+
+        <h2 id="s4"><span class="sec">§4</span>Значение или None</h2>
+        <p>Часто функция возвращает значение, а если его нет — <code>None</code>. Например, поиск заказа по имени официанта: заказ найден или не найден. Такой результат записывают через вертикальную черту: <code>Order | None</code> — «заказ или <code>None</code>».</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>функция, которая может ничего не найти</span></figcaption>
+<pre><span class="k">def</span> <span class="f">find_order</span>(orders: <span class="k">list</span>[Order], waiter: <span class="k">str</span>) -&gt; Order | <span class="k">None</span>:
+    <span class="k">for</span> order <span class="k">in</span> orders:
+        <span class="k">if</span> order.waiter == waiter:
+            <span class="k">return</span> order
+    <span class="k">return</span> <span class="k">None</span></pre>
+        </figure>
+        <p>С аннотацией <code>Order | None</code> проверка не пропустит вызывающий код, который учитывает только один исход. Разница между вызовом с проверкой на <code>None</code> и без неё — в блоке ниже; выводы получены запуском.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>Order | None</b><span>переключите вариант</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>Без проверки на None</button>
+            <button>С проверкой на None</button>
+          </div>
+          <div class="demo__pane">
+            <figure class="code">
+              <figcaption><span>proba.py</span><span>сразу берём поле</span></figcaption>
+<pre>found = find_order(orders, <span class="s">"Петрова Анна"</span>)
+<span class="k">print</span>(found.kopeks)</pre>
+            </figure>
+            <span class="demo__label">mypy до запуска</span>
+            <figure class="code code--out">
+              <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:12: error: Item "None" of "Order | None" has no attribute "kopeks"  [union-attr]
+Found 1 error in 1 file (checked 1 source file)</pre>
+            </figure>
+            <span class="demo__label">если всё же запустить, а заказа нет</span>
+            <figure class="code code--out">
+              <figcaption><span>Терминал</span><span>python proba.py</span></figcaption>
+<pre>AttributeError: 'NoneType' object has no attribute 'kopeks'</pre>
+            </figure>
+            <p class="demo__verdict"><b>Ошибка найдена заранее</b>По аннотации <code>Order | None</code> в <code>found</code> может оказаться <code>None</code>, а у него нет поля <code>kopeks</code>. При запуске та же ошибка возникла бы только в тот день, когда официанта в файле не окажется.</p>
+          </div>
+          <div class="demo__pane">
+            <figure class="code">
+              <figcaption><span>proba.py</span><span>сначала проверка</span></figcaption>
+<pre>found = find_order(orders, <span class="s">"Петрова Анна"</span>)
+<span class="k">if</span> found <span class="k">is not</span> <span class="k">None</span>:
+    reveal_type(found)
+    <span class="k">print</span>(found.kopeks)</pre>
+            </figure>
+            <span class="demo__label">mypy до запуска</span>
+            <figure class="code code--out">
+              <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:13: note: Revealed type is "app.domain.order.Order"
+Success: no issues found in 1 source file</pre>
+            </figure>
+            <p class="demo__verdict"><b>Ошибок нет</b>Внутри <code>if found is not None</code> тип сужен до <code>Order</code> — это видно по строке <code>Revealed type</code>. Такое уточнение типа по условию называют <span class="term">сужением</span>.</p>
+          </div>
+        </div>
+        <p>В старом коде тот же тип записывали как <code>Optional[Order]</code> с импортом из <code>typing</code>. Запись <code>Order | None</code> доступна с Python <code>3.10</code> и означает то же самое.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Несколько возможных типов</h2>
+        <p>Та же вертикальная черта перечисляет любые варианты: <code>int | str</code> — «целое число или строка». Такой тип называют <span class="term">объединением</span>. Передать можно значение любого из перечисленных типов, а внутри функции обращаться к нему как к строке или как к числу можно только после проверки, какой вариант пришёл.</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>сумма пришла числом или строкой</span></figcaption>
+<pre><span class="k">def</span> <span class="f">to_kopeks</span>(value: <span class="k">int</span> | <span class="k">str</span>) -&gt; <span class="k">int</span>:
+    <span class="k">if</span> <span class="f">isinstance</span>(value, <span class="k">str</span>):
+        reveal_type(value)
+        <span class="k">return</span> <span class="k">int</span>(value)
+    reveal_type(value)
+    <span class="k">return</span> value
+
+
+to_kopeks(<span class="n">125</span>)
+to_kopeks(<span class="s">"125"</span>)
+to_kopeks(<span class="n">1.5</span>)</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:3: note: Revealed type is "builtins.str"
+proba.py:5: note: Revealed type is "builtins.int"
+proba.py:11: error: Argument 1 to "to_kopeks" has incompatible type "float";
+expected "int | str"  [arg-type]
+Found 1 error in 1 file (checked 1 source file)</pre>
+        </figure>
+        <p>Вывод показывает три вещи. Внутри условия <code>isinstance(value, str)</code> тип сужен до <code>str</code> (строка <code>3</code>), после условия — до <code>int</code> (строка <code>5</code>). Вызовы с числом и строкой прошли, а с дробным числом — нет: <code>float</code> в перечне вариантов не значится. Объединения используют там, где данные приходят в разном виде; когда вариант один, объединение только усложняет вызов.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Итераторы и функции</h2>
+        <p>Генератор возвращает итератор — объект, из которого значения берут по одному; список целиком при этом не создаётся. Его тип записывают как <code>Iterator[...]</code> с импортом из <code>collections.abc</code>:</p>
+        <figure class="code">
+          <figcaption><span>app/services/importer.py</span><span>генератор</span></figcaption>
+<pre><span class="k">from</span> collections.abc <span class="k">import</span> Iterator
+
+
+<span class="k">def</span> <span class="f">read_rows</span>(path: Path) -&gt; Iterator[<span class="k">dict</span>[<span class="k">str</span>, <span class="k">str</span>]]:
+    <span class="k">with</span> <span class="f">open</span>(path, encoding=<span class="s">"utf-8"</span>, newline=<span class="s">""</span>) <span class="k">as</span> file:
+        <span class="k">yield from</span> csv.DictReader(file)</pre>
+        </figure>
+        <p>Функцию, которую передают как аргумент, записывают через <code>Callable</code>. В скобках сначала список типов параметров, затем тип результата: <code>Callable[[Order], int]</code> — «функция, которая принимает заказ и возвращает целое число». Так описывают, например, ключ сортировки.</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>функция как аргумент</span></figcaption>
+<pre><span class="k">from</span> collections.abc <span class="k">import</span> Callable
+
+
+<span class="k">def</span> <span class="f">sort_orders</span>(orders: <span class="k">list</span>[Order], key: Callable[[Order], <span class="k">int</span>]) -&gt; <span class="k">list</span>[Order]:
+    <span class="k">return</span> <span class="f">sorted</span>(orders, key=key)
+
+
+<span class="k">def</span> <span class="f">by_sum</span>(order: Order) -&gt; <span class="k">int</span>:
+    <span class="k">return</span> order.kopeks
+
+
+sort_orders(orders, by_sum)   <span class="c"># подходит: Order -&gt; int</span>
+sort_orders(orders, <span class="f">len</span>)      <span class="c"># не подходит</span></pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:15: error: Argument 2 to "sort_orders" has incompatible type
+"Callable[[Sized], int]"; expected "Callable[[Order], int]"  [arg-type]</pre>
+        </figure>
+        <p>Функция <code>len</code> тоже возвращает целое число, но её параметр — любой объект с длиной, в сообщении он назван <code>Sized</code>. Проверка сравнила оба описания функций и нашла несовпадение в типе параметра.</p>
+
+        <h2 id="s7"><span class="sec">§7</span>Псевдонимы типов</h2>
+        <p>Когда один и тот же составной тип повторяется в нескольких местах, ему дают имя. Такое имя называют <span class="term">псевдонимом типа</span>. В Python <code>3.12</code> для этого есть инструкция <code>type</code>:</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>псевдонимы для сумм и выручки</span></figcaption>
+<pre><span class="k">type</span> Kopeks = <span class="k">int</span>
+<span class="k">type</span> Revenue = <span class="k">dict</span>[<span class="k">str</span>, Kopeks]
+
+
+<span class="k">def</span> <span class="f">total</span>(revenue: Revenue) -&gt; Kopeks:
+    <span class="k">return</span> <span class="f">sum</span>(revenue.values())
+
+
+reveal_type(total({<span class="s">"Иванов Пётр"</span>: <span class="n">100</span>}))</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:9: note: Revealed type is "builtins.int"
+Success: no issues found in 1 source file</pre>
+        </figure>
+        <p>Для проверки <code>Kopeks</code> и <code>int</code> — один тип: в выводе результат показан как <code>builtins.int</code>. Псевдоним меняет только чтение кода: <code>-&gt; Kopeks</code> сообщает единицы измерения, которых не видно в <code>-&gt; int</code>. Отличить копейки от рублей проверка при этом не сможет — для неё это одно и то же число.</p>
+
+        <h2 id="s8"><span class="sec">§8</span>Тип Any</h2>
+        <p><code>Any</code> из модуля <code>typing</code> означает «любой тип». С ним проверка разрешает всё: передать что угодно, вызвать любой метод.</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>Any выключает проверку</span></figcaption>
+<pre><span class="k">from</span> typing <span class="k">import</span> Any
+
+
+<span class="k">def</span> <span class="f">parse</span>(value: Any) -&gt; <span class="k">int</span>:
+    <span class="k">return</span> value.to_kopeks()
+
+
+parse(<span class="s">"125"</span>)</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>Success: no issues found in 1 source file</pre>
+        </figure>
+        <p>У строки нет метода <code>to_kopeks</code>, и при запуске будет <code>AttributeError</code>, но проверка ошибок не нашла: для значения типа <code>Any</code> она ничего не сверяет. Поэтому <code>Any</code> ставят только там, где тип неизвестен заранее, и не используют как способ убрать замечание проверки.</p>
+
+        <h2 id="s9"><span class="sec">§9</span>Аннотации переменных и полей</h2>
+        <p>Локальным переменным аннотация обычно не нужна: проверка выводит тип из значения. Её ставят, когда из значения тип не ясен. Пустой словарь <code>{}</code> ничего не говорит о будущих ключах и значениях, поэтому в <code>revenue_by_waiter</code> записано <code>totals: dict[str, int] = {}</code>.</p>
+        <p>В теле класса аннотации работают иначе. У dataclass строка <code>kopeks: int</code> — это объявление поля: по ней создаётся параметр конструктора. Без аннотации поля не будет.</p>
+        <figure class="code">
+          <figcaption><span>app/domain/order.py</span><span>поля dataclass</span></figcaption>
+<pre>@dataclass(frozen=<span class="k">True</span>)
+<span class="k">class</span> <span class="f">Order</span>:
+    waiter: <span class="k">str</span>     <span class="c"># поле заказа</span>
+    kopeks: <span class="k">int</span>     <span class="c"># поле заказа</span></pre>
+        </figure>
+        <p>Поэтому в архиве без аннотаций поля <code>Order</code> оставлены как были: это единственное место в проекте, где аннотация меняет поведение программы.</p>
+
+        <h2 id="s10"><span class="sec">§10</span>Как узнать, какой тип вывела проверка</h2>
+        <p>Проверка выводит типы значений сама: по аннотациям функций и по выражениям. Чтобы посмотреть, что она вывела, в код временно вставляют <code>reveal_type(...)</code> — mypy напечатает тип в своём отчёте. При запуске программы этой функции нет, поэтому после просмотра строку удаляют.</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>что вернут функции проекта</span></figcaption>
+<pre>reveal_type(grade_bounds([<span class="n">5</span>, <span class="n">3</span>]))
+reveal_type(read_rows(Path(<span class="s">"data/smena.csv"</span>)))</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:5: note: Revealed type is "tuple[builtins.int, builtins.int]"
+proba.py:6: note: Revealed type is "typing.Iterator[builtins.dict[builtins.str, builtins.str]]"
+Success: no issues found in 1 source file</pre>
+        </figure>
+        <p>Приставки <code>builtins.</code> и <code>typing.</code> — полные имена: <code>builtins.int</code> — встроенный <code>int</code>. Так смотрят и тип результата цепочки вызовов, когда по коду он неочевиден.</p>
+
+        <h2 id="s11"><span class="sec">§11</span>Проверьте себя</h2>
+        <details>
+          <summary>Как записать «словарь, где ключ — имя официанта, значение — сумма в копейках»?</summary>
+          <p><code>dict[str, int]</code>. Первым в скобках идёт тип ключа, вторым — тип значения.</p>
+        </details>
+        <details>
+          <summary>Чем <code>tuple[int, int]</code> отличается от <code>tuple[int, ...]</code>?</summary>
+          <p>Первое — ровно два целых числа, кортеж из трёх проверка отклонит. Второе — любое количество целых чисел.</p>
+        </details>
+        <details>
+          <summary>Функция возвращает <code>Order | None</code>. Почему проверка не даёт сразу обратиться к <code>result.kopeks</code>?</summary>
+          <p>В результате может оказаться <code>None</code>, у которого поля <code>kopeks</code> нет. Сначала нужна проверка <code>if result is not None</code>: внутри неё тип сужается до <code>Order</code>, и обращение к полю разрешено.</p>
+        </details>
+        <details>
+          <summary>Что означает <code>Callable[[Order], int]</code>?</summary>
+          <p>Функцию, которая принимает один аргумент типа <code>Order</code> и возвращает целое число. В первых скобках — типы параметров, после запятой — тип результата.</p>
+        </details>
+        <details>
+          <summary>Почему <code>Any</code> не стоит ставить, чтобы убрать замечание проверки?</summary>
+          <p>С <code>Any</code> проверка перестаёт сверять значение: вызов несуществующего метода проходит проверку и завершается ошибкой только при запуске. Замечание исчезает вместе с самой проверкой.</p>
+        </details>
+        <details>
+          <summary>Почему у полей dataclass аннотации нельзя убрать?</summary>
+          <p>В dataclass аннотация в теле класса — объявление поля: по ней создаётся параметр конструктора. Без аннотации поле не появится.</p>
+        </details>
+
+        <h2 id="s12"><span class="sec">§12</span>Шпаргалка по главе</h2>
+        <div class="cheat">
+          <div>
+            <b>Простые</b>
+            <code>int  float  str  bool</code>
+            <code>-&gt; None</code>
+          </div>
+          <div>
+            <b>Коллекции</b>
+            <code>list[int]</code>
+            <code>dict[str, int]</code>
+            <code>tuple[int, int]  tuple[int, ...]</code>
+            <code>set[str]</code>
+          </div>
+          <div>
+            <b>Варианты</b>
+            <code>Order | None</code>
+            <code>int | str</code>
+            <code>if x is not None: — сужение</code>
+          </div>
+          <div>
+            <b>Функции и итераторы</b>
+            <code>Callable[[Order], int]</code>
+            <code>Iterator[dict[str, str]]</code>
+            <code>from collections.abc import …</code>
+          </div>
+          <div>
+            <b>Псевдоним</b>
+            <code>type Kopeks = int</code>
+            <code>для проверки — тот же int</code>
+          </div>
+          <div>
+            <b>Посмотреть вывод</b>
+            <code>reveal_type(выражение)</code>
+            <code>Any — проверка выключена</code>
+          </div>
+        </div>
+
+        <h3>Итог главы</h3>
+        <p>Простые типы записываются своими именами: <code>int</code>, <code>float</code>, <code>str</code>, <code>bool</code>, а отсутствие результата — <code>None</code>. У коллекций в квадратных скобках указывают содержимое: <code>list[int]</code>, <code>dict[str, int]</code>, <code>tuple[int, int]</code> для пары и <code>tuple[int, ...]</code> для набора любой длины. Собственные классы проекта пишутся так же, как встроенные типы, после импорта. Вертикальная черта перечисляет варианты: с <code>Order | None</code> вызывающий код проверяет результат на <code>None</code>, и внутри такой проверки тип сужается. Генератор описывают через <code>Iterator</code>, функцию-аргумент — через <code>Callable</code>. Псевдоним типа даёт составному типу имя и для проверки ничем не отличается от исходного типа. <code>Any</code> выключает проверку значения. В теле dataclass аннотация объявляет поле. В следующей главе все эти записи начинают работать: разобрано, как настроить проверку в редакторе и запускать mypy в терминале.</p>
+
+        <div class="sources">
+          <b>Откуда взяты факты</b>
+          <ol>
+            <li>Составные типы и их запись — <a href="https://docs.python.org/3/library/typing.html">документация модуля typing</a>.</li>
+            <li>Коллекции с типом в скобках — <a href="https://peps.python.org/pep-0585/">PEP 585</a>, запись через вертикальную черту — <a href="https://peps.python.org/pep-0604/">PEP 604</a>, инструкция <code>type</code> — <a href="https://peps.python.org/pep-0695/">PEP 695</a>.</li>
+            <li>Сужение типов и <code>reveal_type</code> — <a href="https://mypy.readthedocs.io/en/stable/type_narrowing.html">документация mypy, Type narrowing</a>.</li>
+            <li>Выводы mypy получены запуском примеров на втором архиве проекта, mypy <code>1.15</code>.</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="01-annotacii-tipov.html">← 4.1 Аннотация типа</a><a href="03-proverka-tipov.html">4.3 Проверка типов →</a></div>
+
+        <div class="colophon">
+          <span>Глава 4.2 · Типы в аннотациях · МДК.01.01</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="book.js"></script>
+</body>
+</html>

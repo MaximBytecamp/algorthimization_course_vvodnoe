@@ -1,4 +1,4 @@
-"""Сверка примеров глав 4.1–4.4 с настоящим выводом mypy и Python.
+"""Сверка примеров глав 4.1, 4.3–4.5 с настоящим выводом mypy и Python.
 
     python3 verify_examples.py [путь к проекту второго архива]
 
@@ -15,8 +15,10 @@ import sys
 from pathlib import Path
 
 BOOK = Path(__file__).resolve().parent.parent
-CHAPTERS = ["01-annotacii-tipov.html", "02-proverka-tipov.html",
-            "03-tipy-v-annotaciyah.html", "04-praktika-annotacii.html"]
+# Глава 4.2 «Типы в аннотациях» оставлена в прежнем виде по просьбе автора:
+# в ней фрагменты файлов, а не файлы целиком, и сверять их запуском нельзя.
+CHAPTERS = ["01-annotacii-tipov.html", "03-proverka-tipov.html",
+            "04-tipy-na-primerah.html", "05-praktika-annotacii.html"]
 FIGURE = re.compile(r'<figure class="code( code--out)?">\s*<figcaption><span>(.*?)</span><span>(.*?)</span></figcaption>\s*<pre>(.*?)</pre>', re.S)
 
 
