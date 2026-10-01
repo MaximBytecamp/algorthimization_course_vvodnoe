@@ -1,4 +1,6 @@
-"""Обрезка и уменьшение кадров для главы 4.9.
+"""Обрезка и уменьшение кадров для глав 4.5–4.10.
+
+Кадры глав 4.1–4.4 обрабатывает crop_types.py.
 
     python3 crop.py
 
@@ -21,12 +23,6 @@ WIDTH = 1600
 
 # имя файла → сколько точек оставить по ширине (None — весь кадр)
 FRAMES = {
-    "types-hover-untyped": None,  # 4.1 — подсказка без аннотаций: Unknown
-    "types-pylance-error": None,  # 4.3 — ошибка Pylance при наведении
-    "types-problems": None,       # 4.3 — панель Problems с Pylance и Ruff
-    "types-mypy-success": None,   # 4.3 — mypy без ошибок
-    "types-mypy-errors": None,    # 4.3 — 17 функций без аннотаций
-    "types-final": None,          # 4.4 — mypy, тесты, запуск
     "project-run": None,        # 4.5 — дерево проекта и запуск
     "hover-empty": None,        # 4.6 — подсказка без докстринга
     "hover-docstring": None,    # 4.6 — подсказка с докстрингом

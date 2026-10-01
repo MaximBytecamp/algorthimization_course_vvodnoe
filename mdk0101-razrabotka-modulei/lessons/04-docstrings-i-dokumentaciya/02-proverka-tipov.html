@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>4.2 Проверка типов · Аннотации типов и документация</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    try {
+      var saved = localStorage.getItem('docs-book-os');
+      if (!saved) {
+        var p = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+        saved = /win/i.test(p) ? 'win' : (/mac|iphone|ipad/i.test(p) ? 'mac' : 'linux');
+      }
+      document.documentElement.dataset.os = saved;
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Тема 04 · Аннотации типов и документация кода</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Аннотации типов и документация кода</a> · МДК.01.01 · разработка программных модулей</p>
+          <p class="running__folio">Глава 4.2</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">4.2</span>
+          <h1>Проверка типов:<br>Pylance и mypy по шагам</h1>
+          <p class="lead">В этой главе по шагам разобраны две программы, которые сверяют код с аннотациями до запуска: Pylance в редакторе VS Code и mypy в терминале. Для каждой показано, как её включить, где увидеть ошибку и как прочитать сообщение. Все шаги выполняются на втором архиве проекта, где аннотации уже расставлены, и на одном файле с двумя неверными вызовами.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Инструменты</dd></div>
+          <div><dt>Уровень</dt><dd>Начальный</dd></div>
+          <div><dt>Опирается на</dt><dd>Глава 4.1</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Находить неверные вызовы до запуска программы</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Что такое проверка типов</a></li>
+            <li><a href="#s2">Подготовка</a></li>
+            <li><a href="#s3">Pylance: проверка в редакторе</a></li>
+            <li><a href="#s4">mypy: проверка в терминале</a></li>
+            <li><a href="#s5">Как читать строку вывода mypy</a></li>
+            <li><a href="#s6">Одна ошибка в двух программах</a></li>
+            <li><a href="#s7">Функции без аннотаций</a></li>
+            <li><a href="#s8">Какой тип видит проверка</a></li>
+            <li><a href="#s9">Чего проверка не находит</a></li>
+            <li><a href="#s10">Проверьте себя</a></li>
+            <li><a href="#s11">Шпаргалка по главе</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Что такое проверка типов</h2>
+        <p><span class="term">Проверка типов</span> — чтение кода программой, которая сверяет каждый вызов, присваивание и возврат значения с аннотациями. Сам код при этом не запускается: программа проверки работает с текстом файлов. Если в функцию <code>format_title(text: str, ...)</code> передано число, она сообщит об этом и назовёт строку, хотя до выполнения этой строки дело не дошло.</p>
+        <p>В курсе используются две такие программы. Правила сверки у них почти одинаковые, различаются место и момент работы.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Программа</th><th>Где работает</th><th>Когда проверяет</th><th>Что проверяет</th></tr></thead>
+            <tbody>
+              <tr><td><b>Pylance</b></td><td>Внутри VS Code, ставится вместе с расширением Python</td><td>Во время набора, после каждого изменения</td><td>Открытые файлы</td></tr>
+              <tr><td><b>mypy</b></td><td>В терминале, ставится через <code>pip</code></td><td>По команде: перед коммитом и в проверках запроса на слияние</td><td>Указанный файл, папку или весь пакет</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="analogy">
+          <p class="analogy__head">Ассоциация: проверка орфографии</p>
+          <div class="analogy__pair">
+            <div class="analogy__side">
+              <b>В жизни</b>
+              <p>Текстовый редактор подчёркивает слово с ошибкой сразу при наборе. Перед отправкой большого документа запускают проверку всего текста, и она выдаёт полный список ошибок по страницам.</p>
+            </div>
+            <div class="analogy__side">
+              <b>В коде</b>
+              <p>Pylance подчёркивает неверный вызов при наборе, в открытом файле. mypy по команде проверяет весь проект и печатает список ошибок с именами файлов и номерами строк.</p>
+            </div>
+          </div>
+          <p class="analogy__limit"><b>Где не совпадает</b>Проверка орфографии сверяет слова со словарём. Проверка типов сверяет код с аннотациями, которые записаны в этом же проекте: где аннотаций нет, сверять не с чем.</p>
+        </div>
+
+        <h2 id="s2"><span class="sec">§2</span>Подготовка</h2>
+        <p>Для работы нужен второй архив проекта — с аннотациями. Если он ещё не подготовлен по шагам из главы 4.1, скачайте и подготовьте его: распакуйте, откройте папку в VS Code, создайте окружение <code>.venv</code> и установите зависимости из <code>requirements.txt</code>.</p>
+        <div class="downloads">
+          <a class="download" href="materials/otchet-kafe-start.zip" download>
+            <span>↓</span>
+            <b>2 · С аннотациями, без описаний<small>ZIP · с ним работают в этой главе</small></b>
+          </a>
+        </div>
+        <p>В корне проекта создайте файл <code>proba.py</code> — рядом с <code>main.py</code>. В нём два вызова функций проекта с аргументами не того типа:</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>файл для опытов</span></figcaption>
+<pre><span class="k">from</span> app.utils.formatter <span class="k">import</span> format_kopeks, format_title
+
+title = format_title(<span class="n">40</span>)
+price = format_kopeks(<span class="s">"1250"</span>)</pre>
+        </figure>
+        <p>Подписи обеих функций — в модуле <code>app/utils/formatter.py</code>: <code>format_title(text: str, width: int = 40) -&gt; str</code> и <code>format_kopeks(kopeks: int) -&gt; str</code>. В строке 3 вместо текста заголовка передано число, в строке 4 вместо числа копеек — строка. Обе ошибки и предстоит найти — сначала в редакторе, затем в терминале.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Pylance: проверка в редакторе</h2>
+        <p><span class="term">Pylance</span> — расширение VS Code, которое разбирает код на Python: строит подсказки, автодополнение и переходы к определениям, а при включённой проверке подчёркивает ошибки типов. Ниже восемь шагов — от проверки расширения до исправленного файла.</p>
+        <div class="walk">
+          <div class="walk__step">
+            <p class="walk__head"><span>Убедитесь, что стоит Pylance</span></p>
+            <div class="walk__body">
+              <p>Откройте панель расширений: <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>Shift</kbd> + <kbd>X</kbd>, или значок из четырёх квадратов на левой полосе. Введите в поле поиска <code>@installed</code> — останутся только установленные расширения.</p>
+              <figure class="shot shot--narrow">
+                <img src="img/vscode-types-ext-installed.png" alt="Панель расширений VS Code с фильтром @installed: Pylance, Python и Python Debugger от Microsoft">
+                <figcaption>В списке должны быть <b>Python</b> и <b>Pylance</b> от Microsoft. Pylance ставится вместе с расширением Python, отдельно его искать не нужно. Если расширения Python нет, найдите в поиске <code>ms-python.python</code> и нажмите <b>Install</b>.</figcaption>
+              </figure>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Выберите интерпретатор из окружения проекта</span></p>
+            <div class="walk__body">
+              <p>Откройте палитру команд: <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>Shift</kbd> + <kbd>P</kbd>. Наберите <code>Python: Select Interpreter</code> и нажмите <kbd>Enter</kbd>.</p>
+              <figure class="shot">
+                <img src="img/vscode-types-interpreter.png" alt="Список Select Interpreter: первой стоит строка Python 3.12.12 ('.venv': venv) ./.venv/bin/python с пометкой Recommended">
+                <figcaption>Выберите строку с <code>'.venv': venv</code> — интерпретатор из окружения проекта, VS Code помечает его словом <b>Recommended</b>. Остальные строки — интерпретаторы, установленные на компьютере; их список у вас будет другим. После выбора в правом нижнем углу окна появится надпись <code>.venv (3.12.12)</code>.</figcaption>
+              </figure>
+              <p>Этот шаг нужен, чтобы Pylance искал импортируемые модули там же, где их найдёт программа при запуске. С другим интерпретатором он не увидит пакеты из <code>.venv</code> и подчеркнёт строки <code>import</code> как ошибочные.</p>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Откройте proba.py и посмотрите на него без проверки</span></p>
+            <div class="walk__body">
+              <p>Откройте <code>proba.py</code> из проводника. В обоих вызовах типы не совпадают с аннотациями, но подчёркиваний нет.</p>
+              <figure class="shot">
+                <img src="img/vscode-types-mode-off.png" alt="proba.py в VS Code: вызовы format_title(40) и format_kopeks(&quot;1250&quot;) ничем не подчёркнуты">
+                <figcaption>Режим проверки по умолчанию — <code>off</code>. В нём Pylance использует аннотации для подсказок и автодополнения, а ошибки типов не показывает. Подчёркиваются только ошибки синтаксиса, ненайденные модули и неизвестные имена.</figcaption>
+              </figure>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Включите режим basic в настройках проекта</span></p>
+            <div class="walk__body">
+              <p>Откройте настройки: <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>,</kbd>. Вверху окна две вкладки — <b>User</b> и <b>Workspace</b>. Выберите <b>Workspace</b>: так настройка запишется в папку проекта и будет действовать у каждого, кто откроет этот проект. Вкладка <b>User</b> меняет настройки редактора для всех проектов на этом компьютере. В поле поиска введите <code>python.analysis.typeCheckingMode</code>.</p>
+              <figure class="shot">
+                <img src="img/vscode-types-settings-off.png" alt="Окно настроек VS Code, вкладка Workspace, параметр Python › Analysis: Type Checking Mode со значением off и таблицей режимов">
+                <figcaption>Параметр <b>Type Checking Mode</b>. В описании — таблица: какие проверки включает каждый режим. Значение сейчас <code>off</code>.</figcaption>
+              </figure>
+              <p>Щёлкните по полю со значением <code>off</code> и выберите <code>basic</code>.</p>
+              <figure class="shot shot--narrow">
+                <img src="img/vscode-types-settings-list.png" alt="Раскрытый список режимов: off (default), basic, standard, strict">
+                <figcaption>Четыре режима. <code>off</code> — значение по умолчанию. <code>basic</code> — режим курса: неверные аргументы, присваивания, возвраты и обращения к значению, которое может быть <code>None</code>. <code>standard</code> добавляет несколько правил. <code>strict</code> требует аннотаций везде и на учебном проекте сразу даёт много замечаний.</figcaption>
+              </figure>
+              <p>VS Code сам создаст файл <code>.vscode/settings.json</code>, если его не было, и допишет в него строку. В проекте темы такой файл уже есть, и строка добавится в конец:</p>
+              <figure class="shot">
+                <img src="img/vscode-types-settings-json.png" alt="Файл .vscode/settings.json: настройки autoDocstring и последней строкой python.analysis.typeCheckingMode: basic">
+                <figcaption>Последняя строка — <code>"python.analysis.typeCheckingMode": "basic"</code>. Строки выше относятся к генератору описаний из главы 4.9; пока расширение autoDocstring не установлено, VS Code показывает их бледным цветом. Ту же строку можно дописать в файл руками — результат одинаковый.</figcaption>
+              </figure>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Посмотрите на подчёркивания</span></p>
+            <div class="walk__body">
+              <p>Вернитесь на вкладку <code>proba.py</code>. Через секунду-две после смены режима Pylance проверит файл заново.</p>
+              <figure class="shot">
+                <img src="img/vscode-types-squiggle.png" alt="proba.py: число 40 и строка &quot;1250&quot; подчёркнуты красной волнистой линией, на вкладке цифра 2">
+                <figcaption>Подчёркнуты аргументы, тип которых не совпал: <code>40</code> в строке 3 и <code>"1250"</code> в строке 4. На вкладке после имени файла — цифра <code>2</code>: столько ошибок в файле. Та же цифра появляется у имени файла в проводнике.</figcaption>
+              </figure>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Прочитайте сообщение</span></p>
+            <div class="walk__body">
+              <p>Наведите указатель на подчёркнутое <code>40</code> или поставьте на него курсор и нажмите <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>K</kbd>, затем <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>I</kbd>.</p>
+              <figure class="shot">
+                <img src="img/vscode-types-hover-error.png" alt="Всплывающее сообщение Pylance: Argument of type Literal[40] cannot be assigned to parameter text of type str in function format_title">
+                <figcaption>Сообщение Pylance над строкой 3.</figcaption>
+              </figure>
+              <p>Сообщение читается по частям:</p>
+              <ul>
+                <li><code>Argument of type "Literal[40]"</code> — передан аргумент типа <code>Literal[40]</code>. Так Pylance называет тип конкретного значения: «ровно число <code>40</code>». Это частный случай <code>int</code>.</li>
+                <li><code>cannot be assigned to parameter "text" of type "str"</code> — нельзя передать в параметр <code>text</code>, который ожидает строку;</li>
+                <li><code>in function "format_title"</code> — функция, которую вызывали;</li>
+                <li><code>"Literal[40]" is not assignable to "str"</code> — короткая причина: число не подходит туда, где ждут строку;</li>
+                <li><code>Pylance(reportArgumentType)</code> — кто сообщил и по какому правилу. По имени правила его находят в документации.</li>
+              </ul>
+              <p>Ниже сообщения две ссылки. <b>View Problem</b> раскрывает описание прямо в тексте файла, <b>Quick Fix</b> предлагает готовые исправления, если они есть. Для ошибок типов готового исправления обычно нет: какое значение нужно передать, решает разработчик.</p>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Откройте панель Problems</span></p>
+            <div class="walk__body">
+              <p>Все сообщения открытых файлов собраны в панели <b>Problems</b>: <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>Shift</kbd> + <kbd>M</kbd>, или щелчок по счётчику ошибок в левом нижнем углу окна.</p>
+              <figure class="shot">
+                <img src="img/vscode-types-problems.png" alt="Панель Problems: две ошибки Pylance reportArgumentType в proba.py, в строках 3 и 4">
+                <figcaption>Ошибки сгруппированы по файлам: у <code>proba.py</code> их две. В каждой строке — сообщение, источник <code>Pylance(reportArgumentType)</code> и место: <code>[Ln 3, Col 22]</code> — строка 3, столбец 22. Щелчок по строке переводит курсор к месту ошибки.</figcaption>
+              </figure>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Исправьте вызовы</span></p>
+            <div class="walk__body">
+              <p>Передайте значения тех типов, которые записаны в аннотациях: текст заголовка и целое число копеек.</p>
+              <figure class="code">
+                <figcaption><span>proba.py</span><span>исправленные вызовы</span></figcaption>
+<pre><span class="k">from</span> app.utils.formatter <span class="k">import</span> format_kopeks, format_title
+
+title = format_title(<span class="s">" Итог "</span>)
+price = format_kopeks(<span class="n">125000</span>)</pre>
+              </figure>
+              <p>Подчёркивания пропадут, панель Problems опустеет, счётчик в левом нижнем углу покажет <code>0</code>. Файл проверен, хотя ни разу не запускался.</p>
+            </div>
+          </div>
+        </div>
+
+        <h2 id="s4"><span class="sec">§4</span>mypy: проверка в терминале</h2>
+        <p><span class="term">mypy</span> — программа проверки типов для Python, которая запускается командой в терминале. В отличие от Pylance, она проверяет и те файлы, которые сейчас не открыты, и печатает один отчёт на весь проект. Поэтому в проверках запроса на слияние запускают её. В проекте mypy перечислен в <code>requirements.txt</code> и уже установлен в <code>.venv</code>.</p>
+        <p>Для опыта верните в <code>proba.py</code> оба неверных вызова — <code>format_title(40)</code> и <code>format_kopeks("1250")</code>.</p>
+        <div class="walk">
+          <div class="walk__step">
+            <p class="walk__head"><span>Откройте терминал и проверьте, что mypy установлен</span></p>
+            <div class="walk__body">
+              <p>Терминал редактора открывается сочетанием <kbd>Ctrl</kbd> + <kbd>`</kbd> (на всех системах) или через меню <b>Terminal → New Terminal</b>. Он запускается в папке проекта. Выполните:</p>
+              <figure class="code">
+                <figcaption><span>Терминал</span><span>версия mypy</span></figcaption>
+<pre><span data-os="mac linux">$ .venv/bin/mypy --version</span><span data-os="win">&gt; .venv\Scripts\mypy --version</span></pre>
+              </figure>
+              <p>Ответ — <code>mypy 1.15.0 (compiled: yes)</code>. Если вместо него сообщение «нет такого файла», зависимости не установлены: выполните установку из <code>requirements.txt</code>, как в главе 4.1.</p>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Проверьте файл</span></p>
+            <div class="walk__body">
+              <p>Укажите после <code>mypy</code> имя файла:</p>
+              <figure class="code">
+                <figcaption><span>Терминал</span><span>проверка одного файла</span></figcaption>
+<pre><span data-os="mac linux">$ .venv/bin/mypy proba.py</span><span data-os="win">&gt; .venv\Scripts\mypy proba.py</span></pre>
+              </figure>
+              <figure class="shot">
+                <img src="img/vscode-types-mypy-file.png" alt="Терминал VS Code: mypy 1.15.0, затем две ошибки arg-type в proba.py в строках 3 и 4 и итог Found 2 errors in 1 file">
+                <figcaption>На кадре обе команды выполнены одной строкой через <code>&amp;&amp;</code>. Первая строка ответа — версия. Дальше по строке на каждую ошибку: <code>proba.py:3</code> и <code>proba.py:4</code> — файл и номер строки. Последняя строка — итог: <code>Found 2 errors in 1 file (checked 1 source file)</code>, найдено две ошибки в одном файле, проверен один файл.</figcaption>
+              </figure>
+              <p>Программа при этом не запускалась: mypy только прочитал <code>proba.py</code> и модуль <code>formatter.py</code>, из которого импортированы функции.</p>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Перейдите к месту ошибки</span></p>
+            <div class="walk__body">
+              <p>Имя файла с номером строки в выводе — ссылка. Удерживайте <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> и щёлкните по <code>proba.py:3</code>: VS Code откроет файл и поставит курсор в строку 3. В длинном отчёте так не приходится искать файл в проводнике и строку по номеру.</p>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Исправьте и запустите проверку снова</span></p>
+            <div class="walk__body">
+              <p>Замените вызовы на исправленные — как в последнем шаге части про Pylance, сохраните файл (<kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>S</kbd>) и повторите команду. Стрелка <kbd>↑</kbd> в терминале возвращает предыдущую команду, набирать её заново не нужно.</p>
+              <figure class="shot">
+                <img src="img/vscode-types-mypy-fixed.png" alt="Терминал: mypy proba.py — Success: no issues found in 1 source file">
+                <figcaption><code>Success: no issues found in 1 source file</code> — несовпадений с аннотациями нет, проверен один файл. mypy читает файл с диска, поэтому перед запуском его нужно сохранить. Pylance проверяет и несохранённый текст.</figcaption>
+              </figure>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Проверьте весь пакет</span></p>
+            <div class="walk__body">
+              <p>Вместо имени файла можно указать папку. mypy пройдёт по всем файлам <code>.py</code> в ней и во вложенных папках:</p>
+              <figure class="code">
+                <figcaption><span>Терминал</span><span>проверка пакета app</span></figcaption>
+<pre><span data-os="mac linux">$ .venv/bin/mypy app</span><span data-os="win">&gt; .venv\Scripts\mypy app</span></pre>
+              </figure>
+              <figure class="shot">
+                <img src="img/vscode-types-mypy-success.png" alt="Терминал: mypy app — Success: no issues found in 15 source files">
+                <figcaption><code>checked 15 source files</code> — проверено пятнадцать файлов: десять модулей и пять файлов <code>__init__.py</code>. Ошибок нет: аннотации во втором архиве расставлены и вызовы им соответствуют.</figcaption>
+              </figure>
+              <p>Команда <code>mypy app</code> запускается перед коммитом и в проверках репозитория. Файл <code>proba.py</code> в пакет <code>app</code> не входит; после опытов его удаляют.</p>
+            </div>
+          </div>
+        </div>
+
+        <h2 id="s5"><span class="sec">§5</span>Как читать строку вывода mypy</h2>
+        <p>Каждая ошибка в отчёте mypy занимает одну строку, и строение у всех строк одинаковое. Разберём первую строку из шага 2:</p>
+        <figure class="scheme">
+          <svg viewBox="0 0 680 190" role="img" aria-label="Разбор строки вывода mypy: файл, номер строки, слово error, сообщение, код ошибки в квадратных скобках">
+            <rect x="8" y="56" width="664" height="48" fill="var(--ink)"/>
+            <text x="20" y="86" font-family="Roboto Mono, monospace" font-size="14" fill="var(--fire)">proba.py</text>
+            <text x="92" y="86" font-family="Roboto Mono, monospace" font-size="14" fill="#E6EDF4">:</text>
+            <text x="102" y="86" font-family="Roboto Mono, monospace" font-size="14" fill="var(--fire)">3</text>
+            <text x="112" y="86" font-family="Roboto Mono, monospace" font-size="14" fill="#E6EDF4">:</text>
+            <text x="126" y="86" font-family="Roboto Mono, monospace" font-size="14" fill="#FF8A80">error:</text>
+            <text x="186" y="86" font-family="Roboto Mono, monospace" font-size="14" fill="#E6EDF4">Argument 1 to "format_title" has …</text>
+            <text x="582" y="86" font-family="Roboto Mono, monospace" font-size="14" fill="#9FE0B5">[arg-type]</text>
+
+            <path d="M 56 56 L 56 34" stroke="var(--fire)" stroke-width="2"/>
+            <text x="20" y="26" font-family="Roboto Mono, monospace" font-size="12" fill="var(--fire-deep)">файл</text>
+            <path d="M 107 56 L 107 34" stroke="var(--fire)" stroke-width="2"/>
+            <text x="90" y="26" font-family="Roboto Mono, monospace" font-size="12" fill="var(--fire-deep)">строка</text>
+            <path d="M 150 104 L 150 130" stroke="var(--ink)" stroke-width="2"/>
+            <text x="118" y="148" font-family="Roboto Mono, monospace" font-size="12" fill="var(--ink-soft)">уровень:</text>
+            <text x="118" y="164" font-family="Roboto Mono, monospace" font-size="12" fill="var(--ink-soft)">error или note</text>
+            <path d="M 370 104 L 370 130" stroke="var(--ink)" stroke-width="2"/>
+            <text x="286" y="148" font-family="Roboto Mono, monospace" font-size="12" fill="var(--ink-soft)">что именно не совпало:</text>
+            <text x="286" y="164" font-family="Roboto Mono, monospace" font-size="12" fill="var(--ink-soft)">какой тип пришёл, какой ждали</text>
+            <path d="M 626 104 L 626 130" stroke="var(--moss)" stroke-width="2"/>
+            <text x="540" y="148" font-family="Roboto Mono, monospace" font-size="12" fill="var(--moss)">код ошибки:</text>
+            <text x="540" y="164" font-family="Roboto Mono, monospace" font-size="12" fill="var(--moss)">по нему ищут в справке</text>
+          </svg>
+          <figcaption>Пять частей строки. Файл и номер строки ведут к месту ошибки. Уровень <code>error</code> — ошибка, <code>note</code> — пояснение к ошибке или ответ на запрос типа. Сообщение называет, что не совпало. Код в квадратных скобках — имя правила: по нему ошибку находят в документации mypy.</figcaption>
+        </figure>
+        <p>Целиком сообщение звучит так: <code>Argument 1 to "format_title" has incompatible type "int"; expected "str"</code> — «первый аргумент функции <code>format_title</code> имеет несовместимый тип <code>int</code>; ожидался <code>str</code>». Почти все сообщения mypy построены по одной схеме: что за место (аргумент, присваивание, возврат), какой тип пришёл и какой ожидался. Коды, которые встречаются чаще других:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Код mypy</th><th>Правило Pylance</th><th>Что не так</th><th>Пример</th></tr></thead>
+            <tbody>
+              <tr><td><code>arg-type</code></td><td><code>reportArgumentType</code></td><td>Аргумент не того типа</td><td><code>format_title(40)</code></td></tr>
+              <tr><td><code>assignment</code></td><td><code>reportAssignmentType</code></td><td>Переменной с аннотацией присвоено значение не того типа</td><td><code>first: str = grades[0]</code>, где <code>grades: list[int]</code></td></tr>
+              <tr><td><code>return-value</code></td><td><code>reportReturnType</code></td><td>Функция возвращает не тот тип, что записан после стрелки</td><td><code>-&gt; str</code>, а в теле <code>return kopeks / 100</code></td></tr>
+              <tr><td><code>return</code></td><td><code>reportReturnType</code></td><td>Есть путь выполнения без <code>return</code></td><td><code>return</code> только внутри <code>if</code></td></tr>
+              <tr><td><code>union-attr</code></td><td><code>reportOptionalMemberAccess</code></td><td>Обращение к атрибуту значения, которое может быть <code>None</code></td><td><code>found.kopeks</code> без проверки на <code>None</code></td></tr>
+              <tr><td><code>attr-defined</code></td><td><code>reportAttributeAccessIssue</code></td><td>У объекта нет такого атрибута</td><td><code>order.kopek</code> вместо <code>order.kopeks</code></td></tr>
+              <tr><td><code>no-untyped-def</code></td><td>— в режиме <code>basic</code></td><td>У функции нет аннотаций</td><td>любая функция первого архива</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Код <code>no-untyped-def</code> разобран ниже, в §7. Остальные коды встречаются в примерах главы 4.3 вместе с настоящим выводом mypy.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Одна ошибка в двух программах</h2>
+        <p>Pylance и mypy нашли в <code>proba.py</code> одни и те же две ошибки, но описали их по-разному. Сравнение для строки 3:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th></th><th>Pylance</th><th>mypy</th></tr></thead>
+            <tbody>
+              <tr><td>Где видно</td><td>Подчёркивание, всплывающее сообщение, панель Problems</td><td>Строка в терминале</td></tr>
+              <tr><td>Тип переданного значения</td><td><code>Literal[40]</code> — конкретное число</td><td><code>int</code> — целое число</td></tr>
+              <tr><td>Как назван параметр</td><td>По имени: <code>"text"</code></td><td>По номеру: <code>Argument 1</code></td></tr>
+              <tr><td>Имя правила</td><td><code>reportArgumentType</code></td><td><code>arg-type</code></td></tr>
+              <tr><td>Место</td><td><code>[Ln 3, Col 22]</code> — строка и столбец</td><td><code>proba.py:3</code> — файл и строка</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>В большинстве случаев две программы согласны. Расхождения бывают в пограничных случаях: например, пустой словарь <code>totals = {}</code> без аннотации mypy считает ошибкой, а Pylance в режиме <code>basic</code> — нет. Когда результаты расходятся, в курсе решает mypy: его команда стоит в проверках перед сдачей работы.</p>
+
+        <h2 id="s7"><span class="sec">§7</span>Функции без аннотаций</h2>
+        <p>По умолчанию mypy пропускает функции, у которых нет ни одной аннотации: их тела он не проверяет и об отсутствии типов не сообщает. Проект совсем без аннотаций прошёл бы проверку с ответом <code>Success</code>, хотя сверять в нём нечего. Чтобы такие функции считались ошибкой, в файле <code>pyproject.toml</code> включают параметр <code>disallow_untyped_defs</code>. В проекте темы он уже включён:</p>
+        <figure class="code">
+          <figcaption><span>pyproject.toml</span><span>раздел mypy</span></figcaption>
+<pre>[tool.mypy]
+<span class="c"># Функция без аннотаций — ошибка: так проверка находит места,</span>
+<span class="c"># где типы забыли указать.</span>
+disallow_untyped_defs = <span class="k">true</span></pre>
+        </figure>
+        <p>mypy читает этот файл сам, если запускать его из корня проекта. Откройте первый архив — без аннотаций — и выполните там ту же команду <code>mypy app</code>:</p>
+        <figure class="shot">
+          <img src="img/vscode-types-mypy-errors.png" alt="Терминал VS Code: mypy app на проекте без аннотаций — семнадцать ошибок no-untyped-def и итог Found 17 errors in 10 files">
+          <figcaption>Первый архив. Каждая строка — функция без аннотаций, код <code>no-untyped-def</code>. Сообщение <code>Function is missing a type annotation</code> означает, что аннотаций нет совсем. <code>Function is missing a return type annotation</code> пишется у функций, у которых нет параметров, кроме <code>self</code>: им не хватает только типа результата. Строка <code>note</code> у <code>order.py:11</code> подсказывает решение: <code>Use "-&gt; None" if function does not return a value</code>. Итог — <code>Found 17 errors in 10 files</code>.</figcaption>
+        </figure>
+        <p>Этот перечень — план работы для практики в главе 4.4: когда все семнадцать функций получат аннотации, ответ сменится на <code>Success</code>. Pylance в режиме <code>basic</code> функции без аннотаций не подчёркивает — это правило включено только в режиме <code>strict</code>, как видно в таблице на шаге 4.</p>
+
+        <h2 id="s8"><span class="sec">§8</span>Какой тип видит проверка</h2>
+        <p>Аннотации пишут не везде: у локальных переменных тип выводится из присвоенного значения. Посмотреть, какой тип вывела проверка, можно двумя способами.</p>
+        <p>В редакторе — наведением указателя на имя переменной. В файле ниже переменной присвоен результат <code>grade_bounds</code>, аннотации у переменной нет:</p>
+        <figure class="shot">
+          <img src="img/vscode-types-hover-variable.png" alt="Подсказка VS Code над переменной bounds: (variable) bounds: tuple[int, int]">
+          <figcaption><code>(variable) bounds: tuple[int, int]</code> — Pylance взял тип из аннотации результата <code>grade_bounds(...) -&gt; tuple[int, int]</code>.</figcaption>
+        </figure>
+        <p>В mypy — временной строкой <code>reveal_type(...)</code>. Импортировать её не нужно: mypy узнаёт это имя сам и печатает тип выражения в скобках строкой с уровнем <code>note</code>.</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>запрос типа у mypy</span></figcaption>
+<pre><span class="k">from</span> app.services.calculator <span class="k">import</span> grade_bounds
+
+bounds = grade_bounds([<span class="n">5</span>, <span class="n">3</span>, <span class="n">4</span>])
+reveal_type(bounds)</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:4: note: Revealed type is "tuple[builtins.int, builtins.int]"
+Success: no issues found in 1 source file</pre>
+        </figure>
+        <p>Приставка <code>builtins.</code> — полное имя встроенного типа: <code>builtins.int</code> и есть <code>int</code>. При запуске программы функции <code>reveal_type</code> нет, и строка завершится ошибкой <code>NameError</code>, поэтому после просмотра её удаляют. Этим приёмом пользуются в главе 4.3: в примерах он показывает, как проверка понимает тип внутри условий и циклов.</p>
+
+        <h2 id="s9"><span class="sec">§9</span>Чего проверка не находит</h2>
+        <p>Проверка работает с текстом программы. Данные, которые появятся при запуске, ей недоступны. В <code>load_orders</code> сумма читается из файла смены вызовом <code>int(row["kopeks"])</code>. Для проверки всё верно: <code>int(...)</code> возвращает целое число. Если же в файле окажется строка <code>сто</code>, программа завершится ошибкой <code>ValueError</code>, и проверка об этом не предупредит.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Находит проверка типов</th><th>Не находит проверка типов</th></tr></thead>
+            <tbody>
+              <tr><td>Вызов с аргументом не того типа</td><td>Неверные данные в файле или в ответе сервера</td></tr>
+              <tr><td>Обращение к атрибуту значения, которое может быть <code>None</code></td><td>Ошибку в расчёте: <code>+</code> вместо <code>-</code> между числами</td></tr>
+              <tr><td>Возврат значения не того типа</td><td>Нарушение ограничений вроде «оценка от <code>2</code> до <code>5</code>»</td></tr>
+              <tr><td>Опечатку в имени атрибута</td><td>Всё, что помечено типом <code>Any</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Правую колонку закрывают тесты и проверки данных внутри функций. Проверка типов находит один класс ошибок — несовпадение типов — сразу во всём проекте.</p>
+        <p>Бывает, что замечание верно по форме, но в конкретной строке исправлять нечего: например, в тесте намеренно передаётся неверный тип, чтобы проверить сообщение об ошибке. Такое замечание подавляют комментарием <code># type: ignore</code> с кодом правила в квадратных скобках:</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>подавление одного замечания</span></figcaption>
+<pre>format_title(<span class="n">40</span>)  <span class="c"># type: ignore[arg-type]</span></pre>
+        </figure>
+        <p>Код в скобках обязателен: без него подавляются все замечания на строке, в том числе те, что появятся после будущих правок. В работах курса подавления не используются: каждое замечание исправляется аннотацией или кодом.</p>
+
+        <h2 id="s10"><span class="sec">§10</span>Проверьте себя</h2>
+        <details>
+          <summary>Pylance установлен, а неверный вызов не подчёркнут. Что проверить?</summary>
+          <p>Режим проверки: по умолчанию он <code>off</code>. В настройках проекта нужно выбрать <code>basic</code> — в файле <code>.vscode/settings.json</code> появится строка <code>"python.analysis.typeCheckingMode": "basic"</code>. Если подчёркнуты строки <code>import</code>, выбран не тот интерпретатор: нужен <code>.venv</code>.</p>
+        </details>
+        <details>
+          <summary>Чем отличается настройка на вкладке Workspace от настройки на вкладке User?</summary>
+          <p>Workspace записывает настройку в <code>.vscode/settings.json</code> внутри проекта: она действует только в нём и попадает в репозиторий вместе с кодом. User меняет настройки редактора на этом компьютере для всех проектов.</p>
+        </details>
+        <details>
+          <summary>Что означает строка <code>proba.py:4: error: … [arg-type]</code>?</summary>
+          <p>В файле <code>proba.py</code> на строке <code>4</code> ошибка: аргумент не того типа. <code>arg-type</code> — код правила, по которому ошибку находят в документации.</p>
+        </details>
+        <details>
+          <summary>Файл исправлен, Pylance подчёркиваний не показывает, а mypy по-прежнему сообщает об ошибке. Почему?</summary>
+          <p>Файл не сохранён. Pylance проверяет текст в редакторе, mypy — файл на диске.</p>
+        </details>
+        <details>
+          <summary>Проект без единой аннотации проходит <code>mypy app</code> без ошибок. Почему и как это исправить?</summary>
+          <p>По умолчанию mypy не проверяет функции без аннотаций. Параметр <code>disallow_untyped_defs = true</code> в разделе <code>[tool.mypy]</code> файла <code>pyproject.toml</code> превращает каждую такую функцию в ошибку <code>no-untyped-def</code>.</p>
+        </details>
+        <details>
+          <summary>Проверка типов прошла. Может ли программа завершиться ошибкой при запуске?</summary>
+          <p>Может. Данные из файлов и сети проверке недоступны, расчёты и ограничения значений она не проверяет, а значения типа <code>Any</code> пропускает. Такие ошибки находят тесты и проверки внутри функций.</p>
+        </details>
+
+        <h2 id="s11"><span class="sec">§11</span>Шпаргалка по главе</h2>
+        <div class="cheat">
+          <div>
+            <b>Включить Pylance</b>
+            <code>Settings → Workspace</code>
+            <code>"python.analysis.typeCheckingMode": "basic"</code>
+          </div>
+          <div>
+            <b>Где смотреть</b>
+            <code>подчёркивание и наведение</code>
+            <code>панель Problems: Ctrl+Shift+M</code>
+          </div>
+          <div>
+            <b>Запустить mypy</b>
+            <code>.venv/bin/mypy proba.py</code>
+            <code>.venv/bin/mypy app</code>
+          </div>
+          <div>
+            <b>Строка вывода</b>
+            <code>файл:строка: error: сообщение [код]</code>
+          </div>
+          <div>
+            <b>Настройка mypy</b>
+            <code>[tool.mypy]</code>
+            <code>disallow_untyped_defs = true</code>
+          </div>
+          <div>
+            <b>Узнать тип</b>
+            <code>наведение на имя — Pylance</code>
+            <code>reveal_type(x) — mypy</code>
+          </div>
+        </div>
+
+        <h3>Итог главы</h3>
+        <p>Pylance проверяет открытые файлы во время набора, когда в настройках проекта выбран режим <code>basic</code>; ошибки видны подчёркиванием, во всплывающем сообщении и в панели Problems. mypy проверяет указанный файл или весь пакет по команде в терминале и печатает по строке на ошибку: файл, номер строки, сообщение «пришло / ожидалось» и код правила. Параметр <code>disallow_untyped_defs</code> заставляет mypy сообщать о функциях без аннотаций — на первом архиве их семнадцать. Тип, который вывела проверка, показывают наведение в редакторе и <code>reveal_type</code> в mypy.</p>
+
+        <div class="sources">
+          <b>Откуда взяты факты</b>
+          <ol>
+            <li>Запуск, настройка и коды ошибок — <a href="https://mypy.readthedocs.io/en/stable/">документация mypy</a>, разделы Config file и Error codes; <a href="https://mypy.readthedocs.io/en/stable/config_file.html#confval-disallow_untyped_defs">disallow_untyped_defs</a>.</li>
+            <li>Режимы проверки Pylance — <a href="https://code.visualstudio.com/docs/python/settings-reference">справочник параметров Python в VS Code</a>, параметр <code>python.analysis.typeCheckingMode</code>; имена правил — <a href="https://microsoft.github.io/pyright/#/configuration">документация Pyright, Configuration</a>.</li>
+            <li>Выбор интерпретатора — <a href="https://code.visualstudio.com/docs/python/environments">VS Code, Python environments</a>.</li>
+            <li>Выводы получены запуском на архивах проекта темы, mypy <code>1.15</code>; кадры сняты в VS Code <code>1.138</code> с расширением Pylance <code>2026.4</code>.</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="01-annotacii-tipov.html">← 4.1 Аннотация типа</a><a href="03-tipy-v-annotaciyah.html">4.3 Типы в аннотациях →</a></div>
+
+        <div class="colophon">
+          <span>Глава 4.2 · Проверка типов · МДК.01.01</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="book.js"></script>
+</body>
+</html>

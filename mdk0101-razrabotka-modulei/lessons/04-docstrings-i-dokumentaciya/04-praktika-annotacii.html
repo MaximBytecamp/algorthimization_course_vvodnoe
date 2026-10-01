@@ -24,7 +24,7 @@
         <header class="chapter-head">
           <span class="chapter-num">4.4</span>
           <h1>Практика:<br>аннотации в проекте</h1>
-          <p class="lead">В этой главе проект «Отчёт кафе» без единой аннотации доводится до чистой проверки mypy. Разобраны порядок работы по пакетам, способ выбрать тип для каждой функции, один модуль целиком до и после, и то, как после каждого пакета уменьшается число ошибок. Итог работы совпадает со вторым архивом темы — с него начинается часть про документацию.</p>
+          <p class="lead">В этой главе проект «Отчёт кафе» без единой аннотации доводится до чистой проверки mypy. Разобраны порядок работы по пакетам, способ выбрать тип для каждой функции, подсказки Pylance с готовым типом результата, один модуль целиком до и после и то, как после каждого пакета уменьшается число ошибок. Итог работы совпадает со вторым архивом темы — с него начинается часть про документацию.</p>
         </header>
 
         <dl class="passport">
@@ -41,11 +41,12 @@
             <li><a href="#s2">Подготовка</a></li>
             <li><a href="#s3">Порядок: от листьев к корню</a></li>
             <li><a href="#s4">Как выбрать тип</a></li>
-            <li><a href="#s5">Один модуль до и после</a></li>
-            <li><a href="#s6">Трудные места проекта</a></li>
-            <li><a href="#s7">Как уменьшается число ошибок</a></li>
-            <li><a href="#s8">Что сдаётся с пары</a></li>
-            <li><a href="#s9">Проверьте себя</a></li>
+            <li><a href="#s5">Подсказки типа результата</a></li>
+            <li><a href="#s6">Один модуль до и после</a></li>
+            <li><a href="#s7">Трудные места проекта</a></li>
+            <li><a href="#s8">Как уменьшается число ошибок</a></li>
+            <li><a href="#s9">Что сдаётся с пары</a></li>
+            <li><a href="#s10">Проверьте себя</a></li>
           </ol>
         </nav>
 
@@ -63,12 +64,11 @@
         </div>
 
         <h2 id="s2"><span class="sec">§2</span>Подготовка</h2>
+        <p>Работа идёт в папке первого архива, подготовленной в главе 4.1: окружение <code>.venv</code> создано, зависимости установлены. Перед началом выполните три шага.</p>
         <ol class="steps">
-          <li>Распакуйте первый архив и откройте папку <code>otchet-kafe-bez-tipov</code> в VS Code.</li>
-          <li>Создайте окружение и установите зависимости: <code>python3 -m venv .venv</code>, затем <code>.venv/bin/pip install -r requirements.txt</code>. В списке зависимостей есть mypy.</li>
-          <li>Включите проверку в редакторе: добавьте в <code>.vscode/settings.json</code> строку <code>"python.analysis.typeCheckingMode": "basic"</code>.</li>
-          <li>Запустите проект и тесты: <code>.venv/bin/python main.py</code> и <code>.venv/bin/python -m pytest -q</code>. Запомните итог отчёта — <code>4 937,50 ₽</code>: после работы он должен остаться тем же.</li>
-          <li>Запустите <code>.venv/bin/mypy app</code> и сохраните вывод. Семнадцать строк — это список работы.</li>
+          <li>Включите проверку в редакторе так же, как в главе 4.2: настройки, вкладка <b>Workspace</b>, параметр <code>python.analysis.typeCheckingMode</code> — значение <code>basic</code>. Проверьте, что выбран интерпретатор <code>.venv</code>.</li>
+          <li>Запустите проект и тесты: <code>.venv/bin/python main.py</code> и <code>.venv/bin/python -m pytest -q</code>. Запомните итог отчёта — <code>4 937,50 ₽</code> — и число тестов — <code>12 passed</code>: после работы они должны остаться теми же.</li>
+          <li>Запустите <code>.venv/bin/mypy app</code>. Семнадцать строк вывода — список работы; такой же вывод показан в главе 4.2, §7.</li>
         </ol>
 
         <h2 id="s3"><span class="sec">§3</span>Порядок: от листьев к корню</h2>
@@ -116,9 +116,38 @@
           <div class="checklist__item"><span><b>Параметр: что передаёт вызывающий код</b>В <code>main.py</code> в <code>load_orders</code> передаётся <code>Path("data/smena.csv")</code> — значит, параметр <code>path: Path</code>.</span></div>
           <div class="checklist__item"><span><b>Результат: что стоит после return</b><code>return min(grades), max(grades)</code> — пара целых, <code>tuple[int, int]</code>. Нет <code>return</code> со значением — <code>-&gt; None</code>. Есть <code>yield</code> — <code>Iterator[...]</code>.</span></div>
         </div>
-        <p>Когда сомнения остаются, ставят предполагаемый тип и запускают mypy: неверное предположение он покажет ошибкой в месте вызова. Для выражений внутри функции помогает временная строка <code>reveal_type(...)</code> из главы 4.2.</p>
+        <p>Когда сомнения остаются, ставят предполагаемый тип и запускают mypy: неверное предположение он покажет ошибкой в месте вызова. Для выражений внутри функции помогают наведение указателя на имя и временная строка <code>reveal_type(...)</code> — оба способа разобраны в главе 4.2, §8. Как записать найденный тип, показано в главе 4.3.</p>
 
-        <h2 id="s5"><span class="sec">§5</span>Один модуль до и после</h2>
+        <h2 id="s5"><span class="sec">§5</span>Подсказки типа результата</h2>
+        <p>Тип результата Pylance умеет выводить сам, по <code>return</code> в теле функции. Выведенный тип можно показать прямо в коде — серой надписью после закрывающей скобки. Такую надпись называют <span class="term">подсказкой вставки</span> (inlay hint): она не входит в текст файла, пока её не вставят.</p>
+        <div class="walk">
+          <div class="walk__step">
+            <p class="walk__head"><span>Включите подсказки типа результата</span></p>
+            <div class="walk__body">
+              <p>Откройте настройки (<kbd>Ctrl</kbd> + <kbd>,</kbd>, на macOS — <kbd>Cmd</kbd> + <kbd>,</kbd>), вкладку <b>Workspace</b>, и введите в поиске <code>inlay hints function return types</code>. Поставьте флажок у параметра <b>Python › Analysis › Inlay Hints: Function Return Types</b>. В <code>.vscode/settings.json</code> появится строка <code>"python.analysis.inlayHints.functionReturnTypes": true</code>.</p>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Откройте модуль и прочитайте подсказки</span></p>
+            <div class="walk__body">
+              <p>Откройте <code>app/utils/formatter.py</code>. После подписи каждой функции появится серый тип результата.</p>
+              <figure class="shot">
+                <img src="img/vscode-types-inlay.png" alt="formatter.py в VS Code: после format_kopeks(kopeks) серая подсказка -&gt; str, после format_title(text, width=40) серая подсказка -&gt; Any">
+                <figcaption>Первый архив, в коде аннотаций нет. У <code>format_kopeks</code> подсказка <code>-&gt; str</code>: функция возвращает f-строку, и тип ясен из тела. У <code>format_title</code> — <code>-&gt; Any</code>: результат — <code>text.center(...)</code>, а тип <code>text</code> неизвестен, значит, неизвестен и результат.</figcaption>
+              </figure>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Вставьте подходящую подсказку двойным щелчком</span></p>
+            <div class="walk__body">
+              <p>Дважды щёлкните по серому <code>-&gt; str</code> у <code>format_kopeks</code>: подсказка станет частью кода. Тип параметра Pylance не подсказывает, его пишут сами: <code>def format_kopeks(kopeks: int) -&gt; str:</code>.</p>
+              <p>Подсказку <code>-&gt; Any</code> не вставляют: <code>Any</code> выключает проверку, и в работах курса он запрещён. Сначала аннотируют параметры — <code>text: str, width: int = 40</code>, — и подсказка сменится на <code>-&gt; str</code>: теперь известно, что <code>text.center(...)</code> вызывается у строки.</p>
+            </div>
+          </div>
+        </div>
+        <p>Перед вставкой подсказку сверяют с тем, что функция должна возвращать по смыслу: Pylance выводит тип из текущего тела, и если в теле ошибка, в подсказку попадёт неверный тип. После каждого пакета запускают mypy. Когда работа закончена, флажок можно снять.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Один модуль до и после</h2>
         <p>Модуль <code>app/services/orders.py</code> в первом архиве. mypy сообщает о нём три строки — по одной на функцию:</p>
         <figure class="code code--out">
           <figcaption><span>Терминал</span><span>mypy app, строки про orders.py</span></figcaption>
@@ -177,7 +206,7 @@ app/services/orders.py:26: error: Function is missing a type annotation  [no-unt
         </div>
         <p>Как выбраны типы. <code>path</code> — объект <code>Path</code>, так его передаёт <code>main.py</code>. Список <code>orders</code> содержит заказы: из элементов берут <code>.waiter</code> и <code>.kopeks</code>. <code>sort_orders_in_place</code> ничего не возвращает, поэтому <code>-&gt; None</code>. Переменной <code>totals</code> нужна аннотация, потому что по пустому словарю <code>{}</code> тип ключей и значений не определить.</p>
 
-        <h2 id="s6"><span class="sec">§6</span>Трудные места проекта</h2>
+        <h2 id="s7"><span class="sec">§7</span>Трудные места проекта</h2>
         <div class="table-scroll">
           <table>
             <thead><tr><th>Место</th><th>Аннотация</th><th>Почему так</th></tr></thead>
@@ -193,7 +222,7 @@ app/services/orders.py:26: error: Function is missing a type annotation  [no-unt
           </table>
         </div>
 
-        <h2 id="s7"><span class="sec">§7</span>Как уменьшается число ошибок</h2>
+        <h2 id="s8"><span class="sec">§8</span>Как уменьшается число ошибок</h2>
         <p>После каждого пакета запускайте <code>.venv/bin/mypy app</code>. Число ошибок в последней строке вывода — ход работы. Ниже настоящие итоги прогонов при работе в порядке из §3:</p>
         <div class="flowline" data-play>
           <p class="flowline__head">Итог mypy после каждого пакета</p>
@@ -233,7 +262,7 @@ app/services/orders.py:26: error: Function is missing a type annotation  [no-unt
         </figure>
         <p>Получившийся проект совпадает со вторым архивом темы во всех файлах, кроме README, — это проверено сравнением. С этого проекта начинается следующая часть темы: в главе 4.5 в него добавляются описания.</p>
 
-        <h2 id="s8"><span class="sec">§8</span>Что сдаётся с пары</h2>
+        <h2 id="s9"><span class="sec">§9</span>Что сдаётся с пары</h2>
         <div class="checklist">
           <p class="checklist__head">Работа принята, когда</p>
           <div class="checklist__item"><span><b>Проверка типов проходит</b><code>mypy app</code> отвечает <code>Success: no issues found</code>.</span></div>
@@ -243,7 +272,7 @@ app/services/orders.py:26: error: Function is missing a type annotation  [no-unt
           <div class="checklist__item"><span><b>Тела функций не тронуты</b>Изменения — только в подписях и у переменных с пустыми коллекциями.</span></div>
         </div>
 
-        <h2 id="s9"><span class="sec">§9</span>Проверьте себя</h2>
+        <h2 id="s10"><span class="sec">§10</span>Проверьте себя</h2>
         <details>
           <summary>Почему аннотации расставляют начиная с <code>utils</code>?</summary>
           <p>Так аннотации появляются сначала у того, что вызывают, и только потом у того, кто вызывает. Когда очередь доходит до <code>services</code>, поля <code>Order</code> уже аннотированы: редактор подсказывает их, а mypy сверяет вызовы.</p>
@@ -262,9 +291,9 @@ app/services/orders.py:26: error: Function is missing a type annotation  [no-unt
         </details>
 
         <h3>Итог главы</h3>
-        <p>Проект без аннотаций доводится до чистой проверки в четыре шага по пакетам: <code>utils</code>, <code>domain</code>, <code>services</code>, <code>ui</code>, начиная с модулей, которые ничего из проекта не вызывают. Тип параметра определяется по тому, как его используют внутри и что передаёт вызывающий код, тип результата — по <code>return</code>, а наличие <code>yield</code> означает итератор. Переменным с пустыми коллекциями аннотация нужна, остальным — нет. После каждого пакета число ошибок mypy уменьшается на количество аннотированных функций: <code>17</code>, <code>12</code>, <code>8</code>, <code>1</code>, <code>Success</code>. Работа принята, когда проверка чистая, тесты проходят и отчёт не изменился. Результат совпадает со вторым архивом темы, и с него начинается часть про документацию: в следующей главе разобрано, какой бывает документация кода и чем докстринг отличается от комментария.</p>
+        <p>Аннотации расставляют по пакетам, начиная с тех, что ничего из проекта не вызывают: <code>utils</code>, <code>domain</code>, <code>services</code>, <code>ui</code>. Тип параметра берут из того, как его используют и что передаёт вызывающий код, тип результата — из <code>return</code> или подсказки Pylance. После каждого пакета mypy показывает, сколько осталось: <code>17</code>, <code>12</code>, <code>8</code>, <code>1</code>, <code>Success</code>. Работа принята, когда проверка чистая, тесты проходят и отчёт не изменился; результат совпадает со вторым архивом, и с него начинается часть про документацию.</p>
 
-        <div class="pager"><a href="03-proverka-tipov.html">← 4.3 Проверка типов</a><a href="05-vidy-dokumentacii.html">4.5 Документация кода: какая она бывает →</a></div>
+        <div class="pager"><a href="03-tipy-v-annotaciyah.html">← 4.3 Типы в аннотациях</a><a href="05-vidy-dokumentacii.html">4.5 Документация кода: какая она бывает →</a></div>
 
         <div class="colophon">
           <span>Глава 4.4 · Практика: аннотации в проекте · МДК.01.01</span>

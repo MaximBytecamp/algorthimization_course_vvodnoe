@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>4.3 Типы в аннотациях · Аннотации типов и документация</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Тема 04 · Аннотации типов и документация кода</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Аннотации типов и документация кода</a> · МДК.01.01 · разработка программных модулей</p>
+          <p class="running__folio">Глава 4.3</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">4.3</span>
+          <h1>Типы<br>в аннотациях</h1>
+          <p class="lead">В этой главе собраны типы, которые пишут в аннотациях: простые значения, списки, словари, кортежи и множества, собственные классы, «значение или <code>None</code>», объединения, генераторы и функции-аргументы, псевдонимы и <code>Any</code>. Для каждого типа даны несколько примеров записи, файл с верными и неверными вызовами и настоящий ответ mypy на него с разбором каждой строки.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Синтаксис</dd></div>
+          <div><dt>Уровень</dt><dd>Начальный</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 4.1 и 4.2</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Записать тип любого значения из проекта</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Как проверять примеры</a></li>
+            <li><a href="#s2">Простые типы</a></li>
+            <li><a href="#s3">Функции без результата: None</a></li>
+            <li><a href="#s4">Списки</a></li>
+            <li><a href="#s5">Словари</a></li>
+            <li><a href="#s6">Кортежи</a></li>
+            <li><a href="#s7">Множества и старая запись коллекций</a></li>
+            <li><a href="#s8">Собственные классы</a></li>
+            <li><a href="#s9">Значение или None</a></li>
+            <li><a href="#s10">Несколько возможных типов</a></li>
+            <li><a href="#s11">Генераторы и функции-аргументы</a></li>
+            <li><a href="#s12">Псевдонимы типов</a></li>
+            <li><a href="#s13">Тип Any</a></li>
+            <li><a href="#s14">Аннотации переменных и полей</a></li>
+            <li><a href="#s15">Проверьте себя</a></li>
+            <li><a href="#s16">Шпаргалка по главе</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Как проверять примеры</h2>
+        <p>Каждый пример главы — содержимое файла <code>proba.py</code> в корне второго архива проекта, того же, что в главе 4.2. Под файлом — ответ команды <code>.venv/bin/mypy proba.py</code>, полученный запуском. Номера строк в ответе считаются от первой строки файла, поэтому файл нужно копировать целиком, вместе с импортами и пустыми строками.</p>
+        <p>Порядок работы с каждым примером одинаковый:</p>
+        <ol class="steps">
+          <li>Замените содержимое <code>proba.py</code> кодом примера и сохраните файл.</li>
+          <li>Посмотрите, какие строки подчеркнул Pylance, и наведите указатель на подчёркивание.</li>
+          <li>Выполните в терминале <code>.venv/bin/mypy proba.py</code> (в Windows — <code>.venv\Scripts\mypy proba.py</code>) и сверьте ответ с книгой.</li>
+          <li>Исправьте ошибки по разбору под примером и запустите проверку снова: ответ должен смениться на <code>Success</code>.</li>
+        </ol>
+        <p>Pylance в режиме <code>basic</code> подчёркивает почти те же строки, что mypy, но формулирует сообщения по-своему. Где поведение двух программ различается, об этом сказано в разборе.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Простые типы</h2>
+        <p>Простые типы записываются своими именами — теми же, что используются для преобразований: <code>int(...)</code>, <code>str(...)</code>, <code>float(...)</code>, <code>bool(...)</code>.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Тип</th><th>Какие значения</th><th>Примеры аннотаций</th></tr></thead>
+            <tbody>
+              <tr><td><code>int</code></td><td>целые числа: <code>0</code>, <code>125000</code>, <code>-3</code></td><td><code>kopeks: int</code>, <code>width: int = 40</code>, <code>-&gt; int</code> у <code>total_kopeks</code></td></tr>
+              <tr><td><code>float</code></td><td>дробные числа: <code>4.4</code>, <code>0.5</code></td><td><code>-&gt; float</code> у <code>calculate_average</code>, <code>total: float</code></td></tr>
+              <tr><td><code>str</code></td><td>строки: <code>"Иванов Пётр"</code>, <code>""</code></td><td><code>name: str</code>, <code>-&gt; str</code> у <code>format_kopeks</code></td></tr>
+              <tr><td><code>bool</code></td><td><code>True</code> и <code>False</code></td><td><code>strict: bool = False</code>, <code>-&gt; bool</code> у функций-проверок</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>В примере две новые функции с простыми типами и вызовы функций проекта: два верных и три неверных.</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>простые типы</span></figcaption>
+<pre><span class="k">from</span> app.utils.formatter <span class="k">import</span> format_kopeks
+<span class="k">from</span> app.utils.text <span class="k">import</span> normalize_name
+
+
+<span class="k">def</span> <span class="f">is_big</span>(kopeks: <span class="k">int</span>, limit: <span class="k">int</span> = <span class="n">100_000</span>) -&gt; <span class="k">bool</span>:
+    <span class="k">return</span> kopeks &gt;= limit
+
+
+<span class="k">def</span> <span class="f">share</span>(part: <span class="k">int</span>, total: <span class="k">int</span>) -&gt; <span class="k">float</span>:
+    <span class="k">return</span> part / total
+
+
+format_kopeks(<span class="n">125000</span>)
+format_kopeks(<span class="s">"1250"</span>)
+normalize_name(<span class="n">42</span>)
+is_big(<span class="n">150000</span>, limit=<span class="s">"сто тысяч"</span>)
+share(<span class="n">3</span>, <span class="n">4</span>)</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:14: error: Argument 1 to "format_kopeks" has incompatible type "str"; expected "int"  [arg-type]
+proba.py:15: error: Argument 1 to "normalize_name" has incompatible type "int"; expected "str"  [arg-type]
+proba.py:16: error: Argument "limit" to "is_big" has incompatible type "str"; expected "int"  [arg-type]
+Found 3 errors in 1 file (checked 1 source file)</pre>
+        </figure>
+        <p>Разбор по строкам:</p>
+        <ul>
+          <li><b>Строка 13</b>, <code>format_kopeks(125000)</code> — ошибки нет: передано целое число, как в аннотации <code>kopeks: int</code>.</li>
+          <li><b>Строка 14</b> — сумма передана строкой <code>"1250"</code>. Так бывает, когда значение прочитано из файла и не переведено в число. Исправление — передать число: <code>format_kopeks(1250)</code>, а если значение пришло строкой — <code>format_kopeks(int(value))</code>.</li>
+          <li><b>Строка 15</b> — в <code>normalize_name</code> передано число вместо имени.</li>
+          <li><b>Строка 16</b> — аргумент передан по имени, и mypy называет его по имени: <code>Argument "limit"</code>. Для позиционных аргументов в сообщении стоит номер: <code>Argument 1</code>.</li>
+          <li><b>Строка 17</b>, <code>share(3, 4)</code> — ошибки нет. Внутри <code>3 / 4</code> даёт <code>0.75</code>, и аннотация результата <code>-&gt; float</code> с этим совпадает: деление <code>/</code> в Python всегда возвращает дробное число.</li>
+        </ul>
+        <p>У <code>int</code> и <code>float</code> есть особое правило: где ожидается <code>float</code>, можно передать <code>int</code>. Целое число считается частным случаем дробного. Обратное не верно:</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>int вместо float и наоборот</span></figcaption>
+<pre><span class="k">def</span> <span class="f">average_check</span>(total: <span class="k">float</span>, count: <span class="k">int</span>) -&gt; <span class="k">float</span>:
+    <span class="k">return</span> total / count
+
+
+average_check(<span class="n">4937</span>, <span class="n">5</span>)
+average_check(<span class="n">4937.5</span>, <span class="n">5</span>)
+average_check(<span class="n">4937.5</span>, <span class="n">5.0</span>)</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:7: error: Argument 2 to "average_check" has incompatible type "float"; expected "int"  [arg-type]
+Found 1 error in 1 file (checked 1 source file)</pre>
+        </figure>
+        <p>В строке 5 целое <code>4937</code> принято на место <code>float</code>. В строке 7 дробное <code>5.0</code> передано туда, где ждут целое количество чеков, и mypy это отклонил, хотя по значению <code>5.0</code> равно <code>5</code>: проверка сравнивает типы, значения она не вычисляет.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Функции без результата: None</h2>
+        <p><code>None</code> — значение «ничего». Функция, в которой нет <code>return</code> со значением, возвращает <code>None</code>, и её результат аннотируют как <code>-&gt; None</code>. Так записаны все функции проекта, которые печатают, записывают файл или меняют переданный объект: <code>print_report(lines: list[str]) -&gt; None</code>, <code>sort_orders_in_place(orders: list[Order]) -&gt; None</code>, <code>Shift.add(self, order: Order) -&gt; None</code>.</p>
+        <p>С аннотацией результата проверка следит за двумя ошибками: функция обещает значение, но не во всех случаях его возвращает, и результат функции <code>-&gt; None</code> пытаются использовать.</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>пропущенный return и результат -&gt; None</span></figcaption>
+<pre><span class="k">from</span> app.ui.console <span class="k">import</span> print_report
+
+
+<span class="k">def</span> <span class="f">label</span>(kopeks: <span class="k">int</span>) -&gt; <span class="k">str</span>:
+    <span class="k">if</span> kopeks &gt; <span class="n">0</span>:
+        <span class="k">return</span> <span class="s">"есть выручка"</span>
+
+
+result = print_report([<span class="s">"Смена"</span>])</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:4: error: Missing return statement  [return]
+proba.py:9: error: "print_report" does not return a value (it only ever returns None)  [func-returns-value]
+Found 2 errors in 1 file (checked 1 source file)</pre>
+        </figure>
+        <ul>
+          <li><b>Строка 4</b> — <code>Missing return statement</code>, «нет инструкции return». Функция обещает строку, но при <code>kopeks</code>, равном нулю, условие не выполнится, и функция вернёт <code>None</code>. Исправление — вернуть строку и во втором случае: добавить в конце <code>return "выручки нет"</code>.</li>
+          <li><b>Строка 9</b> — результат <code>print_report</code> сохраняется в переменную, но функция всегда возвращает <code>None</code>: «не возвращает значение». Исправление — вызвать функцию без присваивания: <code>print_report(["Смена"])</code>.</li>
+        </ul>
+        <p>Вторую ошибку Pylance в режиме <code>basic</code> не показывает; первую подчёркивает с правилом <code>reportReturnType</code>.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Списки</h2>
+        <p>У коллекции указывают, что в ней лежит. Тип элементов пишется в квадратных скобках после имени коллекции. <code>list[int]</code> — список целых чисел любой длины. Все элементы списка должны быть одного типа: тип в скобках один.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Запись</th><th>Что означает</th><th>Где встречается</th></tr></thead>
+            <tbody>
+              <tr><td><code>list[int]</code></td><td>список целых чисел</td><td>оценки: <code>calculate_average(grades: list[int])</code></td></tr>
+              <tr><td><code>list[str]</code></td><td>список строк</td><td>строки отчёта: <code>print_report(lines: list[str])</code></td></tr>
+              <tr><td><code>list[Order]</code></td><td>список заказов</td><td>результат <code>load_orders</code></td></tr>
+              <tr><td><code>list[list[int]]</code></td><td>список списков целых чисел</td><td>оценки по группам: <code>[[5, 4], [3, 5, 5]]</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Аннотация списка проверяет не только присваивание, но и всё, что со списком делают потом: добавление элементов, чтение элемента в переменную.</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>списки</span></figcaption>
+<pre><span class="k">from</span> app.domain.order <span class="k">import</span> Order
+
+grades: <span class="k">list</span>[<span class="k">int</span>] = [<span class="n">5</span>, <span class="n">4</span>, <span class="n">5</span>]
+names: <span class="k">list</span>[<span class="k">str</span>] = [<span class="s">"Иванов Пётр"</span>, <span class="s">"Петрова Анна"</span>]
+orders: <span class="k">list</span>[Order] = [Order(<span class="s">"Иванов Пётр"</span>, <span class="n">125000</span>)]
+groups: <span class="k">list</span>[<span class="k">list</span>[<span class="k">int</span>]] = [[<span class="n">5</span>, <span class="n">4</span>], [<span class="n">3</span>, <span class="n">5</span>, <span class="n">5</span>]]
+
+grades.append(<span class="s">"5"</span>)
+names.append(<span class="k">None</span>)
+orders.append({<span class="s">"waiter"</span>: <span class="s">"Сидоров Илья"</span>, <span class="s">"kopeks"</span>: <span class="n">77200</span>})
+first: <span class="k">str</span> = grades[<span class="n">0</span>]</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:8: error: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"  [arg-type]
+proba.py:9: error: Argument 1 to "append" of "list" has incompatible type "None"; expected "str"  [arg-type]
+proba.py:10: error: Argument 1 to "append" of "list" has incompatible type "dict[str, object]"; expected "Order"  [arg-type]
+proba.py:11: error: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
+Found 4 errors in 1 file (checked 1 source file)</pre>
+        </figure>
+        <ul>
+          <li><b>Строки 3–6</b> — четыре верных объявления, ошибок нет.</li>
+          <li><b>Строка 8</b> — в список оценок добавлена строка <code>"5"</code>. Сообщение <code>Argument 1 to "append" of "list"</code> — «первый аргумент метода <code>append</code> у списка»: проверка подставила тип элементов <code>int</code> в метод <code>append</code> и сверила с ним аргумент.</li>
+          <li><b>Строка 9</b> — в список имён добавлено <code>None</code>. Список, где могут быть пропуски, записывают как <code>list[str | None]</code> — об этом в §9.</li>
+          <li><b>Строка 10</b> — вместо объекта <code>Order</code> добавлен словарь с теми же полями. Для проверки это разные типы: у словаря нет полей <code>.waiter</code> и <code>.kopeks</code>, и следующая строка <code>order.kopeks</code> упала бы при запуске. Исправление — <code>orders.append(Order("Сидоров Илья", 77200))</code>.</li>
+          <li><b>Строка 11</b> — элемент списка <code>list[int]</code> — целое число, а переменная объявлена строкой. Сообщение <code>Incompatible types in assignment</code> читается как «несовместимые типы при присваивании»: выражение справа имеет тип <code>int</code>, переменная — <code>str</code>.</li>
+        </ul>
+
+        <h2 id="s5"><span class="sec">§5</span>Словари</h2>
+        <p>У словаря два типа в скобках через запятую: сначала тип ключей, затем тип значений. <code>dict[str, int]</code> — «ключ — строка, значение — целое число».</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Запись</th><th>Что означает</th><th>Где встречается</th></tr></thead>
+            <tbody>
+              <tr><td><code>dict[str, int]</code></td><td>имя → целое число</td><td>выручка по официантам, результат <code>revenue_by_waiter</code></td></tr>
+              <tr><td><code>dict[str, str]</code></td><td>строка → строка</td><td>строка CSV-файла: <code>{"waiter": "Сидоров Илья", "kopeks": "77200"}</code></td></tr>
+              <tr><td><code>dict[str, list[int]]</code></td><td>строка → список целых</td><td>журнал оценок: фамилия → оценки</td></tr>
+              <tr><td><code>dict[int, str]</code></td><td>целое → строка</td><td>номер столика → имя официанта</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>словари</span></figcaption>
+<pre>revenue: <span class="k">dict</span>[<span class="k">str</span>, <span class="k">int</span>] = {<span class="s">"Иванов Пётр"</span>: <span class="n">168500</span>}
+row: <span class="k">dict</span>[<span class="k">str</span>, <span class="k">str</span>] = {<span class="s">"waiter"</span>: <span class="s">"Сидоров Илья"</span>, <span class="s">"kopeks"</span>: <span class="s">"77200"</span>}
+journal: <span class="k">dict</span>[<span class="k">str</span>, <span class="k">list</span>[<span class="k">int</span>]] = {<span class="s">"Иванова"</span>: [<span class="n">5</span>, <span class="n">4</span>], <span class="s">"Петров"</span>: [<span class="n">3</span>]}
+
+revenue[<span class="s">"Петрова Анна"</span>] = <span class="s">"2480,50"</span>
+revenue[<span class="n">1</span>] = <span class="n">100</span>
+journal[<span class="s">"Сидоров"</span>] = <span class="n">5</span>
+kopeks: <span class="k">int</span> = row[<span class="s">"kopeks"</span>]
+<span class="k">for</span> waiter, total <span class="k">in</span> revenue.items():
+    reveal_type(total)</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:5: error: Incompatible types in assignment (expression has type "str", target has type "int")  [assignment]
+proba.py:6: error: Invalid index type "int" for "dict[str, int]"; expected type "str"  [index]
+proba.py:7: error: Incompatible types in assignment (expression has type "int", target has type "list[int]")  [assignment]
+proba.py:8: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+proba.py:10: note: Revealed type is "builtins.int"
+Found 4 errors in 1 file (checked 1 source file)</pre>
+        </figure>
+        <ul>
+          <li><b>Строка 5</b> — значение выручки записано строкой с запятой, как его печатают в отчёте. В словаре хранятся копейки целым числом: <code>revenue["Петрова Анна"] = 248050</code>.</li>
+          <li><b>Строка 6</b> — ключ не того типа. Код <code>index</code> и слова <code>Invalid index type</code> означают «неверный тип индекса»: всё, что стоит в квадратных скобках после словаря, сверяется с типом ключей.</li>
+          <li><b>Строка 7</b> — в журнал оценок вместо списка записано одно число. Нужно <code>journal["Сидоров"] = [5]</code>.</li>
+          <li><b>Строка 8</b> — в строке CSV все значения — строки, и <code>row["kopeks"]</code> — тоже строка. Чтобы получить число, его преобразуют: <code>kopeks: int = int(row["kopeks"])</code>. Так сделано в <code>load_orders</code>.</li>
+          <li><b>Строка 10</b> — <code>note</code> в ответ на <code>reveal_type</code>. При переборе <code>revenue.items()</code> проверка знает тип и ключа, и значения: <code>total</code> — <code>int</code>.</li>
+        </ul>
+
+        <h2 id="s6"><span class="sec">§6</span>Кортежи</h2>
+        <p>Кортеж в аннотации записывается иначе, чем список: тип указывают для каждого места по порядку. <code>tuple[int, int]</code> — ровно два целых числа, <code>tuple[str, int]</code> — ровно два элемента, строка и число в таком порядке. Кортеж, в котором элементов может быть сколько угодно, записывают с многоточием: <code>tuple[int, ...]</code>.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Запись</th><th>Что означает</th><th>Пример значения</th></tr></thead>
+            <tbody>
+              <tr><td><code>tuple[int, int]</code></td><td>два целых числа</td><td><code>(3, 5)</code> — результат <code>grade_bounds</code></td></tr>
+              <tr><td><code>tuple[str, int]</code></td><td>строка, затем целое</td><td><code>("Петрова Анна", 248050)</code> — пара из <code>revenue.items()</code></td></tr>
+              <tr><td><code>tuple[int, ...]</code></td><td>сколько угодно целых, в том числе ни одного</td><td><code>(5, 4, 5, 3)</code>, <code>()</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>кортежи</span></figcaption>
+<pre><span class="k">from</span> app.services.calculator <span class="k">import</span> grade_bounds
+
+low, high = grade_bounds([<span class="n">5</span>, <span class="n">3</span>, <span class="n">4</span>])
+reveal_type(low)
+
+pair: <span class="k">tuple</span>[<span class="k">int</span>, <span class="k">int</span>] = (<span class="n">3</span>, <span class="n">5</span>, <span class="n">4</span>)
+best: <span class="k">tuple</span>[<span class="k">str</span>, <span class="k">int</span>] = (<span class="s">"Петрова Анна"</span>, <span class="n">248050</span>)
+wrong: <span class="k">tuple</span>[<span class="k">str</span>, <span class="k">int</span>] = (<span class="n">248050</span>, <span class="s">"Петрова Анна"</span>)
+week: <span class="k">tuple</span>[<span class="k">int</span>, ...] = (<span class="n">5</span>, <span class="n">4</span>, <span class="n">5</span>, <span class="n">3</span>)
+empty: <span class="k">tuple</span>[<span class="k">int</span>, ...] = ()</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:4: note: Revealed type is "builtins.int"
+proba.py:6: error: Incompatible types in assignment (expression has type "tuple[int, int, int]", variable has type "tuple[int, int]")  [assignment]
+proba.py:8: error: Incompatible types in assignment (expression has type "tuple[int, str]", variable has type "tuple[str, int]")  [assignment]
+Found 2 errors in 1 file (checked 1 source file)</pre>
+        </figure>
+        <ul>
+          <li><b>Строка 3–4</b> — результат <code>grade_bounds</code> разобран на две переменные, и каждая получила тип своего места: <code>low</code> — <code>int</code>.</li>
+          <li><b>Строка 6</b> — три элемента там, где обещано два. Проверка сравнивает длину: <code>tuple[int, int, int]</code> не совпадает с <code>tuple[int, int]</code>.</li>
+          <li><b>Строка 8</b> — элементы переставлены. Длина совпадает, но на первом месте ждут строку, а стоит число.</li>
+          <li><b>Строки 9–10</b> — с многоточием подходит кортеж любой длины, в том числе пустой.</li>
+        </ul>
+        <p>Порядок элементов в паре проверка видит только по типам. В <code>tuple[int, int]</code> у <code>grade_bounds</code> что идёт первым — минимум или максимум, — аннотация не сообщает: это пишут в описании функции.</p>
+
+        <h2 id="s7"><span class="sec">§7</span>Множества и старая запись коллекций</h2>
+        <p><span class="term">Множество</span> — коллекция без повторов и без порядка. Тип элементов пишут так же, как у списка: <code>set[str]</code> — множество строк, например имён официантов смены.</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>множество</span></figcaption>
+<pre>waiters: <span class="k">set</span>[<span class="k">str</span>] = {<span class="s">"Иванов Пётр"</span>, <span class="s">"Петрова Анна"</span>}
+waiters.add(<span class="s">"Сидоров Илья"</span>)
+waiters.add(<span class="n">125000</span>)</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:3: error: Argument 1 to "add" of "set" has incompatible type "int"; expected "str"  [arg-type]
+Found 1 error in 1 file (checked 1 source file)</pre>
+        </figure>
+        <p>Сообщение такое же, как у <code>append</code> в §4: метод множества <code>add</code> принимает только элементы объявленного типа.</p>
+        <p>В старом коде и в статьях коллекции записывают с заглавной буквы и импортом из модуля <code>typing</code>. Обе записи означают одно и то же; в проектах курса используется новая, без импорта.</p>
+        <div class="swap">
+          <div class="swap__row">
+            <div class="swap__old"><b>Старая запись</b>
+              <p><code>from typing import Dict, List, Optional</code><br><code>def f(x: List[int]) -&gt; Dict[str, int]:</code><br><code>def g() -&gt; Optional[str]:</code></p>
+            </div>
+            <div class="swap__arrow">→</div>
+            <div class="swap__new"><b>Запись в Python 3.10 и новее</b>
+              <p><code>def f(x: list[int]) -&gt; dict[str, int]:</code><br><code>def g() -&gt; str | None:</code></p>
+              <p>Встроенные коллекции принимают тип в скобках с Python <code>3.9</code>, вертикальная черта — с <code>3.10</code>.</p>
+            </div>
+          </div>
+        </div>
+
+        <h2 id="s8"><span class="sec">§8</span>Собственные классы</h2>
+        <p>Класс — тоже тип. Его имя пишут в аннотации так же, как <code>int</code>: класс проекта <code>Order</code>, класс <code>Shift</code>, а также классы стандартной библиотеки — <code>Path</code> из <code>pathlib</code>, <code>date</code> из <code>datetime</code>. Чтобы имя было доступно в файле, класс импортируют. В первом архиве проекта остались строки вроде <code>from datetime import date</code> в <code>app/domain/shift.py</code>, хотя в коде <code>date</code> не вызывается: этот импорт нужен аннотации <code>day: date</code>.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Аннотация</th><th>Откуда класс</th><th>Где в проекте</th></tr></thead>
+            <tbody>
+              <tr><td><code>order: Order</code></td><td><code>from app.domain.order import Order</code></td><td><code>Shift.add</code></td></tr>
+              <tr><td><code>-&gt; list[Order]</code></td><td>то же</td><td><code>load_orders</code></td></tr>
+              <tr><td><code>path: Path</code></td><td><code>from pathlib import Path</code></td><td><code>load_orders</code>, <code>save_report</code></td></tr>
+              <tr><td><code>day: date</code></td><td><code>from datetime import date</code></td><td><code>Shift.__init__</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Когда тип — класс, проверка знает его поля и методы. Поэтому она находит и опечатки в именах атрибутов.</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>классы в аннотациях</span></figcaption>
+<pre><span class="k">from</span> datetime <span class="k">import</span> date
+<span class="k">from</span> pathlib <span class="k">import</span> Path
+
+<span class="k">from</span> app.domain.order <span class="k">import</span> Order
+<span class="k">from</span> app.domain.shift <span class="k">import</span> Shift
+<span class="k">from</span> app.services.orders <span class="k">import</span> load_orders
+
+
+<span class="k">def</span> <span class="f">describe</span>(order: Order) -&gt; <span class="k">str</span>:
+    <span class="k">return</span> <span class="s">f"</span>{order.waiter}<span class="s">: </span>{order.kopek}<span class="s">"</span>
+
+
+shift = Shift(date(<span class="n">2026</span>, <span class="n">9</span>, <span class="n">21</span>))
+shift.add(Order(<span class="s">"Иванов Пётр"</span>, <span class="n">125000</span>))
+shift.add({<span class="s">"waiter"</span>: <span class="s">"Петрова Анна"</span>, <span class="s">"kopeks"</span>: <span class="n">98050</span>})
+Shift(<span class="s">"21.09.2026"</span>)
+load_orders(Path(<span class="s">"data/smena.csv"</span>))
+load_orders(<span class="s">"data/smena.csv"</span>)</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:10: error: "Order" has no attribute "kopek"; maybe "kopeks"?  [attr-defined]
+proba.py:15: error: Argument 1 to "add" of "Shift" has incompatible type "dict[str, object]"; expected "Order"  [arg-type]
+proba.py:16: error: Argument 1 to "Shift" has incompatible type "str"; expected "date"  [arg-type]
+proba.py:18: error: Argument 1 to "load_orders" has incompatible type "str"; expected "Path"  [arg-type]
+Found 4 errors in 1 file (checked 1 source file)</pre>
+        </figure>
+        <ul>
+          <li><b>Строка 10</b> — опечатка в имени поля: <code>kopek</code> вместо <code>kopeks</code>. mypy не только сообщает, что такого атрибута нет, но и предлагает похожее имя: <code>maybe "kopeks"?</code>. Без аннотации <code>order: Order</code> эта опечатка обнаружилась бы только при запуске.</li>
+          <li><b>Строка 15</b> — словарь вместо заказа, как в §4 со списком.</li>
+          <li><b>Строка 16</b> — дата передана строкой. <code>Argument 1 to "Shift"</code> — первый аргумент при создании объекта, то есть параметр <code>day</code> метода <code>__init__</code>. Исправление — <code>Shift(date(2026, 9, 21))</code>.</li>
+          <li><b>Строка 18</b> — путь передан строкой. При запуске этот вызов сработает: функция <code>open</code> внутри <code>read_rows</code> принимает и строку, и <code>Path</code>. Проверка же сверяет с аннотацией, а в ней записан <code>Path</code>. Есть два исправления: передавать <code>Path("data/smena.csv")</code>, как в <code>main.py</code>, или, если функция должна принимать оба вида, расширить аннотацию до <code>path: str | Path</code>.</li>
+        </ul>
+
+        <h2 id="s9"><span class="sec">§9</span>Значение или None</h2>
+        <p>Часто функция возвращает значение, а если вернуть нечего — <code>None</code>. Например, поиск заказа по имени официанта: заказ найден или не найден. Такой тип записывают через вертикальную черту: <code>Order | None</code> — «заказ или <code>None</code>». В старом коде тот же тип записан как <code>Optional[Order]</code>.</p>
+        <p>С аннотацией <code>Order | None</code> проверка не даёт обратиться к полям результата, пока не проверено, что он не <code>None</code>. Разница между вызовом без такой проверки и с ней — в блоке ниже.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>Order | None</b><span>переключите вариант</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>Без проверки на None</button>
+            <button>С проверкой на None</button>
+          </div>
+          <div class="demo__pane">
+            <figure class="code">
+              <figcaption><span>proba.py</span><span>сразу берём поле</span></figcaption>
+<pre><span class="k">from</span> pathlib <span class="k">import</span> Path
+
+<span class="k">from</span> app.domain.order <span class="k">import</span> Order
+<span class="k">from</span> app.services.orders <span class="k">import</span> load_orders
+
+
+<span class="k">def</span> <span class="f">find_order</span>(orders: <span class="k">list</span>[Order], waiter: <span class="k">str</span>) -&gt; Order | <span class="k">None</span>:
+    <span class="k">for</span> order <span class="k">in</span> orders:
+        <span class="k">if</span> order.waiter == waiter:
+            <span class="k">return</span> order
+    <span class="k">return</span> <span class="k">None</span>
+
+
+orders = load_orders(Path(<span class="s">"data/smena.csv"</span>))
+found = find_order(orders, <span class="s">"Петрова Анна"</span>)
+<span class="k">print</span>(found.kopeks)</pre>
+            </figure>
+            <figure class="code code--out">
+              <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:16: error: Item "None" of "Order | None" has no attribute "kopeks"  [union-attr]
+Found 1 error in 1 file (checked 1 source file)</pre>
+            </figure>
+            <p class="demo__verdict"><b>Ошибка найдена до запуска</b>Сообщение читается так: у варианта <code>None</code> из типа <code>Order | None</code> нет атрибута <code>kopeks</code>. Сейчас Петрова Анна в файле есть, и при запуске всё сработает. Ошибка <code>AttributeError: 'NoneType' object has no attribute 'kopeks'</code> возникнет в тот день, когда имени в файле не окажется. Pylance подчёркивает эту строку с правилом <code>reportOptionalMemberAccess</code>.</p>
+          </div>
+          <div class="demo__pane">
+            <figure class="code">
+              <figcaption><span>proba.py</span><span>сначала проверка</span></figcaption>
+<pre><span class="k">from</span> pathlib <span class="k">import</span> Path
+
+<span class="k">from</span> app.domain.order <span class="k">import</span> Order
+<span class="k">from</span> app.services.orders <span class="k">import</span> load_orders
+
+
+<span class="k">def</span> <span class="f">find_order</span>(orders: <span class="k">list</span>[Order], waiter: <span class="k">str</span>) -&gt; Order | <span class="k">None</span>:
+    <span class="k">for</span> order <span class="k">in</span> orders:
+        <span class="k">if</span> order.waiter == waiter:
+            <span class="k">return</span> order
+    <span class="k">return</span> <span class="k">None</span>
+
+
+orders = load_orders(Path(<span class="s">"data/smena.csv"</span>))
+found = find_order(orders, <span class="s">"Петрова Анна"</span>)
+<span class="k">if</span> found <span class="k">is not</span> <span class="k">None</span>:
+    reveal_type(found)
+    <span class="k">print</span>(found.kopeks)</pre>
+            </figure>
+            <figure class="code code--out">
+              <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:17: note: Revealed type is "app.domain.order.Order"
+Success: no issues found in 1 source file</pre>
+            </figure>
+            <p class="demo__verdict"><b>Ошибок нет</b>Внутри <code>if found is not None</code> тип сужен до <code>Order</code> — это видно по строке <code>Revealed type</code>. Уточнение типа по условию называют <span class="term">сужением</span>: проверка понимает, что в этой ветке <code>None</code> быть не может.</p>
+          </div>
+        </div>
+        <p>Значение «или <code>None</code>» возвращают не только собственные функции. Метод словаря <code>get</code> без второго аргумента возвращает <code>None</code>, если ключа нет:</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>dict.get</span></figcaption>
+<pre>revenue: <span class="k">dict</span>[<span class="k">str</span>, <span class="k">int</span>] = {<span class="s">"Иванов Пётр"</span>: <span class="n">168500</span>}
+
+bonus = revenue.get(<span class="s">"Сидоров Илья"</span>)
+reveal_type(bonus)
+<span class="k">print</span>(bonus + <span class="n">100</span>)
+<span class="k">print</span>(revenue.get(<span class="s">"Сидоров Илья"</span>, <span class="n">0</span>) + <span class="n">100</span>)</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:4: note: Revealed type is "Union[builtins.int, None]"
+proba.py:5: error: Unsupported operand types for + ("None" and "int")  [operator]
+proba.py:5: note: Left operand is of type "int | None"
+Found 1 error in 1 file (checked 1 source file)</pre>
+        </figure>
+        <p>В строке 4 тип <code>bonus</code> — <code>Union[builtins.int, None]</code>: так mypy печатает <code>int | None</code>. В строке 5 сложение отклонено: если ключа нет, получится <code>None + 100</code>, и при запуске будет <code>TypeError</code>. Вторая строка с ошибкой, <code>note</code>, поясняет, какой тип у левой части. Строка 6 проходит: со вторым аргументом <code>get</code> возвращает <code>0</code> вместо <code>None</code>, и результат всегда <code>int</code>.</p>
+        <p>Третий частый случай — параметр, который можно не передавать. Значение по умолчанию <code>None</code> означает «не передан», и тип параметра тогда — «строка или <code>None</code>»:</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>необязательный параметр</span></figcaption>
+<pre><span class="k">from</span> app.utils.clock <span class="k">import</span> today_label
+<span class="k">from</span> app.utils.formatter <span class="k">import</span> format_title
+
+
+<span class="k">def</span> <span class="f">shift_title</span>(day: <span class="k">str</span> | <span class="k">None</span> = <span class="k">None</span>) -&gt; <span class="k">str</span>:
+    <span class="k">if</span> day <span class="k">is</span> <span class="k">None</span>:
+        day = today_label()
+    reveal_type(day)
+    <span class="k">return</span> format_title(<span class="s">f" Смена </span>{day}<span class="s"> "</span>)
+
+
+shift_title()
+shift_title(<span class="s">"21.09.2026"</span>)</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:8: note: Revealed type is "builtins.str"
+Success: no issues found in 1 source file</pre>
+        </figure>
+        <p>После условия в строках 6–7 <code>day</code> — всегда строка: либо переданная, либо дата из <code>today_label</code>. Проверка это видит, и в строке 8 тип уже <code>str</code>, без <code>None</code>.</p>
+        <p>Сужение работает и через ранний выход. Если в начале функции вернуть результат для случая <code>None</code>, дальше по телу значение считается заказом:</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>ранний выход</span></figcaption>
+<pre><span class="k">from</span> app.domain.order <span class="k">import</span> Order
+
+
+<span class="k">def</span> <span class="f">kopeks_or_zero</span>(order: Order | <span class="k">None</span>) -&gt; <span class="k">int</span>:
+    <span class="k">if</span> order <span class="k">is</span> <span class="k">None</span>:
+        <span class="k">return</span> <span class="n">0</span>
+    <span class="k">return</span> order.kopeks</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>Success: no issues found in 1 source file</pre>
+        </figure>
+
+        <h2 id="s10"><span class="sec">§10</span>Несколько возможных типов</h2>
+        <p>Вертикальная черта перечисляет любые варианты, не только <code>None</code>. <code>int | str</code> — «целое число или строка». Такой тип называют <span class="term">объединением</span>. Передать можно значение любого из перечисленных типов. Внутри функции работать с ним как со строкой или как с числом можно только после проверки, какой вариант пришёл: обычно это <code>isinstance(value, str)</code>.</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>сумма пришла числом или строкой</span></figcaption>
+<pre><span class="k">def</span> <span class="f">to_kopeks</span>(value: <span class="k">int</span> | <span class="k">str</span>) -&gt; <span class="k">int</span>:
+    <span class="k">if</span> <span class="f">isinstance</span>(value, <span class="k">str</span>):
+        reveal_type(value)
+        <span class="k">return</span> <span class="k">int</span>(value)
+    reveal_type(value)
+    <span class="k">return</span> value
+
+
+to_kopeks(<span class="n">125</span>)
+to_kopeks(<span class="s">"125"</span>)
+to_kopeks(<span class="n">1.5</span>)</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:3: note: Revealed type is "builtins.str"
+proba.py:5: note: Revealed type is "builtins.int"
+proba.py:11: error: Argument 1 to "to_kopeks" has incompatible type "float"; expected "int | str"  [arg-type]
+Found 1 error in 1 file (checked 1 source file)</pre>
+        </figure>
+        <p>Внутри условия <code>isinstance(value, str)</code> тип сужен до <code>str</code> (строка 3), после условия — до <code>int</code> (строка 5): строки туда уже не доходят, остаётся второй вариант. Вызовы с числом и со строкой прошли, с дробным числом — нет: <code>float</code> в перечне вариантов не значится.</p>
+        <p>Без проверки варианта проверка отклонит код, даже если для одного из вариантов он верен:</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>объединение без проверки варианта</span></figcaption>
+<pre><span class="k">def</span> <span class="f">to_kopeks</span>(value: <span class="k">int</span> | <span class="k">str</span>) -&gt; <span class="k">int</span>:
+    <span class="k">return</span> value * <span class="n">100</span></pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:2: error: Incompatible return value type (got "int | str", expected "int")  [return-value]
+Found 1 error in 1 file (checked 1 source file)</pre>
+        </figure>
+        <p>Для строки выражение <code>"125" * 100</code> даёт строку из ста повторов <code>"125"</code>. Сообщение <code>Incompatible return value type (got "int | str", expected "int")</code> — «тип возвращаемого значения несовместим: получено <code>int | str</code>, ожидалось <code>int</code>». Объединения используют там, где данные действительно приходят в разном виде. Когда вариант один, объединение только добавляет проверок в вызывающий код.</p>
+
+        <h2 id="s11"><span class="sec">§11</span>Генераторы и функции-аргументы</h2>
+        <p><span class="term">Генератор</span> — функция с <code>yield</code>: она отдаёт значения по одному, не собирая их в список. Вызов такой функции возвращает итератор — объект, из которого значения берут по одному, например циклом <code>for</code>. Его тип записывают как <code>Iterator[тип элемента]</code> с импортом из <code>collections.abc</code>.</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>генератор чисел</span></figcaption>
+<pre><span class="k">from</span> collections.abc <span class="k">import</span> Iterator
+
+
+<span class="k">def</span> <span class="f">countdown</span>(start: <span class="k">int</span>) -&gt; Iterator[<span class="k">int</span>]:
+    <span class="k">while</span> start &gt; <span class="n">0</span>:
+        <span class="k">yield</span> start
+        start -= <span class="n">1</span>
+
+
+<span class="k">for</span> number <span class="k">in</span> countdown(<span class="n">3</span>):
+    reveal_type(number)</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:11: note: Revealed type is "builtins.int"
+Success: no issues found in 1 source file</pre>
+        </figure>
+        <p>Переменная цикла получила тип элемента — <code>int</code>. В проекте генератор один — <code>read_rows</code>, он отдаёт строки CSV-файла словарями:</p>
+        <figure class="code">
+          <figcaption><span>app/services/importer.py</span><span>генератор проекта</span></figcaption>
+<pre><span class="k">from</span> collections.abc <span class="k">import</span> Iterator
+
+
+<span class="k">def</span> <span class="f">read_rows</span>(path: Path) -&gt; Iterator[<span class="k">dict</span>[<span class="k">str</span>, <span class="k">str</span>]]:
+    <span class="k">with</span> <span class="f">open</span>(path, encoding=<span class="s">"utf-8"</span>, newline=<span class="s">""</span>) <span class="k">as</span> file:
+        <span class="k">yield from</span> csv.DictReader(file)</pre>
+        </figure>
+        <p><code>Iterator[dict[str, str]]</code> читается изнутри наружу: элемент — словарь «строка — строка», а функция отдаёт такие элементы по одному.</p>
+        <p>Функцию тоже можно передать аргументом — как ключ сортировки в <code>sorted(..., key=...)</code>. Тип такого параметра записывают через <code>Callable</code> из <code>collections.abc</code>: в первых квадратных скобках — типы параметров функции, после запятой — тип её результата. <code>Callable[[str], str]</code> — «функция, которая принимает строку и возвращает строку».</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>функция как аргумент</span></figcaption>
+<pre><span class="k">from</span> collections.abc <span class="k">import</span> Callable
+
+<span class="k">from</span> app.utils.text <span class="k">import</span> normalize_name
+
+
+<span class="k">def</span> <span class="f">fix_names</span>(names: <span class="k">list</span>[<span class="k">str</span>], fix: Callable[[<span class="k">str</span>], <span class="k">str</span>]) -&gt; <span class="k">list</span>[<span class="k">str</span>]:
+    <span class="k">return</span> [fix(name) <span class="k">for</span> name <span class="k">in</span> names]
+
+
+fix_names([<span class="s">"иванов пётр"</span>], normalize_name)
+fix_names([<span class="s">"иванов пётр"</span>], <span class="k">str</span>.upper)
+fix_names([<span class="s">"иванов пётр"</span>], <span class="f">len</span>)</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:12: error: Argument 2 to "fix_names" has incompatible type "Callable[[Sized], int]"; expected "Callable[[str], str]"  [arg-type]
+Found 1 error in 1 file (checked 1 source file)</pre>
+        </figure>
+        <p>Строки 10 и 11 проходят: <code>normalize_name</code> и метод <code>str.upper</code> принимают строку и возвращают строку. В строке 12 передана <code>len</code> — она возвращает число и принимает любой объект с длиной, в сообщении он назван <code>Sized</code>. Проверка сравнила описание переданной функции с ожидаемым и нашла несовпадение в результате.</p>
+
+        <h2 id="s12"><span class="sec">§12</span>Псевдонимы типов</h2>
+        <p>Когда один составной тип повторяется в нескольких местах, ему дают короткое имя — <span class="term">псевдоним типа</span>. В Python <code>3.12</code> для этого есть инструкция <code>type</code>:</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>псевдонимы для сумм и выручки</span></figcaption>
+<pre><span class="k">type</span> Kopeks = <span class="k">int</span>
+<span class="k">type</span> Revenue = <span class="k">dict</span>[<span class="k">str</span>, Kopeks]
+
+
+<span class="k">def</span> <span class="f">total</span>(revenue: Revenue) -&gt; Kopeks:
+    <span class="k">return</span> <span class="f">sum</span>(revenue.values())
+
+
+reveal_type(total({<span class="s">"Иванов Пётр"</span>: <span class="n">100</span>}))</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:9: note: Revealed type is "builtins.int"
+Success: no issues found in 1 source file</pre>
+        </figure>
+        <p>Для проверки <code>Kopeks</code> и <code>int</code> — один и тот же тип: результат показан как <code>builtins.int</code>. Псевдоним меняет только чтение кода: <code>-&gt; Kopeks</code> сообщает единицы измерения, которых не видно в <code>-&gt; int</code>, а <code>Revenue</code> короче, чем <code>dict[str, int]</code>. Отличить копейки от рублей проверка не сможет — для неё это одно и то же целое число.</p>
+
+        <h2 id="s13"><span class="sec">§13</span>Тип Any</h2>
+        <p><code>Any</code> из модуля <code>typing</code> означает «любой тип». Для значения типа <code>Any</code> проверка разрешает всё: передать его куда угодно, вызвать любой метод. Тот же <code>Any</code> Pylance показывал в главе 4.1 у параметров без аннотаций.</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>Any выключает проверку</span></figcaption>
+<pre><span class="k">from</span> typing <span class="k">import</span> Any
+
+
+<span class="k">def</span> <span class="f">parse</span>(value: Any) -&gt; <span class="k">int</span>:
+    <span class="k">return</span> value.to_kopeks()
+
+
+parse(<span class="s">"125"</span>)</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>Success: no issues found in 1 source file</pre>
+        </figure>
+        <p>У строки нет метода <code>to_kopeks</code>, и при запуске будет <code>AttributeError</code>, но проверка ошибок не нашла: для <code>Any</code> она ничего не сверяет. <code>Any</code> ставят там, где тип действительно неизвестен заранее, например у данных из внешней библиотеки без аннотаций. Убирать им замечание проверки нельзя: замечание исчезнет вместе с самой проверкой. В работах курса <code>Any</code> не используется.</p>
+
+        <h2 id="s14"><span class="sec">§14</span>Аннотации переменных и полей</h2>
+        <p>Локальным переменным аннотация обычно не нужна: проверка выводит тип из присвоенного значения. <code>count = 0</code> — это <code>int</code>, <code>names = ["Иванов Пётр"]</code> — <code>list[str]</code>. Аннотацию ставят, когда из значения тип не ясен. Так бывает с пустыми коллекциями:</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>пустые коллекции без аннотации</span></figcaption>
+<pre>totals = {}
+names = []</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>mypy proba.py</span></figcaption>
+<pre>proba.py:1: error: Need type annotation for "totals" (hint: "totals: dict[&lt;type&gt;, &lt;type&gt;] = ...")  [var-annotated]
+proba.py:2: error: Need type annotation for "names" (hint: "names: list[&lt;type&gt;] = ...")  [var-annotated]
+Found 2 errors in 1 file (checked 1 source file)</pre>
+        </figure>
+        <p><code>Need type annotation</code> — «нужна аннотация типа». В скобках mypy подсказывает форму записи: вместо <code>&lt;type&gt;</code> подставляют типы, например <code>totals: dict[str, int] = {}</code>, как в <code>revenue_by_waiter</code>. Если в той же функции ниже в коллекцию что-то добавляется, mypy иногда выводит тип по этому добавлению; аннотация у пустой коллекции всё равно делает код понятнее. Pylance в режиме <code>basic</code> об этом случае не сообщает.</p>
+        <p>В теле класса аннотации работают иначе. У dataclass строка <code>kopeks: int</code> — это объявление поля: по ней создаётся параметр конструктора <code>Order(waiter, kopeks)</code>. Без аннотации поля не будет.</p>
+        <figure class="code">
+          <figcaption><span>app/domain/order.py</span><span>поля dataclass</span></figcaption>
+<pre>@dataclass(frozen=<span class="k">True</span>)
+<span class="k">class</span> <span class="f">Order</span>:
+    waiter: <span class="k">str</span>     <span class="c"># поле заказа</span>
+    kopeks: <span class="k">int</span>     <span class="c"># поле заказа</span></pre>
+        </figure>
+        <p>Это единственное место в проекте, где аннотация меняет поведение программы. Поэтому в первом архиве поля <code>Order</code> оставлены с аннотациями.</p>
+
+        <h2 id="s15"><span class="sec">§15</span>Проверьте себя</h2>
+        <details>
+          <summary>Как записать «словарь, где ключ — имя официанта, значение — список сумм его заказов в копейках»?</summary>
+          <p><code>dict[str, list[int]]</code>. Первым в скобках идёт тип ключа, вторым — тип значения; значение само составное.</p>
+        </details>
+        <details>
+          <summary>Чем <code>tuple[int, int]</code> отличается от <code>tuple[int, ...]</code> и от <code>list[int]</code>?</summary>
+          <p><code>tuple[int, int]</code> — ровно два целых числа, кортеж другой длины проверка отклонит. <code>tuple[int, ...]</code> — кортеж из любого количества целых. <code>list[int]</code> — список любой длины, в который можно добавлять элементы.</p>
+        </details>
+        <details>
+          <summary>Почему <code>average_check(4937, 5)</code> проходит проверку при <code>total: float</code>, а <code>average_check(4937.5, 5.0)</code> — нет?</summary>
+          <p>Где ожидается <code>float</code>, разрешено передать <code>int</code>. Второй параметр — <code>count: int</code>, и дробное <code>5.0</code> туда не подходит, хотя по значению равно пяти.</p>
+        </details>
+        <details>
+          <summary>Функция возвращает <code>Order | None</code>. Почему проверка не даёт сразу обратиться к <code>result.kopeks</code>?</summary>
+          <p>В результате может оказаться <code>None</code>, у которого нет поля <code>kopeks</code>. Сначала нужна проверка <code>if result is not None</code>: внутри неё тип сужается до <code>Order</code>.</p>
+        </details>
+        <details>
+          <summary>Что вернёт <code>revenue.get("Сидоров Илья")</code> для <code>revenue: dict[str, int]</code> и как получить всегда число?</summary>
+          <p>Тип результата — <code>int | None</code>: если ключа нет, вернётся <code>None</code>. Со значением по умолчанию — <code>revenue.get("Сидоров Илья", 0)</code> — результат всегда <code>int</code>.</p>
+        </details>
+        <details>
+          <summary>Что означает <code>Callable[[Order], int]</code>?</summary>
+          <p>Функцию, которая принимает один аргумент типа <code>Order</code> и возвращает целое число. Такую функцию можно передать ключом сортировки заказов по сумме.</p>
+        </details>
+        <details>
+          <summary>Почему <code>Any</code> нельзя ставить, чтобы убрать замечание проверки?</summary>
+          <p>С <code>Any</code> проверка перестаёт сверять значение: вызов несуществующего метода проходит проверку и завершается ошибкой только при запуске.</p>
+        </details>
+        <details>
+          <summary>Почему у <code>totals = {}</code> нужна аннотация, а у <code>count = 0</code> — нет?</summary>
+          <p>По нулю проверка выводит тип <code>int</code>. По пустому словарю нельзя узнать тип ключей и значений, и mypy сообщает <code>Need type annotation</code>.</p>
+        </details>
+
+        <h2 id="s16"><span class="sec">§16</span>Шпаргалка по главе</h2>
+        <div class="cheat">
+          <div>
+            <b>Простые</b>
+            <code>int  float  str  bool</code>
+            <code>-&gt; None — без результата</code>
+            <code>int подходит вместо float</code>
+          </div>
+          <div>
+            <b>Коллекции</b>
+            <code>list[int]  set[str]</code>
+            <code>dict[str, int]</code>
+            <code>tuple[int, int]  tuple[int, ...]</code>
+          </div>
+          <div>
+            <b>Классы</b>
+            <code>order: Order</code>
+            <code>path: Path   day: date</code>
+            <code>класс нужно импортировать</code>
+          </div>
+          <div>
+            <b>Варианты</b>
+            <code>Order | None</code>
+            <code>int | str</code>
+            <code>if x is not None: — сужение</code>
+          </div>
+          <div>
+            <b>Функции и генераторы</b>
+            <code>Iterator[int]</code>
+            <code>Callable[[str], str]</code>
+            <code>from collections.abc import …</code>
+          </div>
+          <div>
+            <b>Прочее</b>
+            <code>type Kopeks = int — псевдоним</code>
+            <code>Any — проверка выключена</code>
+            <code>totals: dict[str, int] = {}</code>
+          </div>
+        </div>
+
+        <h3>Итог главы</h3>
+        <p>Простые типы записываются своими именами, у коллекций в квадратных скобках указывают содержимое, классы проекта и стандартной библиотеки пишутся так же после импорта. Вертикальная черта перечисляет варианты; с <code>X | None</code> проверка требует сначала убедиться, что значение не <code>None</code>. Генераторы описывают через <code>Iterator</code>, функции-аргументы — через <code>Callable</code>. Аннотации переменных нужны там, где тип не выводится из значения, а в dataclass аннотации объявляют поля. Почти все ошибки в примерах — это «передан не тот тип», и mypy называет в сообщении, что пришло и что ожидалось.</p>
+
+        <div class="sources">
+          <b>Откуда взяты факты</b>
+          <ol>
+            <li>Составные типы и их запись — <a href="https://docs.python.org/3/library/typing.html">документация модуля typing</a>; правило «int вместо float» — <a href="https://typing.python.org/en/latest/spec/special-types.html#special-cases-for-float-and-complex">спецификация типов Python</a>.</li>
+            <li>Коллекции с типом в скобках — <a href="https://peps.python.org/pep-0585/">PEP 585</a>, запись через вертикальную черту — <a href="https://peps.python.org/pep-0604/">PEP 604</a>, инструкция <code>type</code> — <a href="https://peps.python.org/pep-0695/">PEP 695</a>.</li>
+            <li>Сужение типов и <code>reveal_type</code> — <a href="https://mypy.readthedocs.io/en/stable/type_narrowing.html">документация mypy, Type narrowing</a>.</li>
+            <li>Все выводы получены запуском примеров на втором архиве проекта, mypy <code>1.15</code>; сверка книги с запуском — <code>shots/verify_examples.py</code>.</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="02-proverka-tipov.html">← 4.2 Проверка типов</a><a href="04-praktika-annotacii.html">4.4 Практика: аннотации в проекте →</a></div>
+
+        <div class="colophon">
+          <span>Глава 4.3 · Типы в аннотациях · МДК.01.01</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="book.js"></script>
+</body>
+</html>
