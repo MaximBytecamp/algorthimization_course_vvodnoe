@@ -1,4 +1,4 @@
-# ОП.03 · тема 9 · Instagram и ManyChat · 70 кадров
+# ОП.03 · тема 9 · Instagram и ManyChat · 72 кадров
 
 Задание для Claude: пройди учебный сценарий по презентации последовательно. Снимай настоящие интерфейсы Instagram, ManyChat, сайта, Vercel, GA4 и Google Sheets. Не подменяй их нарисованными экранами.
 
@@ -71,16 +71,18 @@
 | 88 | 413 | 413-shot.png | DM → кнопка.  | pending |
 | 89 | 414 | 414-shot.png | Браузер с UTM URL.  | captured |
 | 90 | 415 | 415-shot.png | GA4 Realtime.  | captured |
-| 92 | 416a | 416a-shot.png | DebugView: page_view → page_location с UTM. Позже отдельный кадр Traffic acquisition с Session source / medium.  | pending |
-| 95 | 418a | 418a-shot.png | Страница материала с CTA и открывшаяся форма с сохранёнными UTM.  | captured |
-| 96 | 419 | 419-shot.png | Заполненная форма.  | captured |
-| 97 | 419a | 419a-shot.png | Форма после отправки с request_id.  | captured |
-| 98 | 420 | 420-shot.png | GA4 с `generate_lead`.  | captured |
-| 99 | 421 | 421-shot.png | Новая строка Google Sheets.  | captured |
-| 100 | 421a | 421a-shot.png | Одна тестовая строка Sheets: request_id, время, backend, new и три UTM; без чужих персональных данных.  | captured |
-| 101 | 422 | 422-shot.png | Google Sheets с выделенными UTM.  | captured |
-| 108 | 428a | 428a-shot.png | Дополнительный черновик: три обычные кнопки первого DM ведут к трём сообщениям со ссылками.  | pending |
-| 111 | 430a | 430a-shot.png | Preview дополнительного сценария: выбранная ветка, её сообщение и соответствующий UTM URL.  | pending |
-| 116 | 435 | 435-shot.png | ManyChat → выбранный Specific Post/Reel.  | captured |
-| 117 | 436 | 436-shot.png | Automation status.  | captured |
-| 118 | 437 | 437-shot.png | Settings → Instagram.  | captured |
+| 92 | 416b | 416b-shot.png | Tag Assistant: подключён домен ga4-analytics-lab-ivanov.vercel.app, найден тег G-2CNN55NJF7.  | captured |
+| 93 | 416a | 416a-shot.png | DebugView: page_view → page_location с UTM. Позже отдельный кадр Traffic acquisition с Session source / medium.  | captured |
+| 96 | 418a | 418a-shot.png | Страница материала с CTA и открывшаяся форма с сохранёнными UTM.  | captured |
+| 97 | 419 | 419-shot.png | Заполненная форма.  | captured |
+| 98 | 419a | 419a-shot.png | Форма после отправки с request_id.  | captured |
+| 99 | 420 | 420-shot.png | GA4 с `generate_lead`.  | captured |
+| 100 | 421 | 421-shot.png | Новая строка Google Sheets.  | captured |
+| 101 | 421a | 421a-shot.png | Одна тестовая строка Sheets: request_id, время, backend, new и три UTM; без чужих персональных данных.  | captured |
+| 102 | 422 | 422-shot.png | Google Sheets с выделенными UTM.  | captured |
+| 109 | 428b | 428b-shot.png | Черновик ветвления: первое сообщение с кнопками Backend, Frontend, Analytics.  | captured |
+| 110 | 428a | 428a-shot.png | Дополнительный черновик: три обычные кнопки первого DM ведут к трём сообщениям со ссылками.  | captured |
+| 113 | 430a | 430a-shot.png | Preview дополнительного сценария: выбранная ветка, её сообщение и соответствующий UTM URL.  | captured |
+| 118 | 435 | 435-shot.png | ManyChat → выбранный Specific Post/Reel.  | captured |
+| 119 | 436 | 436-shot.png | Automation status.  | captured |
+| 120 | 437 | 437-shot.png | Settings → Instagram.  | captured |
