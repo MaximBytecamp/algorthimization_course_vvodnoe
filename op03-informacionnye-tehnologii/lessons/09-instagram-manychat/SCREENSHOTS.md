@@ -68,7 +68,7 @@
 | 85 | 412a | 412a-shot.png | Запрос на переписку: текст Private Reply и кнопки Заблокировать, Удалить, Accept.  | captured |
 | 86 | 412b | 412b-shot.png | Окно выбора папки: Основные, Общие, Отмена.  | captured |
 | 87 | 412c | 412c-shot.png | Переписка после принятия запроса.  | captured |
-| 88 | 413 | 413-shot.png | DM → кнопка.  | pending |
+| 88 | 413 | 413-shot.png | DM → кнопка.  | captured |
 | 89 | 414 | 414-shot.png | Браузер с UTM URL.  | captured |
 | 90 | 415 | 415-shot.png | GA4 Realtime.  | captured |
 | 92 | 416b | 416b-shot.png | Tag Assistant: подключён домен ga4-analytics-lab-ivanov.vercel.app, найден тег G-2CNN55NJF7.  | captured |
