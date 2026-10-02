@@ -257,6 +257,46 @@ async def st_reveal(e: Editor) -> None:
     await e.key("Escape", 0.3)
 
 
+PROBA_MODES = '''import os
+
+from app.utils.formatter import format_title
+from app.utils.text import _squash_spaces
+
+
+def total(prices):
+    return sum(prices)
+
+
+def pick(flag: bool) -> str:
+    if flag:
+        label = "есть выручка"
+    return label
+
+
+heading = format_title(40)
+clean = _squash_spaces("иванов   пётр")
+print(undefined_name)
+'''
+
+
+async def st_modes(e: Editor) -> None:
+    """Один файл в четырёх режимах проверки: код и панель Problems."""
+    (project() / "proba.py").write_text(PROBA_MODES, encoding="utf-8")
+    set_mode(None)
+    await reset(e)
+    await e.size(W, 980)                         # весь файл и девять строк Problems
+    await open_file(e, "proba.py", 4.0)
+    for mode in ("off", "basic", "standard", "strict"):
+        set_mode(mode)
+        await asyncio.sleep(6.0)                 # Pylance перечитывает настройки и файл
+        await e.palette("View: Focus Problems (Errors, Warnings, Infos)", 2.0)
+        await e.palette("View: Focus Active Editor Group", 1.0)
+        await goto(e, 1)
+        await park(e)
+        await e.shot(f"{RAW}/types-mode-{mode}-all.png")
+    set_mode("basic")
+
+
 def line_of(rel: str, fragment: str) -> tuple[int, int]:
     """Номер строки и столбца первого вхождения фрагмента в файле проекта."""
     for n, text in enumerate((project() / rel).read_text(encoding="utf-8").splitlines(), 1):

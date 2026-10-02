@@ -51,7 +51,7 @@
         </nav>
 
         <h2 id="s1"><span class="sec">§1</span>Задача</h2>
-        <p>Первый архив темы — рабочий проект без аннотаций. Отчёт печатается, двенадцать тестов проходят, а <code>mypy app</code> находит семнадцать функций без типов. Задача: расставить аннотации у всех семнадцати, не меняя поведения программы, и получить от mypy ответ <code>Success</code>.</p>
+        <p>В главах 4.1–4.4 аннотации читались и проверялись в готовом коде второго архива. В этой главе их пишут самостоятельно. Первый архив темы — рабочий проект без аннотаций. Отчёт печатается, двенадцать тестов проходят, а <code>mypy app</code> находит семнадцать функций без типов. Задача: расставить аннотации у всех семнадцати, не меняя поведения программы, и получить от mypy ответ <code>Success</code>.</p>
         <div class="downloads">
           <a class="download" href="materials/otchet-kafe-bez-tipov.zip" download>
             <span>↓</span>
@@ -68,11 +68,11 @@
         <ol class="steps">
           <li>Включите проверку в редакторе так же, как в главе 4.3: настройки, вкладка <b>Workspace</b>, параметр <code>python.analysis.typeCheckingMode</code> — значение <code>basic</code>. Проверьте, что выбран интерпретатор <code>.venv</code>.</li>
           <li>Запустите проект и тесты: <code>.venv/bin/python main.py</code> и <code>.venv/bin/python -m pytest -q</code>. Запомните итог отчёта — <code>4 937,50 ₽</code> — и число тестов — <code>12 passed</code>: после работы они должны остаться теми же.</li>
-          <li>Запустите <code>.venv/bin/mypy app</code>. Семнадцать строк вывода — список работы; такой же вывод показан в главе 4.3, §7.</li>
+          <li>Запустите <code>.venv/bin/mypy app</code>. Семнадцать строк вывода — список работы; такой же вывод показан в главе 4.3, §8.</li>
         </ol>
 
         <h2 id="s3"><span class="sec">§3</span>Порядок: от листьев к корню</h2>
-        <p>Модули проекта зависят друг от друга. Это видно по импортам: <code>domain</code> вызывает <code>normalize_name</code> из <code>utils</code>, <code>services</code> создаёт объекты <code>Order</code> из <code>domain</code>, а <code>main.py</code> вызывает <code>services</code>, <code>ui</code> и <code>utils</code>. Аннотации расставляют в обратном порядке — начиная с модулей, которые ничего из проекта не вызывают.</p>
+        <p>Семнадцать функций лежат в десяти файлах, и первым решается вопрос, с какого файла начать. Модули проекта зависят друг от друга. Это видно по импортам: <code>domain</code> вызывает <code>normalize_name</code> из <code>utils</code>, <code>services</code> создаёт объекты <code>Order</code> из <code>domain</code>, а <code>main.py</code> вызывает <code>services</code>, <code>ui</code> и <code>utils</code>. Аннотации расставляют в обратном порядке — начиная с модулей, которые ничего из проекта не вызывают.</p>
         <p>Файл <code>main.py</code> в архиве оставлен с аннотациями: его функция <code>build_report(path: Path) -&gt; list[str]</code> служит образцом записи.</p>
         <figure class="scheme">
           <svg viewBox="0 0 680 230" role="img" aria-label="Схема зависимостей пакетов по импортам: domain вызывает utils, services создаёт объекты domain, main.py вызывает services, ui и utils; ui ни от кого не зависит">
@@ -109,17 +109,17 @@
         </figure>
 
         <h2 id="s4"><span class="sec">§4</span>Как выбрать тип</h2>
-        <p>Для каждой функции ответ ищется в трёх местах по очереди.</p>
+        <p>Порядок файлов задан. Внутри каждого файла для каждой функции нужно решить, какие типы написать. Ответ ищется в трёх местах по очереди.</p>
         <div class="checklist">
           <p class="checklist__head">Откуда брать тип</p>
           <div class="checklist__item"><span><b>Параметр: как его используют внутри</b>Если по параметру идут циклом и берут <code>order.kopeks</code> — это <code>list[Order]</code>. Если к нему вызывают <code>.split()</code> — это <code>str</code>.</span></div>
           <div class="checklist__item"><span><b>Параметр: что передаёт вызывающий код</b>В <code>main.py</code> в <code>load_orders</code> передаётся <code>Path("data/smena.csv")</code> — значит, параметр <code>path: Path</code>.</span></div>
           <div class="checklist__item"><span><b>Результат: что стоит после return</b><code>return min(grades), max(grades)</code> — пара целых, <code>tuple[int, int]</code>. Нет <code>return</code> со значением — <code>-&gt; None</code>. Есть <code>yield</code> — <code>Iterator[...]</code>.</span></div>
         </div>
-        <p>Когда сомнения остаются, ставят предполагаемый тип и запускают mypy: неверное предположение он покажет ошибкой в месте вызова. Для выражений внутри функции помогают наведение указателя на имя и временная строка <code>reveal_type(...)</code> — оба способа разобраны в главе 4.3, §8. Как записать найденный тип, показано в главах 4.2 и 4.4.</p>
+        <p>Когда сомнения остаются, ставят предполагаемый тип и запускают mypy: неверное предположение он покажет ошибкой в месте вызова. Для выражений внутри функции помогают наведение указателя на имя и временная строка <code>reveal_type(...)</code> — оба способа разобраны в главе 4.3, §9. Как записать найденный тип, показано в главах 4.2 и 4.4.</p>
 
         <h2 id="s5"><span class="sec">§5</span>Подсказки типа результата</h2>
-        <p>Тип результата Pylance умеет выводить сам, по <code>return</code> в теле функции. Выведенный тип можно показать прямо в коде — серой надписью после закрывающей скобки. Такую надпись называют <span class="term">подсказкой вставки</span> (inlay hint): она не входит в текст файла, пока её не вставят.</p>
+        <p>Третье место из §4 — <code>return</code> — Pylance умеет читать сам: тип результата он выводит из тела функции. Выведенный тип можно показать прямо в коде — серой надписью после закрывающей скобки. Такую надпись называют <span class="term">подсказкой вставки</span> (inlay hint): она не входит в текст файла, пока её не вставят.</p>
         <div class="walk">
           <div class="walk__step">
             <p class="walk__head"><span>Включите подсказки типа результата</span></p>
@@ -148,7 +148,7 @@
         <p>Перед вставкой подсказку сверяют с тем, что функция должна возвращать по смыслу: Pylance выводит тип из текущего тела, и если в теле ошибка, в подсказку попадёт неверный тип. После каждого пакета запускают mypy. Когда работа закончена, флажок можно снять.</p>
 
         <h2 id="s6"><span class="sec">§6</span>Один модуль до и после</h2>
-        <p>Модуль <code>app/services/orders.py</code> в первом архиве. mypy сообщает о нём три строки — по одной на функцию:</p>
+        <p>Как приёмы §4 и §5 работают вместе, видно на одном модуле целиком — <code>app/services/orders.py</code> из пакета <code>services</code>. В первом архиве mypy сообщает о нём три строки — по одной на функцию:</p>
         <figure class="code code--out">
           <figcaption><span>Терминал</span><span>mypy app, строки про orders.py</span></figcaption>
 <pre>app/services/orders.py:7: error: Function is missing a type annotation  [no-untyped-def]
@@ -207,6 +207,7 @@ app/services/orders.py:26: error: Function is missing a type annotation  [no-unt
         <p>Как выбраны типы. <code>path</code> — объект <code>Path</code>, так его передаёт <code>main.py</code>. Список <code>orders</code> содержит заказы: из элементов берут <code>.waiter</code> и <code>.kopeks</code>. <code>sort_orders_in_place</code> ничего не возвращает, поэтому <code>-&gt; None</code>. Переменной <code>totals</code> нужна аннотация, потому что по пустому словарю <code>{}</code> тип ключей и значений не определить.</p>
 
         <h2 id="s7"><span class="sec">§7</span>Трудные места проекта</h2>
+        <p>Большинство функций проекта устроены как в <code>orders.py</code>: тип параметра виден из того, как его используют, тип результата — из <code>return</code>. В таблице собраны места, где решение не такое очевидное, и причина каждого решения.</p>
         <div class="table-scroll">
           <table>
             <thead><tr><th>Место</th><th>Аннотация</th><th>Почему так</th></tr></thead>
@@ -223,7 +224,7 @@ app/services/orders.py:26: error: Function is missing a type annotation  [no-unt
         </div>
 
         <h2 id="s8"><span class="sec">§8</span>Как уменьшается число ошибок</h2>
-        <p>После каждого пакета запускайте <code>.venv/bin/mypy app</code>. Число ошибок в последней строке вывода — ход работы. Ниже настоящие итоги прогонов при работе в порядке из §3:</p>
+        <p>Работа идёт по пакетам в порядке §3, и после каждого пакета видно, сколько осталось. Запускайте <code>.venv/bin/mypy app</code>. Число ошибок в последней строке вывода — ход работы. Ниже настоящие итоги прогонов при работе в порядке из §3:</p>
         <div class="flowline" data-play>
           <p class="flowline__head">Итог mypy после каждого пакета</p>
           <div class="flowline__track">
@@ -263,6 +264,7 @@ app/services/orders.py:26: error: Function is missing a type annotation  [no-unt
         <p>Получившийся проект совпадает со вторым архивом темы во всех файлах, кроме README, — это проверено сравнением. С этого проекта начинается следующая часть темы: в главе 4.6 в него добавляются описания.</p>
 
         <h2 id="s9"><span class="sec">§9</span>Что сдаётся с пары</h2>
+        <p>Работа закончена, когда выполнены все условия ниже; по ним её и проверяют.</p>
         <div class="checklist">
           <p class="checklist__head">Работа принята, когда</p>
           <div class="checklist__item"><span><b>Проверка типов проходит</b><code>mypy app</code> отвечает <code>Success: no issues found</code>.</span></div>

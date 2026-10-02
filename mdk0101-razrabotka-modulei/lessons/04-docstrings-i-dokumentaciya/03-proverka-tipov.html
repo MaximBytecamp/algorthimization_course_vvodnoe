@@ -50,20 +50,22 @@
             <li><a href="#s1">Что такое проверка типов</a></li>
             <li><a href="#s2">Подготовка</a></li>
             <li><a href="#s3">Pylance: проверка в редакторе</a></li>
-            <li><a href="#s4">mypy: проверка в терминале</a></li>
-            <li><a href="#s5">Как читать строку вывода mypy</a></li>
-            <li><a href="#s6">Одна ошибка в двух программах</a></li>
-            <li><a href="#s7">Функции без аннотаций</a></li>
-            <li><a href="#s8">Какой тип видит проверка</a></li>
-            <li><a href="#s9">Чего проверка не находит</a></li>
-            <li><a href="#s10">Проверьте себя</a></li>
-            <li><a href="#s11">Шпаргалка по главе</a></li>
+            <li><a href="#s4">Четыре режима на одном файле</a></li>
+            <li><a href="#s5">mypy: проверка в терминале</a></li>
+            <li><a href="#s6">Как читать строку вывода mypy</a></li>
+            <li><a href="#s7">Одна ошибка в двух программах</a></li>
+            <li><a href="#s8">Функции без аннотаций</a></li>
+            <li><a href="#s9">Какой тип видит проверка</a></li>
+            <li><a href="#s10">Чего проверка не находит</a></li>
+            <li><a href="#s11">Проверьте себя</a></li>
+            <li><a href="#s12">Шпаргалка по главе</a></li>
           </ol>
         </nav>
 
         <h2 id="s1"><span class="sec">§1</span>Что такое проверка типов</h2>
+        <p>В главе 4.1 опыты показали, что Python аннотации при запуске не проверяет: вызов с неверным типом либо проходит, либо падает внутри функции. В главе 4.2 разобрано, какие типы записывают в аннотациях. Остался вопрос, кто сверяет вызовы с этими типами. Этим занимаются программы проверки типов.</p>
         <p><span class="term">Проверка типов</span> — чтение кода программой, которая сверяет каждый вызов, присваивание и возврат значения с аннотациями. Сам код при этом не запускается: программа проверки работает с текстом файлов. Если в функцию <code>format_title(text: str, ...)</code> передано число, она сообщит об этом и назовёт строку, хотя до выполнения этой строки дело не дошло.</p>
-        <p>В курсе используются две такие программы. Правила сверки у них почти одинаковые, различаются место и момент работы.</p>
+        <p>В курсе используются две такие программы. Правила сверки у них почти одинаковые, различаются место и момент работы. В главе обе разобраны на одном и том же файле с ошибками: сначала Pylance, затем mypy, в конце их ответы сравниваются.</p>
         <div class="table-scroll">
           <table>
             <thead><tr><th>Программа</th><th>Где работает</th><th>Когда проверяет</th><th>Что проверяет</th></tr></thead>
@@ -96,7 +98,7 @@
             <b>2 · С аннотациями, без описаний<small>ZIP · с ним работают в этой главе</small></b>
           </a>
         </div>
-        <p>В корне проекта создайте файл <code>proba.py</code> — рядом с <code>main.py</code>. В нём два вызова функций проекта с аргументами не того типа:</p>
+        <p>Ошибки для опыта делаются не в коде проекта, а в отдельном файле: его можно править как угодно, а после опытов удалить, и проект останется рабочим. Создайте в корне проекта файл <code>proba.py</code> — рядом с <code>main.py</code>. В нём два вызова функций проекта с аргументами не того типа. Обе функции есть в таблице подписей главы 4.1, §4:</p>
         <figure class="code">
           <figcaption><span>proba.py</span><span>файл для опытов</span></figcaption>
 <pre><span class="k">from</span> app.utils.formatter <span class="k">import</span> format_kopeks, format_title
@@ -104,10 +106,10 @@
 title = format_title(<span class="n">40</span>)
 price = format_kopeks(<span class="s">"1250"</span>)</pre>
         </figure>
-        <p>Подписи обеих функций — в модуле <code>app/utils/formatter.py</code>: <code>format_title(text: str, width: int = 40) -&gt; str</code> и <code>format_kopeks(kopeks: int) -&gt; str</code>. В строке 3 вместо текста заголовка передано число, в строке 4 вместо числа копеек — строка. Обе ошибки и предстоит найти — сначала в редакторе, затем в терминале.</p>
+        <p>Подписи обеих функций — в модуле <code>app/utils/formatter.py</code>: <code>format_title(text: str, width: int = 40) -&gt; str</code> и <code>format_kopeks(kopeks: int) -&gt; str</code>. В строке 3 вместо текста заголовка передано число, в строке 4 вместо числа копеек — строка. Ошибки известны заранее, поэтому по ним удобно проверять, что инструмент настроен верно: он должен найти обе. Сначала их ищет редактор, затем терминал.</p>
 
         <h2 id="s3"><span class="sec">§3</span>Pylance: проверка в редакторе</h2>
-        <p><span class="term">Pylance</span> — расширение VS Code, которое разбирает код на Python: строит подсказки, автодополнение и переходы к определениям, а при включённой проверке подчёркивает ошибки типов. Ниже восемь шагов — от проверки расширения до исправленного файла.</p>
+        <p><span class="term">Pylance</span> — расширение VS Code, которое разбирает код на Python. Подсказки и автодополнение из главы 4.1 строил он же. При включённой проверке Pylance ещё и подчёркивает ошибки типов. Ниже восемь шагов: первые два готовят редактор, третий показывает, что без настройки ошибок не видно, четвёртый включает проверку, остальные — работа с найденными ошибками.</p>
         <div class="walk">
           <div class="walk__step">
             <p class="walk__head"><span>Убедитесь, что стоит Pylance</span></p>
@@ -138,6 +140,7 @@ price = format_kopeks(<span class="s">"1250"</span>)</pre>
                 <img src="img/vscode-types-mode-off.png" alt="proba.py в VS Code: вызовы format_title(40) и format_kopeks(&quot;1250&quot;) ничем не подчёркнуты">
                 <figcaption>Режим проверки по умолчанию — <code>off</code>. В нём Pylance использует аннотации для подсказок и автодополнения, а ошибки типов не показывает. Подчёркиваются только ошибки синтаксиса, ненайденные модули и неизвестные имена.</figcaption>
               </figure>
+              <p>Ошибки в файле есть, а редактор их не показывает. Значит, проверку нужно включить — это следующий шаг.</p>
             </div>
           </div>
           <div class="walk__step">
@@ -151,9 +154,9 @@ price = format_kopeks(<span class="s">"1250"</span>)</pre>
               <p>Щёлкните по полю со значением <code>off</code> и выберите <code>basic</code>.</p>
               <figure class="shot shot--narrow">
                 <img src="img/vscode-types-settings-list.png" alt="Раскрытый список режимов: off (default), basic, standard, strict">
-                <figcaption>Четыре режима. <code>off</code> — значение по умолчанию. <code>basic</code> — режим курса: неверные аргументы, присваивания, возвраты и обращения к значению, которое может быть <code>None</code>. <code>standard</code> добавляет несколько правил. <code>strict</code> требует аннотаций везде и на учебном проекте сразу даёт много замечаний.</figcaption>
+                <figcaption>Четыре режима, от самого мягкого к самому строгому. <code>off</code> — значение по умолчанию, <code>basic</code> — режим курса. Чем режимы отличаются, показано в §4 на одном файле, проверенном во всех четырёх.</figcaption>
               </figure>
-              <p>VS Code сам создаст файл <code>.vscode/settings.json</code>, если его не было, и допишет в него строку. В проекте темы такой файл уже есть, и строка добавится в конец:</p>
+              <p>Выбранное значение VS Code сохраняет сам: создаёт файл <code>.vscode/settings.json</code>, если его не было, и дописывает в него строку. В проекте темы такой файл уже есть. Откройте его из проводника, чтобы убедиться, что строка добавилась в конец:</p>
               <figure class="shot">
                 <img src="img/vscode-types-settings-json.png" alt="Файл .vscode/settings.json: настройки autoDocstring и последней строкой python.analysis.typeCheckingMode: basic">
                 <figcaption>Последняя строка — <code>"python.analysis.typeCheckingMode": "basic"</code>. Строки выше относятся к генератору описаний из главы 4.10; пока расширение autoDocstring не установлено, VS Code показывает их бледным цветом. Ту же строку можно дописать в файл руками — результат одинаковый.</figcaption>
@@ -163,7 +166,7 @@ price = format_kopeks(<span class="s">"1250"</span>)</pre>
           <div class="walk__step">
             <p class="walk__head"><span>Посмотрите на подчёркивания</span></p>
             <div class="walk__body">
-              <p>Вернитесь на вкладку <code>proba.py</code>. Через секунду-две после смены режима Pylance проверит файл заново.</p>
+              <p>Вернитесь на вкладку <code>proba.py</code> — тот же файл, что на шаге 3. Через секунду-две после смены режима Pylance проверит его заново.</p>
               <figure class="shot">
                 <img src="img/vscode-types-squiggle.png" alt="proba.py: число 40 и строка &quot;1250&quot; подчёркнуты красной волнистой линией, на вкладке цифра 2">
                 <figcaption>Подчёркнуты аргументы, тип которых не совпал: <code>40</code> в строке 3 и <code>"1250"</code> в строке 4. На вкладке после имени файла — цифра <code>2</code>: столько ошибок в файле. Та же цифра появляется у имени файла в проводнике.</figcaption>
@@ -176,7 +179,7 @@ price = format_kopeks(<span class="s">"1250"</span>)</pre>
               <p>Наведите указатель на подчёркнутое <code>40</code> или поставьте на него курсор и нажмите <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>K</kbd>, затем <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>I</kbd>.</p>
               <figure class="shot">
                 <img src="img/vscode-types-hover-error.png" alt="Всплывающее сообщение Pylance: Argument of type Literal[40] cannot be assigned to parameter text of type str in function format_title">
-                <figcaption>Сообщение Pylance над строкой 3.</figcaption>
+                <figcaption>Сообщение появилось над строкой 3, где стоит курсор. В нём объяснено подчёркивание под <code>40</code>.</figcaption>
               </figure>
               <p>Сообщение читается по частям:</p>
               <ul>
@@ -192,7 +195,7 @@ price = format_kopeks(<span class="s">"1250"</span>)</pre>
           <div class="walk__step">
             <p class="walk__head"><span>Откройте панель Problems</span></p>
             <div class="walk__body">
-              <p>Все сообщения открытых файлов собраны в панели <b>Problems</b>: <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>Shift</kbd> + <kbd>M</kbd>, или щелчок по счётчику ошибок в левом нижнем углу окна.</p>
+              <p>Наведение показывает одно сообщение. Чтобы увидеть все ошибки сразу, открывают панель <b>Problems</b> — в ней собраны сообщения всех открытых файлов: <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>Shift</kbd> + <kbd>M</kbd>, или щелчок по счётчику ошибок в левом нижнем углу окна.</p>
               <figure class="shot">
                 <img src="img/vscode-types-problems.png" alt="Панель Problems: две ошибки Pylance reportArgumentType в proba.py, в строках 3 и 4">
                 <figcaption>Ошибки сгруппированы по файлам: у <code>proba.py</code> их две. В каждой строке — сообщение, источник <code>Pylance(reportArgumentType)</code> и место: <code>[Ln 3, Col 22]</code> — строка 3, столбец 22. Щелчок по строке переводит курсор к месту ошибки.</figcaption>
@@ -215,9 +218,100 @@ price = format_kopeks(<span class="n">125000</span>)</pre>
           </div>
         </div>
 
-        <h2 id="s4"><span class="sec">§4</span>mypy: проверка в терминале</h2>
+        <h2 id="s4"><span class="sec">§4</span>Четыре режима на одном файле</h2>
+        <p>На шаге 4 из четырёх режимов выбран <code>basic</code>. Чтобы было видно, что меняется при выборе другого режима, один и тот же файл проверен во всех четырёх. В файле шесть ошибок разного рода: от имени, которого нет вовсе, до функции без аннотаций. Каждая строка подобрана так, чтобы её находил свой режим.</p>
+        <figure class="code">
+          <figcaption><span>proba.py</span><span>файл для сравнения режимов</span></figcaption>
+<pre><span class="k">import</span> os
+
+<span class="k">from</span> app.utils.formatter <span class="k">import</span> format_title
+<span class="k">from</span> app.utils.text <span class="k">import</span> _squash_spaces
+
+
+<span class="k">def</span> <span class="f">total</span>(prices):
+    <span class="k">return</span> <span class="f">sum</span>(prices)
+
+
+<span class="k">def</span> <span class="f">pick</span>(flag: <span class="k">bool</span>) -&gt; <span class="k">str</span>:
+    <span class="k">if</span> flag:
+        label = <span class="s">"есть выручка"</span>
+    <span class="k">return</span> label
+
+
+heading = format_title(<span class="n">40</span>)
+clean = _squash_spaces(<span class="s">"иванов   пётр"</span>)
+<span class="k">print</span>(undefined_name)</pre>
+        </figure>
+        <p>Что не так в каждом месте и какой режим это находит:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Строка</th><th>Что не так</th><th>Что будет при запуске</th><th><code>off</code></th><th><code>basic</code></th><th><code>standard</code></th><th><code>strict</code></th></tr></thead>
+            <tbody>
+              <tr><td>19, <code>print(undefined_name)</code></td><td>Имени <code>undefined_name</code> нигде нет — опечатка или забытая переменная</td><td><code>NameError</code></td><td>⚠</td><td>✕</td><td>✕</td><td>✕</td></tr>
+              <tr><td>17, <code>format_title(40)</code></td><td>Число вместо строки: аннотация <code>text: str</code></td><td><code>AttributeError: 'int' object has no attribute 'center'</code> — внутри функции</td><td>—</td><td>✕</td><td>✕</td><td>✕</td></tr>
+              <tr><td>14, <code>return label</code></td><td>Переменная создаётся только внутри <code>if</code>. При <code>flag=False</code> её нет</td><td><code>UnboundLocalError</code> — только при <code>pick(False)</code></td><td>—</td><td>—</td><td>✕</td><td>✕</td></tr>
+              <tr><td>7–8, <code>def total(prices)</code></td><td>У параметра нет аннотации, тип неизвестен, сверять вызовы не с чем</td><td>работает</td><td>—</td><td>—</td><td>—</td><td>✕</td></tr>
+              <tr><td>4 и 18, <code>_squash_spaces</code></td><td>Имя с подчёркиванием — служебная функция модуля <code>text.py</code>, снаружи её не вызывают</td><td>работает</td><td>—</td><td>—</td><td>—</td><td>✕</td></tr>
+              <tr><td>1, <code>import os</code></td><td>Модуль импортирован и не используется</td><td>работает</td><td>—</td><td>—</td><td>—</td><td>✕</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Обозначения: ✕ — ошибка (красное подчёркивание), ⚠ — предупреждение (жёлтое), — — режим строку не отмечает. Таблица читается сверху вниз как лестница: каждый следующий режим находит всё, что находил предыдущий, и добавляет своё. Ниже — как это выглядит в редакторе. Файл тот же, менялась только строка <code>typeCheckingMode</code> в <code>.vscode/settings.json</code>; под кодом открыта панель Problems со всеми сообщениями.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>proba.py в четырёх режимах</b><span>переключите режим</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>off · 1</button>
+            <button>basic · 2</button>
+            <button>standard · 3</button>
+            <button>strict · 9</button>
+          </div>
+          <div class="demo__pane">
+            <figure class="shot">
+              <img src="img/vscode-types-mode-off-all.png" alt="Режим off: подчёркнуто только undefined_name, жёлтым; в Problems одно предупреждение reportUndefinedVariable">
+              <figcaption>Режим <code>off</code>. Одно предупреждение, жёлтое: <code>"undefined_name" is not defined</code>. Ошибки типов не показаны вовсе — число <code>40</code> в строке 17 не подчёркнуто.</figcaption>
+            </figure>
+            <p class="demo__verdict"><b>Что видно</b>Только имена, которых нет в программе. Это та же проверка, что выполняет сам Python при запуске, только раньше. Аннотации в <code>off</code> идут лишь в подсказки и автодополнение.</p>
+          </div>
+          <div class="demo__pane">
+            <figure class="shot">
+              <img src="img/vscode-types-mode-basic-all.png" alt="Режим basic: подчёркнуты 40 в строке 17 и undefined_name; в Problems две ошибки">
+              <figcaption>Режим <code>basic</code>. Две ошибки: неверный аргумент <code>format_title(40)</code> с правилом <code>reportArgumentType</code> и неизвестное имя — теперь красным, как ошибка.</figcaption>
+            </figure>
+            <p class="demo__verdict"><b>Что добавилось</b>Сверка с аннотациями: аргументы, присваивания, возвраты, обращения к значению, которое может быть <code>None</code>. Это то, что разбирается в главах 4.2–4.4, и ближе всего к тому, что проверяет mypy.</p>
+          </div>
+          <div class="demo__pane">
+            <figure class="shot">
+              <img src="img/vscode-types-mode-standard-all.png" alt="Режим standard: добавлено подчёркивание label в строке 14; в Problems три сообщения">
+              <figcaption>Режим <code>standard</code>. К двум ошибкам добавилась третья: <code>"label" is possibly unbound</code> — «переменная <code>label</code>, возможно, не создана», правило <code>reportPossiblyUnboundVariable</code>.</figcaption>
+            </figure>
+            <p class="demo__verdict"><b>Что добавилось</b>Правила, которые не связаны с аннотациями напрямую, но находят настоящие ошибки: переменная, созданная только в одной ветке <code>if</code>, обращение к несуществующему атрибуту функции, несовместимое переопределение метода в классе-наследнике. mypy без дополнительных настроек строку 14 не отмечает.</p>
+          </div>
+          <div class="demo__pane">
+            <figure class="shot">
+              <img src="img/vscode-types-mode-strict-all.png" alt="Режим strict: подчёркнуты os, _squash_spaces, prices, label, 40 и undefined_name; в Problems девять сообщений">
+              <figcaption>Режим <code>strict</code>. Девять сообщений. Новые: <code>Import "os" is not accessed</code> — импорт не используется; <code>"_squash_spaces" is private</code> — служебная функция вызвана из другого модуля; три сообщения про <code>prices</code> — у параметра нет аннотации, и его тип неизвестен везде, где он используется.</figcaption>
+            </figure>
+            <p class="demo__verdict"><b>Что добавилось</b>Требование полной типизации: у каждого параметра должна быть аннотация, у каждого значения — известный тип. Плюс правила аккуратности кода — неиспользуемые импорты, служебные имена.</p>
+          </div>
+        </div>
+        <p>Как это сказывается на учебном проекте. На втором архиве, где аннотации расставлены, все четыре режима дают ноль замечаний. На первом архиве, без аннотаций, <code>basic</code> и <code>standard</code> тоже молчат — сверять вызовы не с чем, — а <code>strict</code> выдаёт 86 замечаний, большая часть из них — «тип неизвестен» и «нет аннотации».</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Режим</th><th>Что проверяет</th><th>Когда выбирают</th></tr></thead>
+            <tbody>
+              <tr><td><code>off</code></td><td>Только синтаксис, ненайденные модули и неизвестные имена</td><td>Когда проверка типов не нужна, а подсказки нужны</td></tr>
+              <tr><td><code>basic</code></td><td>Всё, что противоречит записанным аннотациям</td><td>Режим курса: ближе всего к тому, что проверяет mypy в проверках при сдаче</td></tr>
+              <tr><td><code>standard</code></td><td>То же и подозрительные места вроде переменной из одной ветки <code>if</code></td><td>Можно включить для себя: замечания полезные, но mypy их без настройки не повторит</td></tr>
+              <tr><td><code>strict</code></td><td>Полная типизация и аккуратность кода</td><td>Проекты, где аннотации обязательны везде; на первом архиве — 86 замечаний сразу</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Поэтому в курсе выбран <code>basic</code>: редактор подчёркивает почти то же, что потом сообщит mypy, и замечания двух программ почти не расходятся. Отличия разобраны в §7. После опыта удалите файл или верните режим <code>basic</code>, если меняли его.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>mypy: проверка в терминале</h2>
+        <p>Pylance нашёл обе ошибки, но у него два ограничения: он проверяет только файлы, открытые в редакторе, и работает только у того, кто пишет код в VS Code. Для проверки всего проекта и для проверок при сдаче работы нужна программа, которую запускают командой.</p>
         <p><span class="term">mypy</span> — программа проверки типов для Python, которая запускается командой в терминале. В отличие от Pylance, она проверяет и те файлы, которые сейчас не открыты, и печатает один отчёт на весь проект. Поэтому в проверках запроса на слияние запускают её. В проекте mypy перечислен в <code>requirements.txt</code> и уже установлен в <code>.venv</code>.</p>
-        <p>Для опыта верните в <code>proba.py</code> оба неверных вызова — <code>format_title(40)</code> и <code>format_kopeks("1250")</code>.</p>
+        <p>Чтобы сравнить две программы на одном материале, mypy проверяет тот же файл. Верните в <code>proba.py</code> оба неверных вызова — <code>format_title(40)</code> и <code>format_kopeks("1250")</code> — и сохраните файл.</p>
         <div class="walk">
           <div class="walk__step">
             <p class="walk__head"><span>Откройте терминал и проверьте, что mypy установлен</span></p>
@@ -278,8 +372,8 @@ price = format_kopeks(<span class="n">125000</span>)</pre>
           </div>
         </div>
 
-        <h2 id="s5"><span class="sec">§5</span>Как читать строку вывода mypy</h2>
-        <p>Каждая ошибка в отчёте mypy занимает одну строку, и строение у всех строк одинаковое. Разберём первую строку из шага 2:</p>
+        <h2 id="s6"><span class="sec">§6</span>Как читать строку вывода mypy</h2>
+        <p>Каждая ошибка в отчёте mypy занимает одну строку, и строение у всех строк одинаковое. Разберём первую строку из шага 2 части про mypy:</p>
         <figure class="scheme">
           <svg viewBox="0 0 680 190" role="img" aria-label="Разбор строки вывода mypy: файл, номер строки, слово error, сообщение, код ошибки в квадратных скобках">
             <rect x="8" y="56" width="664" height="48" fill="var(--ink)"/>
@@ -322,9 +416,9 @@ price = format_kopeks(<span class="n">125000</span>)</pre>
             </tbody>
           </table>
         </div>
-        <p>Код <code>no-untyped-def</code> разобран ниже, в §7. Остальные коды встречаются в примерах главы 4.4 вместе с настоящим выводом mypy.</p>
+        <p>Код <code>no-untyped-def</code> разобран ниже, в §8. Остальные коды встречаются в примерах главы 4.4 вместе с настоящим выводом mypy.</p>
 
-        <h2 id="s6"><span class="sec">§6</span>Одна ошибка в двух программах</h2>
+        <h2 id="s7"><span class="sec">§7</span>Одна ошибка в двух программах</h2>
         <p>Pylance и mypy нашли в <code>proba.py</code> одни и те же две ошибки, но описали их по-разному. Сравнение для строки 3:</p>
         <div class="table-scroll">
           <table>
@@ -340,8 +434,8 @@ price = format_kopeks(<span class="n">125000</span>)</pre>
         </div>
         <p>В большинстве случаев две программы согласны. Расхождения бывают в пограничных случаях: например, пустой словарь <code>totals = {}</code> без аннотации mypy считает ошибкой, а Pylance в режиме <code>basic</code> — нет. Когда результаты расходятся, в курсе решает mypy: его команда стоит в проверках перед сдачей работы.</p>
 
-        <h2 id="s7"><span class="sec">§7</span>Функции без аннотаций</h2>
-        <p>По умолчанию mypy пропускает функции, у которых нет ни одной аннотации: их тела он не проверяет и об отсутствии типов не сообщает. Проект совсем без аннотаций прошёл бы проверку с ответом <code>Success</code>, хотя сверять в нём нечего. Чтобы такие функции считались ошибкой, в файле <code>pyproject.toml</code> включают параметр <code>disallow_untyped_defs</code>. В проекте темы он уже включён:</p>
+        <h2 id="s8"><span class="sec">§8</span>Функции без аннотаций</h2>
+        <p>До сих пор проверялся код, в котором аннотации есть: ошибки находились в вызовах. В первом архиве проекта аннотаций нет совсем, и проверка ведёт себя иначе. По умолчанию mypy пропускает функции, у которых нет ни одной аннотации: их тела он не проверяет и об отсутствии типов не сообщает. Проект совсем без аннотаций прошёл бы проверку с ответом <code>Success</code>, хотя сверять в нём нечего. Чтобы такие функции считались ошибкой, в файле <code>pyproject.toml</code> включают параметр <code>disallow_untyped_defs</code>. В проекте темы он уже включён:</p>
         <figure class="code">
           <figcaption><span>pyproject.toml</span><span>раздел mypy</span></figcaption>
 <pre>[tool.mypy]
@@ -356,14 +450,14 @@ disallow_untyped_defs = <span class="k">true</span></pre>
         </figure>
         <p>Этот перечень — план работы для практики в главе 4.5: когда все семнадцать функций получат аннотации, ответ сменится на <code>Success</code>. Pylance в режиме <code>basic</code> функции без аннотаций не подчёркивает — это правило включено только в режиме <code>strict</code>, как видно в таблице на шаге 4.</p>
 
-        <h2 id="s8"><span class="sec">§8</span>Какой тип видит проверка</h2>
-        <p>Аннотации пишут не везде: у локальных переменных тип выводится из присвоенного значения. Посмотреть, какой тип вывела проверка, можно двумя способами.</p>
-        <p>В редакторе — наведением указателя на имя переменной. В файле ниже переменной присвоен результат <code>grade_bounds</code>, аннотации у переменной нет:</p>
+        <h2 id="s9"><span class="sec">§9</span>Какой тип видит проверка</h2>
+        <p>В сообщениях выше проверка называла типы значений: <code>int</code>, <code>str</code>, <code>Literal[40]</code>. Не все эти типы записаны в коде: у локальных переменных аннотаций обычно нет, и тип проверка выводит сама — из присвоенного значения. Когда сообщение непонятно, полезно посмотреть, какой тип она вывела. Способов два.</p>
+        <p>В редакторе — наведением указателя на имя переменной. Замените содержимое <code>proba.py</code>: первая строка — импорт <code>from app.services.calculator import grade_bounds</code>, вторая пустая, третья — присваивание <code>bounds = grade_bounds([5, 3, 4])</code>. Аннотации у переменной <code>bounds</code> нет. Наведите указатель на её имя:</p>
         <figure class="shot">
           <img src="img/vscode-types-hover-variable.png" alt="Подсказка VS Code над переменной bounds: (variable) bounds: tuple[int, int]">
           <figcaption><code>(variable) bounds: tuple[int, int]</code> — Pylance взял тип из аннотации результата <code>grade_bounds(...) -&gt; tuple[int, int]</code>.</figcaption>
         </figure>
-        <p>В mypy — временной строкой <code>reveal_type(...)</code>. Импортировать её не нужно: mypy узнаёт это имя сам и печатает тип выражения в скобках строкой с уровнем <code>note</code>.</p>
+        <p>В mypy — временной строкой <code>reveal_type(...)</code>. Допишите её в тот же файл четвёртой строкой. Импортировать её не нужно: mypy узнаёт это имя сам и печатает тип выражения в скобках строкой с уровнем <code>note</code>.</p>
         <figure class="code">
           <figcaption><span>proba.py</span><span>запрос типа у mypy</span></figcaption>
 <pre><span class="k">from</span> app.services.calculator <span class="k">import</span> grade_bounds
@@ -378,8 +472,8 @@ Success: no issues found in 1 source file</pre>
         </figure>
         <p>Приставка <code>builtins.</code> — полное имя встроенного типа: <code>builtins.int</code> и есть <code>int</code>. При запуске программы функции <code>reveal_type</code> нет, и строка завершится ошибкой <code>NameError</code>, поэтому после просмотра её удаляют. Этим приёмом пользуются в главе 4.4: в примерах он показывает, как проверка понимает тип внутри условий и циклов.</p>
 
-        <h2 id="s9"><span class="sec">§9</span>Чего проверка не находит</h2>
-        <p>Проверка работает с текстом программы. Данные, которые появятся при запуске, ей недоступны. В <code>load_orders</code> сумма читается из файла смены вызовом <code>int(row["kopeks"])</code>. Для проверки всё верно: <code>int(...)</code> возвращает целое число. Если же в файле окажется строка <code>сто</code>, программа завершится ошибкой <code>ValueError</code>, и проверка об этом не предупредит.</p>
+        <h2 id="s10"><span class="sec">§10</span>Чего проверка не находит</h2>
+        <p>Две программы, разобранные в главе, находят любые несовпадения с аннотациями. Есть ошибки другого рода, которых они не видят. Проверка работает с текстом программы. Данные, которые появятся при запуске, ей недоступны. В <code>load_orders</code> сумма читается из файла смены вызовом <code>int(row["kopeks"])</code>. Для проверки всё верно: <code>int(...)</code> возвращает целое число. Если же в файле окажется строка <code>сто</code>, программа завершится ошибкой <code>ValueError</code>, и проверка об этом не предупредит.</p>
         <div class="table-scroll">
           <table>
             <thead><tr><th>Находит проверка типов</th><th>Не находит проверка типов</th></tr></thead>
@@ -399,10 +493,14 @@ Success: no issues found in 1 source file</pre>
         </figure>
         <p>Код в скобках обязателен: без него подавляются все замечания на строке, в том числе те, что появятся после будущих правок. В работах курса подавления не используются: каждое замечание исправляется аннотацией или кодом.</p>
 
-        <h2 id="s10"><span class="sec">§10</span>Проверьте себя</h2>
+        <h2 id="s11"><span class="sec">§11</span>Проверьте себя</h2>
         <details>
           <summary>Pylance установлен, а неверный вызов не подчёркнут. Что проверить?</summary>
           <p>Режим проверки: по умолчанию он <code>off</code>. В настройках проекта нужно выбрать <code>basic</code> — в файле <code>.vscode/settings.json</code> появится строка <code>"python.analysis.typeCheckingMode": "basic"</code>. Если подчёркнуты строки <code>import</code>, выбран не тот интерпретатор: нужен <code>.venv</code>.</p>
+        </details>
+        <details>
+          <summary>Строка <code>return label</code> стоит после <code>if</code>, внутри которого создаётся <code>label</code>. В каком режиме Pylance её подчеркнёт и чем она опасна?</summary>
+          <p>В режимах <code>standard</code> и <code>strict</code>, сообщение <code>"label" is possibly unbound</code>. Если условие ложно, переменная не создаётся, и при запуске будет <code>UnboundLocalError</code>. В <code>basic</code> строка не подчёркнута: это не противоречие аннотациям, а подозрительное место в логике.</p>
         </details>
         <details>
           <summary>Чем отличается настройка на вкладке Workspace от настройки на вкладке User?</summary>
@@ -425,12 +523,13 @@ Success: no issues found in 1 source file</pre>
           <p>Может. Данные из файлов и сети проверке недоступны, расчёты и ограничения значений она не проверяет, а значения типа <code>Any</code> пропускает. Такие ошибки находят тесты и проверки внутри функций.</p>
         </details>
 
-        <h2 id="s11"><span class="sec">§11</span>Шпаргалка по главе</h2>
+        <h2 id="s12"><span class="sec">§12</span>Шпаргалка по главе</h2>
         <div class="cheat">
           <div>
             <b>Включить Pylance</b>
             <code>Settings → Workspace</code>
             <code>"python.analysis.typeCheckingMode": "basic"</code>
+            <code>off &lt; basic &lt; standard &lt; strict</code>
           </div>
           <div>
             <b>Где смотреть</b>

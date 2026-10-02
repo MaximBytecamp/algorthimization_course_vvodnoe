@@ -35,7 +35,13 @@ FRAMES = {
     "types-mypy-success": (345, 455, 1240, 605),        # 4.2 — весь пакет
     "types-mypy-errors": (345, 25, 1240, 400),          # 4.2 — 17 функций
     "types-hover-variable": (345, 25, 1000, 165),       # 4.2 — выведенный тип
-    "types-inlay": (345, 25, 1240, 220),                # 4.4 — подсказки вставки
+    "types-inlay": (345, 25, 1240, 220),                # 4.5 — подсказки вставки
+    # 4.3 — один файл в четырёх режимах: код сверху, панель Problems снизу,
+    # пустая середина редактора вырезана (окно снято высотой 980 точек)
+    "types-mode-off-all": [(345, 25, 1240, 445), (345, 650, 1240, 965)],
+    "types-mode-basic-all": [(345, 25, 1240, 445), (345, 650, 1240, 965)],
+    "types-mode-standard-all": [(345, 25, 1240, 445), (345, 650, 1240, 965)],
+    "types-mode-strict-all": [(345, 25, 1240, 445), (345, 650, 1240, 965)],
 }
 
 
@@ -47,7 +53,12 @@ def main() -> None:
             continue
         image = Image.open(source).convert("RGB")
         scale = image.width / 1240
-        image = image.crop(tuple(round(v * scale) for v in box))
+        parts = [image.crop(tuple(round(v * scale) for v in b)) for b in (box if isinstance(box, list) else [box])]
+        image = Image.new("RGB", (parts[0].width, sum(p.height for p in parts)), "white")
+        top = 0
+        for part in parts:
+            image.paste(part, (0, top))
+            top += part.height
         if image.width > MAX_WIDTH:
             image = image.resize((MAX_WIDTH, round(image.height * MAX_WIDTH / image.width)), Image.LANCZOS)
         target = OUT / f"vscode-{name}.png"
