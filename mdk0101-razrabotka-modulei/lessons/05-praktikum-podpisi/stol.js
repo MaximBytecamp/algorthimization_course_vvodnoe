@@ -481,16 +481,16 @@
 
   const reportForm = () => {
     const ready = student.name.trim() && student.group.trim();
-    return '<div class="task"><b>Что сдать</b>Файл отчёта .md: баллы, рецензия и все ваши ответы. Он кладётся в папку lesson_05 личного репозитория дисциплины.</div>'
+    return '<div class="task"><b>Что сдать</b>Файл отчёта .md: баллы, рецензия и все ваши ответы. Он кладётся в папку lesson_04 вашего репозитория дисциплины.</div>'
       + `<div class="field"><label for="st-name">Фамилия и имя</label><input id="st-name" data-student="name" value="${esc(student.name)}" autocomplete="name"></div>`
       + `<div class="field"><label for="st-group">Группа</label><input id="st-group" data-student="group" value="${esc(student.group)}"></div>`
       + `<div class="row"><button type="button" class="btn" data-act="download"${ready ? '' : ' disabled'}>Скачать отчёт .md</button></div>`
       + `<p class="note" id="dl-note">${ready ? `Файл: ${esc(fileName())}` : 'Кнопка станет доступна, когда заполнены фамилия, имя и группа.'}</p>`
       + '<div class="letter"><div class="letter__head"><span class="letter__subject">Как сдать в GitHub</span></div><div class="letter__body"><ol style="margin:0 0 10px;padding-left:20px">'
-      + '<li>В личном репозитории дисциплины создайте папку <code>lesson_05</code>.</li>'
-      + '<li>Положите в неё скачанный файл отчёта, имя не меняйте.</li>'
-      + '<li>В терминале в корне репозитория: <code>git add lesson_05</code>, затем <code>git commit -m "Practicum lesson 05"</code> и <code>git push</code>.</li>'
-      + '<li>Откройте файл на GitHub: таблицы и код в нём показываются оформленными. Пришлите преподавателю ссылку на папку <code>lesson_05</code>.</li>'
+      + '<li>В своём репозитории дисциплины создайте ветку <code>hw-04</code>.</li>'
+      + '<li>Положите скачанный файл в папку <code>lesson_04</code>, имя не меняйте.</li>'
+      + '<li>Сделайте коммит и отправьте ветку на GitHub: <code>git add lesson_04</code>, <code>git commit -m "hw-04: рецензия практикума"</code>, <code>git push -u origin hw-04</code>.</li>'
+      + '<li>На GitHub откройте Pull Request из <code>hw-04</code> в свою <code>main</code>.</li>'
       + '</ol></div></div>'
       + '<p class="note">Работа хранится только в этом браузере. Перед сменой компьютера скачайте отчёт.</p>';
   };
