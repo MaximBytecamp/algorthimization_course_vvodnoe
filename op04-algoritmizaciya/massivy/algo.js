@@ -709,7 +709,8 @@ onmessage = async e => {
    карточка из пула не исчезает и ставится в несколько мест (метки O(n)).
    Карточку тянут мышью или пальцем, либо касаются карточки, затем места.
    Касание поставленной карточки возвращает её в пул. Разбор берётся из
-   data-why у мест (.slot) или у карточек (в корзинах). Итог — событие dnd:result. */
+   data-why у мест (.slot) или у карточек (в корзинах). Итог — событие dnd:result,
+   «Начать заново» — событие dnd:reset. */
 (() => {
   const roots = document.querySelectorAll('.dnd');
   if (!roots.length) return;
@@ -720,7 +721,7 @@ onmessage = async e => {
     const bins = [...root.querySelectorAll('.bin')];
     const chips0 = [...pool.querySelectorAll('.chip')];
     const home = new Map(chips0.map((c, k) => [c, k]));
-    let picked = null, locked = false, reported = false;
+    let picked = null, locked = false;
 
     const row = document.createElement('div');
     row.className = 'btnrow dnd__btns';
@@ -806,6 +807,7 @@ onmessage = async e => {
         root.querySelectorAll('.is-ok, .is-no').forEach(x => x.classList.remove('is-ok', 'is-no'));
         msg.hidden = true; why.hidden = true; why.innerHTML = '';
         row.querySelector('[data-act="check"]').disabled = false;
+        root.dispatchEvent(new CustomEvent('dnd:reset', { bubbles: true }));
         return;
       }
       if (act !== 'check') return;
@@ -837,20 +839,30 @@ onmessage = async e => {
       msg.textContent = `Верно: ${ok} из ${total}.`;
       why.innerHTML = items.map(([g, h, t]) => `<li class="${g ? 'is-ok' : 'is-no'}"><b>${h}</b>${t}</li>`).join('');
       why.hidden = !items.length;
-      if (!reported) { reported = true; root.dispatchEvent(new CustomEvent('dnd:result', { bubbles: true, detail: { ok, total } })); }
+      root.dispatchEvent(new CustomEvent('dnd:result', { bubbles: true, detail: { ok, total } }));
     });
   });
 })();
 
 /* ── 13. Строка с ошибкой: щёлкнуть строку кода и проверить ─────── */
 /* .bugline__code состоит из .ln; у ошибочных строк data-bad. После проверки
-   открываются .bugline__why и исправление. Итог — событие bugline:result. */
+   открываются .bugline__why и исправление. Итог — событие bugline:result,
+   «Начать заново» — событие bugline:reset. */
 (() => {
   document.querySelectorAll('.bugline').forEach(root => {
     const lines = [...root.querySelectorAll('.ln')];
     const btn = root.querySelector('[data-act="check"]');
     const out = root.querySelector('.bugline__why');
-    let sel = null, done = false, reported = false;
+    let sel = null, done = false;
+    const again = document.createElement('button');
+    again.className = 'btn'; again.type = 'button'; again.textContent = '↺ Начать заново'; again.hidden = true;
+    btn.after(again);
+    again.addEventListener('click', () => {
+      done = false; sel = null; again.hidden = true; out.hidden = true; btn.disabled = true;
+      root.classList.remove('is-checked');
+      lines.forEach(x => x.classList.remove('is-sel', 'is-bad', 'is-wrong'));
+      root.dispatchEvent(new CustomEvent('bugline:reset', { bubbles: true }));
+    });
     lines.forEach(ln => {
       ln.tabIndex = 0;
       const pick = () => { if (done) return; lines.forEach(x => x.classList.remove('is-sel')); ln.classList.add('is-sel'); sel = ln; btn.disabled = false; };
@@ -867,7 +879,8 @@ onmessage = async e => {
       out.hidden = false;
       out.querySelector('.bugline__verdict').textContent = ok ? 'Верно, ошибка в этой строке.' : 'Ошибка в другой строке, она подсвечена красным.';
       out.classList.toggle('is-ok', ok);
-      if (!reported) { reported = true; root.dispatchEvent(new CustomEvent('bugline:result', { bubbles: true, detail: { ok } })); }
+      again.hidden = false;
+      root.dispatchEvent(new CustomEvent('bugline:result', { bubbles: true, detail: { ok } }));
     });
   });
 })();

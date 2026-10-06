@@ -64,8 +64,8 @@
             </tbody>
           </table>
         </div>
-        <p>В частях 1, 2, 3 и 5 балл даётся за каждое верно занятое место, в части 4 — 2 балла за верно найденную строку. Засчитывается первая проверка каждого задания; кнопка «Начать заново» нужна для повторной тренировки и баллы не меняет. В части 6 баллы считаются по последнему запуску тестов: все 19 тестов — 8 баллов, от 15 до 18 — 4 балла.</p>
-        <p>Всего 43 балла. Оценка: 39 и больше — «5», 30–38 — «4», 22–29 — «3». Баллы и код сохраняются в этом браузере, поэтому страницу можно перезагрузить; расстановка карточек после перезагрузки не восстанавливается.</p>
+        <p>В частях 1, 2, 3 и 5 балл даётся за каждое верно занятое место, в части 4 — 2 балла за верно найденную строку. В итог идёт последняя проверка каждого задания. Кнопка «Начать заново» в задании снимает ответ и обнуляет его баллы до следующей проверки. В части 6 баллы считаются по последнему запуску тестов: все 19 тестов — 8 баллов, от 15 до 18 — 4 балла.</p>
+        <p>Всего 43 балла. Оценка: 39 и больше — «5», 30–38 — «4», 22–29 — «3». Баллы и код сохраняются в этом браузере, поэтому страницу можно перезагрузить; расстановка карточек после перезагрузки не восстанавливается. Кнопка «Стереть всё» в разделе «Итог» очищает баллы всех частей и код в песочнице.</p>
 
         <h2 id="s2"><span class="sec">§2</span>Часть 1. Сложность четырёх функций</h2>
         <p>Четыре функции решают одну задачу: найти в списке <code>a</code> два разных элемента с суммой <code>target</code>. Функции А, Б и В возвращают индексы пары, функция Г — значения. Функция Б рассчитана на отсортированный список, остальные работают с любым.</p>
@@ -447,7 +447,7 @@ def test_big_input_is_fast():
             <tfoot><tr><td>Итого</td><td data-s="grade"></td><td data-s="sum"></td></tr></tfoot>
           </table>
           <div class="score__copy">
-            <div class="btnrow"><button class="btn btn--main" type="button" id="score-copy">Скопировать итог</button><button class="btn" type="button" id="score-reset">↺ Стереть баллы</button></div>
+            <div class="btnrow"><button class="btn btn--main" type="button" id="score-copy">Скопировать итог</button><button class="btn" type="button" id="score-reset">↺ Стереть всё</button></div>
             <pre id="score-text"></pre>
           </div>
         </div>
@@ -475,8 +475,8 @@ def test_big_input_is_fast():
   <script src="../book.js"></script>
   <script src="../algo.js"></script>
   <script>
-  /* Итог практической работы: первая проверка каждого задания частей 1–5,
-     последний запуск тестов части 6. Хранится в localStorage этого браузера. */
+  /* Итог практической работы: последняя проверка каждого задания частей 1–5
+     и последний запуск тестов части 6. Хранится в localStorage этого браузера. */
   (() => {
     const KEY = 'op04-pr08-v2';
     const PARTS = [
@@ -493,13 +493,17 @@ def test_big_input_is_fast():
     const tasks = n => [...document.querySelectorAll(`[data-part="${n}"]`)];
 
     document.addEventListener('dnd:result', e => {
-      const id = e.target.dataset.id; if (!id || id in st) return;
+      const id = e.target.dataset.id; if (!id) return;
       st[id] = { pts: e.detail.ok, of: e.detail.total }; save(); render();
     });
     document.addEventListener('bugline:result', e => {
-      const id = e.target.dataset.id; if (!id || id in st) return;
+      const id = e.target.dataset.id; if (!id) return;
       st[id] = { pts: e.detail.ok ? 2 : 0, of: 2 }; save(); render();
     });
+    ['dnd:reset', 'bugline:reset'].forEach(ev => document.addEventListener(ev, e => {
+      const id = e.target.dataset.id; if (!id) return;
+      delete st[id]; save(); render();
+    }));
     document.addEventListener('sandbox:result', e => {
       const { ok, total } = e.detail;
       st.p6 = { pts: ok === total ? 8 : ok >= 15 ? 4 : 0, of: 8, tests: `${ok} из ${total}` }; save(); render();
@@ -537,8 +541,12 @@ def test_big_input_is_fast():
         .then(() => { b.textContent = 'Скопировано'; setTimeout(() => { b.textContent = 'Скопировать итог'; }, 1600); }, () => {});
     });
     document.getElementById('score-reset').addEventListener('click', () => {
-      if (!confirm('Стереть баллы всех частей? Код в песочнице останется.')) return;
-      st = {}; save(); location.reload();
+      if (!confirm('Стереть баллы всех частей и код в песочнице?')) return;
+      st = {}; save();
+      try {
+        Object.keys(localStorage).filter(k => k.startsWith('op04-sandbox:13-prakticheskaya-rabota.html:')).forEach(k => localStorage.removeItem(k));
+      } catch (_) {}
+      location.reload();
     });
     render();
   })();
