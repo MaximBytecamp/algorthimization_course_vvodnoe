@@ -632,14 +632,14 @@ onmessage = async e => {
     });
     return readyPromise;
   }
-  function call(mode, user, extra, limit = 5000) {
+  function call(mode, user, extra) {
     return boot().then(() => new Promise(resolve => {
       const id = ++seq;
       const timer = setTimeout(() => {
         worker.terminate(); worker = null; readyPromise = null;
         setStatus('запуск прерван, Python будет загружен заново');
-        resolve({ fatal: `Код работает дольше ${limit / 1000} секунд и остановлен. Чаще всего это бесконечный цикл: проверьте, что указатели сдвигаются на каждом шаге.` });
-      }, limit);
+        resolve({ fatal: 'Код работает дольше 5 секунд и остановлен. Чаще всего это бесконечный цикл: проверьте, что указатели сдвигаются на каждом шаге.' });
+      }, 5000);
       const onMsg = e => { if (e.data.id !== id) return; clearTimeout(timer); worker.removeEventListener('message', onMsg); resolve(e.data.data); };
       worker.addEventListener('message', onMsg);
       worker.postMessage({ id, mode, user, extra });
@@ -685,202 +685,18 @@ onmessage = async e => {
       root.querySelectorAll('[data-act]').forEach(b => b.disabled = true);
       out.innerHTML = '<p class="sandbox__wait">выполняется…</p>';
       const extra = act === 'run' ? root.querySelector('.sandbox__call input').value : tests;
-      const r = await call(act === 'run' ? 'run' : 'test', ed.value, extra, Number(root.dataset.timeout) || 5000);
+      const r = await call(act === 'run' ? 'run' : 'test', ed.value, extra);
       root.querySelectorAll('[data-act]').forEach(b => b.disabled = false);
       let html = '';
       if (r.fatal) html += `<pre class="sandbox__err">${esc(r.fatal)}</pre>`;
       if (r.results) {
         const ok = r.results.filter(x => x[1]).length;
-        root.dispatchEvent(new CustomEvent('sandbox:result', { bubbles: true, detail: { ok, total: r.results.length } }));
         html += `<p class="sandbox__sum ${ok === r.results.length ? 'is-ok' : ''}">Прошло тестов: ${ok} из ${r.results.length}</p><ul class="sandbox__list">` +
           r.results.map(([name, pass, doc, msg]) => `<li class="${pass ? 'is-ok' : 'is-no'}"><b>${pass ? '✓' : '✗'} ${esc(name)}</b>${doc ? `<span>${esc(doc)}</span>` : ''}${msg ? `<code>${esc(msg)}</code>` : ''}</li>`).join('') + '</ul>';
       }
       if (r.out) html += `<p class="sandbox__label">вывод print()</p><pre class="sandbox__print">${esc(r.out)}</pre>`;
       if (!html) html = '<p class="sandbox__wait">Код выполнился, вывода нет.</p>';
       out.innerHTML = html;
-    });
-  });
-})();
-
-/* ── 12. Перетаскивание карточек: пропуски в коде и корзины ───────── */
-/* .dnd содержит пул .dnd__pool с карточками .chip[data-key] и места:
-   .slot[data-accept] — одна карточка, .bin[data-accept] — сколько угодно.
-   data-accept — ключи подходящих карточек через пробел. data-mode="copy":
-   карточка из пула не исчезает и ставится в несколько мест (метки O(n)).
-   Карточку тянут мышью или пальцем, либо касаются карточки, затем места.
-   Касание поставленной карточки возвращает её в пул. Разбор берётся из
-   data-why у мест (.slot) или у карточек (в корзинах). Итог — событие dnd:result,
-   «Начать заново» — событие dnd:reset. */
-(() => {
-  const roots = document.querySelectorAll('.dnd');
-  if (!roots.length) return;
-  roots.forEach(root => {
-    const pool = root.querySelector('.dnd__pool');
-    const copy = root.dataset.mode === 'copy';
-    const slots = [...root.querySelectorAll('.slot')];
-    const bins = [...root.querySelectorAll('.bin')];
-    const chips0 = [...pool.querySelectorAll('.chip')];
-    const home = new Map(chips0.map((c, k) => [c, k]));
-    let picked = null, locked = false;
-
-    const row = document.createElement('div');
-    row.className = 'btnrow dnd__btns';
-    row.innerHTML = '<button class="btn btn--main" type="button" data-act="check">Проверить</button><button class="btn" type="button" data-act="reset">↺ Начать заново</button>';
-    const msg = document.createElement('p'); msg.className = 'dnd__msg'; msg.hidden = true;
-    const why = document.createElement('ol'); why.className = 'dnd__why'; why.hidden = true;
-    root.append(row, msg, why);
-
-    const back = chip => {
-      if (copy) { chip.remove(); return; }
-      const k = home.get(chip);
-      const after = [...pool.children].find(c => home.get(c) > k);
-      pool.insertBefore(chip, after || null);
-    };
-    const unpick = () => { if (picked) picked.classList.remove('is-picked'); picked = null; root.classList.remove('is-picking'); };
-    function place(chip, target) {
-      if (!target || locked) return;
-      if (target === pool) { if (chip.parentElement !== pool) back(chip); return; }
-      let c = chip;
-      if (copy && chip.parentElement === pool) { c = chip.cloneNode(true); c.classList.remove('is-picked', 'is-drag'); home.set(c, -1); }
-      if (target.classList.contains('slot')) {
-        const old = target.querySelector('.chip');
-        if (old && old !== c) back(old);
-        target.appendChild(c);
-      } else {
-        (target.querySelector('.bin__drop') || target).appendChild(c);
-      }
-      root.classList.toggle('has-placed', true);
-    }
-    const targetAt = (x, y) => {
-      const t = document.elementFromPoint(x, y);
-      const hit = t && t.closest('.slot, .bin, .dnd__pool');
-      return hit && root.contains(hit) ? hit : null;
-    };
-
-    root.addEventListener('pointerdown', e => {
-      const chip = e.target.closest('.chip');
-      if (!chip || locked || !root.contains(chip) || e.button > 0) return;
-      const sx = e.clientX, sy = e.clientY;
-      let ghost = null;
-      const move = ev => {
-        if (!ghost && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 6) return;
-        if (!ghost) {
-          ghost = chip.cloneNode(true);
-          ghost.className = 'chip chip--ghost';
-          document.body.appendChild(ghost);
-          chip.classList.add('is-drag');
-          unpick();
-        }
-        ghost.style.left = ev.clientX + 'px'; ghost.style.top = ev.clientY + 'px';
-        root.querySelectorAll('.is-over').forEach(x => x.classList.remove('is-over'));
-        const t = targetAt(ev.clientX, ev.clientY); if (t) t.classList.add('is-over');
-        ev.preventDefault();
-      };
-      const up = ev => {
-        document.removeEventListener('pointermove', move);
-        document.removeEventListener('pointerup', up);
-        root.querySelectorAll('.is-over').forEach(x => x.classList.remove('is-over'));
-        if (ghost) {
-          ghost.remove(); chip.classList.remove('is-drag');
-          place(chip, targetAt(ev.clientX, ev.clientY));
-          return;
-        }
-        // касание без движения
-        if (chip.parentElement !== pool) { back(chip); unpick(); return; }
-        if (picked === chip) { unpick(); return; }
-        unpick(); picked = chip; chip.classList.add('is-picked'); root.classList.add('is-picking');
-      };
-      document.addEventListener('pointermove', move);
-      document.addEventListener('pointerup', up);
-    });
-    root.addEventListener('click', e => {
-      if (!picked || locked || e.target.closest('.chip')) return;
-      const t = e.target.closest('.slot, .bin');
-      if (t && root.contains(t)) { place(picked, t); unpick(); }
-    });
-
-    row.addEventListener('click', e => {
-      const act = e.target.closest('[data-act]')?.dataset.act;
-      if (act === 'reset') {
-        locked = false; root.classList.remove('is-checked');
-        root.querySelectorAll('.slot .chip, .bin .chip').forEach(back);
-        root.querySelectorAll('.is-ok, .is-no').forEach(x => x.classList.remove('is-ok', 'is-no'));
-        msg.hidden = true; why.hidden = true; why.innerHTML = '';
-        row.querySelector('[data-act="check"]').disabled = false;
-        root.dispatchEvent(new CustomEvent('dnd:reset', { bubbles: true }));
-        return;
-      }
-      if (act !== 'check') return;
-      locked = true; unpick(); root.classList.add('is-checked');
-      row.querySelector('[data-act="check"]').disabled = true;
-      let ok = 0, total = 0;
-      const items = [];
-      const accepts = t => (t.dataset.accept || '').split(/\s+/).filter(Boolean);
-      if (slots.length) {
-        slots.forEach((s, k) => {
-          const c = s.querySelector('.chip');
-          const good = !!c && accepts(s).includes(c.dataset.key);
-          total++; ok += good;
-          s.classList.add(good ? 'is-ok' : 'is-no');
-          if (s.dataset.why) items.push([good, (s.dataset.label || `Место ${k + 1}`), s.dataset.why]);
-        });
-      } else {
-        chips0.forEach(c => {
-          const bin = c.closest('.bin');
-          const good = !!bin && accepts(bin).includes(c.dataset.key);
-          const right = bins.find(b => accepts(b).includes(c.dataset.key));
-          total++; ok += good;
-          c.classList.add(good ? 'is-ok' : 'is-no');
-          items.push([good, c.dataset.label || c.textContent.trim(), (right ? `Нужно: ${right.dataset.name || ''}. ` : '') + (c.dataset.why || '')]);
-        });
-      }
-      msg.hidden = false;
-      msg.className = 'dnd__msg' + (ok === total ? ' is-ok' : '');
-      msg.textContent = `Верно: ${ok} из ${total}.`;
-      why.innerHTML = items.map(([g, h, t]) => `<li class="${g ? 'is-ok' : 'is-no'}"><b>${h}</b>${t}</li>`).join('');
-      why.hidden = !items.length;
-      root.dispatchEvent(new CustomEvent('dnd:result', { bubbles: true, detail: { ok, total } }));
-    });
-  });
-})();
-
-/* ── 13. Строка с ошибкой: щёлкнуть строку кода и проверить ─────── */
-/* .bugline__code состоит из .ln; у ошибочных строк data-bad. После проверки
-   открываются .bugline__why и исправление. Итог — событие bugline:result,
-   «Начать заново» — событие bugline:reset. */
-(() => {
-  document.querySelectorAll('.bugline').forEach(root => {
-    const lines = [...root.querySelectorAll('.ln')];
-    const btn = root.querySelector('[data-act="check"]');
-    const out = root.querySelector('.bugline__why');
-    let sel = null, done = false;
-    const again = document.createElement('button');
-    again.className = 'btn'; again.type = 'button'; again.textContent = '↺ Начать заново'; again.hidden = true;
-    btn.after(again);
-    again.addEventListener('click', () => {
-      done = false; sel = null; again.hidden = true; out.hidden = true; btn.disabled = true;
-      root.classList.remove('is-checked');
-      lines.forEach(x => x.classList.remove('is-sel', 'is-bad', 'is-wrong'));
-      root.dispatchEvent(new CustomEvent('bugline:reset', { bubbles: true }));
-    });
-    lines.forEach(ln => {
-      ln.tabIndex = 0;
-      const pick = () => { if (done) return; lines.forEach(x => x.classList.remove('is-sel')); ln.classList.add('is-sel'); sel = ln; btn.disabled = false; };
-      ln.addEventListener('click', pick);
-      ln.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
-    });
-    btn.disabled = true;
-    btn.addEventListener('click', () => {
-      if (!sel) return;
-      done = true; btn.disabled = true; root.classList.add('is-checked');
-      const ok = sel.hasAttribute('data-bad');
-      lines.forEach(x => { if (x.hasAttribute('data-bad')) x.classList.add('is-bad'); });
-      if (!ok) sel.classList.add('is-wrong');
-      out.hidden = false;
-      out.querySelector('.bugline__verdict').textContent = ok ? 'Верно, ошибка в этой строке.' : 'Ошибка в другой строке, она подсвечена красным.';
-      out.classList.toggle('is-ok', ok);
-      again.hidden = false;
-      root.dispatchEvent(new CustomEvent('bugline:result', { bubbles: true, detail: { ok } }));
     });
   });
 })();
