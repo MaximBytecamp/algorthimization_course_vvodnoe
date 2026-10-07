@@ -213,6 +213,7 @@ function renderNav() {
     return `<button class="nav-btn${S.tab === id ? ' on' : ''}${locked ? ' locked' : ''}" data-tab="${id}"><span>${t}</span>${badge[id] !== '' && badge[id] !== undefined ? `<i>${badge[id]}</i>` : ''}</button>`;
   }).join('');
   if (S.done) html += `<button class="nav-btn result${S.tab === 'result' ? ' on' : ''}" data-tab="result"><span>Итог</span></button>`;
+  html += `<a class="nav-btn guide" href="pamyatka.html" target="_blank" rel="noopener"><span>Памятка ↗</span></a>`;
   html += `<div class="nav-foot"><b>${esc(S.name)}</b><br>${esc(S.group)} · вариант ${S.v}<button class="reset" data-act="reset">Сбросить игру</button></div>`;
   $('#nav').innerHTML = html;
 }
@@ -908,9 +909,12 @@ function viewNotes() {
 
 /* ---------------------------------------------------------------- задания */
 
-function pinPicker(name, value) {
-  if (!S.pins.length) return '<div class="empty small">Улик пока нет. Найдите нужную запись в материалах и приобщите её значком ◇.</div>';
-  return `<div class="picker">${S.pins.map(p => {
+const NONE = '__none__';   // «среди моих улик подходящей нет»
+
+function pinPicker(name, value, court) {
+  const none = court ? `<label class="pick none"><input type="radio" name="${name}" value="${NONE}"${value === NONE ? ' checked' : ''}><span><small>честный ответ суду</small>Среди приобщённых улик подходящей записи нет</span></label>` : '';
+  if (!S.pins.length) return none ? `<div class="picker">${none}</div>` : '<div class="empty small">Улик пока нет. Найдите нужную запись в материалах и приобщите её значком ◇.</div>';
+  return `<div class="picker">${none}${S.pins.map(p => {
     const r = refInfo(p.ref);
     return `<label class="pick"><input type="radio" name="${name}" value="${esc(p.ref)}"${value === p.ref ? ' checked' : ''}><span><small>${esc(r.where)}</small>${esc(r.text.length > 170 ? r.text.slice(0, 170) + '…' : r.text)}</span></label>`;
   }).join('')}</div>`;
@@ -982,7 +986,7 @@ window.addEventListener('resize', drawWires);
 
 function widget(kind, name, options, value, off) {
   const dis = off ? ' disabled' : '';
-  if (kind === 'evidence') return off ? `<div class="given">${value ? esc(refInfo(value).where + ' — ' + refInfo(value).text) : 'улика не предъявлена'}</div>` : pinPicker(name, value);
+  if (kind === 'evidence') return off ? `<div class="given">${value && value !== NONE ? esc(refInfo(value).where + ' — ' + refInfo(value).text) : 'Специалист сообщил суду, что подходящей улики среди приобщённых нет'}</div>` : pinPicker(name, value, name.startsWith('c-'));
   if (kind === 'single') return `<div class="opts">${options.map((o, i) => `<label class="opt"><input type="radio" name="${name}" value="${i}"${Number(value) === i && value !== undefined && value !== null ? ' checked' : ''}${dis}><span>${esc(o)}</span></label>`).join('')}</div>`;
   if (kind === 'multi') return `<div class="opts">${options.map((o, i) => `<label class="opt"><input type="checkbox" name="${name}" value="${i}"${(value || []).includes(i) ? ' checked' : ''}${dis}><span>${esc(o)}</span></label>`).join('')}</div>`;
   if (kind === 'datetime') {
@@ -1003,7 +1007,7 @@ function readWidget(kind, name, root) {
 
 function showAnswer(kind, options, value, t) {
   if (value === null || value === undefined || value === '') return '—';
-  if (kind === 'evidence') return refInfo(value).where;
+  if (kind === 'evidence') return value === NONE ? 'подходящей улики среди приобщённых нет' : refInfo(value).where;
   if (kind === 'single') return options[value];
   if (kind === 'multi') return value.length ? value.map(i => options[i]).join('; ') : '—';
   if (kind === 'order' || kind === 'chain') return value.map(i => i === null ? '—' : options[i]).join(' → ');
@@ -1199,9 +1203,7 @@ ACTIONS['court-answer'] = id => {
   const root = document.querySelector(`[data-step="${id}"]`);
   const ans = s.parts.map((part, i) => readWidget(part.kind, 'c-' + id + '-' + i, root));
   draft[id] = ans;
-  const missing = s.parts.some((part, i) => part.kind !== 'evidence' && (ans[i] === null || ans[i] === ''));
-  if (missing) { $('#court-err').textContent = 'Ответьте на каждую часть вопроса. Без ответа можно оставить только предъявление улики.'; return; }
-  if (s.parts.some((part, i) => part.kind === 'evidence' && ans[i] === null) && !confirm('Улика не предъявлена. Ответить без неё?')) return;
+  if (s.parts.some((part, i) => ans[i] === null || ans[i] === '')) { $('#court-err').textContent = 'Ответьте на каждую часть вопроса. Если подходящей улики нет, выберите это в списке.'; return; }
   S.court.answers[id] = ans;
   S.court.idx++;
   addLog('Заседание: дан ответ на вопрос ' + S.court.idx + ' из ' + V.pub.court.length);
@@ -1341,7 +1343,7 @@ ${S.done.code}
 - 06-reshenie.md — проект решения, мотивировка и сверка с материалами
 `]);
   files.push(['01-hod-rassledovaniya.md', '# Ход расследования\n\nВремя — от открытия дела, минуты:секунды.\n\n' + S.log.map(l => `- \`${clock(l.t)}\` ${l.x}`).join('\n') + '\n']);
-  const used = new Set(Object.values(S.court.answers).flat().filter(x => typeof x === 'string' && x.includes('#')));
+  const used = new Set(Object.values(S.court.answers).flat().filter(x => typeof x === 'string' && x.includes('#') && x !== NONE));
   files.push(['02-uliki.md', '# Улики\n\n' + (S.pins.length ? S.pins.map((p, n) => {
     const r = refInfo(p.ref);
     return `## ${n + 1}. ${r.where}\n\n${q(r.text)}\n\n**Что доказывает:** ${p.note.trim() || '—'}${used.has(p.ref) ? '\n\nПредъявлена в заседании.' : ''}`;
