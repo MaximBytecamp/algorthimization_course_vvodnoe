@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Документы RFC и кто их выпускает, методы и коды ответа HTTP по RFC 9110, JSON по RFC 8259, запись даты по ISO 8601, Юникод и UTF-8.">
+<title>4. Стандарты интернета: HTTP, JSON, дата и текст · Стандарты и сертификаты</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Стандарты и сертификаты · тема 3</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандарты и сертификаты»</a> · тема 3</p><p class="folio">Глава 4</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">4</span>
+<h1>Стандарты интернета:<br>HTTP, JSON, дата и текст</h1>
+<p class="lead">Браузер, сервер и мобильное приложение разных производителей работают вместе, потому что следуют одним документам. В главе разобраны стандарты, на которых держится обмен данными: HTTP, JSON, запись даты и времени, кодирование текста.</p>
+</header>
+
+<dl class="passport"><div><dt>Документы</dt><dd>RFC 9110 · RFC 8259 · RFC 3339 · RFC 9457 · ISO 8601 · ISO/IEC 10646</dd></div><div><dt>Уровень</dt><dd>Базовый</dd></div><div><dt>Где встречается</dt><dd>Любой сайт, API, журнал сервера</dd></div><div><dt>Зачем это знать</dt><dd>Чтобы читать журналы и проектировать API по общим правилам</dd></div></dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol><li><a href="#s1">Что такое RFC</a></li><li><a href="#s2">Методы HTTP</a></li><li><a href="#s3">Коды ответа</a></li><li><a href="#s4">Дата и время по ISO 8601</a></li><li><a href="#s5">JSON, Юникод и UTF-8</a></li><li><a href="#s6">Частые ошибки</a></li><li><a href="#s7">Проверьте себя</a></li></ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Что такое RFC</h2>
+<p><span class="term">RFC</span> — серия документов, в которой публикуются стандарты интернета. Выпускает их Инженерный совет Интернета (IETF). Тексты бесплатны и лежат на сайте rfc-editor.org.</p>
+<p>У каждого RFC постоянный номер. Текст опубликованного документа не меняют: новая редакция выходит под новым номером, а в шапке старого появляется строка «Obsoleted by».</p>
+<figure class="shot"><img src="../../shots/rfc9110.jpg" alt="RFC 9110 «HTTP Semantics» на сайте rfc-editor.org." loading="lazy"><figcaption><b>RFC 9110 «HTTP Semantics» на сайте rfc-editor.org.</b> В шапке указаны номер, статус Internet Standard, дата и документы, которые этот RFC заменил.</figcaption></figure>
+<div class="table-scroll"><table>
+<thead><tr><th>Документ</th><th>Что описывает</th><th>Год</th></tr></thead>
+<tbody>
+<tr><td>RFC 9110</td><td>смысл методов, кодов ответа и заголовков HTTP</td><td>2022</td></tr><tr><td>RFC 8259</td><td>формат JSON</td><td>2017</td></tr><tr><td>RFC 3339</td><td>запись даты и времени в интернете, профиль ISO 8601</td><td>2002</td></tr><tr><td>RFC 9457</td><td>формат описания ошибки в HTTP API (Problem Details)</td><td>2023</td></tr><tr><td>RFC 8446</td><td>протокол TLS версии 1.3</td><td>2018</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Методы HTTP</h2>
+<p>RFC 9110 делит методы по двум свойствам. <span class="term">Безопасный</span> метод не меняет состояние ресурса. <span class="term">Идемпотентный</span> метод при повторе даёт то же состояние, что и после первого вызова.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Метод</th><th>Назначение</th><th>Безопасный</th><th>Идемпотентный</th></tr></thead>
+<tbody>
+<tr><td>GET</td><td>получить ресурс</td><td>да</td><td>да</td></tr><tr><td>HEAD</td><td>получить только заголовки</td><td>да</td><td>да</td></tr><tr><td>OPTIONS</td><td>узнать доступные методы</td><td>да</td><td>да</td></tr><tr><td>PUT</td><td>заменить ресурс целиком</td><td>нет</td><td>да</td></tr><tr><td>DELETE</td><td>удалить ресурс</td><td>нет</td><td>да</td></tr><tr><td>POST</td><td>создать ресурс или выполнить действие</td><td>нет</td><td>нет</td></tr><tr><td>PATCH</td><td>изменить часть ресурса</td><td>нет</td><td>нет</td></tr>
+</tbody></table></div>
+<p>От этих свойств зависит поведение при сбое связи. Запрос GET или DELETE клиент может повторить без последствий. Повторный POST создаст вторую запись.</p>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Коды ответа</h2>
+<p>Первая цифра кода задаёт класс ответа.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Класс</th><th>Смысл</th><th>Примеры</th></tr></thead>
+<tbody>
+<tr><td>2xx</td><td>запрос выполнен</td><td>200 OK · 201 Created · 206 Partial Content</td></tr><tr><td>3xx</td><td>перенаправление</td><td>301 Moved Permanently · 304 Not Modified</td></tr><tr><td>4xx</td><td>ошибка на стороне клиента</td><td>400 Bad Request · 401 Unauthorized · 403 Forbidden · 404 Not Found · 429 Too Many Requests</td></tr><tr><td>5xx</td><td>ошибка на стороне сервера</td><td>500 Internal Server Error · 503 Service Unavailable</td></tr>
+</tbody></table></div>
+<p>Код 401 означает, что клиент не представился. Код 403 означает, что клиент известен, но доступа к ресурсу у него нет. Код 206 сообщает, что передана часть файла: в журнале сервера по нему видно, что файл не был получен целиком.</p>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>Дата и время по ISO 8601</h2>
+<p>ISO 8601 задаёт запись даты и времени от крупной единицы к мелкой: год, месяц, день, часы, минуты, секунды. Такая запись однозначна в любой стране и сортируется как текст.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Запись</th><th>Что означает</th></tr></thead>
+<tbody>
+<tr><td>2026-09-16</td><td>16 сентября 2026 года</td></tr><tr><td>08:14:22</td><td>8 часов 14 минут 22 секунды</td></tr><tr><td>2026-09-16T08:14:22+03:00</td><td>дата и время, местное время опережает UTC на три часа</td></tr><tr><td>2026-09-16T05:14:22Z</td><td>тот же момент по UTC; буква Z заменяет +00:00</td></tr><tr><td>PT24H</td><td>длительность 24 часа</td></tr><tr><td>2026-W38</td><td>38-я неделя 2026 года</td></tr>
+</tbody></table></div>
+<figure class="shot"><img src="../../shots/iso8601.jpg" alt="Страница о стандарте ISO 8601 на сайте ISO." loading="lazy"><figcaption><b>Страница о стандарте ISO 8601 на сайте ISO.</b> Сам текст стандарта платный. Для интернета его общеупотребительную часть повторяет бесплатный RFC 3339.</figcaption></figure>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>JSON, Юникод и UTF-8</h2>
+<p>Формат JSON описан в RFC 8259. В нём шесть видов значений: объект, массив, строка, число, логическое значение и null. Комментарии и запятая после последнего элемента форматом не предусмотрены.</p>
+<p><span class="term">Юникод</span> — стандарт, который присваивает номер каждому символу всех письменностей; тот же набор закреплён в ISO/IEC 10646. <span class="term">UTF-8</span> — способ записать эти номера байтами. RFC 8259 требует, чтобы JSON при обмене между системами был в UTF-8.</p>
+<figure class="shot"><img src="../../shots/rfc8259.jpg" alt="RFC 8259 на сайте IETF." loading="lazy"><figcaption><b>RFC 8259 на сайте IETF.</b> Справа — сведения о документе: статус, авторы, какие RFC он заменил.</figcaption></figure>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s6">
+<h2><i>§6</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Считать код 206 ошибкой</b>Это успешный ответ с частью содержимого.</div>
+<div><b>Путать 401 и 403</b>401 — клиент не представился, 403 — доступ запрещён известному клиенту.</div>
+<div><b>Изменять данные запросом GET</b>GET — безопасный метод; его повторяют роботы и кеши.</div>
+<div><b>Передавать дату как 16/09/26</b>В разных странах её прочтут по-разному. В обмене данными — 2026-09-16.</div>
+<div><b>Писать комментарии в JSON</b>Формат их не допускает, разборщик вернёт ошибку.</div>
+</div>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>Проверьте себя</h2>
+<ol class="check">
+<li>Кто выпускает RFC и что происходит со старым документом, когда выходит новая редакция?</li>
+<li>Какие методы HTTP безопасны? Какие идемпотентны, но не безопасны?</li>
+<li>Чем отличаются коды 401 и 403? Что означает код 206?</li>
+<li>Запишите по ISO 8601 момент «16 сентября 2026 года, 8:14 утра по Москве».</li>
+<li>Чем Юникод отличается от UTF-8?</li>
+</ol>
+<div class="cheat">
+<div><b>RFC</b><code>9110 — семантика HTTP</code><code>8259 — JSON</code><code>3339 — дата и время</code><code>9457 — описание ошибки</code></div>
+<div><b>HTTP</b><code>GET, HEAD, OPTIONS — безопасные</code><code>PUT, DELETE — идемпотентные</code><code>2xx 3xx 4xx 5xx</code><code>401 ≠ 403</code></div>
+<div><b>Данные</b><code>2026-09-16T08:14:22+03:00</code><code>Z — UTC</code><code>JSON в UTF-8</code><code>Юникод — набор символов</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav"><a href="../3-oformlenie-dokumentov/index.html">← Глава 3. ГОСТ Р 7.0.97-2016: оформление документов</a><a href="../5-standarty-koda/index.html">Глава 5. Стандарты кода и версий: PEP 8, SemVer, OpenAPI →</a></nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандарты и сертификаты» · глава 4</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>
