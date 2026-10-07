@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>9.9 Ошибки и объяснение решения · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 9 · Скользящее окно · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 9 · скользящее окно</p>
+          <p class="running__folio">Глава 9.9</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">9.9</span>
+          <h1>Ошибки<br>и объяснение решения</h1>
+          <p class="lead">В этой главе собраны ошибки модуля 9 и то, как решение объясняют интервьюеру. Ошибки разобраны в главах 9.3–9.6, каждая с прогоном ошибочной и исправленной версии. Здесь они сведены в таблицу по симптомам: что видно в ответе, где искать в коде, на каком входе ошибка проявляется и где её прогон. Затем — четыре новые ошибочные версии для самостоятельного поиска, функция с двумя ошибками сразу и фразы, которыми объясняют три вида задач на окно.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Отладка и объяснение</dd></div>
+          <div><dt>Уровень</dt><dd>Средний</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 9.3–9.8; глава 8.9: ошибки модуля 8</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Находить ошибку окна по симптому и объяснять решение на секции</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Сводка ошибок по симптомам</a></li>
+            <li><a href="#s2">Найдите ошибку</a></li>
+            <li><a href="#s3">Две ошибки в одной функции</a></li>
+            <li><a href="#s4">Как объяснить решение на интервью</a></li>
+            <li><a href="#s5">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Сводка ошибок по симптомам</h2>
+        <p>Когда тест падает, сначала видно не строку с ошибкой, а неверный ответ. В таблице ошибки модуля сгруппированы по тому, как они выглядят в ответе. По симптому находят строку кода, которую нужно проверить, и вход, на котором ошибку видно. В последнем столбце — где эта ошибка запущена по шагам вместе с исправленной версией.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Симптом в ответе</th><th>Где искать</th><th>Вход, который её показывает</th><th>Прогон</th></tr></thead>
+            <tbody>
+              <tr><td>Первая сумма верная, дальше все неверные</td><td>Индекс ушедшего элемента: <code>nums[r − k + 1]</code> вместо <code>nums[r − k]</code></td><td>Любой список длиннее k; при k = 1 все суммы равны первой</td><td><a href="03-peresschet-okna.html#s8">9.3, §8</a></td></tr>
+              <tr><td>Сумм на одну меньше, первой нет</td><td>Начало ответа: <code>sums = []</code> вместо <code>sums = [total]</code></td><td>k = n: ответ пустой</td><td><a href="03-peresschet-okna.html#s8">9.3, §8</a></td></tr>
+              <tr><td>Все суммы смещены на одно и то же число</td><td>Первое окно: <code>sum(nums[:k − 1])</code></td><td>Любой вход; смещение равно <code>nums[k − 1]</code></td><td><a href="06-granicy.html#s1">9.6, §1</a></td></tr>
+              <tr><td>Суммы не совпадают ни с одним окном, кроме первого</td><td>Начало цикла: <code>range(k + 1, …)</code></td><td>Любой список длиннее k</td><td><a href="06-granicy.html#s2">9.6, §2</a></td></tr>
+              <tr><td>При равных суммах возвращено окно правее</td><td>Знак сравнения: <code>&gt;=</code> вместо <code>&gt;</code></td><td>Все окна с одной суммой: <code>[5, 1, 5, 1]</code>, k = 2</td><td><a href="04-luchshij-otrezok.html#s5">9.4, §5</a></td></tr>
+              <tr><td>Лучшая сумма 0, хотя такого окна нет</td><td>Начальное значение: <code>best = 0</code></td><td>Все суммы отрицательные</td><td><a href="04-luchshij-otrezok.html#s6">9.4, §6</a></td></tr>
+              <tr><td>Начало лучшего окна на единицу левее</td><td><code>start = r − k</code> вместо <code>r − k + 1</code></td><td>Лучшее окно не первое</td><td><a href="06-granicy.html#s7">9.6, §7, review 2</a></td></tr>
+              <tr><td>Первое окно в ответе дважды, последнего нет</td><td>Порядок строк: запись до сдвига</td><td>Любой список длиннее k</td><td><a href="06-granicy.html#s7">9.6, §7, review 1</a></td></tr>
+              <tr><td>Ответ на неверный k вместо исключения</td><td>Нет проверки <code>k &lt; 1 or k &gt; len(nums)</code></td><td>k = 0, k &gt; n, пустой список</td><td><a href="06-granicy.html#s2">9.6, §2</a></td></tr>
+              <tr><td><code>ValueError</code> при допустимом k = n</td><td>Проверка <code>k &gt;= len(nums)</code></td><td>k = n</td><td><a href="06-granicy.html#s2">9.6, §2</a></td></tr>
+              <tr><td>В окне по времени на одно событие больше</td><td>Условие сдвига: <code>&gt; w</code> вместо <code>&gt;= w</code></td><td>Событие ровно на правой границе: <code>[0, 5]</code>, w = 5</td><td><a href="05-sobytiya-v-okne.html#s7">9.5, §7</a></td></tr>
+              <tr><td>В окне по времени на одно событие меньше</td><td>Подсчёт: <code>r − l</code> вместо <code>r − l + 1</code></td><td>Любой непустой список</td><td><a href="05-sobytiya-v-okne.html#s7">9.5, §7</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Большая часть ошибок связана с одним из двух мест: границей — индексом, знаком сравнения, началом цикла — или начальным значением. Поэтому крайние входы k = 1, k = n, равные суммы, отрицательные числа и событие на границе ловят почти все ошибки таблицы, а обычный пример — только часть.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Найдите ошибку</h2>
+        <p>Четыре версии ниже в главах не разбирались. В первых трёх вопросах выберите вход, на котором функция ошибается; на остальных вариантах её ответ верный. Четвёртая функция отвечает верно на любом входе — найдите, что с ней не так. Все ответы проверены запуском.</p>
+        <div class="quiz">
+          <div class="quiz__q"><b>Код 1</b>Функция должна вернуть сумму каждого окна длины k.<pre>def window_sums(nums, k):
+    total = sum(nums[:k])
+    sums = [total]
+    for r in range(k, len(nums) - 1):
+        total += nums[r] - nums[r - k]
+        sums.append(total)
+    return sums</pre></div>
+          <ul class="quiz__opts">
+            <li><button><code>[1, 2, 3]</code>, k = 3</button><p class="quiz__why">При k = n цикл и так пуст, ответ <code>[6]</code> верный.</p></li>
+            <li data-ok><button><code>[1, 2, 3]</code>, k = 2</button><p class="quiz__why">Верно. Цикл идёт до <code>len(nums) − 2</code>, последний элемент в окно не входит. Ответ <code>[3]</code> вместо <code>[3, 5]</code>.</p></li>
+            <li><button><code>[5]</code>, k = 1</button><p class="quiz__why">Одно окно, цикл пуст, ответ <code>[5]</code> верный.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <div class="quiz__q"><b>Код 2</b>Функция должна вернуть начало и сумму лучшего окна, при равных — самого левого.<pre>def best_window(nums, k):
+    total = sum(nums[:k])
+    best, start = total, 0
+    for r in range(k, len(nums)):
+        if total &gt; best:
+            best, start = total, r - k
+        total += nums[r] - nums[r - k]
+    return (start, best)</pre></div>
+          <ul class="quiz__opts">
+            <li><button><code>[1, 9, 1, 1]</code>, k = 2</button><p class="quiz__why">Лучшее окно <code>[1, 9]</code> — первое, оно учтено до цикла. Ответ <code>(0, 10)</code> верный.</p></li>
+            <li data-ok><button><code>[3, 1, 4]</code>, k = 1</button><p class="quiz__why">Верно. Сравнение стоит до сдвига, поэтому каждое окно сравнивается на шаг позже, а последнее не сравнивается вовсе. Лучшее окно <code>[4]</code> последнее, и функция возвращает <code>(0, 3)</code> вместо <code>(2, 4)</code>.</p></li>
+            <li><button><code>[9, 1, 1, 1]</code>, k = 2</button><p class="quiz__why">Лучшее окно первое, ответ <code>(0, 10)</code> верный. Ошибку видно, только когда лучшее окно последнее.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <div class="quiz__q"><b>Код 3</b>Функция должна вернуть наибольшее число гласных в подстроке длины k.<pre>def max_vowels(s, k):
+    vowels = set("aeiou")
+    count = sum(1 for ch in s[:k] if ch in vowels)
+    best = count
+    for r in range(k, len(s)):
+        count += (s[r] in vowels)
+        best = max(best, count)
+    return best</pre></div>
+          <ul class="quiz__opts">
+            <li><button><code>"aeiou"</code>, k = 5</button><p class="quiz__why">Окно одно, цикл пуст, ответ 5 верный.</p></li>
+            <li><button><code>"bcdfg"</code>, k = 2</button><p class="quiz__why">Гласных нет, счётчику нечего прибавлять, ответ 0 верный.</p></li>
+            <li data-ok><button><code>"abab"</code>, k = 2</button><p class="quiz__why">Верно. Ушедшая гласная не вычитается, и счётчик только растёт: уже на втором окне <code>"ba"</code> он равен 2, хотя гласная в нём одна.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <div class="quiz__q"><b>Код 4</b>Функция должна вернуть наибольшее число событий в окне длиной w. Ответ верный на любом входе. Что с ней не так?<pre>def max_events(times, w):
+    best = 0
+    for r in range(len(times)):
+        l = 0
+        while times[r] - times[l] &gt;= w:
+            l += 1
+        best = max(best, r - l + 1)
+    return best</pre></div>
+          <ul class="quiz__opts">
+            <li><button>Функция падает на пустом списке</button><p class="quiz__why">На пустом списке цикл не выполняется, функция возвращает 0 — это верный ответ.</p></li>
+            <li data-ok><button>Время O(n²): l каждый раз начинается с 0</button><p class="quiz__why">Верно. Левая граница не монотонна: на каждом шаге она заново проходит все старые события. На замере 4000 событий через секунду эта версия обработала за 186 мс, а верная версия 40 000 событий — за 3,8 мс.</p></li>
+            <li><button>Событие на правой границе попадает в окно</button><p class="quiz__why">Условие <code>&gt;= w</code> верное, правая граница открыта. На 5000 случайных входах ответы совпали с верной версией.</p></li>
+          </ul>
+        </div>
+        <div class="margin-note margin-note--steel">
+          <b>На полях: ошибка, которую не ловят тесты на правильность</b>
+          <p>Код 4 проходит все тесты <code>max_events</code>, потому что тесты проверяют только ответ. Время работы они не измеряют. Такую ошибку находят review и замер: монотонность указателя — первое, что проверяют в коде окна, глава 9.6, §7.</p>
+        </div>
+
+        <h2 id="s3"><span class="sec">§3</span>Две ошибки в одной функции</h2>
+        <p>В окне ниже <code>max_events</code> с двумя ошибками из сводки: условие сдвига <code>&gt; w</code> и подсчёт <code>r − l</code>. Исправьте обе. Сначала запустите тесты и посмотрите, какие проходят.</p>
+        <div class="sandbox" data-title="Исправьте max_events" data-call="print(max_events([1, 3, 4, 10, 12, 13, 14, 30], 5))">
+<script type="text/plain" class="sandbox__start">
+def max_events(times, w):
+    if w <= 0:
+        raise ValueError("w должно быть больше 0")
+    best = 0
+    l = 0
+    for r in range(len(times)):
+        while times[r] - times[l] > w:
+            l += 1
+        best = max(best, r - l)
+    return best
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """[1, 3, 4, 10, 12, 13, 14, 30], w = 5 → 4: окно [10, 15)"""
+    r = max_events([1, 3, 4, 10, 12, 13, 14, 30], 5)
+    assert r == 4, f"ожидалось 4, получено {r!r}"
+
+def test_right_edge():
+    """[0, 5], w = 5 → 1: момент 5 в окно [0, 5) не входит"""
+    r = max_events([0, 5], 5)
+    assert r == 1, f"ожидалось 1, получено {r!r}"
+
+def test_same_moment():
+    """три события в один момент — три разных события"""
+    r = max_events([7, 7, 7], 1)
+    assert r == 3, f"ожидалось 3, получено {r!r}"
+
+def test_empty():
+    """событий нет — 0"""
+    r = max_events([], 3)
+    assert r == 0, f"ожидалось 0, получено {r!r}"
+
+def test_one_event():
+    """одно событие"""
+    r = max_events([42], 10)
+    assert r == 1, f"ожидалось 1, получено {r!r}"
+
+def test_bad_w():
+    """w = 0 и w < 0 — ValueError"""
+    for w in (0, -1):
+        try:
+            max_events([1, 2], w)
+        except ValueError:
+            continue
+        assert False, f"w = {w}: ожидалась ValueError"
+
+def test_input_not_changed():
+    """список после вызова тот же"""
+    times = [1, 2, 8]
+    max_events(times, 3)
+    assert times == [1, 2, 8], f"список стал {times!r}"
+
+def test_matches_brute():
+    """300 случайных списков: ответ совпадает с перебором окон"""
+    import random
+    rnd = random.Random(11)
+    for _ in range(300):
+        times = sorted(rnd.randint(0, 40) for _ in range(rnd.randint(0, 12)))
+        w = rnd.randint(1, 10)
+        want = max((sum(1 for t in times if s <= t < s + w) for s in times), default=0)
+        got = max_events(times, w)
+        assert got == want, f"times = {times}, w = {w}: ожидалось {want}, получено {got}"
+</script>
+</div>
+        <p>На заготовке тест <code>test_right_edge</code> проходит, хотя в функции обе ошибки. На входе <code>[0, 5]</code>, w = 5 строгое сравнение оставляет в окне лишнее событие, а <code>r − l</code> одно событие теряет, и ошибки гасят друг друга. Если исправить только подсчёт, этот тест начинает падать: остаётся ошибка границы. Поэтому после каждой правки тесты запускают заново, и падение нового теста после исправления не значит, что исправление неверное.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Как объяснить решение на интервью</h2>
+        <p>Кроме кода интервьюер ждёт рассуждение, по которому видно, что решение верное и почему оно O(n). Для трёх видов задач модуля это укладывается в несколько фраз. Каждая фраза под собой подписана: что она показывает интервьюеру.</p>
+        <h3>Окно фиксированной длины: лучший отрезок</h3>
+        <div class="speech">
+          <div class="speech__item">
+            <p class="speech__said">«Сумму первого окна считаю целиком. Дальше окно сдвигаю на одну позицию: прибавляю пришедший элемент и вычитаю ушедший».</p>
+            <p class="speech__note"><b>Что показывает</b>Состояние окна и его пересчёт за O(1).</p>
+          </div>
+          <div class="speech__item">
+            <p class="speech__said">«Лучшую сумму начинаю с первого окна: числа бывают отрицательными, и ноль может оказаться больше любого окна. Сравниваю строго, чтобы при равных суммах осталось самое левое окно».</p>
+            <p class="speech__note"><b>Что показывает</b>Начальное значение и знак сравнения выведены из условия.</p>
+          </div>
+          <div class="speech__item">
+            <p class="speech__said">«Окон n − k + 1, каждое после первого — две операции. Время O(n), память O(1). Неверный k проверяю в начале».</p>
+            <p class="speech__note"><b>Что показывает</b>Оценка сложности и граничные входы.</p>
+          </div>
+        </div>
+        <h3>Окно по времени: события</h3>
+        <div class="speech">
+          <div class="speech__item">
+            <p class="speech__said">«r идёт по событиям. Пока самое старое событие окна дальше чем на w от нового, сдвигаю l. Окно полуоткрытое, поэтому сравниваю через «больше или равно»».</p>
+            <p class="speech__note"><b>Что показывает</b>Правило сдвига и граница окна.</p>
+          </div>
+          <div class="speech__item">
+            <p class="speech__said">«While внутри for, но l только растёт и не обгоняет r. Всего сдвигов не больше 2n — это O(n)».</p>
+            <p class="speech__note"><b>Что показывает</b>Монотонность указателя и верная оценка вложенного цикла.</p>
+          </div>
+        </div>
+        <h3>Окно, которого нет в условии: карты с краёв</h3>
+        <div class="speech">
+          <div class="speech__item">
+            <p class="speech__said">«Взятые карты по краям, значит, оставшиеся — отрезок подряд длины n − k. Сумма взятых — общая сумма минус оставшиеся».</p>
+            <p class="speech__note"><b>Что показывает</b>Сведение задачи к известной технике.</p>
+          </div>
+          <div class="speech__item">
+            <p class="speech__said">«Ищу окно длины n − k с наименьшей суммой обычным сдвигом. При k = n окно пустое, ответ — сумма всех карт».</p>
+            <p class="speech__note"><b>Что показывает</b>Готовое решение применено к новой задаче, крайний случай назван.</p>
+          </div>
+        </div>
+        <p>Во всех трёх случаях порядок одинаковый: что хранится в состоянии окна, как оно меняется при сдвиге, почему указатели не возвращаются и что происходит на границах. Этот порядок совпадает с чек-листом review из главы 9.6, §7.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>Тест <code>best_window([-5, -2, -8, -1], 2)</code> вернул <code>(0, 0)</code>. Какую строку проверить первой?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button>Начальное значение <code>best</code></button><p class="quiz__why">Верно. Сумма 0 не принадлежит ни одному окну: так бывает, когда <code>best</code> начинается с 0, а все суммы отрицательные.</p></li>
+            <li><button>Знак сравнения <code>&gt;</code></button><p class="quiz__why">Знак сравнения меняет выбор между равными окнами, но не создаёт сумму, которой нет.</p></li>
+            <li><button>Индекс ушедшего элемента</button><p class="quiz__why">Неверный индекс даёт неверные суммы окон, но не ноль на месте отрицательной суммы при верном начале.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>Что интервьюер ждёт услышать о вложенном <code>while</code> в задаче о событиях?</p>
+          <ul class="quiz__opts">
+            <li><button>Что вложенный цикл даёт O(n²), но на практике работает быстро</button><p class="quiz__why">Это неверная оценка. При монотонной левой границе вложенный цикл даёт O(n).</p></li>
+            <li data-ok><button>Что l только растёт, и за всю работу сдвигов не больше n</button><p class="quiz__why">Верно. Это обоснование оценки O(n) через монотонность указателя.</p></li>
+            <li><button>Что while выполняется не больше k раз</button><p class="quiz__why">В задаче о событиях нет k: длина окна задана временем, и за один шаг while может выполниться много раз.</p></li>
+          </ul>
+        </div>
+
+        <div class="pager"><a href="08-zadacha-celikom.html">← 9.8 Задача целиком: решение на интервью</a><a href="10-praktika-i-dz.html">9.10 Практика, шпаргалка и ДЗ →</a></div>
+        <div class="colophon">
+          <span>Модуль 9 · Скользящее окно · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>

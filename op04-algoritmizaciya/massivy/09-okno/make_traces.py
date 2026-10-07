@@ -92,6 +92,62 @@ SOURCES['var_check_ge'] = SOURCES['best_window'].replace('k > len(nums)', 'k >= 
 for _k in ('var_no_check', 'var_range_k1', 'var_check_ge'):
     assert SOURCES[_k] != SOURCES['best_window'], _k
 
+# Глава 9.8 и тренажёр 9.11.
+SOURCES['max_card_points'] = '''
+def max_card_points(cards, k):
+    size = len(cards) - k
+    total = sum(cards[:size])
+    smallest = total
+    for r in range(size, len(cards)):
+        total += cards[r] - cards[r - size]
+        smallest = min(smallest, total)
+    return sum(cards) - smallest
+'''
+
+SOURCES['max_card_points_brute'] = '''
+def max_card_points_brute(cards, k):
+    best = 0
+    for left in range(k + 1):
+        right = k - left
+        points = sum(cards[:left]) + sum(cards[len(cards) - right:])
+        best = max(best, points)
+    return best
+'''
+
+SOURCES['find_max_average'] = '''
+def find_max_average(nums, k):
+    total = sum(nums[:k])
+    best = total
+    for r in range(k, len(nums)):
+        total += nums[r] - nums[r - k]
+        best = max(best, total)
+    return best / k
+'''
+
+SOURCES['k_radius_averages'] = '''
+def k_radius_averages(nums, k):
+    n = len(nums)
+    avgs = [-1] * n
+    size = 2 * k + 1
+    if size > n:
+        return avgs
+    total = sum(nums[:size])
+    avgs[k] = total // size
+    for r in range(size, n):
+        total += nums[r] - nums[r - size]
+        avgs[r - k] = total // size
+    return avgs
+'''
+
+SOURCES['min_difference'] = '''
+def min_difference(scores, k):
+    scores = sorted(scores)
+    best = scores[k - 1] - scores[0]
+    for i in range(1, len(scores) - k + 1):
+        best = min(best, scores[i + k - 1] - scores[i])
+    return best
+'''
+
 # Ошибочные версии сдвига для главы 9.3.
 SOURCES['bug_out_index'] = SOURCES['window_sums'].replace('nums[r] - nums[r - k]', 'nums[r] - nums[r - k + 1]')
 SOURCES['bug_no_first'] = SOURCES['window_sums'].replace('sums = [total]', 'sums = []')
@@ -174,12 +230,15 @@ def caption(line, fr, nxt, is_bug, key=''):
     v = fr['raw']
     g = v.get
     ev = fr['ev']
-    name = 'nums' if 'nums' in v else 'times' if 'times' in v else 's'
+    name = next(x for x in ('nums', 'times', 'cards', 'scores', 's') if x in v)
     nums = g(name)
     n = len(nums)
     k = g('k')
     if name == 'times':
         return events_caption(line, fr, nxt, key, nums)
+    more = more_caption(line, fr, nxt, key, name, nums)
+    if more:
+        return more
     if key.startswith('var_'):
         special = border_caption(line, fr, nxt, key, nums, k)
         if special:
@@ -267,6 +326,112 @@ def caption(line, fr, nxt, is_bug, key=''):
     return f"Выполняется строка {fr['ln']}."
 
 
+def more_caption(line, fr, nxt, key, name, a):
+    """Подписи к задачам главы 9.8 и тренажёра 9.11."""
+    g = fr['raw'].get
+    ev = fr['ev']
+    if ev == 'return':
+        return None
+    k = g('k')
+    n = len(a)
+    if line == 'size = len(cards) - k':
+        return (f"Нужно взять {plural(k, 'карту', 'карты', 'карт')} с краёв, значит, в середине останется подряд {n} − {k} = {plural(n - k, 'карта', 'карты', 'карт')}. "
+                f"size — длина этого оставшегося отрезка.")
+    if line == 'total = sum(cards[:size])':
+        sz = g('size')
+        return f"Первый оставшийся отрезок cards[0:{sz}] = {a[:sz]}, сумма {sum(a[:sz])}. Это случай, когда все взятые карты лежат справа."
+    if line == 'smallest = total':
+        return f"smallest — наименьшая сумма оставшегося отрезка среди проверенных. Пока это {g('total')}."
+    if line == 'for r in range(size, len(cards)):':
+        sz = g('size')
+        if nxt is not None and nxt['ln'] == fr['ln'] + 1:
+            r = nxt['raw']['r']
+            return (f"r = {r}: оставшийся отрезок сдвигается вправо — в него входит cards[{r}] = {a[r]}, уходит cards[{r - sz}] = {a[r - sz]}. "
+                    f"Ушедшая карта теперь взята слева.")
+        return f"Проверены все способы разделить взятые карты между левым и правым краем, их {k + 1}."
+    if line == 'total += cards[r] - cards[r - size]':
+        r, t, sz = g('r'), g('total'), g('size')
+        return f"Сумма оставшихся: {t} + {a[r]} − {a[r - sz]} = {t + a[r] - a[r - sz]}, отрезок cards[{r - sz + 1}:{r + 1}]."
+    if line == 'smallest = min(smallest, total)':
+        return f"smallest = min({g('smallest')}, {g('total')}) = {min(g('smallest'), g('total'))}."
+    if line == 'return sum(cards) - smallest':
+        return (f"Сумма всех карт {sum(a)}, наименьшая сумма оставшихся {g('smallest')}. "
+                f"Взятые карты дают {sum(a)} − {g('smallest')} = {sum(a) - g('smallest')}.")
+    if line == 'best = 0' and key == 'max_card_points_brute':
+        return "best — лучшая сумма взятых карт среди проверенных способов. Очки карт положительные, поэтому 0 меньше любого ответа."
+    if line == 'for left in range(k + 1):':
+        if nxt is not None and nxt['ln'] == fr['ln'] + 1:
+            return f"left = {nxt['raw']['left']}: столько карт берётся слева."
+        return f"Проверены все способы, их {k + 1}."
+    if line == 'right = k - left':
+        return f"Справа берётся right = {k} − {g('left')} = {k - g('left')}."
+    if line == 'points = sum(cards[:left]) + sum(cards[len(cards) - right:])':
+        l, rt = g('left'), g('right')
+        L, R = a[:l], a[n - rt:] if rt else []
+        return (f"Слева {L}, справа {R}: {sum(L)} + {sum(R)} = {sum(L) + sum(R)}. "
+                f"Срезы заново складывают {plural(l + rt, 'карту', 'карты', 'карт')}.")
+    if line == 'best = max(best, points)':
+        return f"best = max({g('best')}, {g('points')}) = {max(g('best'), g('points'))}."
+    if line == 'return best' and key == 'max_card_points_brute':
+        return f"Лучшая сумма взятых карт — {g('best')}."
+    if key == 'find_max_average':
+        if line == 'total = sum(nums[:k])':
+            return f"Первое окно nums[0:{k}]: {seq(a[:k])} = {sum(a[:k])}."
+        if line == 'best = total':
+            return f"Первое окно — пока лучшее: best = {g('total')}. Делить на k будем только в конце."
+        if line == 'total += nums[r] - nums[r - k]':
+            r, t = g('r'), g('total')
+            return f"Сдвиг: {t} + {pn(a[r])} − {pn(a[r - k])} = {t + a[r] - a[r - k]}."
+        if line == 'best = max(best, total)':
+            return f"best = max({g('best')}, {g('total')}) = {max(g('best'), g('total'))}."
+        if line == 'return best / k':
+            return f"Наибольшая сумма {g('best')}, среднее {g('best')} / {k} = {g('best') / k}. Деление одно, в самом конце."
+    if key == 'k_radius_averages':
+        if line == 'n = len(nums)':
+            return f"n = {n}."
+        if line == 'avgs = [-1] * n':
+            return f"Ответ заполняется −1. У первых и последних элементов, ближе {k} к краю, полного окна радиуса {k} нет, и −1 там останется."
+        if line == 'size = 2 * k + 1':
+            return f"Окно радиуса {k}: по {k} с каждой стороны от элемента и сам элемент, size = 2·{k} + 1 = {2 * k + 1}."
+        if line == 'if size > n:':
+            return f"size = {g('size')} больше n = {n}? " + ('Да: ни одного полного окна нет.' if g('size') > n else 'Нет, окна есть.')
+        if line == 'total = sum(nums[:size])':
+            sz = g('size')
+            return f"Первое окно nums[0:{sz}]: сумма {sum(a[:sz])}. Его центр — индекс {k}."
+        if line == 'avgs[k] = total // size':
+            return f"avgs[{k}] = {g('total')} // {g('size')} = {g('total') // g('size')} — целочисленное деление, как требует условие."
+        if line == 'for r in range(size, n):':
+            if nxt is not None and nxt['ln'] == fr['ln'] + 1:
+                r = nxt['raw']['r']; sz = g('size')
+                return f"r = {r}: в окно входит nums[{r}] = {a[r]}, уходит nums[{r - sz}] = {a[r - sz]}. Центр нового окна — {r - k}."
+            return "Окна закончились."
+        if line == 'total += nums[r] - nums[r - size]':
+            r, t, sz = g('r'), g('total'), g('size')
+            return f"Сдвиг: {t} + {a[r]} − {a[r - sz]} = {t + a[r] - a[r - sz]}."
+        if line == 'avgs[r - k] = total // size':
+            r = g('r')
+            return f"avgs[{r - k}] = {g('total')} // {g('size')} = {g('total') // g('size')}."
+        if line == 'return avgs':
+            return f"Ответ: {g('avgs')}."
+    if key == 'min_difference':
+        if line == 'scores = sorted(scores)':
+            return (f"Сортировка: {sorted(a)}. После неё любые k ближайших по значению оценок стоят подряд, "
+                    f"и лучшую группу можно искать окном длины {k}.")
+        if line == 'best = scores[k - 1] - scores[0]':
+            return f"Первое окно scores[0:{k}]: разница наибольшей и наименьшей — scores[{k - 1}] − scores[0] = {a[k - 1]} − {a[0]} = {a[k - 1] - a[0]}."
+        if line == 'for i in range(1, len(scores) - k + 1):':
+            if nxt is not None and nxt['ln'] == fr['ln'] + 1:
+                i = nxt['raw']['i']
+                return f"i = {i}: окно scores[{i}:{i + k}]."
+            return "Окна закончились."
+        if line == 'best = min(best, scores[i + k - 1] - scores[i])':
+            i = g('i'); d = a[i + k - 1] - a[i]
+            return f"В отсортированном окне крайние элементы — наименьший и наибольший: {a[i + k - 1]} − {a[i]} = {d}. best = min({g('best')}, {d}) = {min(g('best'), d)}."
+        if line == 'return best':
+            return f"Наименьшая разница — {g('best')}."
+    return None
+
+
 def events_caption(line, fr, nxt, key, times):
     """Подписи к задаче о событиях во временном окне."""
     g = fr['raw'].get
@@ -343,6 +508,12 @@ TRACES = {
     'var_range_k1': ('var_range_k1', 'best_window', (EX, 3), 'nums', ['r']),
     'var_check_ge': ('var_check_ge', 'best_window', ([4, 1, 2], 3), 'nums', ['r']),
     'fix_k_is_n': ('best_window', 'best_window', ([4, 1, 2], 3), 'nums', ['r']),
+    # Глава 9.8 и тренажёр 9.11.
+    'cards': ('max_card_points', 'max_card_points', ([1, 2, 3, 4, 5, 6, 1], 3), 'cards', ['r']),
+    'cards_brute': ('max_card_points_brute', 'max_card_points_brute', ([1, 2, 3, 4, 5, 6, 1], 3), 'cards', []),
+    'avg643': ('find_max_average', 'find_max_average', ([1, 12, -5, -6, 50, 3], 4), 'nums', ['r']),
+    'radius': ('k_radius_averages', 'k_radius_averages', ([7, 4, 3, 9, 1, 8, 5, 2, 6], 3), 'nums', ['r']),
+    'scores': ('min_difference', 'min_difference', ([9, 4, 1, 7], 2), 'scores', ['i']),
 }
 
 if __name__ == '__main__':

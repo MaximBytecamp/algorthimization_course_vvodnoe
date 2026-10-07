@@ -123,11 +123,14 @@
           if (zone === 'window') {
             // Окно модуля 9: при r — окно после сдвига [r − len + 1, r], ушедший r − len;
             // при s — срез [s, s + len); до цикла — первое окно [0, len).
-            const len = num(f, 'k'), rr = num(f, 'r'), ss = num(f, 's');
+            // Длина окна — size, если он есть (окно радиуса k, оставшиеся карты), иначе k;
+            // начало окна в задаче о разнице оценок — i.
+            const len = num(f, 'size') !== null ? num(f, 'size') : num(f, 'k');
+            const rr = num(f, 'r'), ss = num(f, 's') !== null ? num(f, 's') : num(f, 'i');
             if (len !== null) {
               if (rr !== null) { if (k > rr - len && k <= rr) return 'is-win'; if (k === rr - len) return 'is-gone'; }
               else if (ss !== null) { if (k >= ss && k < ss + len) return 'is-win'; }
-              else if ((f.vars.total !== undefined || f.vars.count !== undefined) && k < len) return 'is-win';
+              else if (['total', 'count', 'best'].some(v => f.vars[v] !== undefined) && k < len) return 'is-win';
             }
           }
           return '';
@@ -577,7 +580,8 @@
   });
 
   /* ── 9а. Окно над списком ─────────────────────────────────────── */
-  /* data-a — список, data-k — длина окна. Окно — полуинтервал [l, r),
+  /* data-a — список, data-k — длина окна, data-goal="min" — искать наименьшую
+     сумму вместо наибольшей. Окно — полуинтервал [l, r),
      r = l + k. Сумма окна пересчитывается сдвигом: минус ушедший элемент,
      плюс пришедший. Счётчики сравнивают число обращений к элементам
      при пересчёте с нуля и при сдвиге. */
@@ -585,6 +589,8 @@
     const a = json(root, 'a') || [];
     const n = a.length;
     let k = Math.min(Math.max(Number(root.dataset.k) || 3, 1), n), l, sum, naive, roll, best, bestL, timer = null, prevL = -1;
+    const toMin = root.dataset.goal === 'min';
+    const better = (a, b) => toMin ? a < b : a > b;
     root.classList.add('widget');
     root.innerHTML = `
       <div class="widget__head"><b>${esc(root.dataset.title || 'Окно над списком')}</b><span>сдвиг на одну позицию</span></div>
@@ -616,9 +622,9 @@
       const out = a[l], inn = a[l + k], old = sum;
       sum = sum - out + inn; prevL = l; l++;
       naive += k; roll += 2;
-      if (sum > best) { best = sum; bestL = l; }
+      if (better(sum, best)) { best = sum; bestL = l; }
       say.innerHTML = `Окно сдвинулось на одну позицию: ушёл a[${l - 1}] = ${out}, пришёл a[${l + k - 1}] = ${inn}. Новая сумма: ${old} − ${out} + ${inn} = <b>${sum}</b>. ${k > 1 ? `Остальные ${el_(k - 1)} окна не перечитывались.` : ''}`;
-      if (l + k >= n) say.innerHTML += ` Это последнее окно: справа элементов больше нет. Наибольшая сумма — <b>${best}</b>, окно a[${bestL}:${bestL + k}].`;
+      if (l + k >= n) say.innerHTML += ` Это последнее окно: справа элементов больше нет. ${toMin ? 'Наименьшая' : 'Наибольшая'} сумма — <b>${best}</b>, окно a[${bestL}:${bestL + k}].` + (root.dataset.note ? ` ${root.dataset.note.replace('{best}', best).replace('{rest}', a.reduce((x, y) => x + y, 0) - best)}` : '');
       draw();
       return true;
     }

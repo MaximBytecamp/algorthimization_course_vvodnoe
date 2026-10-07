@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>9.8 Задача целиком: решение на интервью · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 9 · Скользящее окно · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 9 · скользящее окно</p>
+          <p class="running__folio">Глава 9.8</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">9.8</span>
+          <h1>Задача целиком:<br>решение на интервью</h1>
+          <p class="lead">В предыдущих главах этапы решения разбирались по отдельности. В этой главе новая задача проходит все этапы подряд, в том порядке и примерно с той скоростью, что на алгоритмической секции, — как задача о подарках в главе 8.11. Задача — LeetCode 1423: карты берут только с краёв ряда. В условии нет слов «подряд» и «окно». Решение начинается с того, что окно находится в картах, которые остались.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Разбор задачи</dd></div>
+          <div><dt>Уровень</dt><dd>Средний</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 9.2–9.7; глава 8.11: этапы interview canvas</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Узнать окно в задаче, где оно не названо, и уложиться в 25 минут</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Этапы и время</a></li>
+            <li><a href="#s2">Условие и пересказ</a></li>
+            <li><a href="#s3">Уточнения</a></li>
+            <li><a href="#s4">Примеры</a></li>
+            <li><a href="#s5">Перебор</a></li>
+            <li><a href="#s6">Оптимизация: окно в оставшихся картах</a></li>
+            <li><a href="#s7">Сложность</a></li>
+            <li><a href="#s8">Код</a></li>
+            <li><a href="#s9">Проверка</a></li>
+            <li><a href="#s10">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Этапы и время</h2>
+        <p>Порядок этапов — шаблон interview canvas из КТП, как в главе 8.11: условие → уточнения → примеры → перебор → оптимизация → сложность → код → проверка. Ориентир — 25 минут на задачу.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Минуты</th><th>Этап</th><th>Что получается к концу этапа</th></tr></thead>
+            <tbody>
+              <tr><td>0–2</td><td>Условие</td><td>Задача пересказана своими словами, интервьюер подтвердил</td></tr>
+              <tr><td>2–5</td><td>Уточнения</td><td>Известны размер, знак чисел, крайние k, формат ответа</td></tr>
+              <tr><td>5–8</td><td>Примеры</td><td>Пять входов с ответами, среди них k = n</td></tr>
+              <tr><td>8–10</td><td>Перебор</td><td>Названо верное медленное решение и его сложность</td></tr>
+              <tr><td>10–15</td><td>Оптимизация</td><td>Задача сведена к окну, правило сдвига и объяснение</td></tr>
+              <tr><td>15–16</td><td>Сложность</td><td>Время и память быстрого решения, интервьюер согласен</td></tr>
+              <tr><td>16–21</td><td>Код</td><td>Функция записана в редакторе</td></tr>
+              <tr><td>21–25</td><td>Проверка</td><td>Код прогнан руками на примерах, найденные ошибки исправлены</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s2"><span class="sec">§2</span>Условие и пересказ</h2>
+        <p>Интервьюер формулирует задачу коротко:</p>
+        <div class="pull-quote">
+          <p>«Карты лежат в ряд, на каждой написано число очков. За один ход можно взять карту с левого или с правого края ряда. Нужно взять ровно k карт так, чтобы сумма очков была наибольшей. Верните эту сумму».</p>
+          <footer><cite>Пересказ <a href="https://leetcode.com/problems/maximum-points-you-can-obtain-from-cards/" target="_blank" rel="noopener">LeetCode 1423</a> · Maximum Points You Can Obtain from Cards, Medium; метки Sliding Window и Prefix Sum проверены по данным сайта</cite></footer>
+        </div>
+        <p>Первое действие — пересказать условие и дождаться подтверждения: «Я беру несколько карт с левого края и остальные с правого, всего k. Порядок ходов на сумму не влияет, важно только, сколько карт взято слева. Нужно вернуть наибольшую сумму». Пересказ уже содержит первый вывод: взятые карты — это начало ряда длины <code>left</code> и конец ряда длины <code>k − left</code>.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Уточнения</h2>
+        <p>Вопросы те же по смыслу, что в главе 9.2, ответы взяты из ограничений LeetCode. Задайте их по очереди.</p>
+        <div class="widget ask">
+          <div class="widget__head"><b>Карты с краёв ряда</b><span class="ask__count"></span></div>
+          <div class="ask__layout">
+            <div class="ask__task">
+              <span class="tracer__label">условие от интервьюера</span>
+              <p>«Карты лежат в ряд. За ход берётся карта с левого или правого края. Взять ровно k карт с наибольшей суммой очков и вернуть эту сумму».</p>
+              <span class="tracer__label">уточнено</span>
+              <ul class="ask__facts"></ul>
+            </div>
+            <div class="ask__side">
+              <div class="ask__qs">
+                <button data-answer="Важна только сумма. Брать можно в любом порядке, хоть слева, хоть справа на каждом ходу." data-fact="Порядок ходов не важен, важна сумма." data-code="Любой набор взятых карт — это начало ряда длины left и конец длины k − left. Способов всего k + 1, по числу значений left.">Важен ли порядок ходов?</button>
+                <button data-answer="От 1 до 10⁴, отрицательных нет." data-fact="Очки от 1 до 10⁴." data-code="Все суммы положительные. Начальное значение лучшего ответа можно взять 0 — любой способ его превзойдёт. В главе 9.4 это было бы ошибкой, здесь допустимо.">Какие очки бывают на картах? Есть отрицательные?</button>
+                <button data-answer="k от 1 до числа карт. Может быть равно числу карт." data-fact="1 ≤ k ≤ len(cards); k = n возможно." data-code="При k = n взяты все карты, ответ — их сумма. Нужен пример на этот случай.">Каким бывает k? Может ли быть равно числу карт?</button>
+                <button data-answer="До 10⁵ карт. Список не меняйте." data-fact="n до 10⁵, вход не менять." data-code="Перебор k + 1 способов с подсчётом суммы каждого — O(k²), при k = 10⁵ это 10¹⁰ операций. Нужно O(n).">Сколько бывает карт? Можно ли менять список?</button>
+              </div>
+              <div class="ask__log" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+        <p>Решение меняет первый ответ: раз порядок не важен, взятые карты всегда образуют префикс и суффикс ряда, а способов всего <code>k + 1</code>.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Примеры</h2>
+        <p>Пять входов, записанных до кода. Первые три — примеры из условия LeetCode, остальные проверяют ответы на уточнения. Ответы получены запуском итогового решения и совпадают с перебором.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>cards</th><th>k</th><th>Ответ</th><th>Что проверяет</th></tr></thead>
+            <tbody>
+              <tr><td><code>[1, 2, 3, 4, 5, 6, 1]</code></td><td>3</td><td>12</td><td>все три карты справа: 5 + 6 + 1</td></tr>
+              <tr><td><code>[2, 2, 2]</code></td><td>2</td><td>4</td><td>все способы дают одну сумму</td></tr>
+              <tr><td><code>[9, 7, 7, 9, 7, 7, 9]</code></td><td>7</td><td>55</td><td>k = n: взяты все карты</td></tr>
+              <tr><td><code>[100, 40, 17, 9, 73, 75]</code></td><td>3</td><td>248</td><td>одна слева и две справа: 100 + 73 + 75</td></tr>
+              <tr><td><code>[1, 1000, 1]</code></td><td>1</td><td>1</td><td>самая дорогая карта в середине недоступна</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s5"><span class="sec">§5</span>Перебор</h2>
+        <p>Перебор следует из пересказа: для каждого <code>left</code> от 0 до k взять <code>left</code> карт слева и <code>k − left</code> справа и сложить. «Проверю все k + 1 способов, сумму каждого считаю срезами — это O(k) на способ, всего O(k²). При k = 10⁵ это около 10¹⁰ операций, слишком долго».</p>
+        <figure class="code">
+          <figcaption><span>перебор, если его просят записать</span><span>время O(k²) · память O(k) на срезы</span></figcaption>
+<pre><span class="k">def</span> <span class="f">max_card_points_brute</span>(cards, k):
+    best = <span class="n">0</span>
+    <span class="k">for</span> left <span class="k">in</span> <span class="k">range</span>(k + <span class="n">1</span>):
+        right = k - left
+        points = <span class="k">sum</span>(cards[:left]) + <span class="k">sum</span>(cards[<span class="k">len</span>(cards) - right:])
+        best = <span class="k">max</span>(best, points)
+    <span class="k">return</span> best</pre>
+        </figure>
+        <details class="pyhint"><summary>Python в этой строке: <code>cards[len(cards) - right:]</code></summary><div><p>Срез с индекса <code>n − right</code> до конца — последние <code>right</code> элементов. Запись <code>cards[-right:]</code> короче, но при <code>right = 0</code> она даёт весь список: <code>cards[-0:]</code> — это <code>cards[0:]</code>. Поэтому здесь индекс начала записан явно.</p><pre>&gt;&gt;&gt; cards = [1, 2, 3, 4, 5, 6, 1]
+&gt;&gt;&gt; cards[len(cards) - 2:]
+[6, 1]
+&gt;&gt;&gt; cards[len(cards) - 0:]
+[]
+&gt;&gt;&gt; cards[-0:]
+[1, 2, 3, 4, 5, 6, 1]</pre></div></details>
+        <div class="tracer" data-trace="cards_brute" data-title="Перебор способов взять 3 карты"></div>
+        <p>Перебор повторяет ту же работу, что и срезы в главе 9.3. Соседние способы отличаются одной картой: она переходит из правой части в левую. А сумма каждого способа считается заново.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Оптимизация: окно в оставшихся картах</h2>
+        <p>Задача похожа на окно, но окно в условии не названо: взятые карты лежат по краям, не подряд. Решение находится, если посмотреть на карты, которые <em>остались</em>. Пусть взяты <code>left</code> карт слева и <code>k − left</code> справа. Тогда остались карты с индекса <code>left</code> по <code>left + n − k − 1</code>. Это отрезок подряд, и его длина всегда <code>n − k</code>.</p>
+        <figure class="code">
+          <figcaption><span>взятые и оставшиеся карты</span><span>n = 7, k = 3</span></figcaption>
+<pre>left = 0:   ·  ·  ·  · [5  6  1]     остались [1 2 3 4], сумма 10 → взято 22 − 10 = 12
+left = 1:  [1] ·  ·  ·  · [6  1]     остались [2 3 4 5], сумма 14 → взято 22 − 14 = 8
+left = 2:  [1  2] ·  ·  ·  · [1]     остались [3 4 5 6], сумма 18 → взято 22 − 18 = 4
+left = 3:  [1  2  3] ·  ·  ·  ·      остались [4 5 6 1], сумма 16 → взято 22 − 16 = 6</pre>
+        </figure>
+        <p>Сумма взятых карт равна сумме всех карт минус сумма оставшихся. Сумма всех карт для всех способов одна и та же. Значит, наибольшая сумма взятых карт получается там, где сумма оставшегося отрезка наименьшая. Задача сводится к уже решённой: найти окно длины <code>n − k</code> с наименьшей суммой — это <code>best_window</code> из главы 9.4 со знаком «меньше».</p>
+        <ol class="steps">
+          <li><b>Длина окна.</b> <code>size = n − k</code> — сколько карт останется.</li>
+          <li><b>Первое окно.</b> <code>total = sum(cards[:size])</code>, оно же пока наименьшее.</li>
+          <li><b>Сдвиг.</b> Для каждого <code>r</code> от <code>size</code> до <code>n − 1</code>: <code>total += cards[r] − cards[r − size]</code>, запомнить наименьшую сумму. Сдвиг окна на одну позицию — это одна карта, которая переходит из правой взятой части в левую.</li>
+          <li><b>Ответ.</b> <code>sum(cards) − smallest</code>.</li>
+        </ol>
+        <p>Блок ниже — окно над картами примера, но ищется наименьшая сумма. Сдвиньте окно до конца.</p>
+        <div class="slide" data-a="[1,2,3,4,5,6,1]" data-k="4" data-goal="min" data-title="Оставшиеся карты: окно длины n − k" data-note="Сумма всех карт 22, взятые карты дают 22 − {best} = {rest}."></div>
+        <div class="margin-note margin-note--steel">
+          <b>На полях: второй верный способ</b>
+          <p>Ту же задачу решают и без окна: начать со способа «все k карт слева» и по одной переносить карту из левой части в правую, исправляя сумму вычитанием и сложением. Это k шагов, время O(k). Оба способа верны, отсюда и две метки на LeetCode — Sliding Window и Prefix Sum. Решение через окно сводит задачу к уже написанной функции <code>best_window</code>.</p>
+        </div>
+
+        <h2 id="s7"><span class="sec">§7</span>Сложность</h2>
+        <p>Сложность называют до кода.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Часть решения</th><th>Время</th><th>Дополнительная память</th></tr></thead>
+            <tbody>
+              <tr><td>Первое окно <code>sum(cards[:size])</code></td><td>O(n − k)</td><td>O(n − k) на срез</td></tr>
+              <tr><td>Сдвиги окна</td><td>O(k): их k штук</td><td>O(1)</td></tr>
+              <tr><td>Сумма всех карт</td><td>O(n)</td><td>O(1)</td></tr>
+              <tr><td><b>Всё решение</b></td><td><b>O(n)</b></td><td><b>O(n − k)</b> на один срез, без него — O(1)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Срез первого окна создаёт временный список. Если на review спросят про память O(1), первое окно складывают циклом по индексам или выражением <code>sum(cards[i] for i in range(size))</code> — оно не создаёт копию.</p>
+
+        <h2 id="s8"><span class="sec">§8</span>Код</h2>
+        <p>На секции код пишет кандидат, поэтому до готового кода напишите функцию сами в окне ниже. «Запустить тесты» проверяет её на пяти примерах из §4 и сравнивает с перебором на трёхстах случайных раскладах; часть тестов заготовка проходит сразу. Первый запуск загружает Python в браузер, около 10 МБ.</p>
+        <div class="sandbox" data-title="Напишите max_card_points сами" data-call="print(max_card_points([1, 2, 3, 4, 5, 6, 1], 3))">
+<script type="text/plain" class="sandbox__start">
+def max_card_points(cards, k):
+    size = len(cards) - k
+    total = sum(cards[:size])
+    smallest = total
+    # Сдвигайте окно длины size до конца списка и запоминайте
+    # наименьшую сумму. Ответ — сумма всех карт минус наименьшая.
+    return sum(cards) - smallest
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """[1, 2, 3, 4, 5, 6, 1], k = 3 → 12: три карты справа"""
+    r = max_card_points([1, 2, 3, 4, 5, 6, 1], 3)
+    assert r == 12, f"ожидалось 12, получено {r!r}"
+
+def test_mixed_sides():
+    """[100, 40, 17, 9, 73, 75], k = 3 → 248: одна слева, две справа"""
+    r = max_card_points([100, 40, 17, 9, 73, 75], 3)
+    assert r == 248, f"ожидалось 248, получено {r!r}"
+
+def test_take_all():
+    """k = n: взять все карты"""
+    r = max_card_points([9, 7, 7, 9, 7, 7, 9], 7)
+    assert r == 55, f"ожидалось 55, получено {r!r}"
+
+def test_equal_cards():
+    """все карты одинаковые"""
+    r = max_card_points([2, 2, 2], 2)
+    assert r == 4, f"ожидалось 4, получено {r!r}"
+
+def test_middle_is_unreachable():
+    """дорогая карта в середине недоступна"""
+    r = max_card_points([1, 1000, 1], 1)
+    assert r == 1, f"ожидалось 1, получено {r!r}"
+
+def test_matches_brute():
+    """300 случайных раскладов: ответ совпадает с перебором способов"""
+    import random
+    rnd = random.Random(12)
+    for _ in range(300):
+        cards = [rnd.randint(1, 30) for _ in range(rnd.randint(1, 12))]
+        k = rnd.randint(1, len(cards))
+        want = max(sum(cards[:left]) + sum(cards[len(cards) - (k - left):]) for left in range(k + 1))
+        got = max_card_points(cards, k)
+        assert got == want, f"cards = {cards}, k = {k}: ожидалось {want}, получено {got}"
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>решение</span><span>время O(n) · память O(n − k) на первый срез</span></figcaption>
+<pre><span class="k">def</span> <span class="f">max_card_points</span>(cards, k):
+    size = <span class="k">len</span>(cards) - k
+    total = <span class="k">sum</span>(cards[:size])
+    smallest = total
+    <span class="k">for</span> r <span class="k">in</span> <span class="k">range</span>(size, <span class="k">len</span>(cards)):
+        total += cards[r] - cards[r - size]
+        smallest = <span class="k">min</span>(smallest, total)
+    <span class="k">return</span> <span class="k">sum</span>(cards) - smallest</pre>
+        </figure>
+        <p>При <code>k = n</code> длина окна 0: первое окно пустое, его сумма 0. В цикле <code>r − size = r</code>, и на каждом шаге прибавляется и вычитается одна и та же карта — сумма остаётся 0. Ответ — сумма всех карт, что и требуется. Отдельный <code>if</code> для этого случая не нужен, тест <code>test_take_all</code> это проверяет.</p>
+
+        <h2 id="s9"><span class="sec">§9</span>Проверка</h2>
+        <p>Готовый код проверяют на примерах из §4. Первый пример проходят шаг за шагом; ниже тот же проход — пошаговым прогоном. Голубые ячейки — оставшиеся карты, перечёркнутая — карта, которая только что перешла во взятые слева.</p>
+        <div class="tracer" data-trace="cards" data-zone="window" data-title="Оставшиеся карты: наименьшая сумма"></div>
+        <p>Остальные примеры проверяют быстрее. На <code>[2, 2, 2]</code> с k = 2 окно длины 1, все его суммы равны 2, ответ 6 − 2 = 4. На <code>[9, 7, 7, 9, 7, 7, 9]</code> с k = 7 окно пустое, ответ 55. На <code>[1, 1000, 1]</code> с k = 1 окно длины 2 даёт суммы 1001 и 1001, ответ 1002 − 1001 = 1. Все ответы совпадают с таблицей в §4.</p>
+        <p>По ходу секции кандидат объясняет интервьюеру каждое решение. Ниже — три фразы для этой задачи и этап, к которому относится каждая.</p>
+        <div class="speech">
+          <div class="speech__item">
+            <p class="speech__said">«Взятые карты — начало и конец ряда. Значит, оставшиеся — отрезок подряд длины n − k. Сумма взятых — общая сумма минус сумма оставшихся».</p>
+            <p class="speech__note"><b>Этап</b>Оптимизация: сведение к окну</p>
+          </div>
+          <div class="speech__item">
+            <p class="speech__said">«Ищу окно длины n − k с наименьшей суммой. Сдвиг окна — одна карта переходит из правой части в левую, сумма исправляется за O(1)».</p>
+            <p class="speech__note"><b>Этап</b>Правило и обоснование</p>
+          </div>
+          <div class="speech__item">
+            <p class="speech__said">«Итого O(n) по времени. При k = n окно пустое, и код это обрабатывает без отдельной проверки».</p>
+            <p class="speech__note"><b>Этап</b>Сложность и крайний случай</p>
+          </div>
+        </div>
+
+        <h2 id="s10"><span class="sec">§10</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>Почему наибольшая сумма взятых карт соответствует наименьшей сумме оставшихся?</p>
+          <ul class="quiz__opts">
+            <li><button>Оставшихся карт всегда больше, чем взятых</button><p class="quiz__why">Это не так: при k = n оставшихся нет вовсе. Дело в постоянной сумме всех карт.</p></li>
+            <li data-ok><button>Взятые и оставшиеся вместе дают сумму всех карт, а она постоянна</button><p class="quiz__why">Верно. Взятые = все − оставшиеся. Чем меньше вычитаемое, тем больше разность.</p></li>
+            <li><button>Окно ищет наименьшее, потому что очки положительные</button><p class="quiz__why">Знак очков на это не влияет: равенство «взятые = все − оставшиеся» верно при любых числах.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>Карт 10, взять нужно 4. Какой длины окно и сколько у него положений?</p>
+          <ul class="quiz__opts">
+            <li><button>Длина 4, положений 7</button><p class="quiz__why">Длина 4 — это взятые карты, а они лежат не подряд. Окно — оставшиеся карты.</p></li>
+            <li data-ok><button>Длина 6, положений 5</button><p class="quiz__why">Верно. Остаётся 10 − 4 = 6 карт, окон длины 6 в списке из 10 — 10 − 6 + 1 = 5, по числу способов k + 1.</p></li>
+            <li><button>Длина 6, положений 10</button><p class="quiz__why">Окно длины 6 не может начинаться с индекса 5 и дальше: ему не хватит карт. Положений n − (n − k) + 1 = k + 1.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 3</b>Чем решение через окно лучше перебора способов?</p>
+          <ul class="quiz__opts">
+            <li><button>Перебор даёт неверный ответ при k = n</button><p class="quiz__why">Перебор верен при любом k. Он медленнее: каждую сумму считает заново.</p></li>
+            <li><button>Окно проверяет меньше способов</button><p class="quiz__why">Способов столько же, k + 1. Разница в том, сколько стоит переход к следующему.</p></li>
+            <li data-ok><button>Сумма соседнего способа исправляется за O(1)</button><p class="quiz__why">Верно. Время O(n) против O(k²): при k = 10⁵ это 10⁵ шагов против 10¹⁰.</p></li>
+          </ul>
+        </div>
+
+        <div class="pager"><a href="07-zamer.html">← 9.7 Замер: сдвиг окна и сумма среза</a><a href="09-oshibki.html">9.9 Ошибки и объяснение решения →</a></div>
+        <div class="colophon">
+          <span>Модуль 9 · Скользящее окно · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>
