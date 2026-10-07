@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Semantic Versioning с правилами сравнения версий, сообщения коммитов по Conventional Commits, журнал изменений по Keep a Changelog, обозначение лицензий по SPDX.">
+<title>7. Версии, коммиты и журнал изменений · Стандарты и сертификаты</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../extra.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Стандарты и сертификаты · тема 3</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандарты и сертификаты»</a> · тема 3</p><p class="folio">Глава 7</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">7</span>
+<h1>Версии, коммиты<br>и журнал изменений</h1>
+<p class="lead">Номер версии, сообщение коммита и журнал изменений — тоже предмет соглашений. Если их соблюдать, номер следующей версии и текст журнала можно получить из истории автоматически. В главе разобраны Semantic Versioning, Conventional Commits, Keep a Changelog и обозначения лицензий SPDX.</p>
+</header>
+
+<dl class="passport"><div><dt>Документы</dt><dd>Semantic Versioning 2.0.0 · Conventional Commits 1.0.0 · Keep a Changelog 1.1.0 · SPDX License List</dd></div><div><dt>Уровень</dt><dd>Базовый</dd></div><div><dt>Где встречается</dt><dd>Любой репозиторий, библиотеки, выпуск обновлений</dd></div><div><dt>Зачем это знать</dt><dd>Чтобы по истории было понятно, что изменилось и можно ли обновляться</dd></div></dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol><li><a href="#s1">Semantic Versioning</a></li><li><a href="#s2">Conventional Commits</a></li><li><a href="#s3">Журнал изменений по Keep a Changelog</a></li><li><a href="#s4">Лицензии и SPDX</a></li><li><a href="#s5">Частые ошибки</a></li><li><a href="#s6">Проверьте себя</a></li></ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Semantic Versioning</h2>
+<p>Semantic Versioning задаёт смысл трёх чисел в номере версии MAJOR.MINOR.PATCH. Спецификация опирается на понятие публичного интерфейса: того, чем пользуются другие программы.</p>
+<figure class="shot"><img src="../../shots/doc-semver.jpg" alt="Три части номера версии и три примера перехода." loading="lazy"><figcaption><b>Три части номера версии и три примера перехода.</b> Старшую часть увеличивают, когда прежний код пользователей перестанет работать.</figcaption></figure>
+<div class="table-scroll"><table>
+<thead><tr><th>Что изменили в API сервиса заявок</th><th>Было</th><th>Стало</th><th>Почему</th></tr></thead>
+<tbody>
+<tr><td>исправили ошибку в подсчёте страниц</td><td>2.4.1</td><td>2.4.2</td><td>интерфейс не изменился</td></tr><tr><td>добавили необязательный параметр <code>priority</code></td><td>2.4.2</td><td>2.5.0</td><td>старые запросы работают</td></tr><tr><td>добавили новый метод <code>GET /tickets/stats</code></td><td>2.5.0</td><td>2.6.0</td><td>новая возможность</td></tr><tr><td>переименовали поле <code>title</code> в <code>subject</code></td><td>2.6.0</td><td>3.0.0</td><td>старые клиенты сломаются</td></tr><tr><td>сделали поле <code>email</code> обязательным</td><td>3.0.0</td><td>4.0.0</td><td>старые запросы получат ошибку</td></tr>
+</tbody></table></div>
+<p>При увеличении части младшие обнуляются. После 2.6.3 новая возможность даёт 2.7.0, несовместимое изменение — 3.0.0. После 2.9.0 новая возможность даёт 2.10.0: число в каждой части не ограничено одной цифрой.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Запись</th><th>Смысл</th></tr></thead>
+<tbody>
+<tr><td>0.4.2</td><td>начальная разработка: интерфейс может измениться в любой момент</td></tr><tr><td>1.0.0</td><td>первый стабильный публичный интерфейс</td></tr><tr><td>1.0.0-alpha.1</td><td>предварительный выпуск; он младше 1.0.0</td></tr><tr><td>1.0.0+20261007</td><td>метаданные сборки; на порядок версий не влияют</td></tr>
+</tbody></table></div>
+<p>Порядок версий: 1.0.0-alpha < 1.0.0-alpha.1 < 1.0.0-beta < 1.0.0-rc.1 < 1.0.0. Части сравнивают как числа, поэтому 1.10.0 старше 1.9.0.</p>
+<div class="code"><b>ограничения версий в requirements.txt</b><pre>requests&gt;=2.31,&lt;3      # любые исправления и новые возможности 2.x
+fastapi~=0.115.0       # только исправления: 0.115.x
+pydantic==2.9.2        # точно эта версия</pre></div>
+<figure class="shot"><img src="../../shots/semver.jpg" alt="Спецификация Semantic Versioning 2.0.0 на русском языке." loading="lazy"><figcaption><b>Спецификация Semantic Versioning 2.0.0 на русском языке.</b> Одиннадцать пунктов спецификации и раздел вопросов и ответов.</figcaption></figure>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Conventional Commits</h2>
+<p>Conventional Commits 1.0.0 задаёт вид сообщения коммита: тип, необязательная область в скобках, двоеточие и описание. Тип <code>feat</code> соответствует новой возможности, <code>fix</code> — исправлению. Несовместимое изменение помечают восклицательным знаком или строкой <code>BREAKING CHANGE:</code>.</p>
+<div class="pair"><p class="pair__title">Сообщения коммитов</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>исправил
+wip
+правки по замечаниям
+obnovil bota</pre></div><div class="code code--good"><b>так надо</b><pre>fix(signup): отклонять повторную регистрацию с занятой почтой
+feat(bot): передавать модели название курса
+feat(api)!: переименовать поле title в subject
+docs: описать запуск стенда в README</pre></div></div><p class="pair__note">Слева по истории не понять, что изменилось. Справа видно и область, и смысл, а инструменты по типу определят номер следующей версии.</p></div>
+<div class="code"><b>коммит с несовместимым изменением</b><pre>feat(api)!: переименовать поле title в subject
+
+Поле title устарело и путало клиентов с заголовком страницы.
+
+BREAKING CHANGE: клиенты должны передавать subject вместо title.</pre></div>
+<div class="table-scroll"><table>
+<thead><tr><th>Тип</th><th>Когда</th><th>Часть версии</th></tr></thead>
+<tbody>
+<tr><td>feat</td><td>новая возможность</td><td>MINOR</td></tr><tr><td>fix</td><td>исправление ошибки</td><td>PATCH</td></tr><tr><td>feat! или BREAKING CHANGE</td><td>несовместимое изменение</td><td>MAJOR</td></tr><tr><td>docs</td><td>только документация</td><td>не меняется</td></tr><tr><td>refactor</td><td>переделка без изменения поведения</td><td>не меняется</td></tr><tr><td>test</td><td>тесты</td><td>не меняется</td></tr><tr><td>chore, ci, build</td><td>служебные изменения, сборка, CI</td><td>не меняется</td></tr>
+</tbody></table></div>
+<figure class="shot"><img src="../../shots/conventionalcommits.jpg" alt="Спецификация Conventional Commits 1.0.0." loading="lazy"><figcaption><b>Спецификация Conventional Commits 1.0.0.</b> Обязательны только типы feat и fix; остальные типы — рекомендация, их набор проект выбирает сам.</figcaption></figure>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Журнал изменений по Keep a Changelog</h2>
+<p><span class="term">Журнал изменений</span> (CHANGELOG.md) пишут для людей: что изменилось в каждой версии. Keep a Changelog 1.1.0 предлагает форму: свежая версия сверху, даты по ISO 8601, раздел «Unreleased» для того, что ещё не выпущено, и шесть видов изменений.</p>
+<div class="code"><b>CHANGELOG.md</b><pre># Журнал изменений
+
+Формат — Keep a Changelog, версии — Semantic Versioning.
+
+## [Unreleased]
+### Added
+- Тёмная тема в личном кабинете.
+
+## [2.5.0] - 2026-09-24
+### Added
+- Необязательный параметр priority при создании заявки.
+### Fixed
+- В письме-приветствии подставляется имя ученика вместо {name}.
+
+## [2.4.2] - 2026-09-16
+### Fixed
+- Повторная регистрация с занятой почтой отклоняется.
+### Security
+- Ночные копии базы перенесены из каталога, который отдаёт веб-сервер.</pre></div>
+<div class="table-scroll"><table>
+<thead><tr><th>Раздел</th><th>Что в него пишут</th></tr></thead>
+<tbody>
+<tr><td>Added</td><td>новые возможности</td></tr><tr><td>Changed</td><td>изменения существующего поведения</td></tr><tr><td>Deprecated</td><td>то, что скоро уберут</td></tr><tr><td>Removed</td><td>то, что убрали</td></tr><tr><td>Fixed</td><td>исправленные ошибки</td></tr><tr><td>Security</td><td>исправления уязвимостей</td></tr>
+</tbody></table></div>
+<p>Журнал не заменяет историю коммитов: в него не переносят «поправил опечатку» и «обновил зависимости», а пишут то, что заметит пользователь.</p>
+<figure class="shot"><img src="../../shots/keepachangelog.jpg" alt="Keep a Changelog на русском языке." loading="lazy"><figcaption><b>Keep a Changelog на русском языке.</b> На странице — образец журнала и ответы на вопросы, почему журнал пишут вручную.</figcaption></figure>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>Лицензии и SPDX</h2>
+<p>Лицензия определяет, что другим можно делать с кодом. Чтобы название лицензии понимали и люди, и программы, используют идентификаторы из списка SPDX.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Идентификатор</th><th>Лицензия</th><th>Главное условие</th></tr></thead>
+<tbody>
+<tr><td>MIT</td><td>MIT License</td><td>сохранить текст лицензии и имя автора</td></tr><tr><td>Apache-2.0</td><td>Apache License 2.0</td><td>то же, плюс сообщить об изменениях; патентная лицензия</td></tr><tr><td>GPL-3.0-only</td><td>GNU GPL 3.0</td><td>производную программу распространять под той же лицензией с исходным кодом</td></tr><tr><td>BSD-3-Clause</td><td>BSD с тремя пунктами</td><td>сохранить текст; не использовать имя автора в рекламе</td></tr><tr><td>CC-BY-4.0</td><td>Creative Commons Attribution 4.0</td><td>указать автора; для текстов и изображений</td></tr>
+</tbody></table></div>
+<div class="code"><b>указание лицензии в pyproject.toml и в начале файла</b><pre>[project]
+name = &quot;service-desk&quot;
+version = &quot;2.5.0&quot;
+license = &quot;MIT&quot;
+
+# SPDX-License-Identifier: MIT</pre></div>
+<figure class="shot"><img src="../../shots/spdx.jpg" alt="Список лицензий SPDX." loading="lazy"><figcaption><b>Список лицензий SPDX.</b> Для каждой лицензии указаны идентификатор, полное название и признак, одобрена ли она OSI.</figcaption></figure>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s5">
+<h2><i>§5</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Поднять MINOR при несовместимом изменении</b>Убрали или переименовали поле — увеличивают MAJOR.</div>
+<div><b>Считать 1.10.0 младше 1.9.0</b>Части сравнивают как числа: 10 больше 9.</div>
+<div><b>Писать в сообщении коммита «правки»</b>Сообщение говорит, что и где изменилось.</div>
+<div><b>Копировать историю коммитов в журнал изменений</b>Журнал пишут для пользователей: только заметные изменения.</div>
+<div><b>Взять код без лицензии</b>Без лицензии использовать чужой код нельзя: все права у автора.</div>
+</div>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Проверьте себя</h2>
+<ol class="check">
+<li>Как изменится версия 2.6.0, если добавили метод? Если переименовали поле?</li>
+<li>Что означают версии 0.4.2 и 1.0.0-rc.1? Какая из 1.0.0-rc.1 и 1.0.0 старше?</li>
+<li>Запишите по Conventional Commits сообщение об исправлении ошибки в форме регистрации.</li>
+<li>Какие шесть разделов предлагает Keep a Changelog?</li>
+<li>Что разрешает лицензия MIT и чем от неё отличается GPL-3.0?</li>
+</ol>
+<div class="cheat">
+<div><b>SemVer</b><code>MAJOR.MINOR.PATCH</code><code>0.y.z — начальная</code><code>-rc.1 младше релиза</code><code>1.10 > 1.9</code></div>
+<div><b>Коммиты</b><code>feat → MINOR</code><code>fix → PATCH</code><code>! → MAJOR</code><code>тип(область): описание</code></div>
+<div><b>Журнал</b><code>Unreleased сверху</code><code>Added Changed Deprecated</code><code>Removed Fixed Security</code><code>даты ISO 8601</code></div>
+<div><b>Лицензии</b><code>MIT</code><code>Apache-2.0</code><code>GPL-3.0-only</code><code>SPDX-License-Identifier</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav"><a href="../6-dokumentaciya-i-annotacii/index.html">← Глава 6. Документация в коде: PEP 257, 484 и 20</a><a href="../8-api-i-formaty-dannyh/index.html">Глава 8. OpenAPI и форматы данных →</a></nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандарты и сертификаты» · глава 7</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>

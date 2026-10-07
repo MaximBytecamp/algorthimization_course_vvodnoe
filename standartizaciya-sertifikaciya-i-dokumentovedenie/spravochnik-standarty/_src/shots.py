@@ -15,7 +15,10 @@ WEB = {
     "owasp": "https://owasp.org/Top10/", "cve": "https://nvd.nist.gov/vuln/detail/CVE-2021-44228",
     "pci": "https://www.pcisecuritystandards.org/standards/", "fsa": "https://pub.fsa.gov.ru/rss/certificate",
     "rst": "https://www.rst.gov.ru/portal/gost/home/standarts/catalognational", "gost34602": "https://docs.cntd.ru/document/1200181804",
-    "unicode": "https://home.unicode.org/", "fstec": "https://reestr.fstec.ru/reg3", "bdu": "https://bdu.fstec.ru/vul",
+    "unicode": "https://home.unicode.org/", "pep484": "https://peps.python.org/pep-0484/", "pep20": "https://peps.python.org/pep-0020/",
+    "conventionalcommits": "https://www.conventionalcommits.org/ru/v1.0.0/", "keepachangelog": "https://keepachangelog.com/ru/1.1.0/",
+    "spdx": "https://spdx.org/licenses/", "jsonschema": "https://json-schema.org/", "iso3166": "https://www.iso.org/iso-3166-country-codes.html",
+    "wcag": "https://w3c.github.io/wcag/guidelines/22/", "fstec": "https://reestr.fstec.ru/reg3", "bdu": "https://bdu.fstec.ru/vul",
 }
 CSS = """body{margin:0;background:#8d8a82;font-family:'Times New Roman',Times,serif}.desk{padding:26px 30px;width:1000px;box-sizing:border-box}
 .page{position:relative;background:#fbf8ee;padding:60px 70px 70px;box-shadow:0 6px 22px rgba(0,0,0,.45);min-height:1100px;box-sizing:border-box;font-size:19px;line-height:1.5;color:#1d1b18}
@@ -85,6 +88,58 @@ DOCS = {
 }
 
 
+T = "font-family:Menlo,Consolas,monospace;font-size:15px;line-height:1.6"
+def _lint_output():
+    """Настоящий вывод pycodestyle и ruff для файла «до» из главы о PEP 8."""
+    import subprocess, tempfile
+    from chapters_code import PEP8
+    code = next(b[2] for _, bl in PEP8["secs"] for b in bl if isinstance(b, tuple) and b[0] == "code" and b[1] == "до: report.py")
+    tmp = pathlib.Path(tempfile.mkdtemp()) / "report.py"
+    tmp.write_text(code + "\n")
+    run = lambda *cmd: subprocess.run(cmd, capture_output=True, text=True, cwd=tmp.parent).stdout.strip().splitlines()
+    return (run("pycodestyle", "report.py")[:9],
+            run("ruff", "check", "report.py", "--select", "E,W,F", "--line-length", "79", "--output-format", "concise", "--no-cache"))
+
+
+def _term(lines):
+    out = []
+    for ln in lines:
+        if ln.startswith("$"):
+            out.append(f"<div style='color:#7FD69B;margin-top:10px'>{html.escape(ln)}</div>")
+        elif ln.startswith("report.py:"):
+            loc, rest = ln.split(" ", 1)
+            code, msg = (rest.split(" ", 1) + [""])[:2]
+            out.append(f"<div><span style='color:#7FB4E3'>{html.escape(loc)}</span> <b style='color:#ff9b8f'>{html.escape(code)}</b> {html.escape(msg)}</div>")
+        else:
+            out.append(f"<div>{html.escape(ln)}</div>")
+    return "".join(out)
+
+
+_pcs, _ruff = _lint_output()
+DOCS["ruff"] = (f"<!doctype html><meta charset='utf-8'><body style='margin:0;width:900px;background:#0C1230;color:#EDF1FA;{T};padding:8px 22px 18px;box-sizing:border-box'>"
+                + _term(["$ pycodestyle report.py"] + _pcs + ["… и ещё строки"] + ["$ ruff check report.py --select E,W,F"] + _ruff) + "</body>")
+DOCS["contrast"] = ("<!doctype html><meta charset='utf-8'><body style='margin:0;width:900px;background:#fff;font-family:Helvetica,Arial,sans-serif;padding:24px;box-sizing:border-box'>"
+    + "".join(f"<div style='display:flex;align-items:center;gap:16px;margin:10px 0'><div style='flex:1;background:{bg};color:{fg};padding:16px 18px;font-size:18px'>"
+              f"Записаться на курс «Python с нуля»</div><div style='width:220px;font:600 15px Menlo,monospace;color:{mc}'>{r} · {v}</div></div>"
+              for bg, fg, r, v, mc in [("#ffffff", "#bbbbbb", "1,9:1", "не проходит", "#ae3d37"), ("#ffffff", "#959595", "3,0:1", "только крупный текст", "#a3650d"),
+                                       ("#ffffff", "#767676", "4,5:1", "AA пройден", "#24774d"), ("#0E7C66", "#ffffff", "5,1:1", "AA пройден", "#24774d"),
+                                       ("#FF6B3D", "#ffffff", "2,8:1", "не проходит", "#ae3d37")]) + "</body>")
+DOCS["units"] = doc("""<h1>Десятичные и двоичные приставки</h1>
+<div class='parts'><div class='part a'><b>1 кБ</b><small>килобайт = 1000 байт (SI)</small></div><div class='part a'><b>1 МБ</b><small>мегабайт = 1 000 000 байт</small></div><div class='part a'><b>1 ГБ</b><small>гигабайт = 10<sup>9</sup> байт</small></div></div>
+<div class='parts'><div class='part c'><b>1 КиБ</b><small>кибибайт = 1024 байт (IEC 80000-13)</small></div><div class='part c'><b>1 МиБ</b><small>мебибайт = 1 048 576 байт</small></div><div class='part c'><b>1 ГиБ</b><small>гибибайт = 2<sup>30</sup> байт</small></div></div>
+<div class='parts'><div class='part d'><b>1 ТБ ≈ 931 ГиБ</b><small>поэтому новый диск «на 1 ТБ» в системе выглядит меньше</small></div></div>""", "info")
+DOCS["marks"] = ("<!doctype html><meta charset='utf-8'><body style='margin:0;width:900px;background:#2b2e36;font-family:Helvetica,Arial,sans-serif;padding:30px;box-sizing:border-box'>"
+    "<div style='background:#1c1e24;border-radius:14px;padding:26px 30px;color:#cfd3dc;font-size:14px;line-height:1.6;box-shadow:inset 0 0 0 2px #3a3d46'>"
+    "<div style='font-weight:700;font-size:16px;color:#fff'>Трекер «Рядом» · модель TR-2</div><div>Вход: 5 В ⎓ 1 А · Сделано в России · s/n 26100700417</div>"
+    "<div style='display:flex;gap:34px;align-items:center;margin-top:22px'>"
+    "<div style='font:800 54px/1 Helvetica;letter-spacing:-2px;color:#fff;border:0'>EAC</div>"
+    "<div style='font:700 56px/1 Georgia,serif;color:#fff'>C&#8202;E</div>"
+    "<div style='width:70px;height:70px;border:4px solid #fff;border-radius:50%;display:grid;place-items:center;font:800 18px Helvetica;color:#fff'>РСТ</div>"
+    "<div style='font:800 40px/1 Helvetica;color:#fff;font-style:italic'>FCC</div>"
+    "<div style='width:56px;height:68px;border:3px solid #fff;display:grid;place-items:center;color:#fff;font:700 12px Helvetica;text-align:center'>не в<br>мусор</div></div>"
+    "<div style='margin-top:16px;font-size:12px;color:#8f97b8'>Образец. Изделие вымышленное. Знаки нанесены для иллюстрации.</div></div></body>")
+
+
 def main():
     what = sys.argv[1:] or ["web", "docs"]
     OUT.mkdir(exist_ok=True)
@@ -116,7 +171,7 @@ def main():
         if "docs" in what:
             pg = br.new_page(viewport={"width": 1000, "height": 400}, device_scale_factor=1.3)
             for name, body in DOCS.items():
-                pg.set_viewport_size({"width": 760 if name == "x509" else 1000, "height": 400})
+                pg.set_viewport_size({"width": 760 if name == "x509" else 900 if name in ("ruff", "contrast", "marks") else 1000, "height": 300})
                 pg.set_content(body)
                 pg.screenshot(path=str(OUT / f"doc-{name}.jpg"), full_page=True, type="jpeg", quality=72)
                 print("образец:", name)

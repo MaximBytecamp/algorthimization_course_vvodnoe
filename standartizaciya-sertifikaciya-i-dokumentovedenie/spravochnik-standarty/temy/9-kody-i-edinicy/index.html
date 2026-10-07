@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="ISO 3166 для стран, ISO 4217 для валют, ISO 639 и BCP 47 для языков, E.164 для телефонов, SI и ГОСТ 8.417 для единиц, килобайт и кибибайт по IEC 80000-13.">
+<title>9. Коды стран, валют, языков и единицы величин · Стандарты и сертификаты</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../extra.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Стандарты и сертификаты · тема 3</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандарты и сертификаты»</a> · тема 3</p><p class="folio">Глава 9</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">9</span>
+<h1>Коды стран, валют, языков<br>и единицы величин</h1>
+<p class="lead">Страну, валюту, язык, номер телефона и размер файла в программах записывают по стандартам. Тогда данные из разных систем совпадают без ручной сверки. В главе разобраны коды ISO, формат телефонного номера E.164 и правила записи единиц величин.</p>
+</header>
+
+<dl class="passport"><div><dt>Документы</dt><dd>ISO 3166-1 · ISO 4217 · ISO 639 · BCP 47 (RFC 5646) · ITU-T E.164 · ГОСТ 8.417-2002 · IEC 80000-13</dd></div><div><dt>Уровень</dt><dd>Базовый</dd></div><div><dt>Где встречается</dt><dd>Формы, базы данных, платежи, интерфейс на нескольких языках</dd></div><div><dt>Зачем это знать</dt><dd>Чтобы хранить такие данные однозначно</dd></div></dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol><li><a href="#s1">Страны и валюты</a></li><li><a href="#s2">Языки и локали</a></li><li><a href="#s3">Телефонные номера, E.164</a></li><li><a href="#s4">Единицы величин и запись чисел</a></li><li><a href="#s5">Частые ошибки</a></li><li><a href="#s6">Проверьте себя</a></li></ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Страны и валюты</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Страна</th><th>ISO 3166-1 alpha-2</th><th>alpha-3</th><th>цифровой</th><th>Валюта ISO 4217</th><th>цифровой</th></tr></thead>
+<tbody>
+<tr><td>Россия</td><td>RU</td><td>RUS</td><td>643</td><td>RUB</td><td>643</td></tr><tr><td>Казахстан</td><td>KZ</td><td>KAZ</td><td>398</td><td>KZT</td><td>398</td></tr><tr><td>Беларусь</td><td>BY</td><td>BLR</td><td>112</td><td>BYN</td><td>933</td></tr><tr><td>США</td><td>US</td><td>USA</td><td>840</td><td>USD</td><td>840</td></tr><tr><td>Германия</td><td>DE</td><td>DEU</td><td>276</td><td>EUR</td><td>978</td></tr>
+</tbody></table></div>
+<p>Буквенный код валюты обычно складывается из кода страны и первой буквы названия валюты: RU + B (рубль). У евро код EUR, у Германии своей валюты нет. Названия стран меняются, коды — редко, поэтому в базе хранят код, а название показывают по нему.</p>
+<div class="pair"><p class="pair__title">Хранение страны и суммы</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>order = {
+    &#x27;country&#x27;: &#x27;Россия&#x27;,
+    &#x27;amount&#x27;: 1490.9,
+    &#x27;currency&#x27;: &#x27;руб.&#x27;,
+}</pre></div><div class="code code--good"><b>так надо</b><pre>order = {
+    &#x27;country&#x27;: &#x27;RU&#x27;,
+    &#x27;amount&#x27;: &#x27;1490.90&#x27;,   # строкой или Decimal
+    &#x27;currency&#x27;: &#x27;RUB&#x27;,
+}</pre></div></div><p class="pair__note">Справа код страны и валюты понятен любой системе. Сумму не хранят в float: 0.1 + 0.2 в нём не равно 0.3. Используют Decimal или целое число копеек.</p></div>
+<figure class="shot"><img src="../../shots/iso3166.jpg" alt="Страница ISO 3166 на сайте ISO." loading="lazy"><figcaption><b>Страница ISO 3166 на сайте ISO.</b> Полный перечень кодов ведёт ISO; в Python его даёт пакет pycountry.</figcaption></figure>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Языки и локали</h2>
+<p>Язык обозначают двухбуквенным кодом ISO 639-1: ru, en, kk. Язык вместе с регионом — тегом по BCP 47 (RFC 5646): ru-RU, en-US, en-GB. Регион пишут прописными буквами, язык — строчными.</p>
+<div class="code"><b>тег языка в HTML и в заголовке HTTP</b><pre>&lt;html lang=&quot;ru&quot;&gt;
+
+Accept-Language: ru-RU,ru;q=0.9,en;q=0.8</pre></div>
+<p>От локали зависит запись чисел и дат: в ru-RU — 1 490,90 и 07.10.2026, в en-US — 1,490.90 и 10/7/2026. Поэтому в хранилище и при обмене пишут нейтрально (1490.90, 2026-10-07), а локаль применяют только при показе человеку.</p>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Телефонные номера, E.164</h2>
+<p>Рекомендация МСЭ-T E.164 задаёт международный формат номера: знак плюс, код страны и национальный номер, всего не больше 15 цифр, без пробелов и скобок.</p>
+<div class="pair"><p class="pair__title">Хранение телефона</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>phones = [&#x27;8 (916) 123-45-67&#x27;, &#x27;+7 916 1234567&#x27;, &#x27;9161234567&#x27;]</pre></div><div class="code code--good"><b>так надо</b><pre>phones = [&#x27;+79161234567&#x27;, &#x27;+79161234567&#x27;, &#x27;+79161234567&#x27;]</pre></div></div><p class="pair__note">Слева три записи одного номера: поиск и проверка на повтор не сработают. Справа номер приведён к E.164, а пробелы и скобки добавляются только при показе.</p></div>
+<div class="code"><b>приведение к E.164 пакетом phonenumbers</b><pre>import phonenumbers
+
+n = phonenumbers.parse(&#x27;8 (916) 123-45-67&#x27;, &#x27;RU&#x27;)
+print(phonenumbers.format_number(n, phonenumbers.PhoneNumberFormat.E164))
+# +79161234567</pre></div>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>Единицы величин и запись чисел</h2>
+<p>В России единицы величин записывают по ГОСТ 8.417-2002, он основан на Международной системе единиц SI. Число и обозначение единицы разделяют пробелом, после обозначения точку не ставят.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Правильно</th><th>Неправильно</th><th>Правило</th></tr></thead>
+<tbody>
+<tr><td>5 км</td><td>5км · 5 км.</td><td>пробел перед единицей, без точки</td></tr><tr><td>20 °C</td><td>20°C · 20 град.</td><td>пробел перед °C</td></tr><tr><td>15 %</td><td>15%</td><td>по ГОСТ 8.417 перед знаком процента ставят пробел</td></tr><tr><td>30°</td><td>30 °</td><td>градус плоского угла пишут слитно</td></tr><tr><td>2 ч 15 мин</td><td>2 час. 15 мин.</td><td>ч, мин, с — без точек</td></tr><tr><td>1 500 000</td><td>1,500,000 · 1.500.000</td><td>разряды в русском тексте — пробелом</td></tr>
+</tbody></table></div>
+<figure class="shot"><img src="../../shots/doc-units.jpg" alt="Килобайт и кибибайт." loading="lazy"><figcaption><b>Килобайт и кибибайт.</b> Слева — десятичные приставки SI, справа — двоичные по IEC 80000-13.</figcaption></figure>
+<p>По IEC 80000-13 приставка «кило» означает 1000 и в информатике: 1 кБ = 1000 байт. Для 1024 байт введены двоичные приставки: 1 КиБ (KiB) = 1024 байт, 1 МиБ = 1 048 576 байт. Поэтому диск «на 1 ТБ» в системе показывается как 931 ГиБ.</p>
+<div class="code"><b>размер файла по-разному</b><pre>size = 1_148_896          # байт, из журнала веб-сервера
+print(size / 1000**2)     # 1.148896  -&gt; 1,15 МБ
+print(size / 1024**2)     # 1.0956... -&gt; 1,10 МиБ</pre></div>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s5">
+<h2><i>§5</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Хранить название страны вместо кода</b>Названия меняются и пишутся по-разному; хранят RU.</div>
+<div><b>Считать деньги во float</b>Используют Decimal или целые копейки.</div>
+<div><b>Хранить телефон как ввёл пользователь</b>Приводят к E.164: +79161234567.</div>
+<div><b>Писать en-us или RU-ru</b>Язык строчными, регион прописными: en-US, ru-RU.</div>
+<div><b>Называть 1024 байта килобайтом</b>Это кибибайт, КиБ; килобайт — 1000 байт.</div>
+</div>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Проверьте себя</h2>
+<ol class="check">
+<li>Какие коды у России по ISO 3166-1 и у рубля по ISO 4217?</li>
+<li>Чем тег ru-RU отличается от кода ru?</li>
+<li>Как записать номер 8 (916) 123-45-67 по E.164?</li>
+<li>Как по ГОСТ 8.417 записать «пять километров» и «двадцать градусов Цельсия»?</li>
+<li>Сколько байт в 1 кБ и в 1 КиБ?</li>
+</ol>
+<div class="cheat">
+<div><b>Коды</b><code>RU · RUS · 643</code><code>RUB · USD · EUR</code><code>ru-RU — BCP 47</code><code>+7… — E.164</code></div>
+<div><b>Единицы</b><code>5 км — пробел</code><code>без точки после единицы</code><code>15 % по ГОСТ 8.417</code><code>1 500 000</code></div>
+<div><b>Байты</b><code>кБ = 1000</code><code>КиБ = 1024</code><code>IEC 80000-13</code><code>1 ТБ ≈ 931 ГиБ</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav"><a href="../8-api-i-formaty-dannyh/index.html">← Глава 8. OpenAPI и форматы данных</a><a href="../10-dostupnost/index.html">Глава 10. Доступность интерфейсов: WCAG и ГОСТ Р 52872 →</a></nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандарты и сертификаты» · глава 9</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>

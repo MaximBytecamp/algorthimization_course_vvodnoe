@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Отступы и перенос длинных строк, пустые строки, порядок импортов, пробелы, комментарии, имена, рекомендации по сравнениям и исключениям, проверка ruff и black — с парами примеров «так не надо / так надо».">
+<title>5. PEP 8: оформление кода на Python · Стандарты и сертификаты</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../extra.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Стандарты и сертификаты · тема 3</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандарты и сертификаты»</a> · тема 3</p><p class="folio">Глава 5</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">5</span>
+<h1>PEP 8: оформление<br>кода на Python</h1>
+<p class="lead">PEP 8 — стандарт оформления кода на Python. Его соблюдают стандартная библиотека языка и большинство проектов, а линтеры проверяют его автоматически. В главе правила разобраны по разделам документа, к каждому — пара примеров: как пишут без стандарта и как по нему. В конце — разбор настоящего файла и вывод линтера.</p>
+</header>
+
+<dl class="passport"><div><dt>Документ</dt><dd>PEP 8 «Style Guide for Python Code», 2001, обновляется до сих пор</dd></div><div><dt>Уровень</dt><dd>Базовый</dd></div><div><dt>Где встречается</dt><dd>Любой проект на Python, ревью кода, проверки в CI</dd></div><div><dt>Зачем это знать</dt><dd>Чтобы код читался одинаково и проходил проверку линтера</dd></div></dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol><li><a href="#s1">Что такое PEP и зачем PEP 8</a></li><li><a href="#s2">Отступы</a></li><li><a href="#s3">Длина строки и перенос</a></li><li><a href="#s4">Пустые строки и кодировка</a></li><li><a href="#s5">Импорты</a></li><li><a href="#s6">Пробелы в выражениях</a></li><li><a href="#s7">Висячая запятая</a></li><li><a href="#s8">Комментарии</a></li><li><a href="#s9">Имена</a></li><li><a href="#s10">Рекомендации по программированию</a></li><li><a href="#s11">Разбор файла целиком</a></li><li><a href="#s12">Как проверяют соответствие</a></li><li><a href="#s13">Частые ошибки</a></li><li><a href="#s14">Проверьте себя</a></li></ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Что такое PEP и зачем PEP 8</h2>
+<p><span class="term">PEP</span> (Python Enhancement Proposal) — документ с предложением по развитию языка Python. У каждого PEP есть номер, автор и статус. PEP 8 написали Гвидо ван Россум, Барри Уорсо и Ник Коглан.</p>
+<p>Главный довод документа записан в его начале: код читают гораздо чаще, чем пишут. Когда все в проекте оформляют код одинаково, читатель следит за смыслом и не отвлекается на расстановку пробелов.</p>
+<p>Интерпретатор PEP 8 не проверяет: программа с нарушениями запустится. Обязательным его делает проект — правилом в README, настройкой линтера и проверкой в CI, которая не пропускает изменение с нарушениями.</p>
+<figure class="shot"><img src="../../shots/pep8.jpg" alt="PEP 8 на сайте peps.python.org." loading="lazy"><figcaption><b>PEP 8 на сайте peps.python.org.</b> Слева — оглавление по разделам. Порядок разделов этой главы повторяет документ.</figcaption></figure>
+<p>Сам PEP 8 разрешает отступать от правил, если правило ухудшает читаемость или ломает единообразие с уже написанным кодом. Раздел об этом называется «A Foolish Consistency is the Hobgoblin of Little Minds».</p>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Отступы</h2>
+<p>Один уровень отступа — 4 пробела. Табуляцию не используют; смешивать табуляцию и пробелы в одном файле Python 3 запрещает.</p>
+<div class="pair"><p class="pair__title">Отступ тела функции</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>def total(prices):
+  result = 0
+  for p in prices:
+        result += p
+  return result</pre></div><div class="code code--good"><b>так надо</b><pre>def total(prices):
+    result = 0
+    for price in prices:
+        result += price
+    return result</pre></div></div><p class="pair__note">Слева отступы в два и шесть пробелов: уровни вложенности на глаз не различить. Справа каждый уровень — ровно четыре пробела.</p></div>
+<p>Если строка не помещается, её продолжают внутри скобок. Стандарт допускает два способа: выровнять продолжение по открывающей скобке или сделать висячий отступ — первая строка заканчивается скобкой, остальные сдвинуты на уровень.</p>
+<div class="pair"><p class="pair__title">Продолжение строки внутри скобок</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>result = send_report(user_id, period_start,
+    period_end, include_archived)</pre></div><div class="code code--good"><b>так надо</b><pre># выравнивание по открывающей скобке
+result = send_report(user_id, period_start,
+                     period_end, include_archived)
+
+# висячий отступ
+result = send_report(
+    user_id, period_start,
+    period_end, include_archived,
+)</pre></div></div><p class="pair__note">Слева продолжение сдвинуто произвольно и сливается со следующей строкой кода. Справа видно, что строки относятся к одному вызову.</p></div>
+<div class="pair"><p class="pair__title">Висячий отступ в заголовке функции</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>def create_ticket(
+    title, description,
+    priority, author):
+    validate(title)
+    return save(title)</pre></div><div class="code code--good"><b>так надо</b><pre>def create_ticket(
+        title, description,
+        priority, author):
+    validate(title)
+    return save(title)</pre></div></div><p class="pair__note">В заголовке функции параметры сдвигают на два уровня, иначе они встают вровень с телом функции и сливаются с ним.</p></div>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Длина строки и перенос</h2>
+<p>Строка кода — не длиннее 79 символов, строка комментария или документации — не длиннее 72. Стандарт разрешает команде договориться о пределе до 99 символов для кода. Форматировщик black по умолчанию использует 88.</p>
+<p>Переносят внутри круглых, квадратных и фигурных скобок. Обратную косую черту в конце строки применяют, только когда скобок нет, например в длинной инструкции <code>with</code> в старых версиях Python.</p>
+<p>Двоичный оператор ставят в начале новой строки. В конце предыдущей строки его не оставляют. Так все слагаемые видны в одном столбце, как в математической записи.</p>
+<div class="pair"><p class="pair__title">Где переносить оператор</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>income = (gross_wages +
+          taxable_interest +
+          (dividends - qualified_dividends) -
+          ira_deduction -
+          student_loan_interest)</pre></div><div class="code code--good"><b>так надо</b><pre>income = (gross_wages
+          + taxable_interest
+          + (dividends - qualified_dividends)
+          - ira_deduction
+          - student_loan_interest)</pre></div></div><p class="pair__note">Пример взят из самого PEP 8. Справа знак стоит перед числом, и сразу видно, какое слагаемое прибавляется, а какое вычитается.</p></div>
+<div class="pair"><p class="pair__title">Длинное условие</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>if user.is_active and user.email_confirmed and not user.is_blocked and user.role in (&#x27;teacher&#x27;, &#x27;admin&#x27;):
+    grant_access(user)</pre></div><div class="code code--good"><b>так надо</b><pre>if (user.is_active
+        and user.email_confirmed
+        and not user.is_blocked
+        and user.role in (&#x27;teacher&#x27;, &#x27;admin&#x27;)):
+    grant_access(user)</pre></div></div><p class="pair__note">Условие заключено в скобки и разбито по одному требованию на строку. Дополнительный отступ отделяет условие от тела <code>if</code>.</p></div>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>Пустые строки и кодировка</h2>
+<p>Функции и классы верхнего уровня отделяют двумя пустыми строками, методы внутри класса — одной. Внутри функции пустой строкой разделяют логические шаги, но не после каждой строки.</p>
+<div class="pair"><p class="pair__title">Пустые строки между определениями</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>import os
+def load(path):
+    return open(path).read()
+class Report:
+    def __init__(self, title):
+        self.title = title
+    def render(self):
+        return self.title.upper()</pre></div><div class="code code--good"><b>так надо</b><pre>import os
+
+
+def load(path):
+    return open(path).read()
+
+
+class Report:
+    def __init__(self, title):
+        self.title = title
+
+    def render(self):
+        return self.title.upper()</pre></div></div><p class="pair__note">Справа границы функций и классов видны сразу, даже при быстрой прокрутке файла.</p></div>
+<p>Файлы сохраняют в UTF-8; строку с указанием кодировки в начале файла для UTF-8 не пишут. Имена в коде — латиницей, даже если комментарии на русском.</p>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>Импорты</h2>
+<p>Каждый модуль импортируют на отдельной строке. Импорты стоят в начале файла, после строки документации модуля, и идут тремя группами: стандартная библиотека, сторонние пакеты, модули своего проекта. Группы разделяют пустой строкой.</p>
+<div class="pair"><p class="pair__title">Порядок и группы импортов</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>from .models import Ticket
+import os, sys
+import requests
+from datetime import date
+from fastapi import FastAPI
+from .db import *</pre></div><div class="code code--good"><b>так надо</b><pre>import os
+import sys
+from datetime import date
+
+import requests
+from fastapi import FastAPI
+
+from .db import get_session
+from .models import Ticket</pre></div></div><p class="pair__note">Слева импорты перемешаны, два модуля в одной строке и импорт со звёздочкой. Справа по группам видно, от чего зависит модуль, а каждое имя импортировано явно.</p></div>
+<p>Импорт со звёздочкой <code>from module import *</code> не используют: непонятно, какие имена появились в модуле, и одно из них может незаметно заменить другое. Абсолютные импорты предпочтительнее относительных. Порядок импортов расставляет isort или ruff с правилом I.</p>
+</section>
+
+<section class="sec" id="s6">
+<h2><i>§6</i>Пробелы в выражениях</h2>
+<p>Пробелов нет сразу внутри скобок, перед запятой, двоеточием и точкой с запятой, перед открывающей скобкой вызова и индекса. Вокруг присваивания и сравнений — по одному пробелу.</p>
+<div class="pair"><p class="pair__title">Пробелы внутри скобок и перед ними</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>spam( ham[ 1 ], { eggs: 2 } )
+print (x , y)
+dct [&#x27;key&#x27;] = lst [index]
+if x == 4 : print(x , y)</pre></div><div class="code code--good"><b>так надо</b><pre>spam(ham[1], {eggs: 2})
+print(x, y)
+dct[&#x27;key&#x27;] = lst[index]
+if x == 4:
+    print(x, y)</pre></div></div><p class="pair__note">Лишние пробелы внутри скобок и перед ними разрывают выражение на куски. Последняя строка справа ещё и разнесена: тело <code>if</code> на той же строке PEP 8 не рекомендует.</p></div>
+<div class="pair"><p class="pair__title">Пробелы вокруг операторов</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>i=i+1
+submitted +=1
+x = x*2 - 1
+hypot2 = x*x+y*y
+c = (a+b) * (a-b)</pre></div><div class="code code--good"><b>так надо</b><pre>i = i + 1
+submitted += 1
+x = x*2 - 1
+hypot2 = x*x + y*y
+c = (a+b) * (a-b)</pre></div></div><p class="pair__note">Вокруг присваивания пробелы обязательны. В выражении с операторами разного приоритета пробелы ставят вокруг операторов с низшим приоритетом: <code>x*2 - 1</code> читается как «x на 2, минус 1».</p></div>
+<div class="pair"><p class="pair__title">Знак равенства в аргументах</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>def connect(host, port = 5432, timeout = 30):
+    ...
+
+connect(host = &#x27;db&#x27;, port = 6432)
+
+def munge(sep:str=&#x27;-&#x27;, limit: int=10):
+    ...</pre></div><div class="code code--good"><b>так надо</b><pre>def connect(host, port=5432, timeout=30):
+    ...
+
+connect(host=&#x27;db&#x27;, port=6432)
+
+def munge(sep: str = &#x27;-&#x27;, limit: int = 10):
+    ...</pre></div></div><p class="pair__note">Для именованного аргумента и значения по умолчанию пробелы вокруг <code>=</code> не ставят. Исключение — параметр с аннотацией: там пробелы нужны, <code>sep: str = '-'</code>.</p></div>
+<p>Пробелы в конце строки не оставляют: их не видно, но они попадают в историю изменений и дают ложные различия.</p>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>Висячая запятая</h2>
+<p>Если элементы списка, словаря или аргументы записаны по одному на строку, после последнего ставят запятую, а закрывающую скобку — на отдельной строке.</p>
+<div class="pair"><p class="pair__title">Запятая после последнего элемента</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>FILES = [
+    &#x27;setup.cfg&#x27;,
+    &#x27;tox.ini&#x27;
+    ]</pre></div><div class="code code--good"><b>так надо</b><pre>FILES = [
+    &#x27;setup.cfg&#x27;,
+    &#x27;tox.ini&#x27;,
+]</pre></div></div><p class="pair__note">Когда добавят третий файл, справа в истории изменений будет одна новая строка. Слева изменятся две: к старой строке придётся дописать запятую.</p></div>
+<p>Кортеж из одного элемента запятой обязан заканчиваться: <code>(name,)</code>. Без запятой это просто значение в скобках.</p>
+</section>
+
+<section class="sec" id="s8">
+<h2><i>§8</i>Комментарии</h2>
+<p>Комментарий объясняет, почему код написан так. Пересказывать, что делает код, не нужно: это видно из самого кода. Комментарий начинается с <code>#</code> и пробела. Комментарий в конце строки отделяют от кода минимум двумя пробелами. Комментарий, который расходится с кодом, хуже отсутствия комментария: его исправляют вместе с кодом.</p>
+<div class="pair"><p class="pair__title">Комментарий в конце строки</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>x = x + 1 # прибавить единицу
+retries=3#число попыток</pre></div><div class="code code--good"><b>так надо</b><pre>x = x + 1  # компенсация рамки: ширина считается без неё
+retries = 3  # провайдер разрывает соединение после 3 ошибок</pre></div></div><p class="pair__note">Слева комментарии повторяют код. Справа они сообщают то, чего в коде нет: причину выбора значения.</p></div>
+<div class="pair"><p class="pair__title">Блочный комментарий</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>#проверяем дубли
+#потому что форма не проверяет
+if exists(email):
+    raise DuplicateEmail(email)</pre></div><div class="code code--good"><b>так надо</b><pre># Форма регистрации не проверяет, занята ли почта (задача #198),
+# поэтому повтор отсекается здесь, до записи в базу.
+if exists(email):
+    raise DuplicateEmail(email)</pre></div></div><p class="pair__note">Блочный комментарий пишут полными предложениями, с прописной буквы. Каждая строка начинается с <code>#</code> и пробела.</p></div>
+</section>
+
+<section class="sec" id="s9">
+<h2><i>§9</i>Имена</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Что</th><th>Стиль</th><th>Пример</th></tr></thead>
+<tbody>
+<tr><td>модуль</td><td>короткие строчные, при необходимости с подчёркиванием</td><td><code>backup.py</code>, <code>send_welcome.py</code></td></tr><tr><td>пакет</td><td>короткие строчные, без подчёркивания</td><td><code>reports</code></td></tr><tr><td>класс</td><td>каждое слово с прописной, слитно (CapWords)</td><td><code>TicketRepository</code></td></tr><tr><td>исключение</td><td>как класс, с окончанием Error</td><td><code>DuplicateEmailError</code></td></tr><tr><td>функция, метод, переменная</td><td>строчные через подчёркивание (snake_case)</td><td><code>load_profile</code>, <code>user_id</code></td></tr><tr><td>константа модуля</td><td>прописные через подчёркивание</td><td><code>MAX_RETRIES</code></td></tr><tr><td>внутреннее имя</td><td>с одним подчёркиванием в начале</td><td><code>_parse_row</code></td></tr><tr><td>первый аргумент метода</td><td>self; метода класса — cls</td><td><code>def render(self)</code></td></tr>
+</tbody></table></div>
+<div class="pair"><p class="pair__title">Имена переменных, функций и классов</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>class ticket_repo:
+    def LoadAll(self):
+        l = []
+        for O in self.Items:
+            l.append(O)
+        return l
+
+MaxRetries = 3</pre></div><div class="code code--good"><b>так надо</b><pre>class TicketRepository:
+    def load_all(self):
+        tickets = []
+        for ticket in self.items:
+            tickets.append(ticket)
+        return tickets
+
+MAX_RETRIES = 3</pre></div></div><p class="pair__note">PEP 8 отдельно запрещает однобуквенные имена <code>l</code>, <code>O</code> и <code>I</code>: в некоторых шрифтах их не отличить от единицы и нуля.</p></div>
+<div class="pair"><p class="pair__title">Имя, совпадающее с встроенным</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>def count(list, id, type):
+    return len([x for x in list if x.type == type])</pre></div><div class="code code--good"><b>так надо</b><pre>def count(items, item_id, kind):
+    return len([x for x in items if x.kind == kind])</pre></div></div><p class="pair__note">Слева параметры закрывают встроенные <code>list</code>, <code>id</code> и <code>type</code>: внутри функции их уже не вызвать. Если нужное имя занято, PEP 8 советует добавить подчёркивание в конце: <code>class_</code>.</p></div>
+</section>
+
+<section class="sec" id="s10">
+<h2><i>§10</i>Рекомендации по программированию</h2>
+<p>Последний раздел PEP 8 касается не оформления, а приёмов, при которых код ведёт себя предсказуемо.</p>
+<div class="pair"><p class="pair__title">Сравнение с None, True и пустотой</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>if result == None:
+    ...
+if is_active == True:
+    ...
+if len(tickets) == 0:
+    ...</pre></div><div class="code code--good"><b>так надо</b><pre>if result is None:
+    ...
+if is_active:
+    ...
+if not tickets:
+    ...</pre></div></div><p class="pair__note">С <code>None</code> сравнивают через <code>is</code>: оператор <code>==</code> можно переопределить в классе. Логическое значение и пустой список проверяют самим значением.</p></div>
+<div class="pair"><p class="pair__title">Проверка типа</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>if type(price) == int:
+    ...</pre></div><div class="code code--good"><b>так надо</b><pre>if isinstance(price, int):
+    ...</pre></div></div><p class="pair__note"><code>isinstance</code> учитывает наследование: значение подкласса <code>int</code> тоже пройдёт проверку.</p></div>
+<div class="pair"><p class="pair__title">Начало и конец строки</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>if filename[-4:] == &#x27;.csv&#x27;:
+    ...
+if url[:8] == &#x27;https://&#x27;:
+    ...</pre></div><div class="code code--good"><b>так надо</b><pre>if filename.endswith(&#x27;.csv&#x27;):
+    ...
+if url.startswith(&#x27;https://&#x27;):
+    ...</pre></div></div><p class="pair__note">Срезы с числами ломаются, когда меняется длина образца. Методы читаются как обычная фраза.</p></div>
+<div class="pair"><p class="pair__title">Перехват исключений</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>try:
+    rows = load(path)
+except:
+    rows = []</pre></div><div class="code code--good"><b>так надо</b><pre>try:
+    rows = load(path)
+except FileNotFoundError:
+    rows = []</pre></div></div><p class="pair__note">Голый <code>except</code> перехватывает всё, даже нажатие Ctrl+C и опечатку в имени переменной. Перехватывают только то исключение, которое умеют обработать.</p></div>
+<div class="pair"><p class="pair__title">Объём блока try</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>try:
+    value = collection[key]
+    result = handle(value)
+except KeyError:
+    result = key_not_found(key)</pre></div><div class="code code--good"><b>так надо</b><pre>try:
+    value = collection[key]
+except KeyError:
+    result = key_not_found(key)
+else:
+    result = handle(value)</pre></div></div><p class="pair__note">Слева <code>KeyError</code> изнутри <code>handle</code> будет ошибочно принят за отсутствие ключа. В блоке <code>try</code> оставляют только строку, которая может вызвать ожидаемое исключение.</p></div>
+<div class="pair"><p class="pair__title">Единообразный return</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>def discount(user):
+    if user.is_student:
+        return 0.2
+    if user.is_teacher:
+        return 0.1</pre></div><div class="code code--good"><b>так надо</b><pre>def discount(user):
+    if user.is_student:
+        return 0.2
+    if user.is_teacher:
+        return 0.1
+    return 0.0</pre></div></div><p class="pair__note">Слева для остальных пользователей функция молча вернёт <code>None</code>, и расчёт цены упадёт далеко от причины. Если функция что-то возвращает, она возвращает значение на любом пути.</p></div>
+<div class="pair"><p class="pair__title">Лямбда в переменной</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>square = lambda x: x * x</pre></div><div class="code code--good"><b>так надо</b><pre>def square(x):
+    return x * x</pre></div></div><p class="pair__note">У функции, созданной через <code>def</code>, есть имя: оно будет в сообщении об ошибке и в отладчике. Лямбду используют там, где функция нужна один раз, например в <code>sorted(..., key=lambda t: t.date)</code>.</p></div>
+<div class="pair"><p class="pair__title">Работа с файлом</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>f = open(&#x27;report.csv&#x27;)
+data = f.read()
+f.close()</pre></div><div class="code code--good"><b>так надо</b><pre>with open(&#x27;report.csv&#x27;, encoding=&#x27;utf-8&#x27;) as f:
+    data = f.read()</pre></div></div><p class="pair__note">Конструкция <code>with</code> закроет файл даже при исключении. Кодировку указывают явно: по умолчанию в Windows она другая.</p></div>
+</section>
+
+<section class="sec" id="s11">
+<h2><i>§11</i>Разбор файла целиком</h2>
+<p>Ниже — файл, собранный «на скорую руку», и тот же файл после приведения к PEP 8. Поведение программы не изменилось.</p>
+<div class="code"><b>до: report.py</b><pre>import os,sys
+from datetime import *
+import requests
+def MakeReport( Users,Date ):
+    l=[]
+    for u in Users :
+        if u[&#x27;active&#x27;]==True and u[&#x27;email&#x27;]!=None:
+            l.append( u[&#x27;name&#x27;]+&#x27; &#x27;+u[&#x27;email&#x27;] ) # добавить
+    try:
+        r=requests.post(&#x27;https://api.example/report&#x27;,json={&#x27;rows&#x27;:l,&#x27;date&#x27;:str(Date)})
+    except:
+        return None
+    return r.status_code</pre></div>
+<div class="code"><b>после: report.py</b><pre>import requests
+
+REPORT_URL = &#x27;https://api.example/report&#x27;
+
+
+def make_report(users, report_date):
+    &quot;&quot;&quot;Отправить список активных пользователей с почтой; вернуть код ответа.&quot;&quot;&quot;
+    rows = [
+        f&quot;{user[&#x27;name&#x27;]} {user[&#x27;email&#x27;]}&quot;
+        for user in users
+        if user[&#x27;active&#x27;] and user[&#x27;email&#x27;] is not None
+    ]
+    payload = {&#x27;rows&#x27;: rows, &#x27;date&#x27;: report_date.isoformat()}
+    try:
+        response = requests.post(REPORT_URL, json=payload, timeout=10)
+    except requests.RequestException:
+        return None
+    return response.status_code</pre></div>
+<div class="table-scroll"><table>
+<thead><tr><th>Что изменилось</th><th>Правило PEP 8</th></tr></thead>
+<tbody>
+<tr><td>убраны неиспользуемые <code>os</code>, <code>sys</code> и импорт со звёздочкой</td><td>импорты</td></tr><tr><td><code>MakeReport</code> → <code>make_report</code>, <code>l</code> → <code>rows</code></td><td>имена</td></tr><tr><td><code>== True</code> и <code>!= None</code> заменены</td><td>рекомендации по сравнениям</td></tr><tr><td>адрес вынесен в константу, длинная строка разбита</td><td>длина строки, имена констант</td></tr><tr><td>голый <code>except</code> заменён конкретным исключением</td><td>рекомендации по исключениям</td></tr><tr><td>пробелы внутри скобок убраны, вокруг присваиваний добавлены</td><td>пробелы в выражениях</td></tr><tr><td>добавлена строка документации</td><td>PEP 257, следующая глава</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="s12">
+<h2><i>§12</i>Как проверяют соответствие</h2>
+<p>Вручную PEP 8 не проверяют: это делают программы. <span class="term">Линтер</span> находит нарушения и называет их кодом. <span class="term">Форматировщик</span> сам переписывает оформление.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Инструмент</th><th>Что делает</th><th>Команда</th></tr></thead>
+<tbody>
+<tr><td>pycodestyle</td><td>проверяет оформление по PEP 8; коды E и W</td><td><code>pycodestyle report.py</code></td></tr><tr><td>flake8</td><td>pycodestyle плюс поиск ошибок (неиспользуемые импорты); коды E, W, F</td><td><code>flake8 .</code></td></tr><tr><td>ruff</td><td>ошибки (F) и правила PEP 8 об импортах, сравнениях и именах; работает быстро и умеет исправлять; правила пробелов в нём пока в предварительном режиме</td><td><code>ruff check . --fix</code></td></tr><tr><td>black, ruff format</td><td>переписывает оформление файла целиком</td><td><code>black .</code> · <code>ruff format .</code></td></tr>
+</tbody></table></div>
+<figure class="shot"><img src="../../shots/doc-ruff.jpg" alt="Настоящий вывод pycodestyle и ruff для файла «до» из предыдущего параграфа." loading="lazy"><figcaption><b>Настоящий вывод pycodestyle и ruff для файла «до» из предыдущего параграфа.</b> Каждая строка — файл, строка и столбец, код правила и сообщение. pycodestyle находит нарушения пробелов и пустых строк, ruff — неиспользуемые импорты, сравнения и голый except. Пометка [*] означает, что ruff исправит нарушение сам. Файл «после» оба инструмента пропускают без замечаний.</figcaption></figure>
+<div class="table-scroll"><table>
+<thead><tr><th>Код</th><th>Что означает</th></tr></thead>
+<tbody>
+<tr><td>E201, E202</td><td>пробел сразу после «(» или перед «)»</td></tr><tr><td>E225</td><td>нет пробелов вокруг оператора</td></tr><tr><td>E231</td><td>нет пробела после запятой</td></tr><tr><td>E261</td><td>меньше двух пробелов перед комментарием в конце строки</td></tr><tr><td>E302</td><td>ожидались две пустые строки</td></tr><tr><td>E501</td><td>строка длиннее допустимого</td></tr><tr><td>E711</td><td>сравнение с None через == или !=</td></tr><tr><td>E712</td><td>сравнение с True или False через ==</td></tr><tr><td>E722</td><td>голый except</td></tr><tr><td>E741</td><td>неоднозначное имя: l, O, I</td></tr><tr><td>F401</td><td>импорт не используется</td></tr><tr><td>F403</td><td>импорт со звёздочкой</td></tr>
+</tbody></table></div>
+<p>Проверку включают в CI: изменение, которое не проходит линтер, не сливают в основную ветку. Настройки хранят в <code>pyproject.toml</code>, чтобы у всех участников они были одинаковыми.</p>
+<div class="code"><b>pyproject.toml</b><pre>[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = [&quot;E&quot;, &quot;W&quot;, &quot;F&quot;, &quot;I&quot;, &quot;N&quot;]   # оформление, ошибки, импорты, имена</pre></div>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s13">
+<h2><i>§13</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Считать PEP 8 правилом интерпретатора</b>Программа запустится; соблюдение обеспечивает проект и линтер.</div>
+<div><b>Спорить об оформлении на ревью</b>Оформление исправляет форматировщик, ревью смотрит на смысл.</div>
+<div><b>Переносить оператор в конец строки</b>PEP 8 рекомендует ставить его в начале новой строки.</div>
+<div><b>Сравнивать с None через ==</b>Сравнивают через is и is not.</div>
+<div><b>Перехватывать всё голым except</b>Перехватывают конкретное исключение, которое умеют обработать.</div>
+<div><b>Называть переменную l, list или id</b>Неоднозначные и занятые имена мешают читать и ломают встроенные функции.</div>
+</div>
+</section>
+
+<section class="sec" id="s14">
+<h2><i>§14</i>Проверьте себя</h2>
+<ol class="check">
+<li>Сколько пробелов в одном уровне отступа и какова наибольшая длина строки кода и комментария?</li>
+<li>Где по PEP 8 ставят двоичный оператор при переносе длинного выражения? Почему?</li>
+<li>В каком порядке и какими группами записывают импорты?</li>
+<li>Когда вокруг знака = в аргументах ставят пробелы, а когда нет?</li>
+<li>Как по PEP 8 называют класс, исключение, функцию и константу? Приведите по примеру.</li>
+<li>Почему с None сравнивают через is и почему голый except считается ошибкой?</li>
+<li>Что сообщают коды E501, E711 и F401 в выводе линтера?</li>
+</ol>
+<div class="cheat">
+<div><b>Оформление</b><code>4 пробела</code><code>79 / 72 символа</code><code>оператор в начале строки</code><code>2 пустые строки — верхний уровень</code><code>висячая запятая</code></div>
+<div><b>Имена</b><code>snake_case — функции</code><code>CapWords — классы</code><code>…Error — исключения</code><code>UPPER_CASE — константы</code><code>не l, O, I</code></div>
+<div><b>Приёмы</b><code>is None</code><code>if not items</code><code>isinstance</code><code>except конкретное</code><code>with open(...)</code></div>
+<div><b>Проверка</b><code>ruff check --fix</code><code>black · ruff format</code><code>pyproject.toml</code><code>проверка в CI</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav"><a href="../4-standarty-interneta/index.html">← Глава 4. Стандарты интернета: HTTP, JSON, дата и текст</a><a href="../6-dokumentaciya-i-annotacii/index.html">Глава 6. Документация в коде: PEP 257, 484 и 20 →</a></nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандарты и сертификаты» · глава 5</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>

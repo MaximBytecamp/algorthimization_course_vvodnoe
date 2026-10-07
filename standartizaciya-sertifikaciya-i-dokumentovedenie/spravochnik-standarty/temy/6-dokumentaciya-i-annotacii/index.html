@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Строки документации модуля, класса и функции по PEP 257, стиль Google для параметров, аннотации типов по PEP 484 и их проверка mypy, «Дзен Python» PEP 20.">
+<title>6. Документация в коде: PEP 257, 484 и 20 · Стандарты и сертификаты</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../extra.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Стандарты и сертификаты · тема 3</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандарты и сертификаты»</a> · тема 3</p><p class="folio">Глава 6</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">6</span>
+<h1>Документация в коде:<br>PEP 257, 484 и 20</h1>
+<p class="lead">Кроме оформления, у кода на Python есть стандарты описания: как писать строки документации, как указывать типы и какими принципами руководствоваться. В главе разобраны PEP 257, PEP 484 и PEP 20 с примерами на одном модуле.</p>
+</header>
+
+<dl class="passport"><div><dt>Документы</dt><dd>PEP 257 · PEP 484 · PEP 526 · PEP 604 · PEP 20</dd></div><div><dt>Уровень</dt><dd>Базовый</dd></div><div><dt>Где встречается</dt><dd>Библиотеки, сервисы с командой больше одного человека</dd></div><div><dt>Зачем это знать</dt><dd>Чтобы функцию можно было использовать, не читая её тело</dd></div></dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol><li><a href="#s1">Строки документации по PEP 257</a></li><li><a href="#s2">Аннотации типов по PEP 484</a></li><li><a href="#s3">«Дзен Python», PEP 20</a></li><li><a href="#s4">Частые ошибки</a></li><li><a href="#s5">Проверьте себя</a></li></ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>Строки документации по PEP 257</h2>
+<p><span class="term">Строка документации</span> (docstring) — строковый литерал первой строкой модуля, класса или функции. Python сохраняет его в атрибуте <code>__doc__</code>, его показывают <code>help()</code>, подсказки редактора и генераторы документации.</p>
+<p>PEP 257 задаёт форму: тройные двойные кавычки; первая строка — краткое описание действия в форме повеления, с точкой в конце; если нужно больше, после неё пустая строка и подробности.</p>
+<div class="pair"><p class="pair__title">Однострочная строка документации</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>def age(birth_date):
+    &#x27;&#x27;&#x27;
+    this function returns age
+    &#x27;&#x27;&#x27;</pre></div><div class="code code--good"><b>так надо</b><pre>def age(birth_date):
+    &quot;&quot;&quot;Вернуть полное число лет на сегодняшний день.&quot;&quot;&quot;</pre></div></div><p class="pair__note">Слева кавычки одинарные, текст разнесён на три строки и описывает функцию в третьем лице. Справа одна строка-команда: «Вернуть…», как требует PEP 257.</p></div>
+<div class="pair"><p class="pair__title">Повторять заголовок не нужно</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>def load_profile(db, user_id):
+    &quot;&quot;&quot;load_profile(db, user_id) -&gt; dict&quot;&quot;&quot;</pre></div><div class="code code--good"><b>так надо</b><pre>def load_profile(db, user_id):
+    &quot;&quot;&quot;Прочитать профиль ученика из базы по его идентификатору.&quot;&quot;&quot;</pre></div></div><p class="pair__note">Сигнатуру Python и так знает. Строка документации сообщает назначение функции.</p></div>
+<div class="code"><b>многострочная строка документации, стиль Google</b><pre>def send_report(users, report_date, *, dry_run=False):
+    &quot;&quot;&quot;Отправить отчёт об активных пользователях за день.
+
+    Пользователи без адреса почты в отчёт не попадают.
+
+    Args:
+        users: Список словарей с ключами name, email, active.
+        report_date: День, за который собран отчёт.
+        dry_run: Если True, отчёт собирается, но не отправляется.
+
+    Returns:
+        Код ответа сервиса отчётов или None при ошибке сети.
+
+    Raises:
+        ValueError: Если report_date в будущем.
+    &quot;&quot;&quot;</pre></div>
+<p>PEP 257 не задаёт, как описывать параметры. Для этого есть соглашения: стиль Google (разделы Args, Returns, Raises), стиль NumPy (подчёркнутые заголовки) и reStructuredText (<code>:param users:</code>). В проекте выбирают одно.</p>
+<figure class="shot"><img src="../../shots/pep257.jpg" alt="PEP 257 «Docstring Conventions»." loading="lazy"><figcaption><b>PEP 257 «Docstring Conventions».</b> Документ короткий: однострочные и многострочные строки документации, отступы, строки модуля и класса.</figcaption></figure>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>Аннотации типов по PEP 484</h2>
+<p><span class="term">Аннотация типа</span> — пометка, какого типа ожидается параметр, переменная или результат. Синтаксис ввёл PEP 3107, смысл аннотаций для типов — PEP 484, аннотации переменных — PEP 526, запись <code>int | None</code> — PEP 604.</p>
+<p>Интерпретатор аннотации не проверяет: <code>age("вчера")</code> выполнится и упадёт внутри. Проверяет отдельная программа — mypy или pyright, до запуска.</p>
+<div class="pair"><p class="pair__title">Функция без аннотаций и с ними</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>def find_ticket(tickets, ticket_id):
+    for t in tickets:
+        if t.id == ticket_id:
+            return t</pre></div><div class="code code--good"><b>так надо</b><pre>def find_ticket(tickets: list[Ticket], ticket_id: int) -&gt; Ticket | None:
+    for ticket in tickets:
+        if ticket.id == ticket_id:
+            return ticket
+    return None</pre></div></div><p class="pair__note">Справа по заголовку видно, что функция может ничего не найти. mypy потребует проверить результат на <code>None</code> перед обращением к его полям.</p></div>
+<div class="code"><b>что сообщает mypy</b><pre>$ mypy tickets.py
+tickets.py:14: error: Item &quot;None&quot; of &quot;Ticket | None&quot; has no attribute &quot;title&quot;  [union-attr]
+Found 1 error in 1 file (checked 1 source file)</pre></div>
+<div class="table-scroll"><table>
+<thead><tr><th>Запись</th><th>Смысл</th></tr></thead>
+<tbody>
+<tr><td><code>x: int = 0</code></td><td>переменная целого типа, PEP 526</td></tr><tr><td><code>list[str]</code></td><td>список строк, начиная с Python 3.9</td></tr><tr><td><code>dict[str, int]</code></td><td>словарь со строковыми ключами и целыми значениями</td></tr><tr><td><code>int | None</code></td><td>целое или None, начиная с Python 3.10</td></tr><tr><td><code>Callable[[int], str]</code></td><td>функция, принимающая int и возвращающая str</td></tr><tr><td><code>-> None</code></td><td>функция ничего не возвращает</td></tr>
+</tbody></table></div>
+<figure class="shot"><img src="../../shots/pep484.jpg" alt="PEP 484 «Type Hints»." loading="lazy"><figcaption><b>PEP 484 «Type Hints».</b> Документ описывает смысл аннотаций для типов; синтаксис для переменных добавлен позже, в PEP 526.</figcaption></figure>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>«Дзен Python», PEP 20</h2>
+<p>PEP 20 — 19 коротких принципов, на которых построен язык. Их выводит команда <code>import this</code>. Это не правила для линтера, а доводы, к которым обращаются в спорах о том, как лучше написать.</p>
+<div class="code"><b>import this, первые строки</b><pre>Beautiful is better than ugly.
+Explicit is better than implicit.
+Simple is better than complex.
+Complex is better than complicated.
+Flat is better than nested.
+Sparse is better than dense.
+Readability counts.
+Errors should never pass silently.
+Unless explicitly silenced.</pre></div>
+<div class="pair"><p class="pair__title">«Явное лучше неявного» на примере</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>from config import *
+
+connect(HOST, PORT)</pre></div><div class="code code--good"><b>так надо</b><pre>from config import DB_HOST, DB_PORT
+
+connect(DB_HOST, DB_PORT)</pre></div></div><p class="pair__note">Справа читатель видит, откуда взялись значения. Тот же довод стоит за запретом импорта со звёздочкой в PEP 8.</p></div>
+<div class="pair"><p class="pair__title">«Ошибки не должны проходить молча»</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>try:
+    send_email(user)
+except Exception:
+    pass</pre></div><div class="code code--good"><b>так надо</b><pre>try:
+    send_email(user)
+except SMTPException:
+    log.warning(&#x27;письмо для %s не отправлено&#x27;, user.id)
+    raise</pre></div></div><p class="pair__note">Слева сбой отправки исчезает без следа. Справа он записан в журнал и передан выше.</p></div>
+<figure class="shot"><img src="../../shots/pep20.jpg" alt="PEP 20 «The Zen of Python»." loading="lazy"><figcaption><b>PEP 20 «The Zen of Python».</b> Автор — Тим Питерс. В тексте PEP сказано, что принципов двадцать, а записано девятнадцать.</figcaption></figure>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s4">
+<h2><i>§4</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Описывать в строке документации сигнатуру</b>Её знает интерпретатор; строка сообщает назначение.</div>
+<div><b>Писать строку документации в третьем лице</b>PEP 257 требует повеление: «Вернуть…», «Отправить…».</div>
+<div><b>Думать, что аннотации проверяются при запуске</b>Проверяют их mypy или pyright до запуска.</div>
+<div><b>Возвращать None без отметки в аннотации</b>Пишут Ticket | None, и проверка заставит обработать отсутствие.</div>
+<div><b>Смешивать стили описания параметров</b>В проекте выбирают Google, NumPy или reStructuredText и держатся одного.</div>
+</div>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>Проверьте себя</h2>
+<ol class="check">
+<li>Где Python хранит строку документации и кто её показывает?</li>
+<li>Как выглядит однострочная строка документации по PEP 257? Приведите пример.</li>
+<li>Зачем в аннотации писать Ticket | None, если функция может ничего не найти?</li>
+<li>Проверяет ли интерпретатор аннотации типов при запуске? Чем их проверяют?</li>
+<li>Какие принципы PEP 20 объясняют запрет импорта со звёздочкой и пустого except?</li>
+</ol>
+<div class="cheat">
+<div><b>PEP 257</b><code>"""тройные двойные"""</code><code>повеление, точка</code><code>пустая строка после краткой</code><code>Args, Returns, Raises</code></div>
+<div><b>Типы</b><code>PEP 484 — смысл</code><code>PEP 526 — переменные</code><code>PEP 604 — int | None</code><code>mypy, pyright</code></div>
+<div><b>PEP 20</b><code>import this</code><code>явное лучше неявного</code><code>ошибки не молчат</code><code>читаемость важна</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav"><a href="../5-pep-8/index.html">← Глава 5. PEP 8: оформление кода на Python</a><a href="../7-versii-i-istoriya/index.html">Глава 7. Версии, коммиты и журнал изменений →</a></nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандарты и сертификаты» · глава 6</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>

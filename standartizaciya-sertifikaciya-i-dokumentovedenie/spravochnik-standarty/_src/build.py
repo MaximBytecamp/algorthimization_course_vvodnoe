@@ -6,7 +6,18 @@
 Оформление общее со справочником «Вайбкодинг в России»: styles.css и book.js копируются оттуда.
 """
 import html, pathlib, re, shutil
-from chapters import CHAPTERS
+from chapters import CHAPTERS as BASE
+from chapters_code import PEP8, DOCS, VERSIONS
+from chapters_more import DATA, CODES, A11Y, TESTS, EDOC, REGS
+
+_b = {c["slug"].split("-", 1)[1]: c for c in BASE}
+ORDER = [_b["chto-takoe-standart"], _b["gost-34-i-gost-19"], _b["oformlenie-dokumentov"], _b["standarty-interneta"],
+         PEP8, DOCS, VERSIONS, DATA, CODES, A11Y, TESTS,
+         _b["informacionnaya-bezopasnost"], _b["kriptografiya-i-sertifikaty-klyuchej"], _b["kachestvo-i-processy"],
+         EDOC, REGS, _b["sertifikaciya-i-deklarirovanie"]]
+CHAPTERS = []
+for _n, _c in enumerate(ORDER, 1):      # номер главы и адрес зависят только от места в оглавлении
+    CHAPTERS.append(dict(_c, num=str(_n), slug=f"{_n}-" + _c["slug"].split("-", 1)[1]))
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PRAVO = ROOT.parent / "spravochnik-pravo"
@@ -41,6 +52,11 @@ def block(b):
     if kind == "case":
         return (f'<div class="case">\n<header><small>Случай</small>{nb(b[1])}</header>\n' + "\n".join(
             f"<div><b>{t}</b><ul>" + "".join(f"<li>{nb(x)}</li>" for x in items) + "</ul></div>" for t, items in b[2]) + "\n</div>")
+    if kind == "pair":
+        return (f'<div class="pair"><p class="pair__title">{nb(b[1])}</p><div class="pair__cols">'
+                f'<div class="code code--bad"><b>так не надо</b><pre>{html.escape(b[2])}</pre></div>'
+                f'<div class="code code--good"><b>так надо</b><pre>{html.escape(b[3])}</pre></div></div>'
+                f'<p class="pair__note">{nb(b[4])}</p></div>')
     if kind == "code":
         return f'<div class="code"><b>{b[1]}</b><pre>{html.escape(b[2])}</pre></div>'
     raise ValueError(kind)
@@ -50,7 +66,7 @@ def head(title, desc, depth):
     up = "../" * depth
     return (f'<!doctype html>\n<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             f'<meta name="theme-color" content="#f6f4ee">\n<meta name="description" content="{html.escape(desc)}">\n<title>{title}</title>\n{FONTS}\n'
-            f'<link rel="stylesheet" href="{up}styles.css"><script defer src="{up}book.js"></script></head>\n')
+            f'<link rel="stylesheet" href="{up}styles.css"><link rel="stylesheet" href="{up}extra.css"><script defer src="{up}book.js"></script></head>\n')
 
 
 def chapter(ch, prev, nxt):
@@ -159,6 +175,8 @@ def cover():
 def main():
     for name in ("styles.css", "book.js"):
         shutil.copy(PRAVO / name, ROOT / name)
+    for old in (ROOT / "temy").glob("*"):
+        shutil.rmtree(old)
     for i, ch in enumerate(CHAPTERS):
         out = ROOT / "temy" / ch["slug"]
         out.mkdir(parents=True, exist_ok=True)

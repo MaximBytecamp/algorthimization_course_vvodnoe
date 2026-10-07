@@ -4,7 +4,7 @@
 <title>4. Стандарты интернета: HTTP, JSON, дата и текст · Стандарты и сертификаты</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../../styles.css"><script defer src="../../book.js"></script></head>
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../extra.css"><script defer src="../../book.js"></script></head>
 <body><a class="skip" href="#s1">К тексту главы</a>
 <div class="book"><div class="book__body">
 <div class="spine"><span>Стандарты и сертификаты · тема 3</span></div>
@@ -54,6 +54,26 @@
 <tbody>
 <tr><td>2xx</td><td>запрос выполнен</td><td>200 OK · 201 Created · 206 Partial Content</td></tr><tr><td>3xx</td><td>перенаправление</td><td>301 Moved Permanently · 304 Not Modified</td></tr><tr><td>4xx</td><td>ошибка на стороне клиента</td><td>400 Bad Request · 401 Unauthorized · 403 Forbidden · 404 Not Found · 429 Too Many Requests</td></tr><tr><td>5xx</td><td>ошибка на стороне сервера</td><td>500 Internal Server Error · 503 Service Unavailable</td></tr>
 </tbody></table></div>
+<div class="code"><b>запрос и ответ целиком, как их видит curl -v</b><pre>&gt; GET /api/tickets/42 HTTP/1.1
+&gt; Host: kursblinovskoy.example
+&gt; Accept: application/json
+&gt; Authorization: Bearer eyJhbGciOiJIUzI1NiJ9…
+&gt;
+&lt; HTTP/1.1 200 OK
+&lt; Content-Type: application/json; charset=utf-8
+&lt; Content-Length: 118
+&lt; Cache-Control: no-store
+&lt; Date: Wed, 07 Oct 2026 08:14:22 GMT
+&lt;
+{&quot;id&quot;: 42, &quot;subject&quot;: &quot;Не открывается урок 3&quot;, &quot;status&quot;: &quot;in_progress&quot;, &quot;created_at&quot;: &quot;2026-10-06T19:02:11+03:00&quot;}</pre></div>
+<p>Строки со знаком «>» отправил клиент, со знаком «<» — сервер. Первая строка запроса — метод, путь и версия протокола; первая строка ответа — версия и код. Ниже идут заголовки, пустая строка и тело. Заголовок Date записан в формате, который задаёт RFC 9110, а дата в теле — по ISO 8601.</p>
+<div class="code"><b>строка журнала веб-сервера: что в ней</b><pre>198.51.100.77 - - [25/Sep/2026:04:17:52 +0300] &quot;GET /static/backup/users.csv HTTP/1.1&quot; 200 1148896 &quot;-&quot; &quot;python-requests/2.32&quot;
+│              │    │                           │                                     │   │         │      └ программа клиента
+│              │    │                           │                                     │   │         └ откуда пришёл (Referer)
+│              │    │                           │                                     │   └ байт передано
+│              │    │                           │                                     └ код ответа
+│              │    └ время запроса              └ метод, путь, версия
+└ адрес клиента</pre></div>
 <p>Код 401 означает, что клиент не представился. Код 403 означает, что клиент известен, но доступа к ресурсу у него нет. Код 206 сообщает, что передана часть файла: в журнале сервера по нему видно, что файл не был получен целиком.</p>
 </section>
 
@@ -71,6 +91,17 @@
 <section class="sec" id="s5">
 <h2><i>§5</i>JSON, Юникод и UTF-8</h2>
 <p>Формат JSON описан в RFC 8259. В нём шесть видов значений: объект, массив, строка, число, логическое значение и null. Комментарии и запятая после последнего элемента форматом не предусмотрены.</p>
+<div class="pair"><p class="pair__title">Правильный и неправильный JSON</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>{
+  &#x27;id&#x27;: 42,            // номер заявки
+  status: &quot;new&quot;,
+  &quot;tags&quot;: [&quot;вход&quot;, &quot;урок&quot;,],
+  &quot;price&quot;: NaN
+}</pre></div><div class="code code--good"><b>так надо</b><pre>{
+  &quot;id&quot;: 42,
+  &quot;status&quot;: &quot;new&quot;,
+  &quot;tags&quot;: [&quot;вход&quot;, &quot;урок&quot;],
+  &quot;price&quot;: null
+}</pre></div></div><p class="pair__note">Слева пять нарушений RFC 8259: одинарные кавычки, комментарий, ключ без кавычек, запятая после последнего элемента и значение NaN, которого в JSON нет.</p></div>
 <p><span class="term">Юникод</span> — стандарт, который присваивает номер каждому символу всех письменностей; тот же набор закреплён в ISO/IEC 10646. <span class="term">UTF-8</span> — способ записать эти номера байтами. RFC 8259 требует, чтобы JSON при обмене между системами был в UTF-8.</p>
 <figure class="shot"><img src="../../shots/rfc8259.jpg" alt="RFC 8259 на сайте IETF." loading="lazy"><figcaption><b>RFC 8259 на сайте IETF.</b> Справа — сведения о документе: статус, авторы, какие RFC он заменил.</figcaption></figure>
 </section>
@@ -103,7 +134,7 @@
 </div>
 </section>
 
-<nav class="chapter-nav"><a href="../3-oformlenie-dokumentov/index.html">← Глава 3. ГОСТ Р 7.0.97-2016: оформление документов</a><a href="../5-standarty-koda/index.html">Глава 5. Стандарты кода и версий: PEP 8, SemVer, OpenAPI →</a></nav>
+<nav class="chapter-nav"><a href="../3-oformlenie-dokumentov/index.html">← Глава 3. ГОСТ Р 7.0.97-2016: оформление документов</a><a href="../5-pep-8/index.html">Глава 5. PEP 8: оформление кода на Python →</a></nav>
 </section>
 
 <p class="foot"><span>Справочник «Стандарты и сертификаты» · глава 4</span><span>Макаров Максим Николаевич</span></p>

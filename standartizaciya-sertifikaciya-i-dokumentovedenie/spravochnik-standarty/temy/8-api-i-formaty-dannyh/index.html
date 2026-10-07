@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f4ee">
+<meta name="description" content="Описание HTTP API в OpenAPI 3.1 с полным примером, JSON Schema для проверки данных, описание ошибки по RFC 9457, CSV по RFC 4180, YAML и его ловушки.">
+<title>8. OpenAPI и форматы данных · Стандарты и сертификаты</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../extra.css"><script defer src="../../book.js"></script></head>
+<body><a class="skip" href="#s1">К тексту главы</a>
+<div class="book"><div class="book__body">
+<div class="spine"><span>Стандарты и сертификаты · тема 3</span></div>
+<main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../../index.html">Справочник «Стандарты и сертификаты»</a> · тема 3</p><p class="folio">Глава 8</p></div>
+
+<header class="chapter-head">
+<span class="chapter-num">8</span>
+<h1>OpenAPI и форматы<br>данных</h1>
+<p class="lead">Программы обмениваются данными в нескольких стандартных форматах, а сами интерфейсы описывают по стандарту OpenAPI. В главе разобраны описание API, схема данных, формат ошибки и три формата файлов, которые встречаются чаще всего: JSON, CSV и YAML.</p>
+</header>
+
+<dl class="passport"><div><dt>Документы</dt><dd>OpenAPI Specification 3.1 · JSON Schema 2020-12 · RFC 9457 · RFC 4180 · YAML 1.2</dd></div><div><dt>Уровень</dt><dd>Средний</dd></div><div><dt>Где встречается</dt><dd>HTTP API, выгрузки, настройки сервисов</dd></div><div><dt>Зачем это знать</dt><dd>Чтобы описать данные так, чтобы их проверяла программа</dd></div></dl>
+
+<nav class="contents"><b>В этой главе</b>
+<ol><li><a href="#s1">OpenAPI: описание API в файле</a></li><li><a href="#s2">JSON Schema</a></li><li><a href="#s3">Описание ошибки по RFC 9457</a></li><li><a href="#s4">CSV по RFC 4180</a></li><li><a href="#s5">YAML</a></li><li><a href="#s6">Частые ошибки</a></li><li><a href="#s7">Проверьте себя</a></li></ol>
+</nav>
+
+<section class="sec" id="s1">
+<h2><i>§1</i>OpenAPI: описание API в файле</h2>
+<p><span class="term">OpenAPI Specification</span> — формат описания HTTP API: адреса, методы, параметры, тела запросов, коды и схемы ответов. По файлу строят документацию (Swagger UI, ReDoc), проверяют ответы сервера и генерируют код клиента. До 2016 года спецификация называлась Swagger; теперь это имя носят инструменты.</p>
+<div class="code"><b>openapi.yaml, одна операция целиком</b><pre>openapi: 3.1.0
+info:
+  title: Service Desk API
+  version: 2.5.0
+paths:
+  /tickets/{ticket_id}:
+    get:
+      summary: Получить заявку
+      operationId: getTicket
+      parameters:
+        - name: ticket_id
+          in: path
+          required: true
+          schema: {type: integer, minimum: 1}
+      responses:
+        &#x27;200&#x27;:
+          description: Заявка найдена
+          content:
+            application/json:
+              schema: {$ref: &#x27;#/components/schemas/Ticket&#x27;}
+        &#x27;404&#x27;:
+          description: Заявки с таким номером нет
+          content:
+            application/problem+json:
+              schema: {$ref: &#x27;#/components/schemas/Problem&#x27;}
+components:
+  schemas:
+    Ticket:
+      type: object
+      required: [id, subject, status]
+      properties:
+        id: {type: integer}
+        subject: {type: string, maxLength: 200}
+        status: {type: string, enum: [new, in_progress, done]}
+        created_at: {type: string, format: date-time}</pre></div>
+<div class="table-scroll"><table>
+<thead><tr><th>Раздел</th><th>Что в нём</th></tr></thead>
+<tbody>
+<tr><td>openapi</td><td>версия спецификации, по которой написан файл</td></tr><tr><td>info</td><td>название и версия самого API</td></tr><tr><td>paths</td><td>адреса и операции: метод, параметры, тело запроса, ответы</td></tr><tr><td>components</td><td>общие схемы данных, на которые ссылаются через $ref</td></tr>
+</tbody></table></div>
+<figure class="shot"><img src="../../shots/openapi.jpg" alt="OpenAPI Specification 3.1.0." loading="lazy"><figcaption><b>OpenAPI Specification 3.1.0.</b> В версии 3.1 схемы данных совместимы с JSON Schema 2020-12. Подробный разбор — в справочнике «Стандартизация HTTP API».</figcaption></figure>
+</section>
+
+<section class="sec" id="s2">
+<h2><i>§2</i>JSON Schema</h2>
+<p><span class="term">JSON Schema</span> — язык описания, какой должна быть структура JSON: типы, обязательные поля, допустимые значения. По схеме программа проверяет данные до того, как с ними работать.</p>
+<div class="code"><b>schema/ticket.json</b><pre>{
+  &quot;$schema&quot;: &quot;https://json-schema.org/draft/2020-12/schema&quot;,
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;required&quot;: [&quot;subject&quot;, &quot;email&quot;],
+  &quot;properties&quot;: {
+    &quot;subject&quot;: {&quot;type&quot;: &quot;string&quot;, &quot;minLength&quot;: 3, &quot;maxLength&quot;: 200},
+    &quot;email&quot;: {&quot;type&quot;: &quot;string&quot;, &quot;format&quot;: &quot;email&quot;},
+    &quot;priority&quot;: {&quot;type&quot;: &quot;string&quot;, &quot;enum&quot;: [&quot;low&quot;, &quot;normal&quot;, &quot;high&quot;], &quot;default&quot;: &quot;normal&quot;}
+  },
+  &quot;additionalProperties&quot;: false
+}</pre></div>
+<div class="code"><b>проверка на Python</b><pre>from jsonschema import validate, ValidationError
+
+try:
+    validate({&quot;subject&quot;: &quot;Не работает вход&quot;, &quot;priority&quot;: &quot;urgent&quot;}, schema)
+except ValidationError as e:
+    print(e.message)
+
+# &#x27;email&#x27; is a required property</pre></div>
+<figure class="shot"><img src="../../shots/jsonschema.jpg" alt="Сайт JSON Schema." loading="lazy"><figcaption><b>Сайт JSON Schema.</b> Действующая редакция — 2020-12. Схемы можно писать и в YAML: структура та же.</figcaption></figure>
+</section>
+
+<section class="sec" id="s3">
+<h2><i>§3</i>Описание ошибки по RFC 9457</h2>
+<p>RFC 9457 «Problem Details for HTTP APIs» задаёт единый вид тела ответа об ошибке. Тип содержимого — <code>application/problem+json</code>.</p>
+<div class="code"><b>ответ 422 по RFC 9457</b><pre>HTTP/1.1 422 Unprocessable Content
+Content-Type: application/problem+json
+
+{
+  &quot;type&quot;: &quot;https://kursblinovskoy.example/problems/email-taken&quot;,
+  &quot;title&quot;: &quot;Адрес почты уже занят&quot;,
+  &quot;status&quot;: 422,
+  &quot;detail&quot;: &quot;Ученик с адресом petya@mail.example уже зарегистрирован.&quot;,
+  &quot;instance&quot;: &quot;/signup&quot;
+}</pre></div>
+<div class="table-scroll"><table>
+<thead><tr><th>Поле</th><th>Смысл</th></tr></thead>
+<tbody>
+<tr><td>type</td><td>адрес, который однозначно называет вид ошибки</td></tr><tr><td>title</td><td>краткое описание вида ошибки</td></tr><tr><td>status</td><td>код ответа HTTP</td></tr><tr><td>detail</td><td>что случилось в этот раз</td></tr><tr><td>instance</td><td>к какому запросу относится</td></tr>
+</tbody></table></div>
+<p>RFC 9457 заменил RFC 7807 2016 года; формат совместим.</p>
+</section>
+
+<section class="sec" id="s4">
+<h2><i>§4</i>CSV по RFC 4180</h2>
+<p>CSV — таблица в текстовом файле, по строке на запись. RFC 4180 задаёт правила: поля разделены запятой, первая строка может быть заголовком, поле с запятой, кавычкой или переводом строки заключают в двойные кавычки, а кавычку внутри поля удваивают.</p>
+<div class="code"><b>users.csv по RFC 4180</b><pre>id,full_name,email,comment
+1,&quot;Иванова Мария&quot;,maria@example.ru,
+2,&quot;Петров, Пётр&quot;,petr@example.ru,&quot;Сказал: &quot;&quot;позвоните после 18&quot;&quot;&quot;
+3,&quot;Сидоров Иван&quot;,ivan@example.ru,&quot;Две строки
+в комментарии&quot;</pre></div>
+<p>Excel в русской локали сохраняет CSV с точкой с запятой и в кодировке Windows-1251. Это отступление от RFC 4180; при обмене между программами разделитель и кодировку оговаривают явно. Модуль <code>csv</code> в Python читает файл по правилам RFC 4180, если не указать иное.</p>
+<div class="code"><b>чтение и запись на Python</b><pre>import csv
+
+with open(&#x27;users.csv&#x27;, encoding=&#x27;utf-8&#x27;, newline=&#x27;&#x27;) as f:
+    for row in csv.DictReader(f):
+        print(row[&#x27;full_name&#x27;], row[&#x27;email&#x27;])
+
+with open(&#x27;export.csv&#x27;, &#x27;w&#x27;, encoding=&#x27;utf-8&#x27;, newline=&#x27;&#x27;) as f:
+    writer = csv.writer(f, delimiter=&#x27;;&#x27;)   # для Excel
+    writer.writerow([&#x27;id&#x27;, &#x27;full_name&#x27;])</pre></div>
+</section>
+
+<section class="sec" id="s5">
+<h2><i>§5</i>YAML</h2>
+<p>YAML 1.2 — формат настроек: Docker Compose, GitHub Actions, OpenAPI. Вложенность задаётся отступами пробелами, табуляция запрещена. YAML 1.2 — надмножество JSON: любой JSON является правильным YAML.</p>
+<div class="pair"><p class="pair__title">Ловушки YAML</p><div class="pair__cols"><div class="code code--bad"><b>так не надо</b><pre>country: NO
+version: 3.10
+port: 08080
+password: 12345</pre></div><div class="code code--good"><b>так надо</b><pre>country: &quot;NO&quot;
+version: &quot;3.10&quot;
+port: 8080
+password: &quot;12345&quot;</pre></div></div><p class="pair__note">Старые разборщики по правилам YAML 1.1 читают <code>NO</code> как ложь, <code>3.10</code> — как число 3.1, а <code>08080</code> — как восьмеричное. Значения, которые должны остаться строками, берут в кавычки.</p></div>
+</section>
+
+<section class="wrapup">
+<section class="sec" id="s6">
+<h2><i>§6</i>Частые ошибки</h2>
+<div class="mistakes">
+<div><b>Описывать API в документе Word</b>Описание в OpenAPI проверяет программа, документ — никто.</div>
+<div><b>Возвращать ошибку обычным текстом</b>Клиенту нужен машинно читаемый ответ: RFC 9457.</div>
+<div><b>Собирать CSV склейкой строк через запятую</b>Запятая или кавычка в данных сломает файл; пишут модулем csv.</div>
+<div><b>Не указывать кодировку CSV</b>Файл из Excel придёт в Windows-1251 с точкой с запятой.</div>
+<div><b>Писать версию в YAML без кавычек</b>3.10 превратится в число 3.1.</div>
+</div>
+</section>
+
+<section class="sec" id="s7">
+<h2><i>§7</i>Проверьте себя</h2>
+<ol class="check">
+<li>Из каких разделов состоит файл OpenAPI? Где описывают общие схемы?</li>
+<li>Что проверяет JSON Schema? Чем поможет additionalProperties: false?</li>
+<li>Какие поля описания ошибки задаёт RFC 9457?</li>
+<li>Как по RFC 4180 записать поле, в котором есть запятая и кавычка?</li>
+<li>Почему в YAML версию 3.10 пишут в кавычках?</li>
+</ol>
+<div class="cheat">
+<div><b>API</b><code>OpenAPI 3.1</code><code>paths, components</code><code>$ref</code><code>Swagger UI, ReDoc</code></div>
+<div><b>Данные</b><code>JSON Schema 2020-12</code><code>RFC 9457 — ошибка</code><code>problem+json</code></div>
+<div><b>Файлы</b><code>CSV — RFC 4180</code><code>"" — кавычка в поле</code><code>YAML — пробелы</code><code>строки в кавычках</code></div>
+</div>
+</section>
+
+<nav class="chapter-nav"><a href="../7-versii-i-istoriya/index.html">← Глава 7. Версии, коммиты и журнал изменений</a><a href="../9-kody-i-edinicy/index.html">Глава 9. Коды стран, валют, языков и единицы величин →</a></nav>
+</section>
+
+<p class="foot"><span>Справочник «Стандарты и сертификаты» · глава 8</span><span>Макаров Максим Николаевич</span></p>
+</main>
+</div></div>
+<dialog id="zoom"><div class="bar"><span>Кадр</span><button type="button">Закрыть ✕</button></div><img alt=""></dialog>
+</body></html>
