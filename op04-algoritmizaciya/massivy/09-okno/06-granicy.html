@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>9.6 Границы окна и неверный k · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 9 · Скользящее окно · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 9 · скользящее окно</p>
+          <p class="running__folio">Глава 9.6</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">9.6</span>
+          <h1>Границы окна<br>и неверный k</h1>
+          <p class="lead">В этой главе разобран контроль КТП занятия 9: «тесты k=0/1/n и неверного k» и review на корректность обновления окна. Сначала — разбор <code>best_window</code> по строкам и запуск версий, в которых одна строка записана иначе. Затем — что функции модуля возвращают на граничных входах и почему на неверный <code>k</code> отвечают исключением. В конце — тесты границ с настоящим выводом pytest, песочница с функцией, которую нужно исправить, и вопросы, которые задают на review.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Код и тесты</dd></div>
+          <div><dt>Уровень</dt><dd>Средний</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 9.2–9.5; глава 8.6: разбор кода по строкам</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Пройти review и тесты границ из контроля КТП</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Разбор best_window по строкам</a></li>
+            <li><a href="#s2">Запуск изменённых версий</a></li>
+            <li><a href="#s3">Граничные входы всех функций</a></li>
+            <li><a href="#s4">Почему исключение</a></li>
+            <li><a href="#s5">Тесты границ</a></li>
+            <li><a href="#s6">Исправьте функцию</a></li>
+            <li><a href="#s7">Review обновления окна</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Разбор best_window по строкам</h2>
+        <p>В главе 9.4 функция собрана из строк и пройдена по шагам. Здесь каждая строка разобрана отдельно: за что она отвечает и что получится, если записать её иначе. Под таблицей изменённые версии запущены.</p>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>best_window из главы 9.4</span></figcaption>
+<pre><span class="k">def</span> <span class="f">best_window</span>(nums, k):
+    <span class="k">if</span> k &lt; <span class="n">1</span> <span class="k">or</span> k &gt; <span class="k">len</span>(nums):
+        <span class="k">raise</span> ValueError(<span class="s">"k должно быть от 1 до len(nums)"</span>)
+    total = <span class="k">sum</span>(nums[:k])
+    best, start = total, <span class="n">0</span>
+    <span class="k">for</span> r <span class="k">in</span> <span class="k">range</span>(k, <span class="k">len</span>(nums)):
+        total += nums[r] - nums[r - k]
+        <span class="k">if</span> total &gt; best:
+            best, start = total, r - k + <span class="n">1</span>
+    <span class="k">return</span> (start, best)</pre>
+        </figure>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Строка</th><th>Что делает</th><th>Если записать иначе</th></tr></thead>
+            <tbody>
+              <tr><td><code>if k &lt; 1 or k &gt; len(nums):</code></td><td>Отсекает неверный <code>k</code> и пустой список до работы с окнами</td><td>Без строки при <code>k = 0</code>, <code>k &gt; n</code> и на пустом списке функция молча возвращает ответ для окна, которого нет. С <code>k &gt;= len(nums)</code> она отказывается работать на допустимом <code>k = n</code></td></tr>
+              <tr><td><code>total = sum(nums[:k])</code></td><td>Сумма первого окна — единственного, которое складывается целиком</td><td><code>sum(nums[:k - 1])</code> — в первом окне на элемент меньше, и каждая сумма отличается от верной на <code>nums[k − 1]</code></td></tr>
+              <tr><td><code>best, start = total, 0</code></td><td>Первое окно — пока лучшее</td><td><code>best = 0</code> — неверный ответ при всех отрицательных суммах, глава 9.4, §6</td></tr>
+              <tr><td><code>for r in range(k, len(nums)):</code></td><td><code>r</code> — индекс элемента, который входит в окно, от <code>k</code> до последнего</td><td><code>range(k + 1, …)</code> — пропущен один сдвиг, все суммы после него неверны</td></tr>
+              <tr><td><code>total += nums[r] - nums[r - k]</code></td><td>Сдвиг: плюс пришедший, минус ушедший</td><td><code>nums[r - k + 1]</code> — вычитается элемент, который остаётся в окне, глава 9.3, §8</td></tr>
+              <tr><td><code>if total &gt; best:</code></td><td>Новое окно лучше только при строго большей сумме</td><td><code>&gt;=</code> — при равных суммах побеждает окно правее, глава 9.4, §5</td></tr>
+              <tr><td><code>best, start = total, r - k + 1</code></td><td>Запоминает сумму и начало окна, которое заканчивается на <code>r</code></td><td><code>start = r - k</code> — начало на одну позицию левее настоящего</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s2"><span class="sec">§2</span>Запуск изменённых версий</h2>
+        <p>Три изменения из таблицы, которые в главах 9.3 и 9.4 ещё не запускались. На каждой вкладке отличается одна строка, вход подобран так, чтобы изменение проявилось. Ошибочный ответ сопоставлен с верным.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>best_window с одной изменённой строкой</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>без проверки, k = 0</button>
+            <button>без проверки, k &gt; n</button>
+            <button>range(k + 1, …)</button>
+            <button>k &gt;= len(nums)</button>
+            <button>k = n · верная версия</button>
+          </div>
+          <div class="demo__pane">
+            <p>Проверки <code>k</code> нет. Вход — <code>[1, 2]</code>, <code>k = 0</code>. Верный ответ — <code>ValueError</code>: окна длины 0 не бывает.</p>
+            <div class="tracer tracer--bug" data-trace="var_no_check_k0" data-zone="window" data-title="Без проверки, k = 0"></div>
+            <p class="demo__verdict"><b>(0, 0)</b>Срез <code>nums[:0]</code> пустой, его сумма 0. На каждом шаге прибавляется и вычитается один и тот же элемент, сумма остаётся 0. Функция возвращает ответ, и ничто не говорит, что вход был неверным.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Проверки <code>k</code> нет. Вход — <code>[1, 2]</code>, <code>k = 3</code>. Верный ответ — <code>ValueError</code>.</p>
+            <div class="tracer tracer--bug" data-trace="var_no_check_big" data-zone="window" data-title="Без проверки, k = 3"></div>
+            <p class="demo__verdict"><b>(0, 3)</b>Срез за границей списка в Python ошибки не даёт: <code>nums[:3]</code> возвращает весь список из двух элементов. Цикл <code>range(3, 2)</code> пуст. Функция возвращает сумму «окна длины 3» в списке из двух элементов.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Цикл начинается с <code>k + 1</code>. Вход — список посещений, <code>k = 3</code>. Верный ответ — <code>(4, 50)</code>.</p>
+            <div class="tracer tracer--bug" data-trace="var_range_k1" data-zone="window" data-title="range(k + 1, len(nums))"></div>
+            <p class="demo__verdict"><b>(4, 42)</b>На шаге 4 цикл начинается с <code>r = 4</code>, и сдвиг, на котором в окно входит <code>nums[3] = 20</code>, не выполняется. Дальше <code>total</code> на каждом шаге отличается от настоящей суммы окна: 39 вместо 47, 37 вместо 45, 42 вместо 50.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Проверка <code>k &gt;= len(nums)</code>. Вход — <code>[4, 1, 2]</code>, <code>k = 3</code>: одно окно — весь список, верный ответ <code>(0, 7)</code>.</p>
+            <div class="tracer tracer--bug" data-trace="var_check_ge" data-zone="window" data-title="k &gt;= len(nums)"></div>
+            <p class="demo__verdict"><b>ValueError</b>Условие <code>3 &gt;= 3</code> истинно, и функция отказывается работать на допустимом входе. Это ошибка на единицу в проверке: окно длины n в списке из n элементов есть.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Верная версия на том же входе <code>[4, 1, 2]</code>, <code>k = 3</code>.</p>
+            <div class="tracer" data-trace="fix_k_is_n" data-zone="window" data-title="k = n"></div>
+            <p class="demo__verdict"><b>(0, 7)</b>Проверка пропускает <code>k = 3</code>, первое окно — весь список. Цикл <code>range(3, 3)</code> пуст: сдвигов нет, окно одно.</p>
+          </div>
+        </div>
+        <p>Первые две вкладки показывают, почему проверку пишут первой строкой. Без неё функция на неверном входе возвращает правдоподобный ответ: <code>(0, 0)</code> и <code>(0, 3)</code> выглядят как обычные результаты.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Граничные входы всех функций</h2>
+        <p>В модуле четыре функции. Три написаны по контракту курса и проверяют вход. <code>max_vowels</code> — решение LeetCode 1456, где условие гарантирует <code>1 ≤ k ≤ len(s)</code>, поэтому проверки в нём нет. Все значения в таблице получены запуском.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Вход</th><th>window_sums([4, 1, 2], k)</th><th>best_window([4, 1, 2], k)</th><th>max_vowels("aba", k)</th></tr></thead>
+            <tbody>
+              <tr><td><code>k = 0</code></td><td><code>ValueError</code></td><td><code>ValueError</code></td><td><code>0</code></td></tr>
+              <tr><td><code>k = −1</code></td><td><code>ValueError</code></td><td><code>ValueError</code></td><td><code>IndexError</code></td></tr>
+              <tr><td><code>k = 1</code></td><td><code>[4, 1, 2]</code></td><td><code>(0, 4)</code></td><td><code>1</code></td></tr>
+              <tr><td><code>k = n = 3</code></td><td><code>[7]</code></td><td><code>(0, 7)</code></td><td><code>2</code></td></tr>
+              <tr><td><code>k = 4 &gt; n</code></td><td><code>ValueError</code></td><td><code>ValueError</code></td><td><code>2</code></td></tr>
+              <tr><td>пустой вход, <code>k = 1</code></td><td><code>ValueError</code></td><td><code>ValueError</code></td><td><code>0</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>При <code>k = 1</code> окно — один элемент: суммы окон совпадают со списком, лучшее окно — наибольший элемент. При <code>k = n</code> окно одно, цикл сдвигов не выполняется ни разу. Эти два значения <code>k</code> проверяют, что код верен и тогда, когда сдвигов максимальное число, и тогда, когда их нет совсем.</p>
+        <p>У <code>max_events</code> вместо <code>k</code> — длина окна по времени <code>w</code>. <code>w = 0</code> и отрицательное <code>w</code> дают <code>ValueError</code>, пустой список — 0, а очень большое <code>w</code> допустимо: все события попадают в одно окно. На <code>[1, 2]</code> при <code>w = 100</code> функция возвращает 2.</p>
+        <div class="margin-note margin-note--steel">
+          <b>На полях: решения LeetCode и проверка входа</b>
+          <p>На LeetCode ограничения входа записаны в разделе Constraints, и тесты сайта их не нарушают. Поэтому решения задач с сайта обычно не проверяют <code>k</code>, и на собеседовании это допустимо, если ограничение названо вслед за условием. В коде, который вызывают другие функции, такой гарантии нет — отсюда проверка в <code>best_window</code>.</p>
+        </div>
+
+        <h2 id="s4"><span class="sec">§4</span>Почему исключение</h2>
+        <p>На неверный <code>k</code> функция могла бы ответить по-разному: вернуть <code>None</code>, вернуть <code>(0, 0)</code> или бросить исключение. Интервьюер в главе 9.2 выбрал исключение. Причины видны в §2.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Ответ на неверный k</th><th>Что видит вызывающий код</th><th>Чем это опасно</th></tr></thead>
+            <tbody>
+              <tr><td>Число или пара, например <code>(0, 0)</code></td><td>Обычный результат</td><td>Неверный вход неотличим от настоящего ответа, ошибка уходит дальше по программе</td></tr>
+              <tr><td><code>None</code></td><td>Особое значение</td><td>Код, который не проверяет <code>None</code>, упадёт позже и в другом месте — там, где с результатом начнут работать</td></tr>
+              <tr><td><code>raise ValueError</code></td><td>Исключение в строке вызова</td><td>Программа останавливается сразу и сообщает, какой аргумент неверен; перехватить можно через <code>try … except ValueError</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><code>ValueError</code> выбран потому, что тип аргумента верный — целое число, — а значение недопустимое. Так же поступает и стандартная библиотека: <code>int("abc")</code> бросает <code>ValueError</code>.</p>
+        <p>Проверку можно было бы записать через <code>assert</code>, но <code>assert</code> выключается при запуске Python с ключом <code>-O</code>. Тогда проверки нет совсем, и функция возвращает ответ на неверный вход:</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>assert и ключ -O · Python 3.12</span></figcaption>
+<pre>$ cat a_test.py
+def f(k):
+    assert k &gt;= 1, "k должно быть не меньше 1"
+    return k
+print(f(0))
+$ python a_test.py
+AssertionError: k должно быть не меньше 1
+$ python -O a_test.py
+0</pre>
+        </figure>
+        <p>Поэтому проверку входных данных пишут через <code>if … raise</code>, а <code>assert</code> оставляют для тестов и проверок, без которых программа может работать.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Тесты границ</h2>
+        <p>Тесты ниже входят в <code>tests.py</code> стартового набора занятия 9. Тест неверного <code>k</code> запускается для двух функций и четырёх входов — восемь проверок одной функцией благодаря двум декораторам <code>parametrize</code>. Ожидание исключения записывается через <code>pytest.raises</code>: тест проходит, только если внутри блока <code>with</code> было брошено <code>ValueError</code>.</p>
+        <figure class="code">
+          <figcaption><span>tests.py</span><span>границы k и w</span></figcaption>
+<pre><span class="k">import</span> pytest
+
+<span class="k">from</span> solution <span class="k">import</span> best_window, max_events, window_sums
+
+K_FUNCS = [window_sums, best_window]
+
+
+@pytest.mark.parametrize(<span class="s">"func"</span>, K_FUNCS)
+@pytest.mark.parametrize(<span class="s">"nums, k"</span>, [([<span class="n">1</span>, <span class="n">2</span>], <span class="n">0</span>), ([<span class="n">1</span>, <span class="n">2</span>], -<span class="n">1</span>), ([<span class="n">1</span>, <span class="n">2</span>], <span class="n">3</span>), ([], <span class="n">1</span>)],
+                         ids=[<span class="s">"k_zero"</span>, <span class="s">"k_negative"</span>, <span class="s">"k_over_n"</span>, <span class="s">"empty"</span>])
+<span class="k">def</span> <span class="f">test_bad_k_raises</span>(func, nums, k):
+    <span class="k">with</span> pytest.raises(ValueError):
+        func(nums, k)
+
+
+<span class="k">def</span> <span class="f">test_k_is_one</span>():
+    <span class="k">assert</span> window_sums([<span class="n">3</span>, -<span class="n">2</span>, <span class="n">7</span>], <span class="n">1</span>) == [<span class="n">3</span>, -<span class="n">2</span>, <span class="n">7</span>]
+    <span class="k">assert</span> best_window([<span class="n">3</span>, -<span class="n">2</span>, <span class="n">7</span>], <span class="n">1</span>) == (<span class="n">2</span>, <span class="n">7</span>)
+
+
+<span class="k">def</span> <span class="f">test_k_is_n</span>():
+    <span class="k">assert</span> window_sums([<span class="n">4</span>, <span class="n">1</span>, <span class="n">2</span>], <span class="n">3</span>) == [<span class="n">7</span>]
+    <span class="k">assert</span> best_window([<span class="n">4</span>, <span class="n">1</span>, <span class="n">2</span>], <span class="n">3</span>) == (<span class="n">0</span>, <span class="n">7</span>)
+
+
+<span class="k">def</span> <span class="f">test_bad_w_raises</span>():
+    <span class="k">for</span> w <span class="k">in</span> (<span class="n">0</span>, -<span class="n">1</span>):
+        <span class="k">with</span> pytest.raises(ValueError):
+            max_events([<span class="n">1</span>, <span class="n">2</span>], w)
+
+
+<span class="k">def</span> <span class="f">test_events_right_edge_and_empty</span>():
+    <span class="k">assert</span> max_events([<span class="n">0</span>, <span class="n">5</span>], <span class="n">5</span>) == <span class="n">1</span>
+    <span class="k">assert</span> max_events([], <span class="n">3</span>) == <span class="n">0</span></pre>
+        </figure>
+        <p>В полном <code>tests.py</code> 34 теста. Ключ <code>-k</code> оставляет только тесты, в имени которых есть одно из перечисленных слов, — это двенадцать проверок границ. Вывод на эталонном решении:</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>python -m pytest tests.py -v -k "bad_k or k_is or bad_w or right_edge"</span></figcaption>
+<pre>collected 34 items / 22 deselected / 12 selected
+
+tests.py::test_bad_k_raises[k_zero-window_sums] PASSED                   [  8%]
+tests.py::test_bad_k_raises[k_zero-best_window] PASSED                   [ 16%]
+tests.py::test_bad_k_raises[k_negative-window_sums] PASSED               [ 25%]
+tests.py::test_bad_k_raises[k_negative-best_window] PASSED               [ 33%]
+tests.py::test_bad_k_raises[k_over_n-window_sums] PASSED                 [ 41%]
+tests.py::test_bad_k_raises[k_over_n-best_window] PASSED                 [ 50%]
+tests.py::test_bad_k_raises[empty-window_sums] PASSED                    [ 58%]
+tests.py::test_bad_k_raises[empty-best_window] PASSED                    [ 66%]
+tests.py::test_k_is_one PASSED                                           [ 75%]
+tests.py::test_k_is_n PASSED                                             [ 83%]
+tests.py::test_bad_w_raises PASSED                                       [ 91%]
+tests.py::test_events_right_edge_and_empty PASSED                        [100%]
+
+====================== 12 passed, 22 deselected in 0.01s =======================</pre>
+        </figure>
+        <p>Вывод, если в <code>best_window</code> убрать проверку <code>k</code>, как на первой вкладке §2:</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>best_window без проверки k</span></figcaption>
+<pre>FAILED tests.py::test_bad_k_raises[k_zero-best_window] - Failed: DID NOT RAIS...
+FAILED tests.py::test_bad_k_raises[k_negative-best_window] - IndexError: list...
+FAILED tests.py::test_bad_k_raises[k_over_n-best_window] - Failed: DID NOT RA...
+FAILED tests.py::test_bad_k_raises[empty-best_window] - Failed: DID NOT RAISE...
+4 failed, 8 passed, 22 deselected in 0.02s</pre>
+        </figure>
+        <p><code>DID NOT RAISE</code> означает, что функция вернула значение там, где тест ждал исключения. На <code>k = −1</code> функция без проверки падает, но не с тем исключением: <code>IndexError</code> вместо <code>ValueError</code>. Тесты <code>window_sums</code> проходят — в ней проверка на месте.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Исправьте функцию</h2>
+        <p>В окне ниже <code>best_window</code> с двумя ошибками из §2: нет проверки <code>k</code>, и цикл начинается с <code>k + 1</code>. Исправьте функцию так, чтобы прошли все семь тестов. Сначала запустите тесты и посмотрите, какие падают и с каким сообщением.</p>
+        <div class="sandbox" data-title="Исправьте best_window" data-call="print(best_window([12, 15, 9, 20, 18, 7, 25], 3))">
+<script type="text/plain" class="sandbox__start">
+def best_window(nums, k):
+    total = sum(nums[:k])
+    best, start = total, 0
+    for r in range(k + 1, len(nums)):
+        total += nums[r] - nums[r - k]
+        if total > best:
+            best, start = total, r - k + 1
+    return (start, best)
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """посещения по часам, k = 3"""
+    r = best_window([12, 15, 9, 20, 18, 7, 25], 3)
+    assert r == (4, 50), f"ожидалось (4, 50), получено {r!r}"
+
+def test_k_is_one():
+    """k = 1: ответ — наибольший элемент"""
+    r = best_window([3, -2, 7], 1)
+    assert r == (2, 7), f"ожидалось (2, 7), получено {r!r}"
+
+def test_k_is_n():
+    """k = n: одно окно — весь список"""
+    r = best_window([4, 1, 2], 3)
+    assert r == (0, 7), f"ожидалось (0, 7), получено {r!r}"
+
+def test_k_zero():
+    """k = 0 — ValueError"""
+    try:
+        r = best_window([1, 2], 0)
+    except ValueError:
+        return
+    assert False, f"ожидалась ValueError, функция вернула {r!r}"
+
+def test_k_negative():
+    """k = -1 — ValueError"""
+    try:
+        r = best_window([1, 2], -1)
+    except ValueError:
+        return
+    assert False, f"ожидалась ValueError, функция вернула {r!r}"
+
+def test_k_over_n():
+    """k = 3 при длине 2 — ValueError"""
+    try:
+        r = best_window([1, 2], 3)
+    except ValueError:
+        return
+    assert False, f"ожидалась ValueError, функция вернула {r!r}"
+
+def test_empty():
+    """пустой список — ValueError"""
+    try:
+        r = best_window([], 1)
+    except ValueError:
+        return
+    assert False, f"ожидалась ValueError, функция вернула {r!r}"
+</script>
+</div>
+
+        <h2 id="s7"><span class="sec">§7</span>Review обновления окна</h2>
+        <p>В КТП контроль занятия 9 включает «Git review на корректность обновления окна»: решение сдаётся Pull Request, и проверяющий читает код окна по строкам. Ниже — что он проверяет, затем три фрагмента для самостоятельного review.</p>
+        <div class="checklist">
+          <p class="checklist__head">Обновление окна проверено, если</p>
+          <div class="checklist__item"><span><b>Вход проверен до работы с окнами</b><code>k &lt; 1 or k &gt; len(nums)</code> → <code>ValueError</code>; граница <code>k = n</code> пропускается.</span></div>
+          <div class="checklist__item"><span><b>Первое окно посчитано целиком</b><code>sum(nums[:k])</code> — ровно k элементов, и оно учтено в ответе.</span></div>
+          <div class="checklist__item"><span><b>Цикл начинается с первого сдвига</b><code>range(k, len(nums))</code>: первый пришедший элемент — <code>nums[k]</code>.</span></div>
+          <div class="checklist__item"><span><b>Ушедший элемент — nums[r − k]</b>Для пришедшего <code>nums[r]</code> окно после сдвига — <code>nums[r − k + 1:r + 1]</code>.</span></div>
+          <div class="checklist__item"><span><b>Состояние обновлено до сравнения</b>Сначала сдвиг, потом сравнение с лучшим, иначе сравнивается прошлое окно.</span></div>
+          <div class="checklist__item"><span><b>Знак сравнения совпадает с условием</b><code>&gt;</code> — самое левое из равных окон, <code>&gt;=</code> — самое правое.</span></div>
+          <div class="checklist__item"><span><b>Есть тесты k = 1, k = n и неверного k</b>И тест, который сравнивает ответ с перебором срезов.</span></div>
+        </div>
+        <div class="quiz">
+          <div class="quiz__q"><b>Review 1</b>Функция должна вернуть сумму каждого окна длины k. Какая строка неверна?<pre>def window_sums(nums, k):
+    if k &lt; 1 or k &gt; len(nums):
+        raise ValueError("k должно быть от 1 до len(nums)")
+    total = sum(nums[:k])
+    sums = [total]
+    for r in range(k, len(nums)):
+        sums.append(total)
+        total += nums[r] - nums[r - k]
+    return sums</pre></div>
+          <ul class="quiz__opts">
+            <li><button><code>for r in range(k, len(nums)):</code></button><p class="quiz__why">Границы цикла верные: <code>r</code> проходит индексы пришедших элементов от <code>k</code> до последнего.</p></li>
+            <li data-ok><button><code>sums.append(total)</code> стоит до сдвига</button><p class="quiz__why">Верно. Записывается сумма прошлого окна, поэтому первое окно попадает в ответ дважды, а последнее не попадает. На <code>[1, 2, 3]</code> с <code>k = 2</code> функция вернёт <code>[3, 3]</code> вместо <code>[3, 5]</code>.</p></li>
+            <li><button><code>sums = [total]</code></button><p class="quiz__why">Первое окно должно быть в ответе, эта строка верна. Ошибка в порядке двух строк в теле цикла.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <div class="quiz__q"><b>Review 2</b>Функция должна вернуть начало и сумму лучшего окна, при равных — самого левого. Какая строка неверна?<pre>def best_window(nums, k):
+    if k &lt; 1 or k &gt; len(nums):
+        raise ValueError("k должно быть от 1 до len(nums)")
+    total = sum(nums[:k])
+    best, start = total, 0
+    for r in range(k, len(nums)):
+        total += nums[r] - nums[r - k]
+        if total &gt; best:
+            best, start = total, r - k
+    return (start, best)</pre></div>
+          <ul class="quiz__opts">
+            <li><button><code>if total &gt; best:</code></button><p class="quiz__why">Строгий знак соответствует условию «самое левое из равных».</p></li>
+            <li><button><code>best, start = total, 0</code></button><p class="quiz__why">Первое окно начинается с индекса 0, эта строка верна.</p></li>
+            <li data-ok><button><code>best, start = total, r - k</code></button><p class="quiz__why">Верно. Окно, которое заканчивается на <code>r</code>, начинается с <code>r − k + 1</code>. <code>r − k</code> — индекс ушедшего элемента, на единицу левее. На списке посещений функция вернёт <code>(3, 50)</code> вместо <code>(4, 50)</code>.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <div class="quiz__q"><b>Review 3</b>В Pull Request к <code>best_window</code> добавлены тесты. Каких тестов не хватает до контроля КТП?<pre>def test_example():
+    assert best_window([12, 15, 9, 20, 18, 7, 25], 3) == (4, 50)
+
+def test_negative():
+    assert best_window([-5, -2, -8, -1], 2) == (0, -7)
+
+def test_bad_k():
+    with pytest.raises(ValueError):
+        best_window([1, 2], 0)</pre></div>
+          <ul class="quiz__opts">
+            <li data-ok><button>k = 1, k = n и k больше длины списка</button><p class="quiz__why">Верно. Контроль КТП — «тесты k=0/1/n и неверного k». Есть только k = 0; нет одного элемента в окне, одного окна на весь список и k больше n.</p></li>
+            <li><button>Теста на список длиной миллион элементов</button><p class="quiz__why">Скорость проверяют замером, глава 9.7. Тесты границ проверяют правильность на крайних входах.</p></li>
+            <li><button>Ничего: пример и отрицательные числа покрывают всё</button><p class="quiz__why">Пример не проверяет ни <code>k = 1</code>, ни <code>k = n</code>: на нём цикл выполняется обычное число раз.</p></li>
+          </ul>
+        </div>
+
+        <div class="pager"><a href="05-sobytiya-v-okne.html">← 9.5 События во временном окне</a><a href="07-zamer.html">9.7 Замер: сдвиг окна и сумма среза →</a></div>
+        <div class="colophon">
+          <span>Модуль 9 · Скользящее окно · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>

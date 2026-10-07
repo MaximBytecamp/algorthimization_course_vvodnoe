@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>9.3 Окно и пересчёт за O(1) · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 9 · Скользящее окно · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 9 · скользящее окно</p>
+          <p class="running__folio">Глава 9.3</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">9.3</span>
+          <h1>Окно<br>и пересчёт за O(1)</h1>
+          <p class="lead">В этой главе механизм окна разобран на самой простой задаче: посчитать сумму каждого окна длины k. Сначала — решение срезами, которое пишется сразу, и его цена. Затем — сдвиг окна: сумма исправляется по ушедшему и пришедшему элементу. Сдвиг нужно пройти руками, собрать функцию из строк, написать её в песочнице и посмотреть пошаговый прогон. В конце — две частые ошибки сдвига, каждая с прогоном ошибочной и исправленной версии.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Алгоритм</dd></div>
+          <div><dt>Уровень</dt><dd>Начальный</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 9.1 и 9.2; занятие 7: срезы и полуинтервалы</dd></div>
+          <div><dt>Зачем это знать</dt><dd>На этом сдвиге построены все задачи модуля</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Задача: сумма каждого окна</a></li>
+            <li><a href="#s2">Решение срезами</a></li>
+            <li><a href="#s3">Сколько стоят срезы</a></li>
+            <li><a href="#s4">Идея сдвига и состояние окна</a></li>
+            <li><a href="#s5">Сдвиг окна вручную</a></li>
+            <li><a href="#s6">Сборка функции из строк</a></li>
+            <li><a href="#s7">Код и пошаговый прогон</a></li>
+            <li><a href="#s8">Две ошибки сдвига</a></li>
+            <li><a href="#s9">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Задача: сумма каждого окна</h2>
+        <p>Задача КТП о лучшем отрезке длины k разобрана в главе 9.4. Здесь — более простая задача, которая лежит внутри неё: посчитать сумму каждого окна. Лучшему отрезку остаётся только выбрать наибольшую из этих сумм. Контракт тот же, что в главе 9.2: числа могут быть отрицательными, неверное <code>k</code> даёт <code>ValueError</code>.</p>
+        <div class="term-card">
+          <p class="term-card__head"><b>window_sums(nums, k)</b><span>сумма каждого окна · скользящая сумма</span></p>
+          <div class="term-card__body">
+            <p><code>nums</code> — список целых чисел, <code>k</code> — длина окна, <code>1 ≤ k ≤ len(nums)</code>, иначе <code>ValueError</code>. Вернуть новый список из <code>n − k + 1</code> сумм: на месте <code>s</code> — сумма <code>nums[s:s + k]</code>. Исходный список не меняется.</p>
+            <p>Пример: <code>nums = [12, 15, 9, 20, 18, 7, 25]</code>, <code>k = 3</code>. Ответ <code>[36, 44, 47, 45, 50]</code> — то же, что <code>rolling(3).sum()</code> в главе 9.1, без двух значений <code>nan</code> в начале.</p>
+          </div>
+        </div>
+
+        <h2 id="s2"><span class="sec">§2</span>Решение срезами</h2>
+        <p>Самое прямое решение — для каждого начала окна <code>s</code> взять срез <code>nums[s:s + k]</code> и сложить его функцией <code>sum</code>. Начала окон — от 0 до <code>n − k</code> включительно, поэтому цикл идёт по <code>range(len(nums) - k + 1)</code>. Это решение пишется сразу и служит эталоном: с ним сравнивают быстрое.</p>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n·k) · память O(k) на срез</span></figcaption>
+<pre><span class="k">def</span> <span class="f">window_sums_slices</span>(nums, k):
+    <span class="k">if</span> k &lt; <span class="n">1</span> <span class="k">or</span> k &gt; <span class="k">len</span>(nums):
+        <span class="k">raise</span> ValueError(<span class="s">"k должно быть от 1 до len(nums)"</span>)
+    sums = []
+    <span class="k">for</span> s <span class="k">in</span> <span class="k">range</span>(<span class="k">len</span>(nums) - k + <span class="n">1</span>):
+        sums.append(<span class="k">sum</span>(nums[s:s + k]))
+    <span class="k">return</span> sums</pre>
+        </figure>
+        <details class="pyhint"><summary>Python в этой строке: <code>raise ValueError(...)</code></summary><div><p><code>raise</code> прерывает функцию исключением. <code>ValueError</code> — стандартное исключение для случая, когда тип аргумента верный, а значение недопустимое: здесь <code>k</code> — целое число, но вне допустимых границ. Вызывающий код может перехватить его через <code>try … except ValueError</code>.</p><pre>&gt;&gt;&gt; def check(k):
+...     if k &lt; 1:
+...         raise ValueError("k должно быть не меньше 1")
+...     return k
+...
+&gt;&gt;&gt; check(0)
+Traceback (most recent call last):
+  File "&lt;stdin&gt;", line 1, in &lt;module&gt;
+  File "&lt;stdin&gt;", line 3, in check
+ValueError: k должно быть не меньше 1</pre></div></details>
+        <details class="pyhint"><summary>Python в этой строке: <code>sum(nums[s:s + k])</code></summary><div><p>Срез <code>nums[s:s + k]</code> создаёт новый список из k элементов, начиная с индекса <code>s</code>: правая граница не входит, как в занятии 7. <code>sum</code> складывает элементы списка. Обе операции проходят все k элементов.</p><pre>&gt;&gt;&gt; nums = [12, 15, 9, 20, 18]
+&gt;&gt;&gt; nums[1:4]
+[15, 9, 20]
+&gt;&gt;&gt; sum(nums[1:4])
+44</pre></div></details>
+        <p>Прогон ниже показывает, что каждое окно считается с нуля. Голубые ячейки — текущее окно, указатель <code>s</code> стоит на его начале.</p>
+        <div class="tracer" data-trace="sums_slices" data-zone="window" data-title="Суммы срезами"></div>
+        <p>На шагах 4 и 6 видно повторение работы. Окно <code>[12, 15, 9]</code> и окно <code>[15, 9, 20]</code> имеют общую часть <code>15 + 9</code>, но во втором окне она складывается заново. При <code>k = 3</code> общая часть — два элемента, при <code>k = 1000</code> — 999.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Сколько стоят срезы</h2>
+        <p>Окон <code>n − k + 1</code>. В каждом k элементов копируются в срез и ещё раз читаются при сложении. Число элементов во всех срезах — <code>(n − k + 1)·k</code>, время O(n·k). Сильнее всего это заметно, когда k — примерно половина n: окон около n/2, в каждом около n/2 элементов, итого около n²/4.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>n</th><th>k</th><th>Окон n − k + 1</th><th>Элементов во всех срезах (n − k + 1)·k</th></tr></thead>
+            <tbody>
+              <tr><td>7</td><td>3</td><td>5</td><td>15</td></tr>
+              <tr><td>100&nbsp;000</td><td>100</td><td>99&nbsp;901</td><td>9&nbsp;990&nbsp;100</td></tr>
+              <tr><td>100&nbsp;000</td><td>50&nbsp;000</td><td>50&nbsp;001</td><td>2&nbsp;500&nbsp;050&nbsp;000</td></tr>
+              <tr><td>1&nbsp;000&nbsp;000</td><td>1&nbsp;000</td><td>999&nbsp;001</td><td>999&nbsp;001&nbsp;000</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Кроме времени, срез занимает память: на каждом шаге создаётся список из k элементов. Он удаляется сразу после <code>sum</code>, поэтому дополнительная память — O(k), но копирование всё равно стоит времени.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Идея сдвига и состояние окна</h2>
+        <p>Соседние окна отличаются двумя элементами: при сдвиге на одну позицию слева уходит <code>nums[r − k]</code>, справа приходит <code>nums[r]</code>. Здесь <code>r</code> — индекс элемента, который входит в окно. Остальные <code>k − 1</code> элементов общие, их сумма уже известна. Поэтому новую сумму получают из старой:</p>
+        <figure class="code">
+          <figcaption><span>сдвиг окна</span><span>одно вычитание и одно сложение</span></figcaption>
+<pre>новая сумма = старая сумма + nums[r] − nums[r − k]
+
+[12, 15, 9] 20     →     12 [15, 9, 20]
+сумма 36                 36 + 20 − 12 = 44</pre>
+        </figure>
+        <ol class="steps">
+          <li><b>Первое окно.</b> Сложить <code>nums[0:k]</code> целиком: <code>total = sum(nums[:k])</code>. Это единственное окно, которое считается с нуля.</li>
+          <li><b>Сдвиг.</b> Для каждого <code>r</code> от <code>k</code> до <code>n − 1</code>: <code>total += nums[r] − nums[r − k]</code>. Теперь <code>total</code> — сумма окна <code>nums[r − k + 1:r + 1]</code>.</li>
+          <li><b>Запись.</b> После первого окна и после каждого сдвига дописать <code>total</code> в ответ.</li>
+        </ol>
+        <div class="term-card">
+          <p class="term-card__head"><b>Состояние окна</b><span>rolling state</span></p>
+          <div class="term-card__body">
+            <p>Переменная или несколько переменных, в которых хранится ответ для текущего окна: сумма, число гласных, число событий. При сдвиге состояние не вычисляют заново, а исправляют: учитывают элемент, который вошёл, и элемент, который вышел. В КТП это называется rolling state.</p>
+            <p>Требование к состоянию одно: его можно исправить по двум изменившимся элементам за O(1). Сумма и счётчик этому требованию отвечают. Максимум — нет: если из окна ушёл сам максимум, новый неизвестен без просмотра окна. Поэтому максимум окна — задача занятия 25.</p>
+          </div>
+        </div>
+
+        <h2 id="s5"><span class="sec">§5</span>Сдвиг окна вручную</h2>
+        <p>Прежде чем смотреть код, сделайте сдвиги сами. На каждом сдвиге щёлкните ячейку, которая уходит из окна, затем ячейку, которая входит, и введите новую сумму. Неверный выбор не выполняется, вместо него появляется объяснение.</p>
+        <div class="slidehand" data-a="[12,15,9,20,18,7,25]" data-k="3"></div>
+
+        <h2 id="s6"><span class="sec">§6</span>Сборка функции из строк</h2>
+        <p>Правило из §4 записывается функцией из девяти строк. Расставьте их по порядку: сначала проверка <code>k</code>, затем первое окно и начало ответа, затем цикл со сдвигом и записью. Готовая функция — ниже, в прогоне §7.</p>
+        <div class="parsons" data-title="Соберите window_sums" data-lines='["def window_sums(nums, k):", "    if k &lt; 1 or k &gt; len(nums):", "        raise ValueError(\"k должно быть от 1 до len(nums)\")", "    total = sum(nums[:k])", "    sums = [total]", "    for r in range(k, len(nums)):", "        total += nums[r] - nums[r - k]", "        sums.append(total)", "    return sums"]'></div>
+        <details class="pyhint"><summary>Python в этой строке: <code>range(k, len(nums))</code> и <code>+=</code> с выражением</summary><div><p><code>range(k, len(nums))</code> выдаёт индексы от <code>k</code> до последнего: это индексы элементов, которые по очереди входят в окно. <code>total += a - b</code> — то же, что <code>total = total + (a - b)</code>: сначала вычисляется правая часть, потом она прибавляется.</p><pre>&gt;&gt;&gt; list(range(3, 7))
+[3, 4, 5, 6]
+&gt;&gt;&gt; total = 36
+&gt;&gt;&gt; total += 20 - 12
+&gt;&gt;&gt; total
+44</pre></div></details>
+        <p>Напишите функцию сами в окне ниже, прямо на странице. «Запустить тесты» проверяет её на восьми тестах. Среди них <code>k = 1</code>, <code>k = n</code>, неверное <code>k</code>, пустой список и сравнение с суммами срезов на двухстах случайных списках. Часть тестов заготовка проходит сразу. Первый запуск загружает Python в браузер, около 10 МБ.</p>
+        <div class="sandbox" data-title="Напишите window_sums сами" data-call="print(window_sums([12, 15, 9, 20, 18, 7, 25], 3))">
+<script type="text/plain" class="sandbox__start">
+def window_sums(nums, k):
+    if k < 1 or k > len(nums):
+        raise ValueError("k должно быть от 1 до len(nums)")
+    total = sum(nums[:k])
+    sums = [total]
+    # r — индекс элемента, который входит в окно: k, k + 1, ...
+    # Исправьте total по вошедшему и ушедшему элементу и допишите в sums.
+    return sums
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """посещения по часам, k = 3"""
+    r = window_sums([12, 15, 9, 20, 18, 7, 25], 3)
+    assert r == [36, 44, 47, 45, 50], f"ожидалось [36, 44, 47, 45, 50], получено {r!r}"
+
+def test_k_is_one():
+    """k = 1: каждое окно — один элемент"""
+    r = window_sums([3, -2, 7], 1)
+    assert r == [3, -2, 7], f"ожидалось [3, -2, 7], получено {r!r}"
+
+def test_k_is_n():
+    """k = n: одно окно — весь список"""
+    r = window_sums([4, 1, 2], 3)
+    assert r == [7], f"ожидалось [7], получено {r!r}"
+
+def test_negative():
+    """отрицательные числа"""
+    r = window_sums([-5, -2, -8, -1], 2)
+    assert r == [-7, -10, -9], f"ожидалось [-7, -10, -9], получено {r!r}"
+
+def test_bad_k():
+    """k = 0, k < 0 и k > n — ValueError"""
+    for k in (0, -1, 3):
+        try:
+            window_sums([1, 2], k)
+        except ValueError:
+            continue
+        assert False, f"k = {k}: ожидалась ValueError"
+
+def test_empty():
+    """пустой список — окон нет, ValueError"""
+    try:
+        window_sums([], 1)
+    except ValueError:
+        return
+    assert False, "ожидалась ValueError"
+
+def test_input_not_changed():
+    """список после вызова тот же"""
+    nums = [5, 1, 4, 2]
+    window_sums(nums, 2)
+    assert nums == [5, 1, 4, 2], f"список стал {nums!r}"
+
+def test_matches_slices():
+    """200 случайных списков: ответ совпадает с суммами срезов"""
+    import random
+    rnd = random.Random(9)
+    for _ in range(200):
+        nums = [rnd.randint(-20, 20) for _ in range(rnd.randint(1, 12))]
+        k = rnd.randint(1, len(nums))
+        want = [sum(nums[s:s + k]) for s in range(len(nums) - k + 1)]
+        got = window_sums(nums, k)
+        assert got == want, f"nums = {nums}, k = {k}: ожидалось {want}, получено {got}"
+</script>
+</div>
+
+        <h2 id="s7"><span class="sec">§7</span>Код и пошаговый прогон</h2>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(1) кроме ответа</span></figcaption>
+<pre><span class="k">def</span> <span class="f">window_sums</span>(nums, k):
+    <span class="k">if</span> k &lt; <span class="n">1</span> <span class="k">or</span> k &gt; <span class="k">len</span>(nums):
+        <span class="k">raise</span> ValueError(<span class="s">"k должно быть от 1 до len(nums)"</span>)
+    total = <span class="k">sum</span>(nums[:k])
+    sums = [total]
+    <span class="k">for</span> r <span class="k">in</span> <span class="k">range</span>(k, <span class="k">len</span>(nums)):
+        total += nums[r] - nums[r - k]
+        sums.append(total)
+    <span class="k">return</span> sums</pre>
+        </figure>
+        <p>Прогон на том же списке, что в §2. Голубые ячейки — окно после сдвига, перечёркнутая — элемент, который из него ушёл. Указатель <code>r</code> стоит на элементе, который вошёл.</p>
+        <div class="tracer" data-trace="sums_roll" data-zone="window" data-title="Суммы сдвигом окна"></div>
+        <div class="term-card">
+          <p class="term-card__head"><b>Инвариант</b><span>сумма каждого окна</span></p>
+          <div class="term-card__body">
+            <p>Перед каждой итерацией цикла с индексом <code>r</code>: <code>total</code> — сумма окна <code>nums[r − k:r]</code>, а в <code>sums</code> записаны суммы всех окон, которые заканчиваются раньше <code>r</code>.</p>
+            <p>Инициализация: до цикла <code>r = k</code>, <code>total</code> — сумма <code>nums[0:k]</code>, она же в <code>sums</code>. Сохранение: после <code>total += nums[r] − nums[r − k]</code> в сумме нет ушедшего элемента и есть пришедший. Это сумма <code>nums[r − k + 1:r + 1]</code>, и она дописывается в ответ. Завершение: цикл прошёл <code>r</code> до <code>n − 1</code>, в <code>sums</code> все <code>n − k + 1</code> сумм.</p>
+          </div>
+        </div>
+        <p>Цикл выполняется <code>n − k</code> раз, каждая итерация — одно вычитание, одно сложение и запись в ответ. Вместе с первым окном это <code>k + 2·(n − k)</code> обращений к элементам, время O(n) при любом k. Дополнительной памяти, кроме списка ответа, не нужно: срезов нет. Замер обоих способов — в главе 9.7.</p>
+
+        <h2 id="s8"><span class="sec">§8</span>Две ошибки сдвига</h2>
+        <p>В каждой ошибке код отличается от верной версии одной строкой, и Python выполняет его без исключений: неверен только ответ. Каждая запущена на том же списке, что и верная версия выше, и её можно пройти по шагам. Ответ для сравнения: <code>[36, 44, 47, 45, 50]</code>.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>window_sums с одной изменённой строкой</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>Вычитается не тот элемент</button>
+            <button>Первое окно не записано</button>
+          </div>
+          <div class="demo__pane">
+            <p>Строка сдвига: <code>total += nums[r] - nums[r - k + 1]</code> — на единицу правее нужного индекса.</p>
+            <div class="tracer tracer--bug" data-trace="bug_out_index" data-zone="window" data-title="nums[r - k + 1]"></div>
+            <p class="demo__verdict"><b>[36, 41, 50, 37, 44]</b>На шаге 5 вычитается <code>nums[1] = 15</code> — элемент, который остаётся в окне, а ушедший <code>nums[0] = 12</code> остаётся в сумме. Сумма становится 41 вместо 44, и ошибка переносится на все следующие окна. При <code>k = 1</code> эта версия вычитает только что пришедший элемент и все суммы, кроме первой, остаются равны первой.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Строка начала ответа: <code>sums = []</code> вместо <code>sums = [total]</code>.</p>
+            <div class="tracer tracer--bug" data-trace="bug_no_first" data-zone="window" data-title="sums = []"></div>
+            <p class="demo__verdict"><b>[44, 47, 45, 50]</b>Сумма первого окна посчитана на шаге 2, но на шаге 3 ответ начинается с пустого списка. Все сдвиги верные, а сумм в ответе четыре вместо пяти. При <code>k = n</code> цикл не выполняется ни разу, и функция возвращает пустой список.</p>
+          </div>
+        </div>
+        <p>Верная версия — прогон в §7. Обе ошибки ловят тесты песочницы: первую — <code>test_example</code>, <code>test_k_is_one</code>, <code>test_negative</code> и сравнение со срезами, вторую — те же тесты и <code>test_k_is_n</code>.</p>
+
+        <h2 id="s9"><span class="sec">§9</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>Окно <code>[20, 18, 7]</code> с суммой 45 сдвигается на одну позицию, следующий элемент — 25. Какая новая сумма?</p>
+          <ul class="quiz__opts">
+            <li><button>70: к сумме прибавляется 25</button><p class="quiz__why">Окно сохраняет длину 3, поэтому вместе с приходом 25 из него уходит 20.</p></li>
+            <li data-ok><button>50: 45 + 25 − 20</button><p class="quiz__why">Верно. Уходит самый левый элемент 20, приходит 25.</p></li>
+            <li><button>43: 45 + 25 − 27</button><p class="quiz__why">Из окна уходит один элемент — самый левый, 20. Его и вычитают.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>Что хранит <code>total</code> сразу после строки <code>total += nums[r] - nums[r - k]</code>?</p>
+          <ul class="quiz__opts">
+            <li><button>Сумму <code>nums[r − k:r]</code></button><p class="quiz__why">Это сумма до строки сдвига: в ней ещё есть <code>nums[r − k]</code> и нет <code>nums[r]</code>.</p></li>
+            <li><button>Сумму всех элементов до <code>r</code> включительно</button><p class="quiz__why">В <code>total</code> всегда ровно k элементов, ушедшие вычитаются.</p></li>
+            <li data-ok><button>Сумму <code>nums[r − k + 1:r + 1]</code></button><p class="quiz__why">Верно. Ушёл <code>nums[r − k]</code>, пришёл <code>nums[r]</code>: окно — с <code>r − k + 1</code> по <code>r</code> включительно.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 3</b>Какое состояние окна нельзя исправить за O(1) при сдвиге?</p>
+          <ul class="quiz__opts">
+            <li><button>Число отрицательных элементов в окне</button><p class="quiz__why">Это счётчик: если ушедший отрицательный, вычесть 1, если пришедший отрицательный — прибавить 1.</p></li>
+            <li data-ok><button>Наибольший элемент в окне</button><p class="quiz__why">Верно. Если ушёл сам максимум, новый неизвестен без просмотра окна. Для максимума нужен дек, занятие 25.</p></li>
+            <li><button>Сумма элементов окна</button><p class="quiz__why">Сумма исправляется вычитанием ушедшего и сложением пришедшего.</p></li>
+          </ul>
+        </div>
+
+        <div class="pager"><a href="02-formulirovki-i-voprosy.html">← 9.2 Формулировки задач и вопросы до решения</a><a href="04-luchshij-otrezok.html">9.4 Лучший отрезок длины k →</a></div>
+        <div class="colophon">
+          <span>Модуль 9 · Скользящее окно · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>

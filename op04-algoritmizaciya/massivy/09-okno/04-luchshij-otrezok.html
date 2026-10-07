@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>9.4 Лучший отрезок длины k · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 9 · Скользящее окно · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 9 · скользящее окно</p>
+          <p class="running__folio">Глава 9.4</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">9.4</span>
+          <h1>Лучший отрезок<br>длины k</h1>
+          <p class="lead">В этой главе решается первая задача КТП занятия 9 — найти отрезок длины k с наибольшей суммой. Решение добавляет к сдвигу окна из главы 9.3 одну проверку: стала ли сумма окна лучше прежней. Разобраны две ошибки этой проверки, о которых предупреждали вопросы главы 9.2, — каждая с прогоном ошибочной и исправленной версии. В конце — два варианта задачи с LeetCode: наибольшее среднее и наибольшее число гласных в окне.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Алгоритм</dd></div>
+          <div><dt>Уровень</dt><dd>Начальный</dd></div>
+          <div><dt>Опирается на</dt><dd>Глава 9.3: сдвиг окна; глава 9.2: контракт и примеры</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Задача КТП и LeetCode 643 — типичные задачи на окно</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Условие задачи</a></li>
+            <li><a href="#s2">Лучшее окно на ходу</a></li>
+            <li><a href="#s3">Сборка функции и песочница</a></li>
+            <li><a href="#s4">Код и пошаговый прогон</a></li>
+            <li><a href="#s5">Равные суммы: знак сравнения</a></li>
+            <li><a href="#s6">Отрицательные числа: начальное значение</a></li>
+            <li><a href="#s7">Наибольшее среднее, LeetCode 643</a></li>
+            <li><a href="#s8">Счётчик в окне, LeetCode 1456</a></li>
+            <li><a href="#s9">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Условие задачи</h2>
+        <p>Условие уточнено в главе 9.2, здесь оно записано в окончательном виде. Во всех примерах главы используется тот же список посещений по часам, что в главах 9.1 и 9.3.</p>
+        <div class="term-card">
+          <p class="term-card__head"><b>best_window(nums, k)</b><span>задача 1 занятия 9 · лучший отрезок длины k</span></p>
+          <div class="term-card__body">
+            <p><code>nums</code> — список целых чисел, числа могут быть отрицательными. <code>k</code> — длина окна, <code>1 ≤ k ≤ len(nums)</code>, иначе <code>ValueError</code>. Вернуть <code>(start, total)</code>: начало окна длины k с наибольшей суммой и эту сумму. При равных суммах — самое левое окно. Список не меняется.</p>
+            <p>Пример: <code>nums = [12, 15, 9, 20, 18, 7, 25]</code>, <code>k = 3</code>. Суммы окон — <code>[36, 44, 47, 45, 50]</code>, наибольшая у последнего окна, ответ <code>(4, 50)</code>.</p>
+          </div>
+        </div>
+
+        <h2 id="s2"><span class="sec">§2</span>Лучшее окно на ходу</h2>
+        <p>Задачу можно решить готовой функцией из главы 9.3: посчитать все суммы и выбрать наибольшую. Время O(n), но список сумм занимает O(n) памяти, а нужна из него одна сумма.</p>
+        <figure class="code">
+          <figcaption><span>через window_sums</span><span>время O(n) · память O(n)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">best_window_via_sums</span>(nums, k):
+    sums = window_sums(nums, k)          <span class="c"># ValueError — внутри window_sums</span>
+    best = <span class="k">max</span>(sums)
+    <span class="k">return</span> (sums.index(best), best)    <span class="c"># index — первое вхождение</span></pre>
+        </figure>
+        <p>Лучшую сумму можно не хранить в списке, а обновлять сразу после каждого сдвига. Вместо списка <code>sums</code> — две переменные: <code>best</code>, лучшая сумма среди уже пройденных окон, и <code>start</code>, начало этого окна.</p>
+        <ol class="steps">
+          <li><b>Первое окно.</b> <code>total = sum(nums[:k])</code>. Пока оно единственное, оно же лучшее: <code>best = total</code>, <code>start = 0</code>.</li>
+          <li><b>Сдвиг.</b> Для каждого <code>r</code> от <code>k</code> до <code>n − 1</code>: <code>total += nums[r] − nums[r − k]</code>, как в главе 9.3.</li>
+          <li><b>Сравнение.</b> Если <code>total</code> строго больше <code>best</code>, запомнить: <code>best = total</code>, <code>start = r − k + 1</code> — это начало окна, которое заканчивается на <code>r</code>.</li>
+          <li><b>Ответ.</b> После цикла вернуть <code>(start, best)</code>.</li>
+        </ol>
+        <p>Обе детали правила — «строго больше» и «начать с первого окна» — следуют из ответов интервьюера в главе 9.2. Что происходит, если записать их иначе, показано в §5 и §6.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Сборка функции и песочница</h2>
+        <p>Функция отличается от <code>window_sums</code> тремя строками: вместо списка ответа — <code>best</code> и <code>start</code>, вместо записи в список — сравнение. Расставьте десять строк по порядку.</p>
+        <div class="parsons" data-title="Соберите best_window" data-lines='["def best_window(nums, k):", "    if k &lt; 1 or k &gt; len(nums):", "        raise ValueError(\"k должно быть от 1 до len(nums)\")", "    total = sum(nums[:k])", "    best, start = total, 0", "    for r in range(k, len(nums)):", "        total += nums[r] - nums[r - k]", "        if total &gt; best:", "            best, start = total, r - k + 1", "    return (start, best)"]'></div>
+        <details class="pyhint"><summary>Python в этой строке: <code>best, start = total, r - k + 1</code></summary><div><p>Два имени слева, два значения справа: Python сначала вычисляет оба значения, потом присваивает их по порядку. Так обе переменные меняются одной строкой, и не бывает момента, когда <code>best</code> уже новое, а <code>start</code> ещё старое.</p><pre>&gt;&gt;&gt; total, r, k = 50, 6, 3
+&gt;&gt;&gt; best, start = total, r - k + 1
+&gt;&gt;&gt; best, start
+(50, 4)</pre></div></details>
+        <p>Напишите функцию сами в окне ниже. Восемь тестов — это примеры из главы 9.2 и сравнение с перебором срезов на двухстах случайных списках. Часть тестов заготовка проходит сразу.</p>
+        <div class="sandbox" data-title="Напишите best_window сами" data-call="print(best_window([12, 15, 9, 20, 18, 7, 25], 3))">
+<script type="text/plain" class="sandbox__start">
+def best_window(nums, k):
+    if k < 1 or k > len(nums):
+        raise ValueError("k должно быть от 1 до len(nums)")
+    total = sum(nums[:k])
+    best, start = total, 0
+    # Сдвигайте окно, как в window_sums. Если новая сумма
+    # больше лучшей, запомните её и начало окна.
+    return (start, best)
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """посещения по часам, k = 3: лучшее окно — последнее"""
+    r = best_window([12, 15, 9, 20, 18, 7, 25], 3)
+    assert r == (4, 50), f"ожидалось (4, 50), получено {r!r}"
+
+def test_ties_leftmost():
+    """все окна дают 6 — возвращается самое левое"""
+    r = best_window([5, 1, 5, 1], 2)
+    assert r == (0, 6), f"ожидалось (0, 6), получено {r!r}"
+
+def test_all_negative():
+    """все суммы отрицательные"""
+    r = best_window([-5, -2, -8, -1], 2)
+    assert r == (0, -7), f"ожидалось (0, -7), получено {r!r}"
+
+def test_k_is_one():
+    """k = 1: ответ — наибольший элемент"""
+    r = best_window([3, -2, 7], 1)
+    assert r == (2, 7), f"ожидалось (2, 7), получено {r!r}"
+
+def test_k_is_n():
+    """k = n: одно окно — весь список"""
+    r = best_window([4, 1, 2], 3)
+    assert r == (0, 7), f"ожидалось (0, 7), получено {r!r}"
+
+def test_bad_k():
+    """k = 0, k < 0, k > n и пустой список — ValueError"""
+    for nums, k in (([1, 2], 0), ([1, 2], -1), ([1, 2], 3), ([], 1)):
+        try:
+            best_window(nums, k)
+        except ValueError:
+            continue
+        assert False, f"best_window({nums}, {k}): ожидалась ValueError"
+
+def test_input_not_changed():
+    """список после вызова тот же"""
+    nums = [5, 1, 4, 2]
+    best_window(nums, 2)
+    assert nums == [5, 1, 4, 2], f"список стал {nums!r}"
+
+def test_matches_slices():
+    """200 случайных списков: ответ совпадает с перебором срезов"""
+    import random
+    rnd = random.Random(10)
+    for _ in range(200):
+        nums = [rnd.randint(-20, 20) for _ in range(rnd.randint(1, 12))]
+        k = rnd.randint(1, len(nums))
+        sums = [sum(nums[s:s + k]) for s in range(len(nums) - k + 1)]
+        want = (sums.index(max(sums)), max(sums))
+        got = best_window(nums, k)
+        assert got == want, f"nums = {nums}, k = {k}: ожидалось {want}, получено {got}"
+</script>
+</div>
+
+        <h2 id="s4"><span class="sec">§4</span>Код и пошаговый прогон</h2>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(1)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">best_window</span>(nums, k):
+    <span class="k">if</span> k &lt; <span class="n">1</span> <span class="k">or</span> k &gt; <span class="k">len</span>(nums):
+        <span class="k">raise</span> ValueError(<span class="s">"k должно быть от 1 до len(nums)"</span>)
+    total = <span class="k">sum</span>(nums[:k])
+    best, start = total, <span class="n">0</span>
+    <span class="k">for</span> r <span class="k">in</span> <span class="k">range</span>(k, <span class="k">len</span>(nums)):
+        total += nums[r] - nums[r - k]
+        <span class="k">if</span> total &gt; best:
+            best, start = total, r - k + <span class="n">1</span>
+    <span class="k">return</span> (start, best)</pre>
+        </figure>
+        <p>Прогон на списке посещений. Голубые ячейки — окно после сдвига. В таблице переменных видно, как <code>best</code> и <code>start</code> меняются на шагах 7, 11 и 18 и остаются прежними на шаге 14, когда сумма 45 оказалась меньше лучшей 47.</p>
+        <div class="tracer" data-trace="best_roll" data-zone="window" data-title="Лучший отрезок длины 3"></div>
+        <div class="term-card">
+          <p class="term-card__head"><b>Инвариант</b><span>лучший отрезок длины k</span></p>
+          <div class="term-card__body">
+            <p>Перед каждой итерацией с индексом <code>r</code> верны три утверждения. <code>total</code> — сумма окна <code>nums[r − k:r]</code>. <code>best</code> — наибольшая сумма среди окон, которые заканчиваются раньше <code>r</code>. <code>start</code> — начало самого левого из окон с такой суммой.</p>
+            <p>Инициализация: пройдено одно окно, оно и лучшее. Сохранение: после сдвига <code>total</code> — сумма нового окна; если она строго больше <code>best</code>, новое окно становится лучшим, при равенстве лучшим остаётся прежнее, более левое. Завершение: пройдены все окна, <code>(start, best)</code> — ответ.</p>
+          </div>
+        </div>
+
+        <h2 id="s5"><span class="sec">§5</span>Равные суммы: знак сравнения</h2>
+        <p>Интервьюер в главе 9.2 ответил, что при равных суммах нужно самое левое окно. Окна проходятся слева направо, поэтому первое из окон с наибольшей суммой встречается раньше остальных. Чтобы его не заменило окно правее с той же суммой, сравнение должно быть строгим. Ниже обе версии запущены на <code>[5, 1, 5, 1]</code> с <code>k = 2</code>: все три окна дают сумму 6.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>best_window([5, 1, 5, 1], 2)</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>if total &gt;= best</button>
+            <button>if total &gt; best</button>
+          </div>
+          <div class="demo__pane">
+            <div class="tracer tracer--bug" data-trace="bug_ge" data-zone="window" data-title="Нестрогое сравнение"></div>
+            <p class="demo__verdict"><b>(2, 6)</b>На шагах 6 и 10 сумма 6 равна лучшей, и при <code>&gt;=</code> лучшим каждый раз становится окно правее. Функция возвращает последнее из равных окон, а условие требует первое.</p>
+          </div>
+          <div class="demo__pane">
+            <div class="tracer" data-trace="fix_ge" data-zone="window" data-title="Строгое сравнение"></div>
+            <p class="demo__verdict"><b>(0, 6)</b>На шагах 6 и 9 равная сумма не больше лучшей, и лучшим остаётся первое окно.</p>
+          </div>
+        </div>
+        <p>Если бы интервьюер попросил самое правое окно, верной была бы как раз версия с <code>&gt;=</code>. Знак сравнения — это запись ответа на вопрос о равных суммах, поэтому вопрос задают до кода.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Отрицательные числа: начальное значение</h2>
+        <p>Вторая ошибка — начать с <code>best = 0</code>, как будто сумма не бывает меньше нуля. Пока в списке есть окно с положительной суммой, ответ получается верным, и ошибка незаметна. Обе версии запущены на <code>[-5, -2, -8, -1]</code> с <code>k = 2</code>: суммы окон −7, −10, −9.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>best_window([-5, -2, -8, -1], 2)</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>best, start = 0, 0</button>
+            <button>best, start = total, 0</button>
+          </div>
+          <div class="demo__pane">
+            <div class="tracer tracer--bug" data-trace="bug_zero_start" data-zone="window" data-title="best = 0"></div>
+            <p class="demo__verdict"><b>(0, 0)</b>На шаге 3 <code>best</code> получает 0, хотя сумма первого окна −7. Ни одна сумма не больше нуля, <code>best</code> не меняется до конца, и функция возвращает сумму 0, которой нет ни у одного окна.</p>
+          </div>
+          <div class="demo__pane">
+            <div class="tracer" data-trace="fix_zero_start" data-zone="window" data-title="best = сумма первого окна"></div>
+            <p class="demo__verdict"><b>(0, −7)</b>Лучшая сумма начинается с суммы первого окна. Окна с суммами −10 и −9 хуже, ответ — первое окно.</p>
+          </div>
+        </div>
+        <p>Есть и другой распространённый вариант — <code>best = float("-inf")</code>, минус бесконечность: любая сумма больше неё. Он тоже верен, но сумма первого окна уже посчитана, и начать с неё проще: не нужен особый объект и <code>start</code> сразу имеет смысл.</p>
+
+        <h2 id="s7"><span class="sec">§7</span>Наибольшее среднее, LeetCode 643</h2>
+        <p>В <a href="https://leetcode.com/problems/maximum-average-subarray-i/" target="_blank" rel="noopener">LeetCode 643</a> нужно вернуть наибольшее среднее отрезка длины k. Среднее — это сумма, делённая на k, а k одно для всех окон. Поэтому окно с наибольшим средним — то же, что окно с наибольшей суммой, и задача решается одной строкой поверх <code>best_window</code>. Делить сумму каждого окна не нужно: делится только ответ.</p>
+        <figure class="code">
+          <figcaption><span>LeetCode 643</span><span>время O(n) · память O(1)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">find_max_average</span>(nums, k):
+    start, best = best_window(nums, k)
+    <span class="k">return</span> best / k</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>python -i · Python 3.12</span></figcaption>
+<pre>&gt;&gt;&gt; find_max_average([<span class="n">1</span>, <span class="n">12</span>, -<span class="n">5</span>, -<span class="n">6</span>, <span class="n">50</span>, <span class="n">3</span>], <span class="n">4</span>)
+12.75
+&gt;&gt;&gt; find_max_average([<span class="n">5</span>], <span class="n">1</span>)
+5.0</pre>
+        </figure>
+        <p>Первый вызов — пример из условия LeetCode: лучшее окно <code>[12, −5, −6, 50]</code>, сумма 51, среднее 51 / 4 = 12,75. Оператор <code>/</code> в Python всегда даёт число с плавающей точкой, поэтому во втором вызове получается <code>5.0</code>. В LeetCode 643 числа бывают отрицательными, и ошибка с <code>best = 0</code> из §6 там тоже приводит к неверному ответу.</p>
+
+        <h2 id="s8"><span class="sec">§8</span>Счётчик в окне, LeetCode 1456</h2>
+        <p>Состояние окна не обязательно сумма чисел. В <a href="https://leetcode.com/problems/maximum-number-of-vowels-in-a-substring-of-given-length/" target="_blank" rel="noopener">LeetCode 1456</a> дана строка и число k, нужно найти наибольшее число гласных в подстроке длины k. Состояние окна — счётчик гласных <code>count</code>. При сдвиге пришедшая гласная прибавляет 1, ушедшая — вычитает 1. Остальное устроено так же, как в <code>best_window</code>.</p>
+        <figure class="code">
+          <figcaption><span>LeetCode 1456</span><span>время O(n) · память O(1)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">max_vowels</span>(s, k):
+    vowels = <span class="k">set</span>(<span class="s">"aeiou"</span>)
+    count = <span class="k">sum</span>(<span class="n">1</span> <span class="k">for</span> ch <span class="k">in</span> s[:k] <span class="k">if</span> ch <span class="k">in</span> vowels)
+    best = count
+    <span class="k">for</span> r <span class="k">in</span> <span class="k">range</span>(k, <span class="k">len</span>(s)):
+        count += (s[r] <span class="k">in</span> vowels) - (s[r - k] <span class="k">in</span> vowels)
+        best = <span class="k">max</span>(best, count)
+    <span class="k">return</span> best</pre>
+        </figure>
+        <details class="pyhint"><summary>Python в этой строке: <code>sum(1 for ch in … if …)</code> и <code>True − False</code></summary><div><p>Выражение <code>1 for ch in s[:k] if ch in vowels</code> выдаёт единицу для каждой гласной в первом окне, <code>sum</code> их складывает — получается число гласных. В строке сдвига используется то, что <code>True</code> и <code>False</code> в арифметике равны 1 и 0. Поэтому <code>(s[r] in vowels) − (s[r − k] in vowels)</code> даёт +1, если пришла гласная и ушла согласная, и −1 — наоборот. Если обе буквы одного вида, получается 0.</p><pre>&gt;&gt;&gt; sum(1 for ch in "abc" if ch in "aeiou")
+1
+&gt;&gt;&gt; True - False, False - True, True - True
+(1, -1, 0)</pre></div></details>
+        <p>Прогон на примере из условия LeetCode: строка <code>"abciiidef"</code>, k = 3, ответ 3 — окно <code>"iii"</code>. В прогоне строка передана списком букв, чтобы показать каждую букву в своей ячейке; код работает и со строкой. На шагах 5 и 17 счётчик не меняется: гласная пришла, и гласная ушла.</p>
+        <div class="tracer" data-trace="vowels" data-zone="window" data-title="Гласные в окне длины 3"></div>
+        <p>Здесь <code>best</code> обновляется через <code>max</code>: начало окна в этой задаче не нужно, достаточно числа, и отдельный <code>if</code> не требуется. Напишите функцию сами.</p>
+        <div class="sandbox" data-title="Напишите max_vowels сами" data-call="print(max_vowels(&quot;abciiidef&quot;, 3))">
+<script type="text/plain" class="sandbox__start">
+def max_vowels(s, k):
+    vowels = set("aeiou")
+    count = sum(1 for ch in s[:k] if ch in vowels)
+    best = count
+    # Сдвигайте окно: пришедшая гласная прибавляет 1,
+    # ушедшая гласная вычитает 1. Обновляйте best.
+    return best
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """abciiidef, k = 3 → 3: окно iii"""
+    assert max_vowels("abciiidef", 3) == 3
+
+def test_all_vowels():
+    """aeiou, k = 2 → 2"""
+    assert max_vowels("aeiou", 2) == 2
+
+def test_leetcode():
+    """leetcode, k = 3 → 2"""
+    assert max_vowels("leetcode", 3) == 2
+
+def test_no_vowels():
+    """rhythms, k = 4 → 0"""
+    assert max_vowels("rhythms", 4) == 0
+
+def test_best_at_end():
+    """bcdfaa, k = 2 → 2: лучшее окно — последнее"""
+    assert max_vowels("bcdfaa", 2) == 2
+
+def test_best_in_middle():
+    """xyzaeixx, k = 3 → 3: окно aei в середине"""
+    assert max_vowels("xyzaeixx", 3) == 3
+
+def test_whole_string():
+    """k = длине строки"""
+    assert max_vowels("banana", 6) == 3
+</script>
+</div>
+
+        <h2 id="s9"><span class="sec">§9</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>В <code>best_window</code> строку <code>if total &gt; best:</code> заменили на <code>if total &gt;= best:</code>. Что вернёт функция на <code>[3, 3, 3]</code> с <code>k = 1</code>?</p>
+          <ul class="quiz__opts">
+            <li><button><code>(0, 3)</code>, как и раньше</button><p class="quiz__why">При <code>&gt;=</code> каждое следующее окно с той же суммой заменяет лучшее. Первое окно не сохранится.</p></li>
+            <li data-ok><button><code>(2, 3)</code>: последнее из равных окон</button><p class="quiz__why">Верно. Все три окна дают 3, и при нестрогом сравнении лучшим каждый раз становится окно правее.</p></li>
+            <li><button><code>ValueError</code>: равные суммы — ошибка входа</button><p class="quiz__why">Равные суммы — допустимый вход. Исключение бывает только при неверном <code>k</code>.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>Почему окно с наибольшим средним в LeetCode 643 совпадает с окном с наибольшей суммой?</p>
+          <ul class="quiz__opts">
+            <li><button>Числа в LeetCode 643 положительные</button><p class="quiz__why">В LeetCode 643 числа бывают отрицательными: от −10<sup>4</sup> до 10<sup>4</sup>. Знак здесь ни при чём.</p></li>
+            <li><button>Среднее округляется до целого</button><p class="quiz__why">В LeetCode 643 среднее не округляется: ответ принимается с точностью до 10<sup>−5</sup>.</p></li>
+            <li data-ok><button>У всех окон одна длина k, деление на k порядок не меняет</button><p class="quiz__why">Верно. Если одна сумма больше другой, то и после деления обеих на одно положительное k она больше.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 3</b>Окно <code>"cii"</code> сдвигается, справа приходит <code>"d"</code>, слева уходит <code>"c"</code>. Как меняется счётчик гласных?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button>Не меняется: обе буквы согласные</button><p class="quiz__why">Верно. (False) − (False) = 0. Окно <code>"iid"</code> содержит те же две гласные.</p></li>
+            <li><button>Уменьшается на 1: пришла согласная</button><p class="quiz__why">Ушла тоже согласная, поэтому гласных в окне столько же.</p></li>
+            <li><button>Пересчитывается заново по трём буквам</button><p class="quiz__why">Пересчёт не нужен: счётчик исправляется по двум изменившимся буквам за O(1).</p></li>
+          </ul>
+        </div>
+
+        <div class="pager"><a href="03-peresschet-okna.html">← 9.3 Окно и пересчёт за O(1)</a><a href="05-sobytiya-v-okne.html">9.5 События во временном окне →</a></div>
+        <div class="colophon">
+          <span>Модуль 9 · Скользящее окно · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>

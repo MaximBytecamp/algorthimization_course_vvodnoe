@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>9.5 События во временном окне · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 9 · Скользящее окно · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 9 · скользящее окно</p>
+          <p class="running__folio">Глава 9.5</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">9.5</span>
+          <h1>События<br>во временном окне</h1>
+          <p class="lead">В этой главе решается вторая задача КТП занятия 9 — найти наибольшее число событий в окне фиксированной длины по времени. Окно здесь задано не числом элементов, а длительностью в секундах, поэтому при сдвиге из него может уйти сразу несколько событий. Сначала — окно на оси времени и решение перебором, затем — два указателя, где левая граница догоняет правую циклом <code>while</code>. В конце — две ошибки границы окна, каждая с прогоном ошибочной и исправленной версии.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Алгоритм</dd></div>
+          <div><dt>Уровень</dt><dd>Средний</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 9.2–9.4; модуль 8: монотонность указателей</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Так считают запросы и ошибки «за последние N секунд»</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Условие задачи</a></li>
+            <li><a href="#s2">Окно на оси времени</a></li>
+            <li><a href="#s3">Решение перебором</a></li>
+            <li><a href="#s4">Два указателя по времени</a></li>
+            <li><a href="#s5">Сборка функции и песочница</a></li>
+            <li><a href="#s6">Код и пошаговый прогон</a></li>
+            <li><a href="#s7">Две ошибки границы</a></li>
+            <li><a href="#s8">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Условие задачи</h2>
+        <p>Сервер записывает момент каждого запроса в секундах от начала суток. Нужно узнать, сколько запросов в самый нагруженный промежуток длиной w секунд, — например, чтобы сравнить с лимитом «не больше 100 запросов за минуту». Вопросы к условию разобраны в главе 9.2, §7; здесь условие записано в окончательном виде.</p>
+        <div class="term-card">
+          <p class="term-card__head"><b>max_events(times, w)</b><span>задача 2 занятия 9 · события во временном окне</span></p>
+          <div class="term-card__body">
+            <p><code>times</code> — моменты событий по возрастанию, одинаковые моменты возможны и считаются разными событиями. <code>w</code> — длина окна в секундах, <code>w &gt; 0</code>, иначе <code>ValueError</code>. Окно — полуинтервал <code>[s, s + w)</code> с любым началом <code>s</code>. Вернуть наибольшее число событий, которые попадают в одно окно. Пустой список даёт 0. Список не меняется.</p>
+            <p>Пример: <code>times = [1, 3, 4, 10, 12, 13, 14, 30]</code>, <code>w = 5</code>. В окно <code>[10, 15)</code> попадают 10, 12, 13, 14 — ответ 4.</p>
+          </div>
+        </div>
+
+        <h2 id="s2"><span class="sec">§2</span>Окно на оси времени</h2>
+        <p>В задачах глав 9.3 и 9.4 окно — это k соседних элементов списка. Здесь окно — отрезок времени: в нём может оказаться и одно событие, и десять, в зависимости от того, как плотно они идут. Блок ниже показывает события примера на оси времени и окно длиной w. Кнопки переставляют начало окна на следующее событие, длину окна можно менять.</p>
+        <div class="timeline" data-t="[1,3,4,10,12,13,14,30]" data-w="5" data-title="Запросы на оси времени"></div>
+        <p>Начало окна достаточно ставить только на моменты событий. Если окно начинается в момент, где события нет, его можно сдвинуть вправо до первого события внутри. Слева от нового начала событий в окне не было, поэтому ни одно не теряется. Правая граница сдвигается вместе с началом, и в окно могут только добавиться события. Поэтому лучшее окно всегда начинается с какого-то события, и окон для проверки не больше n.</p>
+        <p>При <code>w = 5</code> переставьте окно на момент 10: в него попадают 10, 12, 13 и 14. Момент 15 уже не входит — правая граница открытая. Поставьте <code>w = 9</code> и окно на момент 1: событие 10 оказывается ровно на границе <code>1 + 9 = 10</code> и в окно не попадает.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Решение перебором</h2>
+        <p>Перебор следует из §2 напрямую: для каждого события <code>i</code> поставить окно началом на <code>times[i]</code> и посчитать события, которые в него попадают. Список отсортирован, поэтому достаточно смотреть события с индекса <code>i</code> и дальше.</p>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n²) · память O(1)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">max_events_brute</span>(times, w):
+    <span class="k">if</span> w &lt;= <span class="n">0</span>:
+        <span class="k">raise</span> ValueError(<span class="s">"w должно быть больше 0"</span>)
+    best = <span class="n">0</span>
+    <span class="k">for</span> i <span class="k">in</span> <span class="k">range</span>(<span class="k">len</span>(times)):
+        count = <span class="n">0</span>
+        <span class="k">for</span> j <span class="k">in</span> <span class="k">range</span>(i, <span class="k">len</span>(times)):
+            <span class="k">if</span> times[j] &lt; times[i] + w:
+                count += <span class="n">1</span>
+        best = <span class="k">max</span>(best, count)
+    <span class="k">return</span> best</pre>
+        </figure>
+        <p>Внутренний цикл для события <code>i</code> делает <code>n − i</code> проверок, всего <code>n·(n + 1) / 2</code>, время O(n²). При ста тысячах запросов за сутки это около 5·10⁹ проверок. Перебор можно ускорить: внутренний цикл прерывать на первом событии за окном, но в худшем случае, когда все события попадают в одно окно, проверок столько же.</p>
+        <p>Перебор повторяет ту же работу, что и пересчёт срезами в главе 9.3. Окна для соседних событий в большей части совпадают, а события в каждом считаются заново.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Два указателя по времени</h2>
+        <p>Окно можно описать двумя указателями на события: <code>l</code> — первое событие в окне, <code>r</code> — последнее. Окно — <code>[times[l], times[l] + w)</code>, событий в нём <code>r − l + 1</code>. Правый указатель проходит все события по одному. Левый двигается, когда событие <code>times[l]</code> уже не помещается в одно окно с <code>times[r]</code>, то есть когда <code>times[r] − times[l] ≥ w</code>.</p>
+        <ol class="steps">
+          <li><b>Старт.</b> <code>l = 0</code>, <code>best = 0</code>.</li>
+          <li><b>Новое событие.</b> Для каждого <code>r</code> по порядку событие <code>times[r]</code> добавляется в окно справа.</li>
+          <li><b>Сжатие слева.</b> Пока <code>times[r] − times[l] ≥ w</code>, событие <code>times[l]</code> слишком старое: сдвинуть <code>l</code>. Это цикл <code>while</code>, потому что старых событий может быть несколько.</li>
+          <li><b>Подсчёт.</b> Теперь все события с <code>l</code> по <code>r</code> помещаются в окно, их <code>r − l + 1</code>. Обновить <code>best</code>.</li>
+        </ol>
+        <p>Отличие от глав 9.3 и 9.4 — в шаге 3. Там при сдвиге уходил ровно один элемент, и вместо цикла хватало одного вычитания. Здесь длина окна постоянна по времени, а число событий в нём меняется: после паузы из окна уходит сразу несколько событий.</p>
+        <div class="margin-note">
+          <b>На полях: почему вложенный while не даёт O(n²)</b>
+          <p>Внутри <code>for</code> стоит <code>while</code>, и по виду это два вложенных цикла. Но <code>l</code> монотонный, как указатели модуля 8: он только растёт и не превышает <code>r</code>. За всю работу функции <code>l += 1</code> выполняется не больше n раз, сколько бы раз ни запускался <code>while</code>. Вместе с n шагами <code>r</code> это не больше 2n сдвигов, время O(n).</p>
+        </div>
+
+        <h2 id="s5"><span class="sec">§5</span>Сборка функции и песочница</h2>
+        <p>Правило из §4 записывается функцией из десяти строк. Расставьте их по порядку. Обратите внимание на отступы: <code>l += 1</code> стоит внутри <code>while</code>, а обновление <code>best</code> — после него, на уровне тела <code>for</code>.</p>
+        <div class="parsons" data-title="Соберите max_events" data-lines='["def max_events(times, w):", "    if w &lt;= 0:", "        raise ValueError(\"w должно быть больше 0\")", "    best = 0", "    l = 0", "    for r in range(len(times)):", "        while times[r] - times[l] &gt;= w:", "            l += 1", "        best = max(best, r - l + 1)", "    return best"]'></div>
+        <details class="pyhint"><summary>Python в этой строке: <code>while</code> внутри <code>for</code></summary><div><p>На каждом шаге <code>for</code> цикл <code>while</code> выполняется столько раз, сколько его условие истинно: ноль, один или несколько. Переменная <code>l</code> объявлена до <code>for</code>, поэтому сохраняет значение между шагами и не сбрасывается в 0.</p><pre>&gt;&gt;&gt; l = 0
+&gt;&gt;&gt; for r in range(4):
+...     while r - l &gt;= 2:
+...         l += 1
+...     print(r, l)
+...
+0 0
+1 0
+2 1
+3 2</pre></div></details>
+        <p>Напишите функцию сами. Восемь тестов: пример, событие на правой границе, одинаковые моменты, пустой список, одно событие, неверное <code>w</code>, неизменность входа и сравнение с перебором окон на трёхстах случайных списках.</p>
+        <div class="sandbox" data-title="Напишите max_events сами" data-call="print(max_events([1, 3, 4, 10, 12, 13, 14, 30], 5))">
+<script type="text/plain" class="sandbox__start">
+def max_events(times, w):
+    if w <= 0:
+        raise ValueError("w должно быть больше 0")
+    best = 0
+    l = 0
+    for r in range(len(times)):
+        # Пока событие times[l] не помещается в одно окно
+        # с times[r], сдвигайте l. Затем обновите best.
+        pass
+    return best
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """[1, 3, 4, 10, 12, 13, 14, 30], w = 5 → 4: окно [10, 15)"""
+    r = max_events([1, 3, 4, 10, 12, 13, 14, 30], 5)
+    assert r == 4, f"ожидалось 4, получено {r!r}"
+
+def test_right_edge():
+    """[0, 5], w = 5 → 1: момент 5 в окно [0, 5) не входит"""
+    r = max_events([0, 5], 5)
+    assert r == 1, f"ожидалось 1, получено {r!r}"
+
+def test_same_moment():
+    """три события в один момент — три разных события"""
+    r = max_events([7, 7, 7], 1)
+    assert r == 3, f"ожидалось 3, получено {r!r}"
+
+def test_empty():
+    """событий нет — 0"""
+    r = max_events([], 3)
+    assert r == 0, f"ожидалось 0, получено {r!r}"
+
+def test_one_event():
+    """одно событие"""
+    r = max_events([42], 10)
+    assert r == 1, f"ожидалось 1, получено {r!r}"
+
+def test_bad_w():
+    """w = 0 и w < 0 — ValueError"""
+    for w in (0, -1):
+        try:
+            max_events([1, 2], w)
+        except ValueError:
+            continue
+        assert False, f"w = {w}: ожидалась ValueError"
+
+def test_input_not_changed():
+    """список после вызова тот же"""
+    times = [1, 2, 8]
+    max_events(times, 3)
+    assert times == [1, 2, 8], f"список стал {times!r}"
+
+def test_matches_brute():
+    """300 случайных списков: ответ совпадает с перебором окон"""
+    import random
+    rnd = random.Random(11)
+    for _ in range(300):
+        times = sorted(rnd.randint(0, 40) for _ in range(rnd.randint(0, 12)))
+        w = rnd.randint(1, 10)
+        want = max((sum(1 for t in times if s <= t < s + w) for s in times), default=0)
+        got = max_events(times, w)
+        assert got == want, f"times = {times}, w = {w}: ожидалось {want}, получено {got}"
+</script>
+</div>
+
+        <h2 id="s6"><span class="sec">§6</span>Код и пошаговый прогон</h2>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(1)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">max_events</span>(times, w):
+    <span class="k">if</span> w &lt;= <span class="n">0</span>:
+        <span class="k">raise</span> ValueError(<span class="s">"w должно быть больше 0"</span>)
+    best = <span class="n">0</span>
+    l = <span class="n">0</span>
+    <span class="k">for</span> r <span class="k">in</span> <span class="k">range</span>(<span class="k">len</span>(times)):
+        <span class="k">while</span> times[r] - times[l] &gt;= w:
+            l += <span class="n">1</span>
+        best = <span class="k">max</span>(best, r - l + <span class="n">1</span>)
+    <span class="k">return</span> best</pre>
+        </figure>
+        <p>Прогон на примере из §1. Голубые ячейки — события окна, бледные — события, которые из окна уже ушли. На шагах 14–19 видно, чем это окно отличается от окна по элементам: событие 10 приходит после паузы, и цикл <code>while</code> трижды сдвигает <code>l</code>, убирая события 1, 3 и 4. На шагах 32–39 то же повторяется для события 30.</p>
+        <div class="tracer" data-trace="events" data-zone="events" data-title="Наибольшее число событий за 5 секунд"></div>
+        <div class="term-card">
+          <p class="term-card__head"><b>Инвариант</b><span>события во временном окне</span></p>
+          <div class="term-card__body">
+            <p>После цикла <code>while</code> на шаге <code>r</code> индекс <code>l</code> — самое раннее событие, которое помещается в одно окно длиной w с событием <code>times[r]</code>. Все события с <code>l</code> по <code>r</code> лежат в окне <code>[times[l], times[l] + w)</code>, их <code>r − l + 1</code>.</p>
+            <p><code>best</code> — наибольшее из этих чисел для уже пройденных <code>r</code>. Любое окно, которое начинается с события, будет учтено на шаге его последнего события. Поэтому после цикла <code>best</code> — ответ.</p>
+          </div>
+        </div>
+        <div class="margin-note margin-note--steel">
+          <b>На полях: if вместо while</b>
+          <p>Если заменить <code>while</code> на <code>if</code>, <code>l</code> за шаг сдвигается не больше чем на одно событие, и после паузы окно в переменных получается шире настоящего. Наибольшее число при этом всё равно получается верным: на трёхстах случайных списках из тестов и на двадцати тысячах при проверке главы эта версия ответила так же, как перебор. Окно, которое не сжимается быстрее, чем растёт, не может показать больше событий, чем уже было найдено. Но значения <code>l</code> и <code>r − l + 1</code> на отдельных шагах неверны, и для задач, где нужно само окно, такая версия не подходит. На review за такую замену спрашивают, поэтому в коде пишут <code>while</code>.</p>
+        </div>
+
+        <h2 id="s7"><span class="sec">§7</span>Две ошибки границы</h2>
+        <p>Обе ошибки связаны с границами: одна — с правой границей окна по времени, другая — с подсчётом событий между указателями. Каждая запущена на входе, где она меняет ответ.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>max_events с одной изменённой строкой</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>&gt; вместо &gt;=</button>
+            <button>&gt;= · исправлено</button>
+            <button>r − l вместо r − l + 1</button>
+          </div>
+          <div class="demo__pane">
+            <p>Условие <code>while times[r] - times[l] &gt; w</code>. Вход — <code>[0, 5]</code>, <code>w = 5</code>, верный ответ 1: окно <code>[0, 5)</code> не включает момент 5.</p>
+            <div class="tracer tracer--bug" data-trace="bug_strict" data-zone="events" data-title="&gt; w"></div>
+            <p class="demo__verdict"><b>2</b>На шаге 8 разность 5 − 0 = 5, и <code>5 &gt; 5</code> ложно: событие 0 остаётся в окне вместе с событием 5. Строгое сравнение делает правую границу закрытой, <code>[s, s + w]</code>, а интервьюер в главе 9.2 назвал полуинтервал.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Тот же вход с верным условием <code>&gt;= w</code>.</p>
+            <div class="tracer" data-trace="fix_strict" data-zone="events" data-title="&gt;= w"></div>
+            <p class="demo__verdict"><b>1</b>На шаге 8 <code>5 ≥ 5</code> истинно, событие 0 уходит из окна, и в окне <code>[5, 10)</code> остаётся одно событие.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Подсчёт <code>best = max(best, r - l)</code>. Вход — пример из §1, верный ответ 4.</p>
+            <div class="tracer tracer--bug" data-trace="bug_count" data-zone="events" data-title="r − l"></div>
+            <p class="demo__verdict"><b>3</b>Событий с индекса <code>l</code> по <code>r</code> включительно <code>r − l + 1</code>. Это правило «от a до b включительно — b − a + 1» из занятия 7. Без <code>+ 1</code> каждое окно недосчитывает одно событие, на шаге 30 вместо 4 получается 3. Верная версия — прогон в §6.</p>
+          </div>
+        </div>
+        <p>Ошибку границы из тестов ловят <code>test_right_edge</code> и сравнение с перебором. На примере из §1 обе версии сравнения дают 4, и без отдельного примера на границу ошибка была бы незаметна. Поэтому вопрос «<code>[s, s + w)</code> или <code>[s, s + w]</code>?» задают до кода и сразу записывают пример на эту границу.</p>
+
+        <h2 id="s8"><span class="sec">§8</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b><code>times = [2, 4, 9]</code>, <code>w = 7</code>. Сколько событий в лучшем окне?</p>
+          <ul class="quiz__opts">
+            <li><button>3: все события лежат в промежутке длиной 7</button><p class="quiz__why">9 − 2 = 7, и окно <code>[2, 9)</code> момент 9 не включает. Все три события в одно окно не помещаются.</p></li>
+            <li data-ok><button>2: например, окно [2, 9) или [4, 11)</button><p class="quiz__why">Верно. В <code>[2, 9)</code> попадают 2 и 4, в <code>[4, 11)</code> — 4 и 9.</p></li>
+            <li><button>1: события стоят далеко друг от друга</button><p class="quiz__why">4 − 2 = 2 &lt; 7, события 2 и 4 помещаются в одно окно.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>Почему для левой границы нужен цикл <code>while</code>, а в главе 9.4 хватало одного вычитания?</p>
+          <ul class="quiz__opts">
+            <li><button>Здесь окно длиннее, чем в главе 9.4</button><p class="quiz__why">Длина окна ни при чём. Дело в том, сколько элементов может уйти из окна за один шаг.</p></li>
+            <li data-ok><button>За один шаг из окна по времени может уйти несколько событий</button><p class="quiz__why">Верно. В окне из k элементов при сдвиге уходит ровно один. В окне по времени после паузы устаревают сразу несколько событий.</p></li>
+            <li><button>while работает быстрее, чем вычитание</button><p class="quiz__why">Скорость здесь ни при чём: это разные операции для разных задач.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 3</b>Сколько раз в худшем случае выполнится <code>l += 1</code> за всю работу функции на n событиях?</p>
+          <ul class="quiz__opts">
+            <li><button>n·(n − 1) / 2: while вложен в for</button><p class="quiz__why">Вложенность не означает n² шагов. <code>l</code> не уменьшается и не превышает <code>r</code>, поэтому всего вырасти может не больше чем на n − 1.</p></li>
+            <li data-ok><button>Не больше n − 1: l только растёт</button><p class="quiz__why">Верно. Это монотонность указателя из модуля 8: каждый сдвиг <code>l</code> навсегда убирает одно событие.</p></li>
+            <li><button>Ровно n раз при любом входе</button><p class="quiz__why">Если все события помещаются в одно окно, <code>l</code> не сдвинется ни разу.</p></li>
+          </ul>
+        </div>
+
+        <div class="pager"><a href="04-luchshij-otrezok.html">← 9.4 Лучший отрезок длины k</a><a href="06-granicy.html">9.6 Границы окна и неверный k →</a></div>
+        <div class="colophon">
+          <span>Модуль 9 · Скользящее окно · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>

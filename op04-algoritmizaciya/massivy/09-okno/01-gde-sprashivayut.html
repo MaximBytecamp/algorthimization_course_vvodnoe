@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>9.1 Скользящее окно на собеседованиях и в работе · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 9 · Скользящее окно · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 9 · скользящее окно</p>
+          <p class="running__folio">Глава 9.1</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">9.1</span>
+          <h1>Скользящее окно<br>на собеседованиях и в работе</h1>
+          <p class="lead">В этой главе разобрано, откуда известно, что техника скользящего окна нужна. Сначала — какие задачи на подотрезки дают на алгоритмической секции и в каких программах подготовки окно выделено отдельной темой. Затем — где тот же приём работает в обычных программах. В конце — определение окна, его связь с двумя указателями из модуля 8, две формы окна и карта модуля.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Обзор темы</dd></div>
+          <div><dt>Уровень</dt><dd>Начальный</dd></div>
+          <div><dt>Опирается на</dt><dd>Модуль 8: указатели в одну сторону; занятие 7: срезы и полуинтервалы</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Понимать, какие задачи модуля встретятся на интервью</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Задачи на подотрезок на секции</a></li>
+            <li><a href="#s2">Где окно стоит отдельной темой</a></li>
+            <li><a href="#s3">Задачи с собеседований</a></li>
+            <li><a href="#s4">Где приём работает в программах</a></li>
+            <li><a href="#s5">Окно и его сдвиг</a></li>
+            <li><a href="#s6">Окно и два указателя</a></li>
+            <li><a href="#s7">Две формы окна</a></li>
+            <li><a href="#s8">Карта модуля</a></li>
+            <li><a href="#s9">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Задачи на подотрезок на секции</h2>
+        <p>Подотрезок массива — несколько элементов, которые стоят подряд: <code>a[2]</code>, <code>a[3]</code>, <code>a[4]</code>. В Python это срез <code>a[2:5]</code> из занятия 7. Задачи на подотрезки встречаются на алгоритмической секции с первого этапа. В журнале Яндекс Образования, в статье об алгоритмических собеседованиях, обе типичные задачи секции — про подотрезки.</p>
+        <div class="pull-quote">
+          <p>«Типичный пример первой задачи: в массиве из чисел нужно найти наибольший неубывающий подотрезок, то есть такой подотрезок из чисел, где каждое следующее число больше или равно предыдущему».</p>
+          <footer><cite>Журнал Яндекс Образования · <a href="https://education.yandex.ru/journal/algoritmicheskie-sobesedovaniya-v-yandekse-kak-podgotovitsya-i-chego-ozhidat" target="_blank" rel="noopener">education.yandex.ru</a></cite></footer>
+        </div>
+        <div class="pull-quote">
+          <p>«Типичный пример второй задачи: дан массив чисел, требуется найти число подмассивов, в которых значения всех чисел различны».</p>
+          <footer><cite>Там же</cite></footer>
+        </div>
+        <p>У массива из n элементов около n²/2 подотрезков, поэтому перебрать их все и для каждого посчитать ответ заново — это O(n²) или дольше. Скользящее окно проходит подотрезки по порядку и пересчитывает ответ по изменению: что вошло в подотрезок и что из него вышло. Первую задачу из цитаты решают одним проходом с текущей длиной подотрезка. Вторую — окном переменной длины со словарём, это тема занятия 10. Окно фиксированной длины, тема этого модуля, — самая простая форма приёма: длина подотрезка задана, и при каждом сдвиге в окно входит ровно один элемент и ровно один выходит.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Что требуется на секции</th><th>Где это в модуле</th></tr></thead>
+            <tbody>
+              <tr><td>Решение одним проходом вместо перебора всех подотрезков</td><td>Главы 9.3, 9.4: пересчёт окна за O(1) и лучший отрезок длины k</td></tr>
+              <tr><td>Учёт крайних случаев</td><td>Глава 9.6: k = 0, k = 1, k = n, k больше n</td></tr>
+              <tr><td>Обоснование сложности</td><td>Глава 9.7: замер пересчёта окна против суммы каждого среза</td></tr>
+              <tr><td>Вопросы до кода</td><td>Глава 9.2: формулировки задач и уточнения</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s2"><span class="sec">§2</span>Где окно стоит отдельной темой</h2>
+        <p>В программах подготовки к собеседованиям на LeetCode скользящее окно выделено отдельным разделом. Состав разделов проверен по данным сайта.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Программа</th><th>Раздел Sliding Window</th><th>Какая форма окна</th></tr></thead>
+            <tbody>
+              <tr><td><a href="https://leetcode.com/studyplan/leetcode-75/" target="_blank" rel="noopener">LeetCode 75</a></td><td>643, 1456, 1004, 1493</td><td>Первые две задачи — окно фиксированной длины, две следующие — переменной</td></tr>
+              <tr><td><a href="https://leetcode.com/studyplan/top-interview-150/" target="_blank" rel="noopener">LeetCode · Top Interview 150</a></td><td>209, 3, 30, 76</td><td>Все четыре — окно переменной длины, занятие 10</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Раздел LeetCode 75 начинается с окна фиксированной длины: на нём проще всего увидеть, как сумма окна пересчитывается при сдвиге. Задачи на окно переменной длины используют тот же сдвиг, но длина окна в них меняется по условию.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Задачи с собеседований</h2>
+        <p>У всех задач ниже на LeetCode стоит метка Sliding Window, это проверено по данным сайта. Первые шесть — окно фиксированной длины, остальные используют окно вместе с техниками из следующих занятий.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Номер и название</th><th>Сложность</th><th>Что нужно сделать</th><th>Где в курсе</th></tr></thead>
+            <tbody>
+              <tr><td><a href="https://leetcode.com/problems/maximum-average-subarray-i/" target="_blank" rel="noopener">643 · Maximum Average Subarray I</a></td><td>Easy</td><td>Найти отрезок длины k с наибольшим средним</td><td>Модуль 9, лучший отрезок длины k</td></tr>
+              <tr><td><a href="https://leetcode.com/problems/maximum-number-of-vowels-in-a-substring-of-given-length/" target="_blank" rel="noopener">1456 · Maximum Number of Vowels in a Substring of Given Length</a></td><td>Medium</td><td>Найти подстроку длины k, в которой больше всего гласных</td><td>Модуль 9, счётчик в окне</td></tr>
+              <tr><td><a href="https://leetcode.com/problems/number-of-sub-arrays-of-size-k-and-average-greater-than-or-equal-to-threshold/" target="_blank" rel="noopener">1343 · Number of Sub-arrays of Size K and Average Greater than or Equal to Threshold</a></td><td>Medium</td><td>Посчитать отрезки длины k со средним не меньше порога</td><td>Модуль 9</td></tr>
+              <tr><td><a href="https://leetcode.com/problems/minimum-recolors-to-get-k-consecutive-black-blocks/" target="_blank" rel="noopener">2379 · Minimum Recolors to Get K Consecutive Black Blocks</a></td><td>Easy</td><td>Найти отрезок длины k, где меньше всего белых клеток</td><td>Модуль 9</td></tr>
+              <tr><td><a href="https://leetcode.com/problems/grumpy-bookstore-owner/" target="_blank" rel="noopener">1052 · Grumpy Bookstore Owner</a></td><td>Medium</td><td>Выбрать отрезок из k минут, который даёт больше всего довольных покупателей</td><td>Модуль 9</td></tr>
+              <tr><td><a href="https://leetcode.com/problems/k-radius-subarray-averages/" target="_blank" rel="noopener">2090 · K Radius Subarray Averages</a></td><td>Medium</td><td>Для каждого элемента найти среднее окна радиуса k вокруг него</td><td>Модуль 9</td></tr>
+              <tr><td><a href="https://leetcode.com/problems/contains-duplicate-ii/" target="_blank" rel="noopener">219 · Contains Duplicate II</a></td><td>Easy</td><td>Проверить, есть ли два равных элемента на расстоянии не больше k</td><td>Окно и множество, занятие 19</td></tr>
+              <tr><td><a href="https://leetcode.com/problems/find-all-anagrams-in-a-string/" target="_blank" rel="noopener">438 · Find All Anagrams in a String</a></td><td>Medium</td><td>Найти все подстроки, которые являются перестановкой образца</td><td>Окно и частотный словарь, занятие 18</td></tr>
+              <tr><td><a href="https://leetcode.com/problems/sliding-window-maximum/" target="_blank" rel="noopener">239 · Sliding Window Maximum</a></td><td>Hard</td><td>Для каждого окна длины k найти максимум</td><td>Окно и дек, занятие 25</td></tr>
+              <tr><td><a href="https://leetcode.com/problems/minimum-size-subarray-sum/" target="_blank" rel="noopener">209 · Minimum Size Subarray Sum</a></td><td>Medium</td><td>Найти самый короткий отрезок с суммой не меньше S</td><td>Окно переменной длины, занятие 10</td></tr>
+              <tr><td><a href="https://leetcode.com/problems/longest-substring-without-repeating-characters/" target="_blank" rel="noopener">3 · Longest Substring Without Repeating Characters</a></td><td>Medium</td><td>Найти самую длинную подстроку без повторов</td><td>Окно переменной длины, занятие 10</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Задачи 209 и 3 — практика занятия 10, в КТП она записана так: «Решить задачи на минимальный отрезок с суммой не меньше S и подстроку без повторов». Для занятия 9 КТП ставит другие две задачи: «Найти лучший отрезок длины k и максимальное число событий в фиксированном временном окне».</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Где приём работает в программах</h2>
+        <p>Окно фиксированной длины встречается везде, где по ряду значений считают показатель за последние k значений или за последние N секунд.</p>
+        <div class="why">
+          <div class="why__head">Где встречается</div>
+          <ul class="why__list">
+            <li><b>Скользящее среднее.</b> В аналитике и на графиках курсов валют сглаживают ряд: каждую точку заменяют средним последних k значений. В библиотеке pandas для этого есть метод <code>rolling(k)</code>, пример ниже.</li>
+            <li><b>Последние k событий.</b> В стандартной библиотеке Python очередь <code>collections.deque(maxlen=k)</code> хранит не больше k элементов: при добавлении нового самый старый удаляется. Так хранят, например, последние строки журнала.</li>
+            <li><b>Счётчики за последние N секунд.</b> «Сколько запросов пришло за последнюю минуту», «сколько ошибок за последние пять минут» — в мониторинге и при ограничении частоты запросов. С каждым новым моментом времени в окно входят новые события и из него выходят устаревшие. Это задача о событиях во временном окне, глава 9.5.</li>
+          </ul>
+        </div>
+        <p>Число посетителей сайта по часам, сумма за каждые три часа подряд. Первые два значения — <code>nan</code>: для них трёх значений ещё нет.</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>pandas 3.0.6 · Python 3.12</span></figcaption>
+<pre>&gt;&gt;&gt; <span class="k">import</span> pandas <span class="k">as</span> pd
+&gt;&gt;&gt; visits = pd.Series([<span class="n">12</span>, <span class="n">15</span>, <span class="n">9</span>, <span class="n">20</span>, <span class="n">18</span>, <span class="n">7</span>, <span class="n">25</span>])
+&gt;&gt;&gt; visits.rolling(<span class="n">3</span>).sum().tolist()
+[nan, nan, 36.0, 44.0, 47.0, 45.0, 50.0]</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>python -i · Python 3.12</span></figcaption>
+<pre>&gt;&gt;&gt; <span class="k">from</span> collections <span class="k">import</span> deque
+&gt;&gt;&gt; last = deque(maxlen=<span class="n">3</span>)
+&gt;&gt;&gt; <span class="k">for</span> x <span class="k">in</span> [<span class="n">5</span>, <span class="n">1</span>, <span class="n">4</span>, <span class="n">2</span>, <span class="n">8</span>]:
+...     last.append(x)
+...     <span class="k">print</span>(<span class="k">list</span>(last))
+...
+[5]
+[5, 1]
+[5, 1, 4]
+[1, 4, 2]
+[4, 2, 8]</pre>
+        </figure>
+        <p>В обоих примерах окно длины 3 сдвигается на одну позицию: справа добавляется новое значение, слева уходит самое старое. В модуле этот сдвиг пишется вручную на обычном списке, без библиотек: так видно, сколько работы стоит каждый сдвиг.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Окно и его сдвиг</h2>
+        <p>Перед определениями — пример из жизни, на котором видно, как работает сдвиг окна.</p>
+        <div class="analogy">
+          <div class="analogy__head">Для наглядности</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Окно вагона</b><p>Поезд едет вдоль ряда столбов, в окне вагона всегда видно три столба. Когда поезд проезжает на один столб вперёд, справа в окне появляется новый столб, а слева один исчезает. Два столба посередине остаются, их не нужно разглядывать заново.</p></div>
+            <div class="analogy__side"><b>Что это в коде</b><p>Ряд столбов — список, окно — три соседних элемента <code>a[l:l + 3]</code>. Сдвиг окна — <code>l += 1</code>. Чтобы узнать сумму в новом окне, достаточно вычесть ушедший элемент и прибавить пришедший.</p></div>
+          </div>
+          <p class="analogy__limit"><b>Где сравнение неточно</b>Поезд едет непрерывно, а окно в алгоритме сдвигается ровно на один элемент за шаг. И окно не останавливается раньше времени: алгоритм проходит все окна от первого до последнего.</p>
+        </div>
+        <p>Теперь то же самое точными словами.</p>
+        <div class="term-card">
+          <p class="term-card__head"><b>Окно</b><span>window · полуинтервал [l, r)</span></p>
+          <div class="term-card__body">
+            <p>Подотрезок списка, который задаётся двумя индексами: <code>l</code> — первый элемент окна, <code>r</code> — первый элемент за окном. В окно входят <code>a[l]</code>, <code>a[l + 1]</code>, …, <code>a[r − 1]</code>, это срез <code>a[l:r]</code>. Длина окна — <code>r − l</code>: при записи полуинтервалом, как в занятии 7, длина считается без <code>+ 1</code>.</p>
+          </div>
+        </div>
+        <div class="term-card">
+          <p class="term-card__head"><b>Скользящее окно фиксированного размера</b><span>fixed-size sliding window</span></p>
+          <div class="term-card__body">
+            <p>Техника прохода, в которой окно длины <code>k</code> стоит сначала на <code>a[0:k]</code>, а затем сдвигается на одну позицию вправо, пока не дойдёт до конца списка. Всего окон <code>n − k + 1</code>. При каждом сдвиге в окно входит один элемент справа и один выходит слева.</p>
+            <p>Ответ для окна — сумма, число гласных, количество событий — хранится в переменной, её называют состоянием окна. При сдвиге состояние не считают заново, а исправляют по двум элементам, которые изменились. Поэтому сдвиг стоит O(1), а весь проход — O(n).</p>
+          </div>
+        </div>
+        <p>Блок ниже показывает окно над списком посещений из §4. Кнопка «сдвинуть окно» делает один сдвиг и показывает, как пересчитывается сумма. Длину окна можно менять. Под лентой два счётчика обращений к элементам списка: сколько их было бы, если считать сумму каждого окна заново, и сколько нужно при сдвиге.</p>
+        <div class="slide" data-a="[12,15,9,20,18,7,25]" data-k="3" data-title="Сумма посещений за 3 часа подряд"></div>
+        <p>На семи значениях с <code>k = 3</code> разница небольшая: 15 обращений против 11. Она растёт с длиной окна. Пересчёт с нуля читает k элементов для каждого из <code>n − k + 1</code> окон, сдвиг — k элементов для первого окна и по два для каждого следующего.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>n</th><th>k</th><th>Пересчёт с нуля: (n − k + 1)·k</th><th>Сдвиг окна: k + 2·(n − k)</th></tr></thead>
+            <tbody>
+              <tr><td>7</td><td>3</td><td>15</td><td>11</td></tr>
+              <tr><td>100&nbsp;000</td><td>100</td><td>9&nbsp;990&nbsp;100</td><td>199&nbsp;900</td></tr>
+              <tr><td>1&nbsp;000&nbsp;000</td><td>1&nbsp;000</td><td>999&nbsp;001&nbsp;000</td><td>1&nbsp;999&nbsp;000</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Пересчёт с нуля стоит O(n·k): при k, сравнимом с n, это O(n²). Сдвиг окна стоит O(n) при любом k. Подробно оба способа и замер разобраны в главах 9.3 и 9.7.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Окно и два указателя</h2>
+        <p>Границы окна <code>l</code> и <code>r</code> — это два указателя из модуля 8. Оба идут слева направо и назад не возвращаются, как указатели чтения и записи. Отличие в том, что расстояние между ними постоянно: <code>r − l = k</code> на каждом шаге. Поэтому оба указателя сдвигаются вместе, и в коде часто хранят только один из них.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th></th><th>Указатели в одну сторону, модуль 8</th><th>Окно фиксированной длины, модуль 9</th></tr></thead>
+            <tbody>
+              <tr><td><b>Указатели</b></td><td><code>r</code> читает, <code>w</code> пишет</td><td><code>l</code> — начало окна, <code>r = l + k</code> — конец</td></tr>
+              <tr><td><b>Расстояние между ними</b></td><td>Меняется: <code>w</code> отстаёт от <code>r</code> на число пропущенных элементов</td><td>Всегда <code>k</code></td></tr>
+              <tr><td><b>Что меняется на шаге</b></td><td>Список: запись в позицию <code>w</code></td><td>Состояние окна: сумма, счётчик</td></tr>
+              <tr><td><b>Монотонность</b></td><td>Оба только вправо, отсюда O(n)</td><td>Оба только вправо, отсюда O(n)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s7"><span class="sec">§7</span>Две формы окна</h2>
+        <p>Задачи на окно делятся на две формы по тому, как задаётся длина окна. Форму узнают по условию задачи.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th></th><th>Фиксированной длины</th><th>Переменной длины</th></tr></thead>
+            <tbody>
+              <tr><td><b>Как задана длина</b></td><td>Числом k в условии: «отрезок длины k», «за любые 3 часа подряд»</td><td>Условием: «сумма не меньше S», «без повторов»</td></tr>
+              <tr><td><b>Как двигаются границы</b></td><td>Вместе, на одну позицию за шаг</td><td>Правая расширяет окно, левая сжимает, когда условие нарушено</td></tr>
+              <tr><td><b>Сколько окон</b></td><td>Ровно <code>n − k + 1</code></td><td>Зависит от данных</td></tr>
+              <tr><td><b>Пример</b></td><td>LeetCode 643, 1456</td><td>LeetCode 209, 3</td></tr>
+              <tr><td><b>Где в курсе</b></td><td>Занятие 9, этот модуль</td><td>Занятие 10</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s8"><span class="sec">§8</span>Карта модуля</h2>
+        <p>Модуль построен так же, как модуль 8: от того, как задачу формулируют и уточняют, к решению, крайним случаям и замеру. Главы 9.1 и 9.2 — про условие, 9.3–9.5 — про сами алгоритмы, 9.6 и 9.7 — про проверку, 9.8 — практика и домашнее задание.</p>
+        <ol class="steps">
+          <li><b>9.2 Формулировки и вопросы до решения.</b> Как звучат задачи на окно фиксированной длины и что уточнить до кода.</li>
+          <li><b>9.3 Окно и пересчёт за O(1).</b> Сумма каждого среза против сдвига окна, состояние окна, пошаговый прогон.</li>
+          <li><b>9.4 Лучший отрезок длины k.</b> Задача КТП: наибольшая сумма и среднее, LeetCode 643, счётчик в окне.</li>
+          <li><b>9.5 События во временном окне.</b> Задача КТП: наибольшее число событий за любые N секунд.</li>
+          <li><b>9.6 Границы.</b> k = 0, k = 1, k = n, k больше n и неверный k — тесты из контроля КТП.</li>
+          <li><b>9.7 Замер.</b> Пересчёт окна против суммы каждого среза на списках разной длины.</li>
+          <li><b>9.8 Практика и ДЗ.</b> Стартовый набор, тесты, домашнее задание.</li>
+        </ol>
+
+        <h2 id="s9"><span class="sec">§9</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>Почему сдвиг окна стоит O(1), хотя в окне k элементов?</p>
+          <ul class="quiz__opts">
+            <li><button>Python складывает срез из k элементов за одну операцию</button><p class="quiz__why"><code>sum(a[l:l + k])</code> создаёт срез и складывает все k элементов, это O(k). Выигрыш даёт отказ от пересчёта всей суммы.</p></li>
+            <li data-ok><button>При сдвиге меняются только два элемента окна</button><p class="quiz__why">Верно. Один элемент уходит слева, один приходит справа, остальные k − 1 остаются. Сумму исправляют вычитанием и сложением.</p></li>
+            <li><button>Окно хранит только первый и последний элемент</button><p class="quiz__why">В окно входят все k элементов, и все они входят в сумму. Но при сдвиге меняются только два из них.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>Сколько окон длины 4 в списке из 10 элементов?</p>
+          <ul class="quiz__opts">
+            <li><button>10</button><p class="quiz__why">Последнее окно начинается с индекса 6: <code>a[6:10]</code>. Окна, которое начиналось бы с индекса 7, нет — ему не хватает элементов.</p></li>
+            <li><button>6</button><p class="quiz__why">Это n − k. Окна начинаются с индексов 0, 1, …, 6 — это семь значений.</p></li>
+            <li data-ok><button>7</button><p class="quiz__why">Верно: n − k + 1 = 10 − 4 + 1. Правило «элементов n, окон длины k — n − k + 1» из занятия 7.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 3</b>Какая форма окна подходит для задачи «найти самую длинную подстроку без повторяющихся символов»?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button>Окно переменной длины: длину задаёт условие</button><p class="quiz__why">Верно. Длина окна в условии не названа, она определяется требованием «без повторов». Это LeetCode 3, занятие 10.</p></li>
+            <li><button>Окно фиксированной длины: перебрать все k</button><p class="quiz__why">Для каждого k нужен свой проход, всего O(n²). Окно переменной длины решает задачу за один проход.</p></li>
+            <li><button>Указатели навстречу с двух концов строки</button><p class="quiz__why">Указатели навстречу сравнивают элементы с разных концов. Подстрока — это участок подряд, его проходят указатели в одну сторону.</p></li>
+          </ul>
+        </div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Журнал Яндекс Образования. Алгоритмические собеседования в Яндексе: как подготовиться и чего ожидать — <a href="https://education.yandex.ru/journal/algoritmicheskie-sobesedovaniya-v-yandekse-kak-podgotovitsya-i-chego-ozhidat" target="_blank" rel="noopener">education.yandex.ru/journal</a>; цитаты сверены 07.10.2026</li>
+            <li>LeetCode. LeetCode 75 — <a href="https://leetcode.com/studyplan/leetcode-75/" target="_blank" rel="noopener">leetcode.com/studyplan/leetcode-75</a>; состав раздела Sliding Window проверен по данным сайта 07.10.2026</li>
+            <li>LeetCode. Top Interview 150 — <a href="https://leetcode.com/studyplan/top-interview-150/" target="_blank" rel="noopener">leetcode.com/studyplan/top-interview-150</a>; состав раздела и метки задач проверены 07.10.2026</li>
+            <li>pandas. Series.rolling — <a href="https://pandas.pydata.org/docs/reference/api/pandas.Series.rolling.html" target="_blank" rel="noopener">pandas.pydata.org</a></li>
+            <li>Документация Python. collections.deque — <a href="https://docs.python.org/3/library/collections.html#collections.deque" target="_blank" rel="noopener">docs.python.org</a></li>
+            <li>КТП ОП.04, занятия 9 и 10</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="../08-dva-ukazatelya/13-mok-intervyu.html">← 8.13 Мок-интервью по задачам модуля</a><a href="02-formulirovki-i-voprosy.html">9.2 Формулировки задач и вопросы до решения →</a></div>
+        <div class="colophon">
+          <span>Модуль 9 · Скользящее окно · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>

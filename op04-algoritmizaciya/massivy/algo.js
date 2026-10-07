@@ -34,7 +34,9 @@
      а вместо результата показывается текст исключения.
      Зоны:
      between — вне [i, j] бледно; rw — [0, w) готово, [w, r) мусор;
-     compress — то же, что rw, но граница чтения — start. */
+     compress — то же, что rw, но граница чтения — start;
+     window — окно длины k модуля 9 (см. ниже);
+     events — события во временном окне: левее l бледно, с l по r — окно. */
   document.querySelectorAll('.tracer[data-trace]').forEach(root => {
     const t = (window.TRACES || {})[root.dataset.trace];
     if (!t) { root.innerHTML = '<p style="padding:14px">Прогон не загружен.</p>'; return; }
@@ -111,6 +113,22 @@
           }
           if (zone === 'split' && i !== null && j !== null) {
             if (k < i || k > j) return 'is-done';
+          }
+          if (zone === 'events') {
+            // События во временном окне: с l по r — в окне, левее l — ушли.
+            const rr = num(f, 'r'), ll = num(f, 'l');
+            if (ll !== null && k < ll) return 'is-out';
+            if (ll !== null && rr !== null && k >= ll && k <= rr) return 'is-win';
+          }
+          if (zone === 'window') {
+            // Окно модуля 9: при r — окно после сдвига [r − len + 1, r], ушедший r − len;
+            // при s — срез [s, s + len); до цикла — первое окно [0, len).
+            const len = num(f, 'k'), rr = num(f, 'r'), ss = num(f, 's');
+            if (len !== null) {
+              if (rr !== null) { if (k > rr - len && k <= rr) return 'is-win'; if (k === rr - len) return 'is-gone'; }
+              else if (ss !== null) { if (k >= ss && k < ss + len) return 'is-win'; }
+              else if ((f.vars.total !== undefined || f.vars.count !== undefined) && k < len) return 'is-win';
+            }
           }
           return '';
         }
@@ -458,7 +476,8 @@
   });
 
   /* ── 8. График замеров ────────────────────────────────────────── */
-  /* data-series: [{name, color, pts: [[n, ms], ...]}]. Оси логарифмические. */
+  /* data-series: [{name, color, pts: [[n, ms], ...]}], data-xlabel — подпись оси x.
+     Оси логарифмические. */
   document.querySelectorAll('.bench').forEach(root => {
     const series = json(root, 'series') || [];
     root.classList.add('widget');
@@ -478,7 +497,7 @@
         <div class="bench__keys">${series.map(s => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join('')}</div>
         <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(root.dataset.title || 'Замер')}">${g}
           <line class="axis" x1="${L}" y1="${H - B}" x2="${W - R}" y2="${H - B}"/><line class="axis" x1="${L}" y1="${T}" x2="${L}" y2="${H - B}"/>
-          <text x="${(W + L) / 2}" y="${H - 8}" text-anchor="middle">длина списка n</text>
+          <text x="${(W + L) / 2}" y="${H - 8}" text-anchor="middle">${esc(root.dataset.xlabel || 'длина списка n')}</text>
           <text x="16" y="${(H - B + T) / 2}" text-anchor="middle" transform="rotate(-90 16 ${(H - B + T) / 2})">время, мс</text>
           ${lines}</svg>
       </div>`;
@@ -552,6 +571,226 @@
       } else say(mode === 'dedup' ? `Повтор ${a[r]} пропущен, w не меняется.` : 'Ноль пропущен, w не меняется.');
       r++;
       if (r >= a.length) return finish();
+      draw();
+    });
+    reset();
+  });
+
+  /* ── 9а. Окно над списком ─────────────────────────────────────── */
+  /* data-a — список, data-k — длина окна. Окно — полуинтервал [l, r),
+     r = l + k. Сумма окна пересчитывается сдвигом: минус ушедший элемент,
+     плюс пришедший. Счётчики сравнивают число обращений к элементам
+     при пересчёте с нуля и при сдвиге. */
+  document.querySelectorAll('.slide').forEach(root => {
+    const a = json(root, 'a') || [];
+    const n = a.length;
+    let k = Math.min(Math.max(Number(root.dataset.k) || 3, 1), n), l, sum, naive, roll, best, bestL, timer = null, prevL = -1;
+    root.classList.add('widget');
+    root.innerHTML = `
+      <div class="widget__head"><b>${esc(root.dataset.title || 'Окно над списком')}</b><span>сдвиг на одну позицию</span></div>
+      <div class="widget__body">
+        <div class="btnrow slide__kbar"><span>Длина окна</span><button class="btn" data-act="kminus" aria-label="уменьшить k">−</button><b class="slide__k"></b><button class="btn" data-act="kplus" aria-label="увеличить k">+</button></div>
+        <div class="cells"></div>
+        <p class="slide__sum" aria-live="polite"></p>
+        <div class="btnrow">
+          <button class="btn btn--main" data-act="next">сдвинуть окно →</button>
+          <button class="btn" data-act="play">▶ до конца</button>
+          <button class="btn" data-act="reset">↻ сначала</button>
+        </div>
+        <div class="hunt__stats slide__stats"></div>
+        <div class="legend"><span><i class="l-win"></i>окно [l, r)</span><span><i class="l-gone"></i>элемент, который ушёл из окна</span></div>
+      </div>`;
+    const cells = root.querySelector('.cells'), say = root.querySelector('.slide__sum'), stats = root.querySelector('.slide__stats');
+    const total = () => n - k + 1;
+    const el_ = c => `${c} ${c % 10 === 1 && c % 100 !== 11 ? 'элемент' : c % 10 >= 2 && c % 10 <= 4 && (c % 100 < 12 || c % 100 > 14) ? 'элемента' : 'элементов'}`;
+    function reset() {
+      stop();
+      l = 0; prevL = -1;
+      sum = a.slice(0, k).reduce((x, y) => x + y, 0);
+      naive = k; roll = k; best = sum; bestL = 0;
+      say.innerHTML = `Первое окно a[0:${k}]: ${a.slice(0, k).join(' + ')} = <b>${sum}</b>. Чтобы его посчитать, нужно прочитать ${k === 1 ? 'один элемент' : `все ${el_(k)}`}.`;
+      draw();
+    }
+    function step() {
+      if (l + k >= n) return false;
+      const out = a[l], inn = a[l + k], old = sum;
+      sum = sum - out + inn; prevL = l; l++;
+      naive += k; roll += 2;
+      if (sum > best) { best = sum; bestL = l; }
+      say.innerHTML = `Окно сдвинулось на одну позицию: ушёл a[${l - 1}] = ${out}, пришёл a[${l + k - 1}] = ${inn}. Новая сумма: ${old} − ${out} + ${inn} = <b>${sum}</b>. ${k > 1 ? `Остальные ${el_(k - 1)} окна не перечитывались.` : ''}`;
+      if (l + k >= n) say.innerHTML += ` Это последнее окно: справа элементов больше нет. Наибольшая сумма — <b>${best}</b>, окно a[${bestL}:${bestL + k}].`;
+      draw();
+      return true;
+    }
+    function draw() {
+      const tags = {}, tail = [];
+      const put = (p, v) => { if (v < n) (tags[v] = tags[v] || []).push(p); else tail.push(p); };
+      put('l', l); put('r', l + k);
+      drawCells(cells, a, {
+        tags, tailTags: tail,
+        flash: prevL >= 0 ? new Set([l + k - 1]) : new Set(),
+        cls: i => (i >= l && i < l + k) ? 'is-win' : i === prevL ? 'is-gone' : ''
+      });
+      root.querySelector('.slide__k').textContent = `k = ${k}`;
+      root.querySelector('[data-act="kminus"]').disabled = k <= 1;
+      root.querySelector('[data-act="kplus"]').disabled = k >= n;
+      root.querySelector('[data-act="next"]').disabled = l + k >= n;
+      stats.innerHTML = `<span>окно ${l + 1} из ${total()}</span><span>пересчёт с нуля: ${naive} обращений</span><span>сдвиг окна: ${roll} обращений</span>`;
+    }
+    function stop() { if (timer) { clearInterval(timer); timer = null; root.querySelector('[data-act="play"]').textContent = '▶ до конца'; } }
+    root.addEventListener('click', e => {
+      const b = e.target.closest('[data-act]'); if (!b) return;
+      const act = b.dataset.act;
+      if (act === 'kminus' && k > 1) { k--; reset(); }
+      if (act === 'kplus' && k < n) { k++; reset(); }
+      if (act === 'reset') reset();
+      if (act === 'next') { stop(); step(); }
+      if (act === 'play') {
+        if (timer) return stop();
+        if (l + k >= n) reset();
+        b.textContent = '⏸ пауза';
+        timer = setInterval(() => { if (!step()) stop(); }, 900);
+      }
+    });
+    reset();
+  });
+
+  /* ── 9б. Сдвиг окна вручную ──────────────────────────────────── */
+  /* На каждом сдвиге студент щёлкает ячейку, которая уходит из окна,
+     затем ячейку, которая входит, и вводит новую сумму. Неверный выбор
+     не выполняется, вместо него — объяснение. */
+  document.querySelectorAll('.slidehand').forEach(root => {
+    const a = json(root, 'a') || [];
+    const n = a.length, k = Number(root.dataset.k) || 3;
+    let l, sum, phase, errors, done;
+    root.classList.add('widget');
+    root.innerHTML = `
+      <div class="widget__head"><b>Сдвиньте окно сами</b><span>окно длины ${k}</span></div>
+      <div class="widget__body">
+        <div class="cells slidehand__cells"></div>
+        <p class="rwg__now"></p>
+        <div class="btnrow slidehand__sum" hidden>
+          <label>Новая сумма окна: <input type="number" inputmode="numeric"></label>
+          <button class="btn btn--main" data-act="check">Проверить</button>
+        </div>
+        <p class="hunt__msg" aria-live="polite"></p>
+        <div class="btnrow"><span style="flex:1"></span><button class="btn" data-act="reset">↻ заново</button></div>
+        <div class="legend"><span><i class="l-win"></i>текущее окно</span><span><i class="l-gone"></i>ушло из окна</span></div>
+      </div>`;
+    const cells = root.querySelector('.cells'), now = root.querySelector('.rwg__now'), msg = root.querySelector('.hunt__msg');
+    const box = root.querySelector('.slidehand__sum'), input = box.querySelector('input');
+    const say = (t, kind = '') => { msg.className = 'hunt__msg' + (kind ? ' is-' + kind : ''); msg.innerHTML = t; };
+    let gone = -1, came = -1;
+    function reset() {
+      l = 0; sum = a.slice(0, k).reduce((x, y) => x + y, 0); phase = 'out'; errors = 0; done = false; gone = came = -1;
+      say(`Первое окно nums[0:${k}] посчитано целиком: ${a.slice(0, k).join(' + ')} = ${sum}. Дальше окно сдвигается на одну позицию. Щёлкните элемент, который уйдёт из окна.`);
+      draw();
+    }
+    function draw() {
+      const tags = {}, tail = [];
+      const put = (p, v) => { if (v < n) (tags[v] = tags[v] || []).push(p); else tail.push(p); };
+      put('l', l); put('r', l + k);
+      drawCells(cells, a, { tags, tailTags: tail, cls: i => (i >= l && i < l + k) ? 'is-win' : i === gone ? 'is-gone' : '' });
+      [...cells.children].forEach((c, i) => { if (i < n) { c.classList.add('is-pick'); c.dataset.i = i; } });
+      now.innerHTML = done ? '' : `Окно nums[${l}:${l + k}], сумма <b>${sum}</b>. ` +
+        (phase === 'out' ? 'Какой элемент уйдёт из окна при сдвиге?' : phase === 'in' ? 'Какой элемент войдёт в окно?' : `Посчитайте: ${sum} − ${a[l]} + ${a[l + k]}.`);
+      box.hidden = phase !== 'sum' || done;
+    }
+    cells.addEventListener('click', e => {
+      const c = e.target.closest('.cell'); if (!c || done || c.dataset.i === undefined) return;
+      const i = Number(c.dataset.i);
+      if (phase === 'out') {
+        if (i === l) { phase = 'in'; say(`Верно: уходит nums[${l}] = ${a[l]}, самый левый элемент окна. Теперь щёлкните элемент, который войдёт.`); }
+        else { errors++; say(i > l && i < l + k ? `nums[${i}] = ${a[i]} останется в окне: после сдвига окно — nums[${l + 1}:${l + k + 1}]. Уходит самый левый элемент.` : `nums[${i}] не входит в текущее окно nums[${l}:${l + k}], уйти из него он не может.`, 'no'); }
+      } else if (phase === 'in') {
+        if (i === l + k) { phase = 'sum'; say(`Верно: входит nums[${l + k}] = ${a[l + k]}, первый элемент справа от окна. Введите новую сумму.`); setTimeout(() => input.focus(), 0); }
+        else { errors++; say(i < l + k && i >= l ? `nums[${i}] = ${a[i]} уже в окне.` : `Окно сдвигается на одну позицию, поэтому входит элемент сразу за правой границей: nums[${l + k}].`, 'no'); }
+      }
+      draw();
+    });
+    function check() {
+      const want = sum - a[l] + a[l + k], got = Number(input.value);
+      if (input.value.trim() === '' || got !== want) {
+        errors++;
+        say(`Сумма не сходится. Из ${sum} вычитается ушедший ${a[l]} и прибавляется пришедший ${a[l + k]}: ${sum} − ${a[l]} + ${a[l + k]}.`, 'no');
+        return;
+      }
+      gone = l; sum = want; l++; input.value = ''; phase = 'out';
+      if (l + k >= n) {
+        done = true;
+        say(`Готово: последнее окно nums[${l}:${l + k}], сумма ${sum}. Все ${n - k + 1} окон пройдены, каждое после первого — за одно вычитание и одно сложение. Ошибок: ${errors}.`, 'ok');
+      } else say(`Верно: ${want}. Окно сдвинулось, теперь это nums[${l}:${l + k}]. Щёлкните элемент, который уйдёт следующим.`);
+      draw();
+    }
+    root.addEventListener('click', e => {
+      const b = e.target.closest('[data-act]'); if (!b) return;
+      if (b.dataset.act === 'check') check();
+      if (b.dataset.act === 'reset') reset();
+    });
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); check(); } });
+    reset();
+  });
+
+  /* ── 9в. Временная ось ──────────────────────────────────────────── */
+  /* data-t — отсортированные моменты событий, data-w — длина окна.
+     Окно [s, s + w) ставится началом на одно из событий: лучшее окно
+     всегда можно сдвинуть вправо до первого события в нём. */
+  document.querySelectorAll('.timeline').forEach(root => {
+    const t = json(root, 't') || [];
+    let w = Number(root.dataset.w) || 5;
+    const starts = [...new Set(t)];
+    let at = 0, best = 0, bestS = null;
+    root.classList.add('widget');
+    root.innerHTML = `
+      <div class="widget__head"><b>${esc(root.dataset.title || 'События на оси времени')}</b><span>окно [s, s + w)</span></div>
+      <div class="widget__body">
+        <div class="btnrow slide__kbar"><span>Длина окна</span><button class="btn" data-act="wminus" aria-label="уменьшить w">−</button><b class="slide__k"></b><button class="btn" data-act="wplus" aria-label="увеличить w">+</button></div>
+        <div class="timeline__wrap"></div>
+        <p class="slide__sum" aria-live="polite"></p>
+        <div class="btnrow">
+          <button class="btn" data-act="prev">← окно</button>
+          <button class="btn btn--main" data-act="next">окно →</button>
+          <button class="btn" data-act="reset">↻ сначала</button>
+        </div>
+        <div class="legend"><span><i class="l-win"></i>окно [s, s + w)</span><span><i class="l-in"></i>событие в окне</span><span><i class="l-outdot"></i>событие вне окна</span></div>
+      </div>`;
+    const wrap = root.querySelector('.timeline__wrap'), say = root.querySelector('.slide__sum');
+    const lo = Math.min(...t) - 1, hi = Math.max(...t) + 6;
+    const W = 760, H = 120, L = 24, R = 24, Y = 78;
+    const X = v => L + (v - lo) / (hi - lo) * (W - L - R);
+    function draw() {
+      const s0 = starts[at], s1 = s0 + w;
+      const inside = t.filter(v => v >= s0 && v < s1).length;
+      if (inside > best) { best = inside; bestS = s0; }
+      let g = `<rect class="tl-win" x="${X(s0)}" y="${Y - 46}" width="${X(s1) - X(s0)}" height="60"/>`;
+      g += `<line class="tl-axis" x1="${L}" x2="${W - R}" y1="${Y}" y2="${Y}"/>`;
+      for (let v = Math.ceil(lo); v <= hi; v++) if (v % 5 === 0) g += `<line class="tl-tick" x1="${X(v)}" x2="${X(v)}" y1="${Y}" y2="${Y + 6}"/><text x="${X(v)}" y="${Y + 22}" text-anchor="middle">${v}</text>`;
+      g += `<line class="tl-edge" x1="${X(s1)}" x2="${X(s1)}" y1="${Y - 50}" y2="${Y + 8}"/><text class="tl-lab" x="${X(s0)}" y="${Y - 52}" text-anchor="middle">s = ${s0}</text><text class="tl-lab" x="${X(s1)}" y="${Y - 52}" text-anchor="middle">s + w = ${s1}</text>`;
+      const seen = {};
+      t.forEach(v => {
+        const n = (seen[v] = (seen[v] || 0) + 1) - 1;
+        const on = v >= s0 && v < s1;
+        g += `<circle class="${on ? 'tl-in' : 'tl-out'}" cx="${X(v)}" cy="${Y - 8 - n * 13}" r="6"><title>${v}</title></circle>`;
+      });
+      wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="События на оси времени">${g}</svg>`;
+      root.querySelector('.slide__k').textContent = `w = ${w}`;
+      root.querySelector('[data-act="prev"]').disabled = at === 0;
+      root.querySelector('[data-act="next"]').disabled = at === starts.length - 1;
+      root.querySelector('[data-act="wminus"]').disabled = w <= 1;
+      const edge = t.filter(v => v === s1).length;
+      say.innerHTML = `Окно [${s0}, ${s1}): событий в нём — <b>${inside}</b>.` +
+        (edge ? ` Событие в момент ${s1} лежит на правой границе и в окно не входит.` : '') +
+        ` Лучшее из просмотренных окон — ${best} ${best === 1 ? 'событие' : best >= 2 && best <= 4 ? 'события' : 'событий'}, начало в момент ${bestS}.`;
+    }
+    function reset() { at = 0; best = 0; bestS = null; draw(); }
+    root.addEventListener('click', e => {
+      const b = e.target.closest('[data-act]'); if (!b) return;
+      const a = b.dataset.act;
+      if (a === 'next' && at < starts.length - 1) at++;
+      if (a === 'prev' && at > 0) at--;
+      if (a === 'reset') return reset();
+      if (a === 'wminus' && w > 1) { w--; return reset(); }
+      if (a === 'wplus') { w++; return reset(); }
       draw();
     });
     reset();
