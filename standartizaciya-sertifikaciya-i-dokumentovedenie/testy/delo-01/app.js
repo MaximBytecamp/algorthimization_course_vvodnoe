@@ -170,7 +170,7 @@ function viewIntro() {
     return who === 'me' ? `<div class="call me"><div><b>${esc(parts.join(' '))}</b><p>${t}</p></div></div>` : `<div class="call">${portrait('clerk', 48)}<div><b>${name}</b><p>${t}</p></div></div>`;
   }).join('');
   return `<div class="pane narrow intro"><p class="eyebrow">09.10.2026 · 08:52 · входящий звонок</p><h2>Судебный участок</h2>${lines}
-    <button class="btn" data-act="intro">${n < INTRO.length ? (INTRO[n][0] === 'me' ? 'Ответить' : 'Слушать дальше') : 'Открыть дело'}</button></div>`;
+    <button class="btn ghost small" data-act="reset">Сбросить</button> <button class="btn" data-act="intro">${n < INTRO.length ? (INTRO[n][0] === 'me' ? 'Ответить' : 'Слушать дальше') : 'Открыть дело'}</button></div>`;
 }
 ACTIONS.intro = () => {
   if ((S.intro || 1) >= INTRO.length) { S.introDone = 1; addLog('Принят звонок из судебного участка'); }
@@ -213,7 +213,7 @@ function renderNav() {
     return `<button class="nav-btn${S.tab === id ? ' on' : ''}${locked ? ' locked' : ''}" data-tab="${id}"><span>${t}</span>${badge[id] !== '' && badge[id] !== undefined ? `<i>${badge[id]}</i>` : ''}</button>`;
   }).join('');
   if (S.done) html += `<button class="nav-btn result${S.tab === 'result' ? ' on' : ''}" data-tab="result"><span>Итог</span></button>`;
-  html += `<div class="nav-foot"><b>${esc(S.name)}</b><br>${esc(S.group)} · вариант ${S.v}</div>`;
+  html += `<div class="nav-foot"><b>${esc(S.name)}</b><br>${esc(S.group)} · вариант ${S.v}<button class="reset" data-act="reset">Сбросить игру</button></div>`;
   $('#nav').innerHTML = html;
 }
 
@@ -1265,7 +1265,7 @@ function viewResult() {
       <p class="muted">Расследование ${sc.inv} из ${sc.max.inv} · заседание ${sc.court} из ${sc.max.court} · решение ${sc.verdict} из ${sc.max.verdict} · потрачено ${S.done.used} мин${S.done.timeout ? ' · завершено по истечении времени' : ''}</p></div></div>
     <div class="gbars">${[['Расследование', sc.inv, sc.max.inv], ['Заседание', sc.court, sc.max.court], ['Решение', sc.verdict, sc.max.verdict]].map(([t, a, b]) => `<div class="gbar"><span>${t}</span><div><i style="width:${Math.max(0, a) / b * 100}%"></i></div><b>${a} из ${b}</b></div>`).join('')}</div>
     <div class="notice"><b>Что отправить преподавателю.</b> Скачайте дело и отправьте архив целиком. В файле <code>00-delo.md</code> записан код результата, по нему преподаватель проверяет баллы.
-      <div class="task-btns"><button class="btn" data-act="zip">Скачать дело — архив .zip, 7 файлов .md</button><button class="btn ghost" data-act="md">Одним файлом .md</button><button class="btn ghost" data-act="copy">Скопировать код результата</button></div>
+      <div class="task-btns"><button class="btn ghost" data-act="reset">Сбросить игру</button><button class="btn" data-act="zip">Скачать дело — архив .zip, 7 файлов .md</button><button class="btn ghost" data-act="md">Одним файлом .md</button><button class="btn ghost" data-act="copy">Скопировать код результата</button></div>
       <code class="code">${esc(S.done.code)}</code></div>
     <div class="say who-judge">${portrait('judge', 52)}<div><b>${WHO.judge}</b><p>${sc.total >= 85 ? 'Суд принимает заключение специалиста ' + esc(WHO.me.slice(11)) + ' полностью. Выводы подтверждены записями, которые специалист сам отобрал и предъявил.'
       : sc.total >= 70 ? 'Суд принимает заключение специалиста ' + esc(WHO.me.slice(11)) + ' в основной части. По отдельным вопросам суд пришёл к другим выводам, они изложены ниже.'
@@ -1483,6 +1483,15 @@ function after() {
     root.addEventListener('input', keep);
   }
 }
+
+/* Сброс: стирает прохождение в этом браузере и возвращает к экрану начала.
+   Если код результата уже отправлен, преподаватель увидит повторный код того же студента. */
+ACTIONS.reset = () => {
+  if (!confirm('Сбросить игру? Все улики, заметки, ответы и время будут удалены из этого браузера.')) return;
+  if (S.done && !confirm('Дело уже закрыто. Если код результата отправлен преподавателю, засчитывается первый присланный код. Всё равно сбросить?')) return;
+  try { localStorage.removeItem(GAME.id); } catch (e) {}
+  location.reload();
+};
 
 const BREAK_MS = 20 * 60000;
 ACTIONS.pause = () => {
