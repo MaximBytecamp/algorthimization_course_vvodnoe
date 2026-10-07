@@ -131,6 +131,37 @@ def best_pair_sum(prices, budget):
     return best
 '''
 
+SOURCES['pair_sum_set'] = '''
+def pair_sum_set(prices, target):
+    seen = {}
+    for j, p in enumerate(prices):
+        if target - p in seen:
+            return (seen[target - p], j)
+        seen.setdefault(p, j)
+    return None
+'''
+
+SOURCES['pair_sum_sorted_copy'] = '''
+def pair_sum_sorted_copy(prices, target):
+    ordered = sorted(prices)
+    answer = pair_sum(ordered, target)
+    if answer is None:
+        return None
+    i, j = answer
+    return (ordered[i], ordered[j])
+'''
+
+SOURCES['best_pair_sum_brute'] = '''
+def best_pair_sum_brute(prices, budget):
+    best = -1
+    for i in range(len(prices)):
+        for j in range(i + 1, len(prices)):
+            s = prices[i] + prices[j]
+            if s <= budget:
+                best = max(best, s)
+    return best
+'''
+
 # Ошибочные версии для главы про ошибки.
 SOURCES['bug_same_item'] = SOURCES['pair_sum'].replace('while i < j:', 'while i <= j:')
 SOURCES['bug_wrong_move'] = SOURCES['pair_sum'].replace(
@@ -141,6 +172,42 @@ SOURCES['bug_zeros_assign'] = SOURCES['move_zeros'].replace(
 SOURCES['bug_dedup_neighbour'] = SOURCES['dedup_sorted'].replace(
     '    if not ids:\n        return 0\n    w = 1\n    for r in range(1, len(ids)):\n        if ids[r] != ids[w - 1]:',
     '    w = 0\n    for r in range(len(ids) - 1):\n        if ids[r] != ids[r + 1]:')
+
+SOURCES['bug_compress_str'] = SOURCES['compress'].replace(
+    '            for d in str(count):\n                chars[w] = d\n                w += 1',
+    '            chars[w] = str(count)\n            w += 1')
+
+# Изменённые версии: одна строка записана иначе, чем в верной функции.
+SOURCES['var_check_late'] = SOURCES['pair_sum'].replace(
+    '        if s == target:\n            return (i, j)\n        if s < target:\n            i += 1\n        else:\n            j -= 1',
+    '        if s < target:\n            i += 1\n        else:\n            j -= 1\n        if s == target:\n            return (i, j)')
+SOURCES['var_return_inside'] = SOURCES['pair_sum'].replace('\n    return None', '\n        return None')
+SOURCES['var_j_len'] = SOURCES['pair_sum'].replace('i, j = 0, len(prices) - 1', 'i, j = 0, len(prices)')
+SOURCES['var_move_j'] = SOURCES['pair_sum'].replace(
+    '        if s < target:\n            i += 1', '        if s < target:\n            j -= 1')
+SOURCES['var_both'] = SOURCES['pair_sum'].replace(
+    '        else:\n            j -= 1', '        else:\n            j -= 1\n            i += 1')
+SOURCES['var_no_return'] = SOURCES['pair_sum'].replace('\n    return None', '')
+SOURCES['bug_dedup_no_check'] = SOURCES['dedup_sorted'].replace('    if not ids:\n        return 0\n', '')
+SOURCES['bug_compress_and_order'] = SOURCES['compress'].replace(
+    'while r < n and chars[r] == chars[start]:', 'while chars[r] == chars[start] and r < n:')
+SOURCES['bug_subseq_no_guard'] = SOURCES['is_subsequence'].replace(
+    'if i < len(word) and text[j] == word[i]:', 'if text[j] == word[i]:')
+SOURCES['bug_split_strict'] = SOURCES['split_by_limit'].replace('while i <= j:', 'while i < j:')
+SOURCES['bug_colors_mid_moves'] = SOURCES['sort_colors'].replace(
+    '            high -= 1', '            high -= 1\n            mid += 1')
+
+for _k, _base in [('bug_same_item', 'pair_sum'), ('bug_wrong_move', 'pair_sum'), ('bug_zeros_assign', 'move_zeros'),
+                  ('bug_dedup_neighbour', 'dedup_sorted'), ('bug_compress_str', 'compress'), ('var_check_late', 'pair_sum'),
+                  ('var_return_inside', 'pair_sum'), ('var_j_len', 'pair_sum'), ('var_move_j', 'pair_sum'),
+                  ('var_both', 'pair_sum'), ('var_no_return', 'pair_sum'), ('bug_dedup_no_check', 'dedup_sorted'),
+                  ('bug_compress_and_order', 'compress'), ('bug_subseq_no_guard', 'is_subsequence'),
+                  ('bug_split_strict', 'split_by_limit'), ('bug_colors_mid_moves', 'sort_colors')]:
+    assert SOURCES[_k] != SOURCES[_base], f'замена в {_k} не сработала'
+
+
+def is_variant(key):
+    return key.startswith(('bug_', 'var_'))
 
 
 def run_trace(key, func_name, args, arr_name, ptrs):
@@ -165,6 +232,7 @@ def run_trace(key, func_name, args, arr_name, ptrs):
             'vars': vars_,
             'arr': copy.copy(loc.get(arr_name)),
             'ret': repr(arg) if event == 'return' else None,
+            'err': f'{arg[0].__name__}: {arg[1]}' if event == 'exc' else None,
             'raw': {k: copy.copy(v) for k, v in loc.items()},
         })
 
@@ -173,20 +241,29 @@ def run_trace(key, func_name, args, arr_name, ptrs):
             return None
         if event == 'line':
             snap(frame, 'line')
-        elif event == 'return':
+        elif event == 'exception':
+            snap(frame, 'exc', arg)
+        elif event == 'return' and not (frames and frames[-1]['ev'] == 'exc'):
             snap(frame, 'return', arg)
         return tracer
 
     call_args = copy.deepcopy(args)
+    error = None
     sys.settrace(tracer)
     try:
         result = func(*call_args)
+    except Exception as e:
+        result, error = None, f'{type(e).__name__}: {e}'
     finally:
         sys.settrace(None)
+    # Кадр исключения повторяет строку, на которой оно возникло: показываем
+    # строку один раз, уже с ошибкой.
+    if error and len(frames) > 1 and frames[-2]['ev'] == 'line' and frames[-2]['ln'] == frames[-1]['ln']:
+        del frames[-2]
     lines = src.split('\n')
     for k, fr in enumerate(frames):
         nxt = frames[k + 1] if k + 1 < len(frames) else None
-        fr['say'] = caption(lines[fr['ln'] - 1].strip(), fr, nxt, key.startswith('bug'))
+        fr['say'] = caption(lines[fr['ln'] - 1].strip(), fr, nxt, is_variant(key), key)
     for fr in frames:
         del fr['raw']
     return {
@@ -196,6 +273,7 @@ def run_trace(key, func_name, args, arr_name, ptrs):
         'ptrs': ptrs,
         'call': f"{func_name}({', '.join(repr(a) for a in args)})",
         'result': repr(result),
+        'error': error,
         'after': repr(call_args[0]),
     }
 
@@ -205,12 +283,121 @@ def q(v):
     return repr(v)
 
 
-def caption(line, fr, nxt, is_bug):
+def special_caption(key, line, fr, nxt):
+    """Подписи, которые зависят от версии функции, а не только от строки."""
+    v = fr['raw']
+    g = v.get
+    ev = fr['ev']
+    arr = next((x for x in v.values() if isinstance(x, list)), None)
+    if ev == 'return':
+        return None
+
+    if key == 'pair_sum_set':
+        if line == 'seen = {}':
+            return "seen — словарь «цена → индекс». В нём будут цены, которые уже прочитаны. Пока он пустой."
+        if line == 'for j, p in enumerate(prices):':
+            if nxt is not None and nxt['ln'] == fr['ln'] + 1:
+                nj, np_ = nxt['raw']['j'], nxt['raw']['p']
+                return f"enumerate выдаёт следующую пару «индекс, цена»: j = {nj}, p = {np_}."
+            return "Цены закончились, цикл for завершён."
+        if line == 'if target - p in seen:':
+            need = g('target') - g('p')
+            yes = need in g('seen')
+            return (f"Парная цена для {g('p')}: {g('target')} − {g('p')} = {need}. Она уже встречалась? "
+                    + (f"Да, на индексе {g('seen')[need]}." if yes else "Нет, такой цены в seen ещё нет."))
+        if line == 'return (seen[target - p], j)':
+            need = g('target') - g('p')
+            return f"Пара найдена: цена {need} на индексе {g('seen')[need]} и цена {g('p')} на индексе {g('j')}."
+        if line == 'seen.setdefault(p, j)':
+            return f"Запоминаем цену {g('p')} с индексом {g('j')}: следующие цены смогут найти её парой."
+
+    if key == 'var_j_len':
+        if line == 'i, j = 0, len(prices)':
+            n = len(arr)
+            return f"i = 0, j = len(prices) = {n}. Индексы списка идут от 0 до {n - 1}: элемента с индексом {n} нет."
+        if ev == 'exc':
+            return (f"Нужно прочитать prices[{g('j')}], а последний индекс списка {len(arr) - 1}. "
+                    f"Обращение за границу списка прерывает функцию: {fr['err']}.")
+
+    if key == 'var_check_late' and ev == 'line':
+        if line == 'if s == target:':
+            return (f"Проверка равенства стоит после сдвига. s = {g('s')} — сумма пары, которая была до сдвига, "
+                    f"а указатели уже стоят на i = {g('i')}, j = {g('j')}. "
+                    + ("Сумма равна цели." if g('s') == g('target') else "Сумма не равна цели."))
+        if line == 'return (i, j)':
+            same = ' Это один и тот же индекс дважды.' if g('i') == g('j') else ''
+            return f"Возвращаем текущие индексы ({g('i')}, {g('j')}), а сумма {g('s')} была у другой пары.{same}"
+
+    if key == 'var_return_inside' and line == 'return None':
+        return ("return None стоит внутри цикла, на одном уровне с if. Он выполняется на первом же шаге, "
+                "когда пара ещё не найдена, и функция заканчивает работу.")
+
+    if key in ('bug_wrong_move', 'var_move_j', 'var_both') and ev == 'line':
+        if line == 'j -= 1' and g('s') < g('target'):
+            return (f"Сумма {g('s')} меньше цели, а сдвигается j: {g('j')} → {g('j') - 1}. Правая цена станет дешевле, "
+                    f"и сумма уменьшится ещё. Цена {arr[g('j')]} исключается без основания: при сумме меньше цели "
+                    f"правило исключает левую цену.")
+        if line == 'i += 1' and g('s') > g('target'):
+            return (f"Сумма {g('s')} больше цели, а сдвигается i: {g('i')} → {g('i') + 1}. Левая цена станет дороже, "
+                    f"и сумма вырастет ещё. Цена {arr[g('i')]} исключается без основания: при сумме больше цели "
+                    f"правило исключает правую цену.")
+
+    if key == 'bug_dedup_neighbour' and line.startswith('for r in'):
+        if nxt is None or nxt['ln'] != fr['ln'] + 1:
+            n = len(arr)
+            return (f"range(len(ids) - 1) закончился на r = {n - 2}. Последний элемент ids[{n - 1}] = {arr[n - 1]} "
+                    f"цикл не прочитал и не записал.")
+
+    if key == 'bug_dedup_no_check':
+        if line == 'w = 1':
+            return ("w = 1 означает, что первый элемент уже оставлен. В пустом списке первого элемента нет, "
+                    "но проверки на пустой список в этой версии нет.")
+        if line.startswith('for r in') and (nxt is None or nxt['ln'] != fr['ln'] + 1):
+            return "range(1, 0) не содержит ни одного числа: цикл не выполняется ни разу."
+        if line == 'return w':
+            return "Возвращаем w = 1: функция сообщает, что в пустом списке одно различное значение."
+
+    if key == 'bug_compress_str' and line == 'chars[w] = str(count)':
+        c = g('count')
+        return (f"Записываем длину серии одним элементом: chars[{g('w')}] = str({c}) = {str(c)!r}. "
+                f"В числе {len(str(c))} цифры, и обе попадают в один элемент списка.")
+
+    if key == 'bug_compress_and_order' and line == 'while chars[r] == chars[start] and r < n:':
+        if ev == 'exc':
+            return (f"r = {g('r')} = n: серия дошла до конца списка. Первой выполняется проверка chars[{g('r')}], "
+                    f"а такого индекса нет — {fr['err']}. До r < n дело не доходит.")
+        same = arr[g('r')] == arr[g('start')]
+        return (f"chars[{g('r')}] = {arr[g('r')]!r}, начало серии — {arr[g('start')]!r}: "
+                + ('тот же символ, серия продолжается.' if same else 'другой символ, серия закончилась.'))
+
+    if key == 'bug_subseq_no_guard' and line == 'if text[j] == word[i]:':
+        if ev == 'exc':
+            return (f"Все {len(g('word'))} буквы слова уже найдены, i = {g('i')}. Сравнение читает word[{g('i')}], "
+                    f"а такого индекса в слове нет — {fr['err']}.")
+        c, w = g('text')[g('j')], g('word')[g('i')]
+        return f"text[{g('j')}] = {c!r}, следующая нужная буква word[{g('i')}] = {w!r}: " + ('совпали.' if c == w else 'не совпали.')
+
+    if key == 'bug_split_strict' and line == 'while i < j:' and g('i') == g('j'):
+        return (f"Условие цикла: {g('i')} < {g('j')} — нет, цикл закончен. Но nums[{g('i')}] = {arr[g('i')]} "
+                f"ещё не сравнивалось с порогом и не отнесено ни к одной группе.")
+
+    if key == 'bug_colors_mid_moves' and line == 'mid += 1' and fr['ln'] == 13:
+        return (f"mid: {g('mid')} → {g('mid') + 1}. На место mid только что пришло число {arr[g('mid')]} "
+                f"из непрочитанной части, и оно так и останется непроверенным.")
+    return None
+
+
+def caption(line, fr, nxt, is_bug, key=''):
     """Подпись к кадру: что делает строка при этих значениях переменных."""
     v = fr['raw']
     ev = fr['ev']
     arr = next((x for x in v.values() if isinstance(x, list)), None)
     g = v.get
+    special = special_caption(key, line, fr, nxt)
+    if special:
+        return special
+    if ev == 'exc':
+        return f"Строка выполняется и прерывает функцию исключением {fr['err']}. Ответа функция не вернула."
     if ev == 'return':
         return f"Функция закончила работу и вернула {fr['ret']}."
     yes = lambda c: 'да' if c else 'нет'
@@ -297,6 +484,8 @@ def caption(line, fr, nxt, is_bug):
         return f"Проверяем пару ({g('i')}, {g('j')}): {a} + {b} = {a + b}. Совпало с {g('target')}? {yes(a + b == g('target')).capitalize()}."
     if line == 'if not ids:':
         return "Список пустой? Нет, идём дальше." if arr else "Список пустой: возвращаем 0."
+    if line == 'return 0':
+        return "Возвращаем 0: в пустом списке различных значений нет."
     if line == 'w = 1':
         return "Первый элемент остаётся на месте в любом случае. w = 1 — позиция, куда запишем следующее новое значение."
     if line == 'w = 0':
@@ -307,14 +496,17 @@ def caption(line, fr, nxt, is_bug):
         return f"Сравниваем прочитанное ids[{g('r')}] = {x} с последним записанным ids[{g('w') - 1}] = {y}: {tail}"
     if line == 'if ids[r] != ids[r + 1]:':
         x, y = arr[g('r')], arr[g('r') + 1]
-        tail = 'разные: записываем ids[r].' if x != y else 'одинаковые: пропускаем.'
+        tail = 'значения разные, записываем ids[r].' if x != y else 'значения одинаковые, пропускаем.'
         return f"Сравниваем ids[{g('r')}] = {x} с соседом справа ids[{g('r') + 1}] = {y}: {tail}"
     if line == 'ids[w] = ids[r]':
         return f"Записываем {arr[g('r')]} в позицию w = {g('w')}."
     if line == 'w += 1':
         return f"w: {g('w')} → {g('w') + 1}."
     if line in ('del ids[w:]', 'del chars[w:]'):
-        return f"Обрезаем хвост: удаляем элементы с индекса {g('w')}, их {len(arr) - g('w')}."
+        cut = len(arr) - g('w')
+        if cut <= 0:
+            return f"del {line.split()[1]} с индекса {g('w')}: элементов с такими индексами нет, удалять нечего."
+        return f"Обрезаем хвост: удаляем элементы с индекса {g('w')}, их {cut}."
     if line == 'return w':
         return f"Возвращаем w = {g('w')}."
     if line == 'r = 0':
@@ -412,12 +604,38 @@ TRACES = {
     'bug_wrong_move': ('bug_wrong_move', 'pair_sum', ([300, 450, 700, 900, 1200, 1500], 1600), 'prices', ['i', 'j']),
     'bug_zeros_assign': ('bug_zeros_assign', 'move_zeros', ([0, 4, 0, 0, 7, 2],), 'nums', ['w', 'r']),
     'bug_dedup_neighbour': ('bug_dedup_neighbour', 'dedup_sorted', ([101, 101, 102, 105],), 'ids', ['w', 'r']),
+    # Глава 8.9: исправленные версии на тех же входах, что и ошибочные.
+    'fix_same_item': ('pair_sum', 'pair_sum', ([100, 250, 600], 500), 'prices', ['i', 'j']),
+    'fix_dedup_short': ('dedup_sorted', 'dedup_sorted', ([101, 101, 102, 105],), 'ids', ['w', 'r']),
+    'bug_compress_str': ('bug_compress_str', 'compress', (['x'] * 12,), 'chars', ['w', 'start', 'r']),
+    'fix_compress_x12': ('compress', 'compress', (['x'] * 12,), 'chars', ['w', 'start', 'r']),
+    # Глава 8.6: строка записана иначе, чем в верной функции.
+    'var_j_len': ('var_j_len', 'pair_sum', ([300, 450, 700, 900, 1200, 1500], 1600), 'prices', ['i', 'j']),
+    'var_check_late': ('var_check_late', 'pair_sum', ([300, 450, 700, 900, 1200, 1500], 1600), 'prices', ['i', 'j']),
+    'var_move_j': ('var_move_j', 'pair_sum', ([300, 450, 700, 900, 1200, 1500], 1600), 'prices', ['i', 'j']),
+    'var_both': ('var_both', 'pair_sum', ([100, 200, 300, 900], 400), 'prices', ['i', 'j']),
+    'fix_both': ('pair_sum', 'pair_sum', ([100, 200, 300, 900], 400), 'prices', ['i', 'j']),
+    'var_return_inside': ('var_return_inside', 'pair_sum', ([300, 450, 700, 900, 1200, 1500], 1600), 'prices', ['i', 'j']),
+    # Глава 8.7.
+    'bug_dedup_no_check': ('bug_dedup_no_check', 'dedup_sorted', ([],), 'ids', ['w', 'r']),
+    'fix_dedup_empty': ('dedup_sorted', 'dedup_sorted', ([],), 'ids', ['w', 'r']),
+    'bug_compress_and_order': ('bug_compress_and_order', 'compress', (list('aab'),), 'chars', ['w', 'start', 'r']),
+    'fix_compress_aab': ('compress', 'compress', (list('aab'),), 'chars', ['w', 'start', 'r']),
+    'bug_subseq_no_guard': ('bug_subseq_no_guard', 'is_subsequence', (list('кот'), list('котик')), 'text', ['j']),
+    'fix_subseq_guard': ('is_subsequence', 'is_subsequence', (list('кот'), list('котик')), 'text', ['j']),
+    # Глава 8.8.
+    'bug_split_strict': ('bug_split_strict', 'split_by_limit', ([8, 0, 12, 9, 5, 3], 10), 'nums', ['i', 'j']),
+    'fix_split_strict': ('split_by_limit', 'split_by_limit', ([8, 0, 12, 9, 5, 3], 10), 'nums', ['i', 'j']),
+    'bug_colors_mid_moves': ('bug_colors_mid_moves', 'sort_colors', ([1, 2, 0],), 'nums', ['low', 'mid', 'high']),
+    'fix_colors_short': ('sort_colors', 'sort_colors', ([1, 2, 0],), 'nums', ['low', 'mid', 'high']),
+    # Глава 8.10: словарь просмотренных цен.
+    'pair_set': ('pair_sum_set', 'pair_sum_set', ([300, 450, 1200, 700, 900, 1500], 1600), 'prices', ['j']),
 }
 
 if __name__ == '__main__':
     out = {name: run_trace(*spec) for name, spec in TRACES.items()}
     for name, t in out.items():
-        print(f"{name:22} frames={len(t['frames']):3} result={t['result']:10} after={t['after']}")
+        print(f"{name:24} frames={len(t['frames']):3} result={(t['error'] or t['result']):36} after={t['after']}")
     with open(sys.argv[1], 'w', encoding='utf-8') as f:
         f.write('/* Пошаговые прогоны модуля 8. Файл собран скриптом make_traces.py\n'
                 '   настоящим запуском Python 3.12: править вручную не нужно. */\n')

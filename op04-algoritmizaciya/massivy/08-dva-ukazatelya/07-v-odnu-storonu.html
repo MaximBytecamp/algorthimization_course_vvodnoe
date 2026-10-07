@@ -53,7 +53,7 @@
         </nav>
 
         <h2 id="s1"><span class="sec">§1</span>Чтение и запись в одном списке</h2>
-        <p>В задаче про спам из занятия 7 мы уже использовали два указателя в одну сторону. Указатель чтения <code>r</code> проходит все элементы по порядку, по одному разу. Указатель записи <code>w</code> показывает, куда встанет следующий элемент, который нужно оставить. Список при этом делится на три зоны: <code>[0, w)</code> — готовый результат, собранный из прочитанной части; <code>[w, r)</code> — пропущенные элементы и старые копии; <code>[r, n)</code> — то, что ещё не прочитано. В ручном упражнении ниже и в прогонах зоны раскрашены: готовое — зелёным, пропущенное — штриховкой.</p>
+        <p>В задаче про спам из занятия 7 уже использовались два указателя в одну сторону. Указатель чтения <code>r</code> проходит все элементы по порядку, по одному разу. Указатель записи <code>w</code> показывает, куда встанет следующий элемент, который нужно оставить. Список при этом делится на три зоны: <code>[0, w)</code> — готовый результат, собранный из прочитанной части; <code>[w, r)</code> — пропущенные элементы и старые копии; <code>[r, n)</code> — то, что ещё не прочитано. В ручном упражнении ниже и в прогонах зоны раскрашены: готовое — зелёным, пропущенное — штриховкой.</p>
         <p>Всегда <code>w ≤ r</code>: записывается не больше, чем прочитано. Поэтому запись попадает в уже прочитанную часть и не затирает элементы, до которых <code>r</code> ещё не дошёл. После цикла мусор обрезается одной операцией <code>del a[w:]</code>. Время O(n), дополнительная память O(1).</p>
         <p>Задачи этой формы отличаются только правилом «оставить или пропустить» и тем, что пишется в позицию <code>w</code>. Разберём две.</p>
 
@@ -90,7 +90,7 @@ False</pre></div></details>
 &gt;&gt;&gt; del ids[4:]
 &gt;&gt;&gt; ids
 [101, 102, 105, 110]</pre></div></details>
-        <p>Напишите функцию сами в окне ниже, прямо на странице. «Запустить тесты» проверяет код на пяти входах; часть из них заготовка проходит сразу. Строка «Свой вызов» выполняет любой код с вашей функцией и печатает результат. Первый запуск загружает Python в браузер, около 10 МБ.</p>
+        <p>Напишите функцию сами в окне ниже. «Запустить тесты» проверяет её на пяти входах, как в песочнице главы 8.4; часть из них заготовка проходит сразу.</p>
         <div class="sandbox" data-title="Напишите dedup_sorted сами" data-call="ids = [101, 101, 102, 105]; print(dedup_sorted(ids), ids)">
 <script type="text/plain" class="sandbox__start">
 def dedup_sorted(ids):
@@ -148,13 +148,29 @@ def test_duplicates_at_the_end():
     <span class="k">del</span> ids[w:]
     <span class="k">return</span> w</pre>
         </figure>
-        <p>Проверка <code>if not ids</code> здесь нужна, в отличие от задачи 1. На пустом списке <code>w = 1</code> означал бы, что один элемент уже оставлен, и функция вернула бы 1. Цикл <code>for</code> с <code>range(1, 0)</code> не выполнился бы, но ответ был бы неверным.</p>
+        <p>Прогон ниже — на примере из условия. Зелёная зона — готовый результат, штриховка — пропущенные повторы и старые копии.</p>
         <div class="tracer" data-trace="dedup" data-zone="rw" data-title="Удаление повторов"></div>
         <div class="term-card">
           <p class="term-card__head"><b>Инвариант</b><span>задача 2</span></p>
           <div class="term-card__body">
             <p>Перед шагом с номером <code>r</code>: <code>ids[0:w]</code> — все различные значения из <code>ids[0:r]</code>, по возрастанию, каждое один раз.</p>
             <p>Инициализация: <code>w = r = 1</code>, первый элемент — единственное значение прочитанной части. Сохранение: новое значение дописывается в конец зоны «готово», повтор пропускается. Завершение: <code>r = n</code>, в <code>ids[0:w]</code> все различные значения списка, <code>del ids[w:]</code> убирает остальное.</p>
+          </div>
+        </div>
+        <p>В задаче 1 пустой список обрабатывался без отдельного <code>if</code>, а здесь проверка <code>if not ids</code> нужна. Причина в начальном значении <code>w = 1</code>: оно означает, что первый элемент уже оставлен. В пустом списке первого элемента нет. Цикл <code>for r in range(1, 0)</code> не выполнится ни разу, и без проверки функция вернёт 1 — одно различное значение в пустом списке. Обе версии запущены на пустом списке.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>dedup_sorted([])</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>Без проверки пустого списка</button>
+            <button>С проверкой</button>
+          </div>
+          <div class="demo__pane">
+            <div class="tracer tracer--bug" data-trace="bug_dedup_no_check" data-zone="rw" data-title="Без if not ids"></div>
+            <p class="demo__verdict"><b>1</b>Функция вернула 1, хотя различных значений нет. Список остался пустым, поэтому ошибку видно только по возвращённому числу.</p>
+          </div>
+          <div class="demo__pane">
+            <div class="tracer" data-trace="fix_dedup_empty" data-zone="rw" data-title="С if not ids"></div>
+            <p class="demo__verdict"><b>0</b>Проверка срабатывает на первом шаге, и функция сразу возвращает 0. До <code>w = 1</code> дело не доходит.</p>
           </div>
         </div>
 
@@ -200,7 +216,7 @@ def test_duplicates_at_the_end():
 ...
 1
 2</pre></div></details>
-        <p>Напишите функцию сами в окне ниже, прямо на странице. «Запустить тесты» проверяет код на пяти входах; часть из них заготовка проходит сразу. Строка «Свой вызов» выполняет любой код с вашей функцией и печатает результат. Первый запуск загружает Python в браузер, около 10 МБ.</p>
+        <p>Напишите функцию сами в окне ниже. «Запустить тесты» проверяет её на пяти входах, как в песочнице главы 8.4; часть из них заготовка проходит сразу.</p>
         <div class="sandbox" data-title="Напишите compress сами" data-call="c = list(&quot;aaabcc&quot;); print(compress(c), c)">
 <script type="text/plain" class="sandbox__start">
 def compress(chars):
@@ -278,7 +294,23 @@ False
 Traceback (most recent call last):
   File &quot;&lt;stdin&gt;&quot;, line 1, in &lt;module&gt;
 IndexError: list index out of range</pre></div></details>
-        <p>Под указателями три метки: <code>w</code> — запись, <code>start</code> — начало текущей серии, <code>r</code> — чтение. Зелёная зона — уже записанный результат.</p>
+        <p>Если поменять условия местами — <code>while chars[r] == chars[start] and r &lt; n:</code>, — функция будет работать, пока серия не дойдёт до конца списка. Обе записи условия запущены на <code>list("aab")</code>: последняя серия <code>b</code> заканчивается на последнем элементе.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>compress(list("aab"))</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>chars[r] == chars[start] первым</button>
+            <button>r &lt; n первым</button>
+          </div>
+          <div class="demo__pane">
+            <div class="tracer tracer--bug" data-trace="bug_compress_and_order" data-zone="compress" data-title="Сначала chars[r]"></div>
+            <p class="demo__verdict"><b>IndexError</b>Серии <code>aa</code> и начало серии <code>b</code> обрабатываются так же, как в верной версии. На шаге 22 <code>r</code> становится равным 3, то есть <code>n</code>. На шаге 23 первым вычисляется <code>chars[3]</code>, такого элемента нет, и функция прерывается исключением.</p>
+          </div>
+          <div class="demo__pane">
+            <div class="tracer" data-trace="fix_compress_aab" data-zone="compress" data-title="Сначала r &lt; n"></div>
+            <p class="demo__verdict"><b>3</b>На шаге 23 первым проверяется <code>3 &lt; 3</code>. Условие ложно, <code>and</code> не вычисляет вторую часть, и внутренний цикл заканчивается. Функция дописывает символ <code>'b'</code> и возвращает 3: <code>['a', '2', 'b']</code>.</p>
+          </div>
+        </div>
+        <p>Ниже — прогон верной функции. Под ячейками три метки: <code>w</code> — запись, <code>start</code> — начало текущей серии, <code>r</code> — чтение. Зелёная зона — уже записанный результат.</p>
         <div class="tracer" data-trace="compress" data-zone="compress" data-title="Сжатие последовательности"></div>
         <figure class="code code--out">
           <figcaption><span>Терминал</span><span>python -i · Python 3.12</span></figcaption>
@@ -333,7 +365,7 @@ IndexError: list index out of range</pre></div></details>
         </ol>
         <div class="parsons" data-title="Соберите is_subsequence" data-lines='["def is_subsequence(word, text):", "    i = 0", "    for j in range(len(text)):", "        if i &lt; len(word) and text[j] == word[i]:", "            i += 1", "    return i == len(word)"]'></div>
         
-        <p>Напишите функцию сами в окне ниже, прямо на странице. «Запустить тесты» проверяет код на пяти входах; часть из них заготовка проходит сразу. Строка «Свой вызов» выполняет любой код с вашей функцией и печатает результат. Первый запуск загружает Python в браузер, около 10 МБ.</p>
+        <p>Напишите функцию сами в окне ниже. «Запустить тесты» проверяет её на пяти входах, как в песочнице главы 8.4; часть из них заготовка проходит сразу.</p>
         <div class="sandbox" data-title="Напишите is_subsequence сами" data-call="print(is_subsequence(&quot;нос&quot;, &quot;сосна&quot;))">
 <script type="text/plain" class="sandbox__start">
 def is_subsequence(word, text):
@@ -387,7 +419,23 @@ def test_repeated_letters():
             <div class="tracer" data-trace="subseq_no" data-title="Подпоследовательности нет"></div>
           </div>
         </div>
-        <p>Почему можно брать первую подходящую букву текста и не проверять другие варианты? Если «к» нашлась на позиции 0, то любая другая «к» стоит правее. После более ранней буквы в тексте остаётся не меньше места для остальных букв слова. Значит, ранний выбор никогда не хуже позднего, и возвращаться назад не нужно. На этом и держится то, что указатели не возвращаются.</p>
+        <p>В условии <code>if</code> две проверки. Первая, <code>i &lt; len(word)</code>, нужна для случая, когда все буквы слова уже найдены, а текст ещё не дочитан. Тогда <code>i == len(word)</code>, и обращение <code>word[i]</code> выходит за границу слова. Как и в <code>compress</code>, <code>and</code> не вычисляет вторую проверку, если первая ложна. Обе версии запущены на слове «кот» и тексте «котик»: буквы слова кончаются раньше текста.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>is_subsequence("кот", "котик")</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>Без i &lt; len(word)</button>
+            <button>С проверкой</button>
+          </div>
+          <div class="demo__pane">
+            <div class="tracer tracer--bug" data-trace="bug_subseq_no_guard" data-zone="" data-title="if text[j] == word[i]"></div>
+            <p class="demo__verdict"><b>IndexError</b>На шаге 10 найдена третья буква, <code>i = 3</code>. На шаге 12 сравнение читает <code>word[3]</code>, а в слове из трёх букв индексы от 0 до 2. Функция прерывается, хотя слово уже найдено.</p>
+          </div>
+          <div class="demo__pane">
+            <div class="tracer" data-trace="fix_subseq_guard" data-zone="" data-title="if i &lt; len(word) and …"></div>
+            <p class="demo__verdict"><b>True</b>На шагах 12 и 14 проверка <code>3 &lt; 3</code> ложна, и буквы «и», «к» с буквами слова не сравниваются. Текст дочитывается, функция возвращает <code>True</code>.</p>
+          </div>
+        </div>
+        <p>Остаётся вопрос, почему можно брать первую подходящую букву текста и не проверять другие. Пусть «к» нашлась на позиции 0. Любая другая «к» в тексте стоит правее, и после неё для остальных букв слова остаётся меньше текста. Значит, выбор самой ранней буквы никогда не хуже выбора более поздней, и возвращаться к уже пройденным буквам текста не нужно. Поэтому оба указателя двигаются только вперёд.</p>
 
         <h2 id="s11"><span class="sec">§11</span>Проверьте себя</h2>
         <div class="quiz">

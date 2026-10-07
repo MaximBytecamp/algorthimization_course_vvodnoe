@@ -29,7 +29,10 @@
   }
 
   /* ── 1. Пошаговый прогон ──────────────────────────────────────── */
-  /* data-trace — ключ в window.TRACES, data-zone — как красить ячейки:
+  /* data-trace — ключ в window.TRACES, data-zone — как красить ячейки.
+     Кадр с ev = 'exc' — строка, на которой возникло исключение: она красная,
+     а вместо результата показывается текст исключения.
+     Зоны:
      between — вне [i, j] бледно; rw — [0, w) готово, [w, r) мусор;
      compress — то же, что rw, но граница чтения — start. */
   document.querySelectorAll('.tracer[data-trace]').forEach(root => {
@@ -78,7 +81,8 @@
     function show() {
       const f = t.frames[at];
       const prev = at > 0 ? t.frames[at - 1] : null;
-      lines.forEach((ln, k) => ln.className = k + 1 === f.ln ? (f.ev === 'return' ? 'is-ret' : 'is-now') : '');
+      const mark = f.ev === 'return' ? 'is-ret' : f.ev === 'exc' ? 'is-err' : 'is-now';
+      lines.forEach((ln, k) => ln.className = k + 1 === f.ln ? mark : '');
       const cur = lines[f.ln - 1];
       if (cur && codeBox.scrollHeight > codeBox.clientHeight) cur.scrollIntoView({ block: 'nearest' });
       const arr = f.arr || [];
@@ -122,7 +126,10 @@
       btn('next').disabled = at === N - 1;
       if (at === N - 1) {
         result.hidden = false;
-        result.textContent = `Функция вернула ${t.result}. Список после вызова: ${t.after}`;
+        result.classList.toggle('is-err', Boolean(t.error));
+        result.textContent = t.error
+          ? `Функция прервана исключением ${t.error}. Список к этому моменту: ${t.after}`
+          : `Функция вернула ${t.result}. Список после вызова: ${t.after}`;
       } else result.hidden = true;
     }
     const stop = () => { if (timer) { clearInterval(timer); timer = null; btn('play').textContent = '▶ до конца'; } };
@@ -147,7 +154,6 @@
       if (e.key === 'ArrowRight') { e.preventDefault(); stop(); at = Math.min(N - 1, at + 1); show(); }
       if (e.key === 'ArrowLeft') { e.preventDefault(); stop(); at = Math.max(0, at - 1); show(); }
     });
-    if (root.classList.contains('tracer--bug')) root.querySelector('.widget__head b').insertAdjacentHTML('afterbegin', '');
     show();
   });
 
@@ -697,6 +703,137 @@ onmessage = async e => {
       if (r.out) html += `<p class="sandbox__label">вывод print()</p><pre class="sandbox__print">${esc(r.out)}</pre>`;
       if (!html) html = '<p class="sandbox__wait">Код выполнился, вывода нет.</p>';
       out.innerHTML = html;
+    });
+  });
+})();
+
+/* ── 12. Мок-интервью: задача по этапам с секундомером ──────────── */
+/* .mockset — карточки задач (.mock-board) и панели задач (.mock).
+   В панели этапы .mock__stage с data-title и data-min (минуты по плану).
+   Этапы открываются по одному; время каждого этапа запоминается
+   и в конце сравнивается с планом. Состояние живёт до перезагрузки. */
+(() => {
+  const mm = sec => `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
+
+  document.querySelectorAll('.mockset').forEach(set => {
+    const panels = [...set.querySelectorAll('.mock')];
+    const cards = [...set.querySelectorAll('.mock-board [data-mock]')];
+    const select = (id, scroll) => {
+      if (id === 'random') {
+        const rest = panels.filter(p => p.hidden);
+        id = (rest.length ? rest : panels)[Math.floor(Math.random() * (rest.length || panels.length))].id;
+      }
+      panels.forEach(p => { p.hidden = p.id !== id; });
+      cards.forEach(c => c.setAttribute('aria-pressed', String(c.dataset.mock === id)));
+      const p = panels.find(x => x.id === id);
+      if (scroll && p) p.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    cards.forEach(c => c.addEventListener('click', () => select(c.dataset.mock, true)));
+    select(panels[0].id, false);
+  });
+
+  document.querySelectorAll('.mock').forEach(root => {
+    const stages = [...root.querySelectorAll('.mock__stage')];
+    const plan = stages.map(s => Number(s.dataset.min) || 0);
+    const ends = plan.map((_, k) => plan.slice(0, k + 1).reduce((a, b) => a + b, 0));
+    const total = ends[ends.length - 1];
+    let open = 1, all = false, sec = 0, timer = null, spent = [], mark = 0;
+
+    const bar = document.createElement('div');
+    bar.className = 'mock__bar';
+    bar.innerHTML = `
+      <div class="mock__clock"><b>00:00</b><span>план ${total} мин · сейчас по плану: ${stages[0].dataset.title}</span></div>
+      <div class="btnrow">
+        <button class="btn btn--main" type="button" data-act="clock">▶ Старт</button>
+        <button class="btn" type="button" data-act="all">Открыть все этапы</button>
+        <button class="btn" type="button" data-act="reset">↻ Начать заново</button>
+      </div>
+      <ol class="mock__nav">${stages.map((s, k) => `<li><button type="button" data-go="${k}"><i>${k + 1}</i>${s.dataset.title}<small>${k ? ends[k - 1] : 0}–${ends[k]} мин</small></button></li>`).join('')}</ol>`;
+    root.querySelector('.mock__head').after(bar);
+    const clock = bar.querySelector('.mock__clock b'), planNow = bar.querySelector('.mock__clock span');
+    const navs = [...bar.querySelectorAll('[data-go]')];
+
+    stages.forEach((s, k) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn--main mock__next';
+      b.textContent = k === stages.length - 1 ? '✓ Задача решена' : `Этап пройден → ${stages[k + 1].dataset.title}`;
+      b.addEventListener('click', () => next(k));
+      s.appendChild(b);
+      s.insertAdjacentHTML('afterbegin', `<h3 class="mock__title"><i>${k + 1}</i>${s.dataset.title}<small>по плану ${plan[k]} мин</small></h3>`);
+    });
+    const summary = document.createElement('div');
+    summary.className = 'mock__summary';
+    summary.hidden = true;
+    root.appendChild(summary);
+
+    function tick() {
+      clock.textContent = mm(sec);
+      const k = ends.findIndex(e => sec < e * 60);
+      planNow.textContent = k === -1 ? `план ${total} мин · время по плану вышло` : `план ${total} мин · сейчас по плану: ${stages[k].dataset.title}`;
+      clock.classList.toggle('is-over', sec >= total * 60);
+    }
+    function startClock() {
+      if (timer) return;
+      timer = setInterval(() => { sec++; tick(); }, 1000);
+      bar.querySelector('[data-act="clock"]').textContent = '⏸ Пауза';
+    }
+    function stopClock() {
+      clearInterval(timer); timer = null;
+      bar.querySelector('[data-act="clock"]').textContent = sec ? '▶ Продолжить' : '▶ Старт';
+    }
+    function draw() {
+      stages.forEach((s, k) => {
+        s.hidden = !all && k >= open;
+        s.querySelector('.mock__next').hidden = all || k !== open - 1 || spent.length === stages.length;
+      });
+      navs.forEach((b, k) => {
+        b.className = k < spent.length ? 'is-done' : k === open - 1 ? 'is-now' : '';
+        b.disabled = !all && k >= open;
+      });
+      bar.querySelector('[data-act="all"]').textContent = all ? 'Скрыть непройденные' : 'Открыть все этапы';
+    }
+    function next(k) {
+      spent[k] = sec - mark; mark = sec;
+      if (k === stages.length - 1) return finish();
+      open = Math.max(open, k + 2);
+      draw();
+      stages[k + 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function finish() {
+      stopClock(); draw();
+      const rows = stages.map((s, k) => {
+        const over = spent[k] > plan[k] * 60;
+        return `<tr><td>${k + 1}. ${s.dataset.title}</td><td>${plan[k]} мин</td><td class="${over ? 'is-over' : ''}">${mm(spent[k] || 0)}</td></tr>`;
+      }).join('');
+      const extra = spent.map((v, k) => (v || 0) - plan[k] * 60);
+      const worst = extra.indexOf(Math.max(...extra));
+      const verdict = !sec ? 'Секундомер не запускался, поэтому время этапов не записано.'
+        : extra[worst] > 0 ? `Больше всего сверх плана ушло на этап «${stages[worst].dataset.title}»: ${mm(extra[worst])}.`
+        : 'Все этапы уложились в план.';
+      summary.hidden = false;
+      summary.innerHTML = `<p class="mock__summary-head">Задача «${root.dataset.name}» пройдена за ${mm(sec)}</p>
+        <div class="table-scroll"><table><thead><tr><th>Этап</th><th>План</th><th>Фактически</th></tr></thead><tbody>${rows}
+        <tr><td><b>Всего</b></td><td><b>${total} мин</b></td><td class="${sec > total * 60 ? 'is-over' : ''}"><b>${mm(sec)}</b></td></tr></tbody></table></div>
+        <p>${verdict} Пункты для самопроверки — в §4.</p>`;
+      summary.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    bar.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.act === 'clock') timer ? stopClock() : startClock();
+      if (b.dataset.act === 'all') { all = !all; draw(); }
+      if (b.dataset.act === 'reset') { stopClock(); sec = 0; mark = 0; spent = []; open = 1; all = false; summary.hidden = true; tick(); stopClock(); draw(); root.scrollIntoView({ block: 'start' }); }
+      if (b.dataset.go !== undefined) stages[Number(b.dataset.go)].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    tick(); draw();
+  });
+
+  /* Ответы к примерам скрыты, пока их не открыли. */
+  document.querySelectorAll('.mock-ex').forEach(box => {
+    const b = box.querySelector('.mock-ex__show');
+    b.addEventListener('click', () => {
+      const on = box.classList.toggle('is-open');
+      b.textContent = on ? 'Скрыть ответы' : 'Показать ответы';
     });
   });
 })();
