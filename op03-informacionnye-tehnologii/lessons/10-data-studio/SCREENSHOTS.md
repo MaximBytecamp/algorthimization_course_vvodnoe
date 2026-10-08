@@ -1,8 +1,8 @@
-# Тема 11 · Data Studio · 91 кадров
+# Тема 10 · часть 2 · Data Studio · 91 кадров
 
 ## Инструкция для Claude
 
-Сними настоящие экраны Data Studio, GA4 и Google Sheets по порядку презентации. Папка: op03-informacionnye-tehnologii/lessons/11-data-studio/shots/. PNG — по точным именам таблицы. «Экран» — позиция в колоде; «исходник» — постоянный номер. Прямая ссылка: index.html#606, index.html#688a и т. д.
+Сними настоящие экраны Data Studio, GA4 и Google Sheets по порядку презентации. Папка: op03-informacionnye-tehnologii/lessons/10-data-studio/shots/. PNG — по точным именам таблицы. «Экран» — позиция в колоде; «исходник» — постоянный номер. Прямая ссылка: index.html#606, index.html#688a и т. д.
 
 Сначала прочитай files/README.md, formulas.md и dashboard-spec.md. Используй существующие GA4 Property и leads из предыдущих тем. Перед началом зафиксируй период, часовой пояс и исходные числа. Не заменяй реальные показатели числами примеров. Если нет данных/прав — сними фактическое состояние и укажи причину.
 
