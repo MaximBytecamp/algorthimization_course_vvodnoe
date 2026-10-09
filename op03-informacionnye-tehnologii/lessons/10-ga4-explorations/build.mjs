@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
+import shotTexts from './shot-texts.mjs';
 const root=path.dirname(fileURLToPath(import.meta.url));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const inline=s=>esc(s).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
@@ -127,6 +128,8 @@ const extraShots={523:'Фильтр Explore: доступные оператор
 const titles={452:'Инструменты анализа GA4',455:'Исследования Explore',464:'Как подобрать поля под вопрос',468:'Источник пользователя и источник сеанса',478:'Когда нужна гибкая настройка отчёта',501:'Что уже можно исследовать в Reports',505:'Начинаем с Free form',511:'Поля и отображение на вкладке',523:'Оператор и точное значение фильтра',529:'Настраиваем воронку',532:'Шаг 1. Начало сеанса',535:'Шаг 4. Событие отправки формы',538:'Потери в людях и процентах',546:'Сравнение устройств: пример',549:'Как сформулировать наблюдение',558:'Страницы после CTA',561:'Когда использовать Funnel и Path',569:'Выводы на малом объёме данных',591:'Найдите наибольшую потерю',595:'Запишите наблюдение с доказательствами',598:'Последовательность анализа',601:'Проверьте понимание',602:'От событий к наблюдениям и гипотезам',604:'Показатели разных систем'};
 const stage=id=>{const n=parseInt(id);return n<457?'01 / От сбора к анализу':n<465?'02 / Период и поля':n<479?'03 / Источники и кампании':n<494?'04 / Страницы и события':n<503?'05 / Сравнения и экспорт':n<524?'06 / Free form':n<529?'07 / Фильтры и сегменты':n<551?'08 / Funnel':n<563?'09 / Path':n<570?'10 / Атрибуция':n<582?'11 / Качество и отчёты':n<587?'12 / Общий аналитический слой':'13 / Практика и выводы';};
 const deck=[];for(const s of originals){if(titles[s.id])s.title=titles[s.id];if(extraShots[s.id])s.shot=extraShots[s.id];deck.push(s,...(extras[s.id]||[]));}
+const fixes=shotTexts({click,bullets,result,cards,table,code});for(const s of deck){const f=fixes[s.id];if(!f)continue;s.title=f.t;s.body=f.b;s.shot=f.c;s.accent='';delete hints[s.id];}
+if(deck.filter(s=>fixes[s.id]).length!==Object.keys(fixes).length)throw Error('shot-texts: лишний id');
 const dark=new Set(['450','456','462','468','478','488','501','503','511','524','529','539','551','561','563','569','582','586','598','602','605']);
 fs.mkdirSync(path.join(root,'shots'),{recursive:true});
 const shots=deck.filter(s=>s.shot).map(s=>({sourceSlide:s.id,lessonSlide:deck.indexOf(s)+1,file:`${s.id}-shot.png`,screen:s.shot,accent:s.accent||'',status:fs.existsSync(path.join(root,'shots',`${s.id}-shot.png`))?'captured':'pending'}));
