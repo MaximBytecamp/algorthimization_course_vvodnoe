@@ -15,8 +15,8 @@ import sys
 from pathlib import Path
 
 BOOK = Path(__file__).resolve().parent.parent
-# Глава 4.2 «Типы в аннотациях» оставлена в прежнем виде по просьбе автора:
-# в ней фрагменты файлов, а не файлы целиком, и сверять их запуском нельзя.
+# Глава 4.2 «Типы в аннотациях» — только запись типов: в ней фрагменты файлов
+# без вывода, и сверять запуском в ней нечего.
 CHAPTERS = ["01-annotacii-tipov.html", "03-proverka-tipov.html",
             "04-tipy-na-primerah.html", "05-praktika-annotacii.html"]
 FIGURE = re.compile(r'<figure class="code( code--out)?">\s*<figcaption><span>(.*?)</span><span>(.*?)</span></figcaption>\s*<pre>(.*?)</pre>', re.S)
