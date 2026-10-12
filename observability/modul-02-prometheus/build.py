@@ -119,6 +119,16 @@ def build_zip():
             z.write(stand / name, f"prometheus-start/{name}")
 
 
+def build_final_zip():
+    """Итоговый стенд: всё из папки stand-final, кроме окружений и кэшей."""
+    stand = HERE / "stand-final"
+    skip = {".venv", "__pycache__", ".DS_Store"}
+    with zipfile.ZipFile(HERE / "prometheus-final.zip", "w", zipfile.ZIP_DEFLATED) as z:
+        for path in sorted(stand.rglob("*")):
+            if path.is_file() and not skip & set(path.relative_to(stand).parts):
+                z.write(path, f"prometheus-final/{path.relative_to(stand).as_posix()}")
+
+
 def include(text):
     """Подставляет файлы src/_*.svg на место <!--include:имя-->."""
     return re.sub(r"<!--include:([\w.-]+)-->",
@@ -145,7 +155,8 @@ def main():
             i=i,
         ), encoding="utf-8")
     build_zip()
-    print("готово:", len(CHAPTERS) + 1, "страниц и prometheus-start.zip")
+    build_final_zip()
+    print("готово:", len(CHAPTERS) + 1, "страниц, prometheus-start.zip и prometheus-final.zip")
 
 
 if __name__ == "__main__":
