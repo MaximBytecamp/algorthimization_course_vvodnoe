@@ -69,7 +69,7 @@ module2 = ('Как работает Prometheus', 'От строки на /metric
     ('02-target', 'Target: куда обращаться за метриками'),
     ('03-endpoint-metrics', 'Endpoint /metrics и текстовый формат'),
     ('04-scrape', 'Scrape: как Prometheus собирает значения'),
-    ('05-pull-model', 'Pull-модель: Prometheus приходит сам'),
+    ('05-pull-model', 'Pull-модель: запрос идёт от сервера'),
     ('06-pervyj-zapusk', 'Первый запуск: Prometheus и FastAPI'),
 ])
 

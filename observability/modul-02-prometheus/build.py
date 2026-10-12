@@ -24,7 +24,7 @@ CHAPTERS = [
     ("02-target", "2.2", "Target: куда обращаться за метриками"),
     ("03-endpoint-metrics", "2.3", "Endpoint /metrics и текстовый формат"),
     ("04-scrape", "2.4", "Scrape: как Prometheus собирает значения"),
-    ("05-pull-model", "2.5", "Pull-модель: Prometheus приходит сам"),
+    ("05-pull-model", "2.5", "Pull-модель: запрос идёт от сервера"),
     ("06-pervyj-zapusk", "2.6", "Первый запуск: Prometheus и FastAPI"),
 ]
 
@@ -83,7 +83,7 @@ def pager(i):
     if i > 0:
         slug, num, title = CHAPTERS[i - 1]
         left = f'<a href="{slug}.html">← {num} {title}</a>'
-    right = '<a href="../index.html">К справочнику ↑</a>'
+    right = '<a href="../testy/modul-2/index.html">Тест по модулю 2 →</a>'
     if i < len(CHAPTERS) - 1:
         slug, num, title = CHAPTERS[i + 1]
         right = f'<a href="{slug}.html">{num} {title} →</a>'
