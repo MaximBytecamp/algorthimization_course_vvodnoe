@@ -43,17 +43,22 @@ def render_chapter(i, c):
     body = (f'<header class="chapter-head"><span class="chapter-num">1.{i}</span><h1>{c["title"]}</h1>'
             f'<p class="lead">{c["lead"]}</p><div class="quote"><span class="eyebrow">Главное в главе</span><p>{c["epigraph"]}</p></div></header>')
     body += '<dl class="passport">' + ''.join(f'<div><dt>{dt}</dt><dd>{dd}</dd></div>' for dt, dd in c['passport']) + '</dl>'
-    tail = [('mistakes', 'Частые ошибки'), ('check', 'Проверьте себя'), ('cheatsheet', 'Шпаргалка')]
+    # Итоговая глава модуля обходится без этих трёх разделов: пустые не выводятся.
+    tail = [(k, name) for k, name, key in [('mistakes', 'Частые ошибки', 'mistakes'), ('check', 'Проверьте себя', 'selfcheck'),
+                                           ('cheatsheet', 'Шпаргалка', 'cheatsheet')] if c[key]]
     body += ('<nav class="contents" aria-label="Содержание главы"><b>В этой главе</b><ol>'
              + ''.join(f'<li><a href="#{sid}">{name}</a></li>' for sid, name, _ in c['sections'])
              + ''.join(f'<li><a href="#{sid}">{name}</a></li>' for sid, name in tail) + '</ol></nav>')
     for k, (sid, title, html) in enumerate(c['sections'], 1):
         body += f'<section id="{sid}"><h2><span class="sec">§{k}</span><span class="h2-text">{title}</span></h2>{html}{bridge_html(c, sid)}</section>'
     n = len(c['sections'])
-    body += (f'<section id="mistakes"><h2><span class="sec">§{n + 1}</span><span class="h2-text">Частые ошибки</span></h2>'
-             + table(['Что делают', 'Что получается', 'Как правильно'], c['mistakes']) + '</section>')
-    body += f'<section id="check"><h2><span class="sec">§{n + 2}</span><span class="h2-text">Проверьте себя</span></h2>{c["practice"]}{selfcheck(c["selfcheck"])}</section>'
-    body += f'<section id="cheatsheet"><h2><span class="sec">§{n + 3}</span><span class="h2-text">Шпаргалка</span></h2><div class="recap">{ul(c["cheatsheet"])}</div></section>'
+    tail_html = {
+        'mistakes': lambda: table(['Что делают', 'Что получается', 'Как правильно'], c['mistakes']),
+        'check': lambda: c['practice'] + selfcheck(c['selfcheck']),
+        'cheatsheet': lambda: '<div class="recap">' + ul(c['cheatsheet']) + '</div>',
+    }
+    for k, (sid, name) in enumerate(tail, n + 1):
+        body += f'<section id="{sid}"><h2><span class="sec">§{k}</span><span class="h2-text">{name}</span></h2>{tail_html[sid]()}</section>'
     body += ('<section class="references"><h3>Первоисточники</h3>'
              + ul([f'<a href="{url}" target="_blank" rel="noreferrer">{title} ↗</a>' for url, title in c['links']]) + '</section>')
     prev = f'{CH[i - 2]["slug"]}.html' if i > 1 else '../index.html'
@@ -76,6 +81,7 @@ module2 = ('Как работает Prometheus', 'От строки на /metric
     ('04-scrape', 'Scrape: как Prometheus собирает значения'),
     ('05-pull-model', 'Pull-модель: запрос идёт от сервера'),
     ('06-pervyj-zapusk', 'Первый запуск: Prometheus и FastAPI'),
+    ('07-itogi', 'Итоги модуля: главное коротко'),
 ])
 
 roadmap = [('Метрика как данные', ['Измерение, timestamp и sample', 'Имя и единица измерения', 'Labels и идентичность ряда', 'Counter: события и сбросы', 'Gauge: состояние системы', 'Histogram: распределение длительности', 'Кардинальность и стоимость детализации']), ('Сбор и хранение', ['Exporters и границы измерения', 'Service discovery и relabeling', 'Лимиты scrape и кардинальность', 'TSDB: head, WAL, блоки и retention', 'Пропуски, сбросы и устаревшие ряды', 'Pushgateway и пакетные задачи', 'Федерация и remote_write']), ('Запросы PromQL', ['Селекторы и временные диапазоны', 'rate и increase для счётчиков', 'Агрегации и группировка', 'Доля ошибок и нулевой трафик', 'Перцентили и histogram_quantile', 'Сопоставление рядов и vector matching', 'Recording rules и проверка запросов']), ('Grafana: от вопроса к панели', ['Источник данных и первый запрос', 'Единицы, легенды и интервал', 'Time series, stat, table и heatmap', 'Переменные и повторение панелей', 'Сравнение периодов и annotations', 'Корреляция: перейти от метрики к событию', 'Дашборд расследования']), ('Python и зависимости', ['Инструментация FastAPI', 'RED: rate, errors, duration', 'PostgreSQL: соединения, ожидания и запросы', 'Redis: память, попадания и вытеснения', 'RabbitMQ: ready, unacked и throughput', 'Celery: очередь, retries и результаты', 'Процесс, хост и контейнер']), ('Алерты и надёжность', ['SLI, SLO и бюджет ошибок', 'Симптом, условие и уведомление', 'Pending, firing и for', 'Alertmanager: группировка и маршруты', 'Silence, inhibition и шум', 'Runbook и проверка восстановления', 'Тестирование правил']), ('OpenTelemetry и расследования', ['Resource, scope и semantic conventions', 'Spans, context propagation и baggage', 'HTTP и сообщения очереди', 'Collector: receivers, processors, exporters', 'Сэмплирование и потерянные данные', 'Логи и трассы: Loki и Tempo', 'Профилирование и стоимость наблюдаемости'])]
@@ -87,11 +93,11 @@ body = f'''<header class="cover"><div><span class="eyebrow">Справочник
 <section id="contents"><h2><span class="sec">II</span>Содержание по модулям</h2><div class="module-grid"><div class="module module-ready"><div class="module-spine">МОДУЛЬ 1 · ГОТОВ</div><div class="module-body"><h3>Мониторинг, наблюдаемость и телеметрия</h3><p>От жалобы пользователя до подтверждённой причины сбоя.</p><ol class="toc">'''
 for i, c in enumerate(CH, 1):
     body += f'<li><a href="temy/{c["slug"]}.html"><b>1.{i}</b><span>{c["title"]}</span><em>читать ↗</em></a></li>'
-body += f'</ol><a class="practice-link" href="temy/{CH[-1]["slug"]}.html">Практика · от жалобы к проверяемому выводу →</a></div></div>'
+body += f'</ol><a class="practice-link" href="temy/09-praktika.html">Практика · от жалобы к проверяемому выводу →</a></div></div>'
 m2_title, m2_lead, m2_chapters = module2
 body += (f'<div class="module module-ready"><div class="module-spine">МОДУЛЬ 2 · ГОТОВ</div><div class="module-body"><h3>{m2_title}</h3><p>{m2_lead}</p><ol class="toc">'
          + ''.join(f'<li><a href="modul-02-prometheus/{slug}.html"><b>2.{j}</b><span>{t}</span><em>читать ↗</em></a></li>' for j, (slug, t) in enumerate(m2_chapters, 1))
-         + f'</ol><a class="practice-link" href="modul-02-prometheus/{m2_chapters[-1][0]}.html">Практика · Prometheus и FastAPI, target UP →</a>'
+         + f'</ol><a class="practice-link" href="modul-02-prometheus/06-pervyj-zapusk.html">Практика · Prometheus и FastAPI, target UP →</a>'
          '<a class="test-card" href="testy/modul-2/index.html"><span class="test-card-tag">Тест</span>'
          '<span class="test-card-body"><b>Проверочная работа по модулю 2</b>'
          '<span>23 задания на разбор ситуаций · 45 минут · одна попытка · разбор после отправки</span></span>'

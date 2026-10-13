@@ -28,7 +28,7 @@ for f,p in parsed.items():
    q=parsed.get(dest)
    if q is None:q=Parser();q.feed(dest.read_text())
    assert unquote(u.fragment) in q.ids,(f.name,href)
-print('10 HTML pages: headings, IDs, links and anchors OK')
+print(len(parsed),'HTML pages: headings, IDs, links and anchors OK')
 rows=list(csv.DictReader((R/'lab/results/requests.csv').open()))
 s=json.loads((R/'lab/results/summary.json').read_text())
 events=json.loads((R/'lab/results/events.json').read_text())

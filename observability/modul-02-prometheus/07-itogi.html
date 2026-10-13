@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#EEF1F5">
+  <meta name="description" content="Глава 2.7 модуля «Как работает Prometheus»: итоги модуля: главное коротко.">
+  <title>2.7 Итоги модуля: главное коротко · Как работает Prometheus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&amp;family=Pixelify+Sans:wght@500;600;700&amp;family=Roboto+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="algo.css">
+  <link rel="stylesheet" href="prom.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 2 · Как работает Prometheus · Макаров М. Н.</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Модуль 2 · как работает prometheus</a> · сбор метрик</p>
+          <p class="running__folio">Глава 2.7</p>
+        </div>
+        <header class="chapter-head">
+          <span class="chapter-num">2.7</span>
+          <h1>Итоги модуля:<br>главное коротко</h1>
+          <p class="lead">В этой главе собрано главное из шести глав модуля. На каждую главу отведён один раздел: несколько фраз о сути и один пример со стенда. Новых понятий здесь нет. Глава нужна, чтобы повторить модуль перед тестом и быстро найти нужное место в подробных главах.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Повторение</dd></div>
+          <div><dt>Уровень</dt><dd>После глав 2.1–2.6</dd></div>
+          <div><dt>Опирается на</dt><dd>Весь модуль 2</dd></div>
+          <div><dt>Результат</dt><dd>Путь числа от приложения до запроса — по памяти</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Что делает Prometheus</a></li>
+            <li><a href="#s2">Target: адрес</a></li>
+            <li><a href="#s3">Страница /metrics</a></li>
+            <li><a href="#s4">Scrape: опрос</a></li>
+            <li><a href="#s5">Pull и push</a></li>
+            <li><a href="#s6">Запуск стенда</a></li>
+            <li><a href="#s7">Термины модуля одной строкой</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Что делает Prometheus</h2>
+        <p>Prometheus — программа-сервер, которая делает три вещи по порядку: забирает у программ числа, сохраняет их вместе с временем и отвечает на запросы по сохранённому. Числа называются метриками. Метрика хранит количество или величину по группе событий, а подробности отдельного события остаются в логах.</p>
+        <p>Сохранённые значения одной величины образуют временной ряд. Ряд определяется именем метрики и всеми метками сразу, поэтому у одной метрики рядов столько, сколько встретилось сочетаний меток.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Пример: три ряда одной метрики</span><span>стенд модуля</span></div>
+          <div class="pic__body">
+            <div class="ser">
+              <div>http_requests_total <i>method="GET"</i> <i>status="200"</i> <b>125</b></div>
+              <div>http_requests_total <i>method="GET"</i> <i>status="404"</i> <b>3</b></div>
+              <div>http_requests_total <i>method="POST"</i> <i>status="405"</i> <b>1</b></div>
+            </div>
+          </div>
+        </div>
+        <p>Из этого следует ограничение на метки. Каждое новое значение метки создаёт новый ряд, поэтому в метки записывают значения из небольшого набора: метод, код ответа. Идентификатор пользователя или запроса в метку не записывают. И ещё одно ограничение: часть событий может потеряться при остановке программы, поэтому для точного учёта, например для счетов, Prometheus не подходит.</p>
+        <p class="bridge">Подробно: <a href="01-chto-takoe-prometheus.html">глава 2.1</a>. Чтобы забрать числа, серверу нужен адрес программы.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Target: адрес</h2>
+        <p>Target — адрес, по которому Prometheus запрашивает метрики. В настройках записывают только хост и порт. Протокол <code>http://</code> и путь <code>/metrics</code> подставляются сами и меняются параметрами <code>scheme</code> и <code>metrics_path</code>.</p>
+        <figure class="code">
+          <figcaption><span>prometheus.yml</span><span>всё, что нужно для одного target</span></figcaption>
+<pre><span class="k">scrape_configs</span>:
+  - <span class="k">job_name</span>: api
+    <span class="k">static_configs</span>:
+      - <span class="k">targets</span>: [<span class="s">'api:8000'</span>]</pre>
+        </figure>
+        <p>К каждому числу этого target Prometheus добавит две метки. Метка <code>job</code> равна названию задания: это сервис в целом. Метка <code>instance</code> равна адресу: это одна копия сервиса.</p>
+        <p>Адрес записывают таким, каким он доступен из места, где запущен Prometheus. На стенде у одного приложения три адреса, и подходит тот, который соответствует месту запуска.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Где запущен Prometheus</th><th>Адрес target</th></tr></thead>
+            <tbody>
+              <tr><td>В одной сети Compose с приложением</td><td><code>api:8000</code></td></tr>
+              <tr><td>На компьютере, без Docker</td><td><code>localhost:8020</code></td></tr>
+              <tr><td>В контейнере вне сети приложения</td><td><code>host.docker.internal:8020</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Частая ошибка — записать <code>localhost</code> для Prometheus в контейнере. Для него <code>localhost</code> — его собственный контейнер, и запрос заканчивается ошибкой <code>connection refused</code>.</p>
+        <p class="bridge">Подробно: <a href="02-target.html">глава 2.2</a>. По адресу находится страница с числами.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Страница /metrics</h2>
+        <p>Страница <code>/metrics</code> — обычный текст с текущими значениями метрик. Приложение никому его не отправляет: Prometheus, браузер и <code>curl</code> получают один и тот же ответ. Меток <code>job</code> и <code>instance</code> и времени в нём нет, их добавляет Prometheus.</p>
+        <figure class="code code--out">
+          <figcaption><span>curl http://localhost:8020/metrics</span><span>стенд модуля</span></figcaption>
+<pre># HELP http_requests_total Total HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{method="GET",status="200"} 125.0</pre>
+        </figure>
+        <p>Строка значения состоит из трёх частей: имя метрики, метки в фигурных скобках, число. Строка <code>HELP</code> содержит описание, строка <code>TYPE</code> — тип. Типов четыре, и чаще других встречаются три: counter только растёт, gauge меняется в обе стороны, histogram хранит набор счётчиков-корзин.</p>
+        <p>Формат проверяется строго в одном отношении. Ошибка записи в одной строке — значение метки без кавычек или запятая в числе — означает, что отклонён весь ответ. То же происходит при неправильном заголовке <code>Content-Type</code>: Prometheus 3 такой ответ не читает.</p>
+        <p class="bridge">Подробно: <a href="03-endpoint-metrics.html">глава 2.3</a>. Адрес и страницу соединяет действие — опрос.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Scrape: опрос</h2>
+        <p>Scrape — один запрос Prometheus к target вместе с обработкой ответа. У него две настройки. <code>scrape_interval</code> задаёт, как часто повторять опрос; на стенде это 15 секунд. <code>scrape_timeout</code> задаёт, сколько ждать ответа; по умолчанию 10 секунд, и он не может быть больше интервала.</p>
+        <p>Между двумя опросами данные теряются по-разному. Gauge показывает значение в момент опроса, и всплеск между опросами пропадает. Counter накапливает события в приложении, и следующий опрос получает их сумму. Поэтому события считают счётчиками.</p>
+        <p>После каждого scrape Prometheus сам записывает ряд <code>up</code>: 1, если опрос удался, и 0, если нет. По нему видно, что target недоступен, а причину сообщает начало текста ошибки.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Слова в тексте ошибки</th><th>Что произошло</th></tr></thead>
+            <tbody>
+              <tr><td><code>dial tcp … connection refused</code></td><td>По адресу никто не отвечает</td></tr>
+              <tr><td><code>context deadline exceeded</code></td><td>Ответ не пришёл за время timeout</td></tr>
+              <tr><td><code>HTTP status 404</code></td><td>Неверный путь</td></tr>
+              <tr><td><code>unsupported Content-Type</code></td><td>Неверный заголовок ответа</td></tr>
+              <tr><td><code>… while parsing</code></td><td>Ошибка записи в строке метрики</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Пример того, что остаётся в базе. Приложение стенда остановили на 50 секунд, затем запустили и отправили 30 запросов.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Пример: остановка приложения</span><span>Prometheus 3.5.0 · время UTC</span></div>
+          <div class="pic__body">
+            <div class="tl" style="--n:6">
+              <b>время</b><span class="t">13:22:37</span><span class="t">13:22:52</span><span class="t">13:23:07</span><span class="t">13:23:22</span><span class="t">13:23:37</span><span class="t">13:23:52</span>
+              <b>up</b><span class="ok">1</span><span class="bad">0</span><span class="bad">0</span><span class="bad">0</span><span class="ok">1</span><span class="ok">1</span>
+              <b>запросы, 200</b><span>125</span><span class="none">—</span><span class="none">—</span><span class="none">—</span><span class="none">—</span><span class="hot">30</span>
+            </div>
+          </div>
+        </div>
+        <p>Ряд <code>up</code> записан и во время остановки. Ряд приложения прерван сразу. После запуска счётчик начался заново: 30 вместо 155, потому что число хранилось в памяти программы.</p>
+        <p class="bridge">Подробно: <a href="04-scrape.html">глава 2.4</a>. Во всех этих шагах обмен начинал сервер, и у этого порядка есть название.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Pull и push</h2>
+        <p>Числа можно доставить двумя способами. При pull обмен начинает сервер: он опрашивает приложения по списку. Так работает Prometheus. При push обмен начинает приложение: оно отправляет числа на сервер по своему расписанию.</p>
+        <p>Различие проявляется, когда приложение останавливается. При pull сервер получает ошибку и записывает <code>up = 0</code>: известно, какой адрес не ответил и с какого момента. При push сервер ничего не получает и не может отличить остановленное приложение от приложения без новых данных.</p>
+        <p>У pull есть ограничение: короткая задача может завершиться раньше очередного опроса. Пример — скрипт резервного копирования, который работает 40 секунд при интервале 60. Для таких задач есть Pushgateway: задача отправляет в него результат, а Prometheus опрашивает Pushgateway как обычный target. Для программ, которые работают постоянно, Pushgateway не используют: у них пропадает свой ряд <code>up</code>.</p>
+        <p class="bridge">Подробно: <a href="05-pull-model.html">глава 2.5</a>. Осталось то, что делается руками: запуск.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Запуск стенда</h2>
+        <p>Стенд состоит из двух контейнеров в одной сети Docker Compose: приложение FastAPI и Prometheus. Весь запуск — четыре действия.</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>папка prometheus-start</span></figcaption>
+<pre>docker compose up -d --build                      # запустить оба контейнера
+curl http://localhost:8020/items/1                # отправить запрос к приложению
+curl http://localhost:8020/metrics                # посмотреть числа
+# браузер: http://localhost:9092 → Status → Target health → состояние UP</pre>
+        </figure>
+        <p>В приложении счётчик увеличивается в одной общей функции, через которую проходит каждый запрос, и запросы самого Prometheus к <code>/metrics</code> в нём не учитываются. В веб-интерфейсе Prometheus достаточно двух запросов: <code>up</code> показывает, доступен ли target, а <code>http_requests_total</code> — ряды счётчика. Число в таблице обновляется после очередного scrape, то есть не позже чем через 15 секунд.</p>
+        <p>Если target не в состоянии UP, порядок проверки такой: запущены ли контейнеры (<code>docker compose ps</code>), какой текст ошибки на странице Target health, какой адрес записан в <code>targets</code>.</p>
+        <p class="bridge">Подробно: <a href="06-pervyj-zapusk.html">глава 2.6</a>. В последнем разделе термины модуля собраны в одну таблицу.</p>
+
+        <h2 id="s7"><span class="sec">§7</span>Термины модуля одной строкой</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Термин</th><th>Что это</th><th>Пример</th></tr></thead>
+            <tbody>
+              <tr><td>Метрика</td><td>Число, которое программа считает о себе и показывает по запросу</td><td><code>http_requests_total</code></td></tr>
+              <tr><td>Метка</td><td>Пара «название — значение», которая уточняет, о чём число</td><td><code>status="404"</code></td></tr>
+              <tr><td>Временной ряд</td><td>Сохранённые значения одной величины с временем</td><td>Значения <code>up</code> раз в 15 секунд</td></tr>
+              <tr><td>Counter</td><td>Число, которое только растёт</td><td>Обработанные запросы</td></tr>
+              <tr><td>Gauge</td><td>Число, которое растёт и уменьшается</td><td>Длина очереди</td></tr>
+              <tr><td>Target</td><td>Адрес, по которому запрашивают метрики</td><td><code>api:8000</code></td></tr>
+              <tr><td>Job</td><td>Группа target с одним назначением</td><td><code>job="api"</code></td></tr>
+              <tr><td>Instance</td><td>Один target, обычно одна программа</td><td><code>instance="api:8000"</code></td></tr>
+              <tr><td>Scrape</td><td>Один опрос одного target</td><td><code>GET /metrics</code> раз в 15 секунд</td></tr>
+              <tr><td>up</td><td>Ряд, который Prometheus пишет после каждого scrape</td><td>1 — удался, 0 — нет</td></tr>
+              <tr><td>Pull</td><td>Обмен начинает сервер</td><td>Prometheus</td></tr>
+              <tr><td>Push</td><td>Обмен начинает приложение</td><td>Задача → Pushgateway</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Весь модуль укладывается в одну цепочку: приложение считает число, страница <code>/metrics</code> показывает его текстом, Prometheus по адресу target забирает текст при scrape, добавляет метки и время и записывает в базу, а запрос возвращает сохранённое.</p>
+        <a class="testcard" href="../testy/modul-2/index.html">
+          <span class="testcard__tag">Тест · модуль 2</span>
+          <span class="testcard__body"><b>Проверочная работа по модулю</b>
+            <span>23 задания на разбор ситуаций по главам 2.1–2.6.</span></span>
+          <span class="testcard__meta"><i>45 минут</i><i>одна попытка</i><i>разбор после отправки</i></span>
+          <span class="testcard__go">Открыть тест →</span>
+        </a>
+
+        <div class="pager"><a href="06-pervyj-zapusk.html">← 2.6 Первый запуск: Prometheus и FastAPI</a><a href="../testy/modul-2/index.html">Тест по модулю 2 →</a></div>
+        <div class="colophon">
+          <span>Метрики и наблюдаемость · Модуль 2 · Как работает Prometheus</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="book.js"></script>
+  <script src="algo.js"></script>
+  <script src="prom.js"></script>
+</body>
+</html>
