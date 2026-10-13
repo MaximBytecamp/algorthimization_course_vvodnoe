@@ -802,6 +802,217 @@
     reset();
   });
 
+  /* ── 9г. Окно переменного размера ─────────────────────────────── */
+  /* data-a — список неотрицательных чисел, data-s — порог суммы,
+     data-ds — шаг кнопок «−» и «+» у порога. Ищется самое короткое окно
+     с суммой не меньше порога. Окно — полуинтервал [l, r). На шаге сдвигается
+     одна граница: правая, пока сумма меньше порога, иначе левая. */
+  document.querySelectorAll('.vwin').forEach(root => {
+    const a = json(root, 'a') || [];
+    const n = a.length, all = a.reduce((x, y) => x + y, 0);
+    const ds = Number(root.dataset.ds) || 5;
+    let S = Number(root.dataset.s) || 10, l, r, sum, best, moveL, moveR, gone, came, done, timer = null;
+    root.classList.add('widget');
+    root.innerHTML = `
+      <div class="widget__head"><b>${esc(root.dataset.title || 'Окно переменного размера')}</b><span>за шаг сдвигается одна граница</span></div>
+      <div class="widget__body">
+        <div class="btnrow slide__kbar"><span>Порог суммы</span><button class="btn" data-act="sminus" aria-label="уменьшить порог">−</button><b class="slide__k"></b><button class="btn" data-act="splus" aria-label="увеличить порог">+</button></div>
+        <div class="cells"></div>
+        <p class="slide__sum" aria-live="polite"></p>
+        <div class="btnrow">
+          <button class="btn btn--main" data-act="next">шаг →</button>
+          <button class="btn" data-act="play">▶ до конца</button>
+          <button class="btn" data-act="reset">↻ сначала</button>
+        </div>
+        <div class="hunt__stats vwin__stats"></div>
+        <div class="legend"><span><i class="l-win"></i>окно [l, r)</span><span><i class="l-gone"></i>элемент, который ушёл из окна</span></div>
+      </div>`;
+    const cells = root.querySelector('.cells'), say = root.querySelector('.slide__sum'), stats = root.querySelector('.vwin__stats');
+    const times = c => `${c} ${c % 10 >= 2 && c % 10 <= 4 && (c % 100 < 12 || c % 100 > 14) ? 'раза' : 'раз'}`;
+    function reset() {
+      stop();
+      l = 0; r = 0; sum = 0; best = null; moveL = 0; moveR = 0; gone = -1; came = -1; done = false;
+      say.innerHTML = `Окно пустое: l = 0, r = 0, сумма 0. Нужно самое короткое окно с суммой не меньше ${S}.`;
+      draw();
+    }
+    function step() {
+      if (done) return false;
+      gone = -1; came = -1;
+      if (sum >= S) {
+        const len = r - l, v = a[l], old = sum;
+        let note = 'Найденное раньше окно не длиннее, запись не меняется.';
+        if (!best || len < best[1] - best[0]) { note = best ? 'Оно короче найденных раньше, его границы записаны.' : 'Это первое подходящее окно, его границы записаны.'; best = [l, r, sum]; }
+        sum -= v; gone = l; l++; moveL++;
+        say.innerHTML = `Сумма ${old} не меньше ${S}: окно a[${l - 1}:${r}] длины ${len} подходит. ${note} Окно сжимается слева: уходит a[${l - 1}] = ${v}, сумма ${old} − ${v} = <b>${sum}</b>.`;
+      } else if (r < n) {
+        const v = a[r], old = sum;
+        sum += v; came = r; r++; moveR++;
+        say.innerHTML = `Сумма ${old} меньше ${S}: окно расширяется справа. Приходит a[${r - 1}] = ${v}, сумма ${old} + ${v} = <b>${sum}</b>.`;
+      } else {
+        done = true;
+        say.innerHTML = `Сумма ${sum} меньше ${S}, а правая граница дошла до конца списка: расширять окно нечем. ` + (best
+          ? `Ответ — окно a[${best[0]}:${best[1]}]: длина <b>${best[1] - best[0]}</b>, сумма ${best[2]}.`
+          : `Окна с суммой не меньше ${S} в списке нет: сумма всех элементов равна ${all}.`);
+      }
+      draw();
+      return !done;
+    }
+    function draw() {
+      const tags = {}, tail = [];
+      const put = (p, v) => { if (v < n) (tags[v] = tags[v] || []).push(p); else tail.push(p); };
+      put('l', l); put('r', r);
+      drawCells(cells, a, {
+        tags, tailTags: tail,
+        flash: came >= 0 ? new Set([came]) : new Set(),
+        cls: i => (i >= l && i < r) ? 'is-win' : i === gone ? 'is-gone' : ''
+      });
+      root.querySelector('.slide__k').textContent = `S = ${S}`;
+      root.querySelector('[data-act="sminus"]').disabled = S - ds < 1;
+      root.querySelector('[data-act="splus"]').disabled = S > all;
+      root.querySelector('[data-act="next"]').disabled = done;
+      stats.innerHTML = `<span>правая граница сдвинута ${times(moveR)}, левая — ${times(moveL)}</span><span>${best ? `самое короткое окно: a[${best[0]}:${best[1]}], длина ${best[1] - best[0]}` : 'подходящих окон пока нет'}</span><span>подотрезков в списке: ${n * (n + 1) / 2}</span>`;
+    }
+    function stop() { if (timer) { clearInterval(timer); timer = null; root.querySelector('[data-act="play"]').textContent = '▶ до конца'; } }
+    root.addEventListener('click', e => {
+      const b = e.target.closest('[data-act]'); if (!b) return;
+      const act = b.dataset.act;
+      if (act === 'sminus' && S - ds >= 1) { S -= ds; reset(); }
+      if (act === 'splus' && S <= all) { S += ds; reset(); }
+      if (act === 'reset') reset();
+      if (act === 'next') { stop(); step(); }
+      if (act === 'play') {
+        if (timer) return stop();
+        if (done) reset();
+        b.textContent = '⏸ пауза';
+        timer = setInterval(() => { if (!step()) stop(); }, 1100);
+      }
+    });
+    reset();
+  });
+
+  /* ── 9д. Расширение и сжатие вручную ──────────────────────────── */
+  /* data-a — список неотрицательных чисел, data-limit — порог.
+     data-goal="max" (по умолчанию): самый длинный отрезок с суммой не больше
+     порога, окно сжимают, пока сумма больше порога. data-goal="min": самый
+     короткий отрезок с суммой не меньше порога, окно сжимают, пока сумма
+     не меньше порога. data-goal="uniq": data-a — список символов, ищется
+     самая длинная подстрока без повторов, под лентой показана частотная
+     карта окна. Окно — элементы с l по r включительно, как в коде модуля 10. Неверный ход не выполняется, вместо него — объяснение. */
+  document.querySelectorAll('.vwinhand').forEach(root => {
+    const a = json(root, 'a') || [];
+    const n = a.length, lim = Number(root.dataset.limit) || 0, toMin = root.dataset.goal === 'min', uniq = root.dataset.goal === 'uniq';
+    let l, r, sum, best, errors, done, gone, cnt;
+    root.classList.add('widget');
+    root.innerHTML = `
+      <div class="widget__head"><b>Двигайте границы сами</b><span>${uniq ? 'в окне нет повторов' : toMin ? `сумма не меньше ${lim}` : `сумма не больше ${lim}`}</span></div>
+      <div class="widget__body">
+        <div class="cells"></div>
+        <p class="rwg__now"></p>
+        <div class="btnrow">
+          <button class="btn btn--main" data-act="grow">расширить: r += 1</button>
+          <button class="btn btn--main" data-act="shrink">сжать: l += 1</button>
+          <span style="flex:1"></span><button class="btn" data-act="reset">↻ заново</button>
+        </div>
+        <p class="hunt__msg" aria-live="polite"></p>
+        <div class="legend"><span><i class="l-win"></i>текущее окно</span><span><i class="l-gone"></i>ушло из окна</span></div>
+      </div>`;
+    const cells = root.querySelector('.cells'), now = root.querySelector('.rwg__now'), msg = root.querySelector('.hunt__msg');
+    const say = (t, kind = '') => { msg.className = 'hunt__msg' + (kind ? ' is-' + kind : ''); msg.innerHTML = t; };
+    const win = () => l > r ? 'пустое' : uniq ? `'${a.slice(l, r + 1).join('')}'` : `nums[${l}:${r + 1}]`;
+    const mustShrink = () => uniq ? (r >= l && cnt[a[r]] > 1) : toMin ? sum >= lim : sum > lim;
+    function reset() {
+      l = 0; r = -1; sum = 0; best = 0; errors = 0; done = false; gone = -1; cnt = {};
+      say(uniq ? 'Нужна самая длинная подстрока без повторов. Окно пустое, частотная карта пустая. Выберите, какую границу сдвинуть.' : toMin
+        ? `Нужен самый короткий отрезок с суммой не меньше ${lim}. Окно пустое, сумма 0. Выберите, какую границу сдвинуть.`
+        : `Нужен самый длинный отрезок с суммой не больше ${lim}. Окно пустое, сумма 0. Выберите, какую границу сдвинуть.`);
+      draw();
+    }
+    function draw() {
+      const tags = {};
+      const put = (p, v) => { if (v >= 0 && v < n) (tags[v] = tags[v] || []).push(p); };
+      put('l', l); put('r', r);
+      drawCells(cells, a, { tags, tailTags: l >= n ? ['l'] : [], cls: i => (i >= l && i <= r) ? 'is-win' : i === gone ? 'is-gone' : '' });
+      now.innerHTML = uniq
+        ? `Окно ${win()}, длина ${r - l + 1}. Карта: <b>${Object.keys(cnt).map(c => `'${c}': ${cnt[c]}`).join(', ') || 'пустая'}</b>. Самая длинная подстрока без повторов: <b>${best || 'пока нет'}</b>.`
+        : `Окно ${win()}, сумма <b>${sum}</b>, длина ${r - l + 1}. ${toMin ? 'Самое короткое подходящее' : 'Самое длинное допустимое'}: <b>${best || 'пока нет'}</b>.`;
+      root.querySelectorAll('[data-act="grow"],[data-act="shrink"]').forEach(b => { b.disabled = done; });
+    }
+    function finish(t) {
+      done = true;
+      say(`${t} Готово: правая граница прошла ${uniq ? 'всю строку' : 'весь список'}. Ответ — <b>${best}</b>${best ? '' : ': подходящего отрезка нет'}. Ошибок: ${errors}.`, 'ok');
+    }
+    function growU() {
+      if (mustShrink()) { errors++; return say(`В окне ${win()} символ '${a[r]}' встречается дважды: окно недопустимо. Расширение повтор не уберёт. Окно нужно сжать.`, 'no'); }
+      r++; cnt[a[r]] = (cnt[a[r]] || 0) + 1; gone = -1;
+      let t = `Пришёл символ '${a[r]}', count['${a[r]}'] = ${cnt[a[r]]}. `;
+      if (cnt[a[r]] > 1) t += 'Символ уже был в окне: появился повтор.';
+      else { const len = r - l + 1; t += `Повторов нет, длина окна ${len}. ` + (len > best ? 'Это больше прежней лучшей длины, запись обновлена.' : 'Лучшая длина не изменилась.'); if (len > best) best = len; }
+      if (r === n - 1 && !mustShrink()) finish(t); else say(t);
+      draw();
+    }
+    function shrinkU() {
+      if (!mustShrink()) { errors++; return say(l > r ? 'Окно пустое, сжимать нечего. Окно нужно расширить.' : `В окне ${win()} повторов нет: окно допустимо. Сжатие сделает его короче, а нужна самая длинная подстрока. Окно нужно расширить.`, 'no'); }
+      const x = a[l]; cnt[x]--; gone = l; l++;
+      let t = `Ушёл символ '${x}', count['${x}'] = ${cnt[x]}. `;
+      if (mustShrink()) t += `Символ '${a[r]}' всё ещё встречается дважды.`;
+      else { const len = r - l + 1; t += `Повторов больше нет, длина окна ${len}. ` + (len > best ? 'Запись обновлена.' : 'Лучшая длина не изменилась.'); if (len > best) best = len; }
+      if (r === n - 1 && !mustShrink()) finish(t); else say(t);
+      draw();
+    }
+    function grow() {
+      if (uniq) return growU();
+      if (mustShrink()) {
+        errors++;
+        return say(toMin
+          ? `Сумма ${sum} не меньше ${lim}: окно подходит. Расширение сделает его длиннее, а нужен самый короткий отрезок. Окно нужно сжать.`
+          : `Сумма ${sum} больше ${lim}: окно недопустимо. Расширение сумму не уменьшит. Сначала окно нужно сжать.`, 'no');
+      }
+      r++; sum += a[r]; gone = -1;
+      let t = `Пришёл nums[${r}] = ${a[r]}, сумма ${sum - a[r]} + ${a[r]} = ${sum}. `;
+      if (toMin) t += sum >= lim ? `Она не меньше ${lim}: окно подходит.` : `Она меньше ${lim}: окно пока не подходит.`;
+      else if (sum <= lim) {
+        const len = r - l + 1;
+        t += `Она не больше ${lim}: окно допустимо, его длина ${len}. ` + (len > best ? 'Это больше прежней лучшей длины, запись обновлена.' : 'Лучшая длина не изменилась.');
+        if (len > best) best = len;
+      } else t += `Она больше ${lim}: окно недопустимо.`;
+      if (r === n - 1 && !mustShrink()) finish(t); else say(t);
+      draw();
+    }
+    function shrink() {
+      if (uniq) return shrinkU();
+      if (!mustShrink()) {
+        errors++;
+        return say(toMin
+          ? `Сумма ${sum} меньше ${lim}: окно не подходит. Сжатие сумму не увеличит. Окно нужно расширить.`
+          : (l > r ? 'Окно пустое, сжимать нечего. Окно нужно расширить.' : `Сумма ${sum} не больше ${lim}: окно допустимо. Сжатие сделает его короче, а нужен самый длинный отрезок. Окно нужно расширить.`), 'no');
+      }
+      let t = '';
+      if (toMin) {
+        const len = r - l + 1;
+        t = `Перед сжатием записана длина ${len}` + (!best ? ': это первое подходящее окно. ' : len < best ? ': она меньше прежней лучшей. ' : ', лучшая длина не изменилась. ');
+        if (!best || len < best) best = len;
+      }
+      sum -= a[l]; gone = l; l++;
+      t += `Ушёл nums[${l - 1}] = ${a[l - 1]}, сумма ${sum + a[l - 1]} − ${a[l - 1]} = ${sum}. `;
+      if (!toMin) {
+        if (sum <= lim) {
+          const len = r - l + 1;
+          t += l > r ? 'Окно стало пустым, оно допустимо.' : `Она не больше ${lim}: окно снова допустимо, его длина ${len}. ` + (len > best ? 'Запись обновлена.' : 'Лучшая длина не изменилась.');
+          if (len > best) best = len;
+        } else t += `Она всё ещё больше ${lim}.`;
+      } else t += sum >= lim ? `Она всё ещё не меньше ${lim}.` : `Она меньше ${lim}.`;
+      if (r === n - 1 && !mustShrink()) finish(t); else say(t);
+      draw();
+    }
+    root.addEventListener('click', e => {
+      const b = e.target.closest('[data-act]'); if (!b) return;
+      if (b.dataset.act === 'grow') grow();
+      if (b.dataset.act === 'shrink') shrink();
+      if (b.dataset.act === 'reset') reset();
+    });
+    reset();
+  });
+
   /* ── 10. Признаки в условии ───────────────────────────────────── */
   document.querySelectorAll('[data-lit]').forEach(b => {
     const target = document.getElementById(b.dataset.lit);

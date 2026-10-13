@@ -874,7 +874,7 @@ TASKS
         </div>
         <p>Задачи, на которых не получилось хотя бы одно из этого, стоит пройти ещё раз через день, по главе из таблицы §2.</p>
 
-        <div class="pager"><a href="10-praktika-i-dz.html">← 9.10 Практика, шпаргалка и ДЗ</a><a href="../index.html">К оглавлению →</a></div>
+        <div class="pager"><a href="10-praktika-i-dz.html">← 9.10 Практика, шпаргалка и ДЗ</a><a href="../10-okno-peremennoe/01-gde-sprashivayut.html">10.1 Окно переменного размера на собеседованиях и в работе →</a></div>
         <div class="colophon">
           <span>Модуль 9 · Скользящее окно · ОП.04 · 3 курс</span>
           <span class="author-line">Автор: Макаров Максим Николаевич</span>
