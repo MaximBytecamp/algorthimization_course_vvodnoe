@@ -191,11 +191,31 @@ def warn(title, s):
     return '<aside class="margin-note warn"><b>' + title + '</b>' + p(s) + '</aside>'
 
 
+def analogy(life_title, life, tech_title, tech):
+    """Сравнение из жизни перед термином: слева бытовая ситуация, справа то же в программе."""
+    return ('<div class="analogy"><div class="analogy-head">Сравнение из жизни</div><div class="analogy-pair">'
+            '<div><b>' + life_title + '</b>' + p(life) + '</div><div><b>' + tech_title + '</b>' + p(tech) + '</div></div></div>')
+
+
+def bridge(s):
+    """Переход к следующему разделу: последняя фраза раздела."""
+    return '<p class="bridge">' + s + '</p>'
+
+
+def sep():
+    """Полоса внутри раздела: дальше идёт логически другая часть."""
+    return '<div class="sep" role="separator"></div>'
+
+
 def source(url, title):
     return '<p class="source">Первоисточник: <a href="' + url + '" target="_blank" rel="noreferrer">' + title + ' ↗</a></p>'
 
 
-def chapter(slug, title, lead, epigraph, passport, sections, mistakes, selfcheck, cheatsheet, links, practice=''):
-    """epigraph — короткая мысль главы в шапке; practice — упражнение перед «Проверьте себя»."""
+def chapter(slug, title, lead, epigraph, passport, sections, mistakes, selfcheck, cheatsheet, links, practice='', bridges=None):
+    """epigraph — короткая мысль главы в шапке; practice — упражнение перед «Проверьте себя»;
+    bridges — {id раздела: фраза-переход к следующему разделу}, сборка ставит её в конец раздела."""
+    unknown = set(bridges or {}) - {sid for sid, _, _ in sections}
+    assert not unknown, unknown
     return dict(slug=slug, title=title, lead=lead, epigraph=epigraph, passport=passport, sections=sections,
-                mistakes=mistakes, selfcheck=selfcheck, cheatsheet=cheatsheet, links=links, practice=practice)
+                mistakes=mistakes, selfcheck=selfcheck, cheatsheet=cheatsheet, links=links, practice=practice,
+                bridges=bridges or {})

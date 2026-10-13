@@ -6,7 +6,7 @@
 </header>
 
 <div class="book"><div class="book-body"><aside class="spine" aria-hidden="true"><span>Наблюдаемость / Метрики · Логи · Трассы / Макаров М. Н.</span></aside>
-<main class="leaf" id="main"><div class="running"><a href="../index.html">Практический справочник</a><span>Глава 1.9</span></div><header class="chapter-head"><span class="chapter-num">1.9</span><h1>Практика: от жалобы к проверяемому выводу</h1><p class="lead">Запускаем сервис products-api на своём компьютере, проводим эксперимент из двадцати запросов, считаем показатели по сохранённым данным и оформляем отчёт. Для обязательной части нужен только Python 3.12.</p>
+<main class="leaf" id="main"><div class="running"><a href="../index.html">Практический справочник</a><span>Глава 1.9</span></div><header class="chapter-head"><span class="chapter-num">1.9</span><h1>Практика: от жалобы к проверяемому выводу</h1><p class="lead">В практике сервис products-api запускается на своём компьютере, проводится эксперимент из двадцати запросов, по сохранённым данным считаются показатели и оформляется отчёт. Для обязательной части нужен только Python 3.12.</p>
 <div class="quote"><span class="eyebrow">Главное в главе</span><p>Вывод в отчёте должен опираться на данные, которые другой человек может открыть и пересчитать.</p>
 </div></header>
 <dl class="passport"><div><dt>Раздел</dt><dd>Основы наблюдаемости</dd></div><div><dt>Уровень</dt><dd>Начальный · Python знаком</dd></div><div><dt>Что понадобится</dt><dd>Python 3.12, терминал, браузер; Docker — только для дополнительной части</dd></div><div><dt>Результат</dt><dd>Файлы эксперимента и отчёт по бланку расследования</dd></div></dl>
@@ -15,8 +15,9 @@
  id="archive"><h2><span class="sec">§1</span><span class="h2-text">Что в архиве</span></h2><p>Практика выполняется на том же сервисе, что и все главы темы. Скачайте архив и распакуйте его в отдельную папку, путь к которой не содержит пробелов и русских букв.</p>
 <p><a class="primary" href="../assets/telemetry-lab.zip" download>Скачать telemetry-lab.zip ↓</a></p>
 <div class="table-scroll"><table><thead><tr><th scope="col">Файл или папка</th><th scope="col">Назначение</th></tr></thead><tbody><tr><td><code>app.py</code></td><td>Сервис products-api: /products, /health, /events, /metrics, /lab</td></tr><tr><td><code>console.html</code></td><td>Страница стенда, которую отдаёт адрес /lab</td></tr><tr><td><code>experiment.py</code></td><td>Скрипт эксперимента: 20 запросов и сохранение результатов</td></tr><tr><td><code>requirements.txt</code></td><td>Зависимости: FastAPI 0.115.6 и Uvicorn 0.34.0</td></tr><tr><td><code>reference-results/</code></td><td>Результаты авторского прогона для сравнения</td></tr><tr><td><code>investigation.md</code></td><td>Бланк отчёта о расследовании</td></tr><tr><td><code>compose.yaml</code>, <code>prometheus.yml</code>, <code>grafana/</code></td><td>Prometheus и Grafana для дополнительной части</td></tr><tr><td><code>README.md</code></td><td>Краткая инструкция по запуску</td></tr></tbody></table>
-</div><p>Если виртуальные окружения и установка зависимостей пока непривычны, сначала прочитайте <a href="../../mdk0101-razrabotka-modulei/lessons/02-struktura-python-proekta/index.html">материал о структуре Python-проекта</a>. Для практики важно одно: сервер работает в одном терминале, а скрипт эксперимента запускается во втором.</p>
-<div class="flow"><div><b>Этап A</b><span>три ручных запроса</span></div><i aria-hidden="true">→</i><div><b>Этап B</b><span>эксперимент из 20 запросов</span></div><i aria-hidden="true">→</i><div><b>Задания</b><span>расчёты по файлам</span></div><i aria-hidden="true">→</i><div><b>Этап C</b><span>меняем одну величину</span></div><i aria-hidden="true">→</i><div><b>Отчёт</b><span>бланк investigation.md</span></div></div><p class="flow-note">Порядок работы. Дополнительная часть с Prometheus и Grafana — по желанию.</p>
+</div><p>Если виртуальные окружения и установка зависимостей пока непривычны, сначала прочитайте <a href="../../mdk0101-razrabotka-modulei/lessons/02-struktura-python-proekta/index.html">материал о структуре Python-проекта</a>. Для практики достаточно помнить одно: сервер работает в одном терминале, а скрипт эксперимента запускается во втором.</p>
+<p>Работа идёт в таком порядке. На этапе A выполняются три ручных запроса. На этапе B скрипт проводит эксперимент из двадцати запросов. Затем по сохранённым файлам выполняются задания с расчётами. На этапе C в эксперименте меняется одна величина, и прогон повторяется. В конце заполняется бланк <code>investigation.md</code>. Дополнительная часть с Prometheus и Grafana выполняется по желанию.</p>
+<p class="bridge">Архив распакован. Первый шаг — запустить сервис.</p>
 </section>
 <section
  id="start"><h2><span class="sec">§2</span><span class="h2-text">Запуск сервиса</span></h2><p>Откройте терминал в папке, куда распаковали архив. Выберите свою операционную систему и выполните команды по одной.</p>
@@ -29,13 +30,14 @@ python -m uvicorn app:app --host 127.0.0.1 --port 8015</code></pre></figure>
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m uvicorn app:app --host 127.0.0.1 --port 8015</code></pre></figure>
-</div></div><div class="table-scroll"><table><thead><tr><th scope="col">Команда (macOS и Linux)</th><th scope="col">Что делает</th></tr></thead><tbody><tr><td><code>cd telemetry-lab</code></td><td>Перейти в папку проекта</td></tr><tr><td><code>python3 -m venv .venv</code></td><td>Создать виртуальное окружение в папке <code>.venv</code>. Библиотеки проекта установятся туда, а не в системный Python</td></tr><tr><td><code>source .venv/bin/activate</code></td><td>Активировать окружение. После этого команда <code>python</code> указывает на Python из <code>.venv</code></td></tr><tr><td><code>python -m pip install -r requirements.txt</code></td><td>Установить зависимости из файла</td></tr><tr><td><code>python -m uvicorn app:app --host 127.0.0.1 --port 8015</code></td><td>Запустить сервер. <code>app:app</code> означает «объект <code>app</code> из файла <code>app.py</code>»</td></tr></tbody></table>
-</div><p>В PowerShell окружение не активируют, а обращаются к его Python по полному пути <code>.\.venv\Scripts\python.exe</code>. Так команды работают, даже если политика выполнения скриптов запрещает <code>Activate.ps1</code>.</p>
+</div></div><div class="table-scroll"><table><thead><tr><th scope="col">Команда (macOS и Linux)</th><th scope="col">Что делает</th></tr></thead><tbody><tr><td><code>cd telemetry-lab</code></td><td>Перейти в папку проекта</td></tr><tr><td><code>python3 -m venv .venv</code></td><td>Создать виртуальное окружение в папке <code>.venv</code>. Библиотеки проекта установятся туда, системный Python не изменится</td></tr><tr><td><code>source .venv/bin/activate</code></td><td>Активировать окружение. После этого команда <code>python</code> указывает на Python из <code>.venv</code></td></tr><tr><td><code>python -m pip install -r requirements.txt</code></td><td>Установить зависимости из файла</td></tr><tr><td><code>python -m uvicorn app:app --host 127.0.0.1 --port 8015</code></td><td>Запустить сервер. <code>app:app</code> означает «объект <code>app</code> из файла <code>app.py</code>»</td></tr></tbody></table>
+</div><p>В PowerShell окружение не активируют: к его Python обращаются по полному пути <code>.\.venv\Scripts\python.exe</code>. Так команды работают, даже если политика выполнения скриптов запрещает <code>Activate.ps1</code>.</p>
 <figure class="code code-output"><figcaption><span>Вывод в терминале · сервер запущен</span></figcaption><pre><code>INFO:     Started server process [57038]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8015 (Press CTRL+C to quit)</code></pre></figure>
 <p>Последняя строка означает, что сервер готов. Номер процесса в квадратных скобках у вас будет другим. Терминал оставьте открытым: если его закрыть, сервер остановится. Остановить сервер штатно можно сочетанием Ctrl+C.</p>
+<p class="bridge">Сервер работает. Прежде чем отправлять запросы, посмотрите, какие адреса и параметры у него есть.</p>
 </section>
 <section
  id="swagger"><h2><span class="sec">§3</span><span class="h2-text">Знакомство с API через Swagger</span></h2><p>Откройте в браузере <code>http://127.0.0.1:8015/docs</code>. FastAPI строит эту страницу по коду обработчиков.</p>
@@ -44,12 +46,14 @@ INFO:     Uvicorn running on http://127.0.0.1:8015 (Press CTRL+C to quit)</code>
 <p>В таблице Parameters один параметр <code>scenario</code> типа <code>string</code>, он передаётся в строке запроса — отметка <code>(query)</code>. Строка <code>Available values: fast, slow, error</code> взята из аннотации <code>Literal["fast", "slow", "error"]</code> в коде, <code>Default value: fast</code> — из значения по умолчанию.</p>
 <p>В разделе Responses два кода. <code>200 Successful Response</code> — обычный ответ. Пример <code>"string"</code> ничего не сообщает: обработчик возвращает объект Response напрямую, и FastAPI не может вывести его структуру из кода. <code>422 Validation Error</code> FastAPI добавляет сам: такой ответ придёт, если передать недопустимое значение, например <code>scenario=medium</code>.</p>
 <p>Адреса <code>/metrics</code> в документации нет: в коде для него указано <code>include_in_schema=False</code>.</p>
+<p class="bridge">Адреса и параметр известны. На этапе A три запроса отправляются вручную.</p>
 </section>
 <section
  id="stage-a"><h2><span class="sec">§4</span><span class="h2-text">Этап A. Три ручных запроса</span></h2><p>Откройте <code>http://127.0.0.1:8015/lab</code>. Нажмите по очереди «Быстрый 200», «Медленный 200» и «Ошибка 500». После каждого нажатия перенесите данные в таблицу.</p>
 <div class="table-scroll"><table><thead><tr><th scope="col">Сценарий</th><th scope="col">HTTP</th><th scope="col">Клиент, мс</th><th scope="col">Обработчик, мс</th><th scope="col">Самый долгий этап</th><th scope="col">Первые 8 символов request_id</th></tr></thead><tbody><tr><td>fast</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>slow</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>error</td><td></td><td></td><td></td><td></td><td></td></tr></tbody></table>
 </div><p>Затем откройте <code>http://127.0.0.1:8015/health</code> и запишите ответ. Объясните в отчёте, почему он успешен, хотя последний запрос к <code>/products</code> завершился ошибкой.</p>
 <p>Теперь попробуйте по трём ручным запросам ответить на вопросы из жалобы: сколько запросов было за последний час, какая их доля медленная, стал ли сервис медленнее, чем вчера. Ответов нет: три запроса — это три опыта, а истории стенд не хранит. Запишите это в отчёт как ограничение. В расследовании нехватку данных фиксируют явно и не заменяют её предположением.</p>
+<p class="bridge">Трёх запросов для ответа на жалобу недостаточно. Этап B даёт выборку из двадцати.</p>
 </section>
 <section
  id="stage-b"><h2><span class="sec">§5</span><span class="h2-text">Этап B. Эксперимент из двадцати запросов</span></h2><p>Откройте второй терминал в той же папке <code>telemetry-lab</code>. Сервер в первом терминале должен продолжать работать. Запустите скрипт тем же Python из окружения.</p>
@@ -87,11 +91,10 @@ INFO:     Uvicorn running on http://127.0.0.1:8015 (Press CTRL+C to quit)</code>
   &quot;p95_nearest_rank_ms&quot;: 3024.239,
   &quot;method&quot;: &quot;client wall time, all statuses, sequential requests; nearest rank p95&quot;
 }</code></pre></figure>
-<p>Коды ответов и порядок сценариев у вас совпадут с авторским прогоном, а миллисекунды будут другими: на длительность влияют скорость компьютера, другие программы и планировщик операционной системы. Сравнивайте закономерность, а не точные числа.</p>
-<div class="cards" style="--cols:3"><div class="card"><span class="card-tag">results/requests.csv</span><h4>Двадцать строк</h4><p>Номер, сценарий, код, client_ms, handler_ms, request_id.</p>
-</div><div class="card"><span class="card-tag">results/summary.json</span><h4>Итог</h4><p>Количества, среднее и p95 методом ближайшего ранга.</p>
-</div><div class="card"><span class="card-tag">results/events.json</span><h4>Записи о событиях</h4><p>Эти же двадцать запросов с этапами и traceback.</p>
-</div></div><p>Скрипт берёт события из <code>/events</code> и оставляет только те, чей <code>request_id</code> есть в CSV. Поэтому ручные запросы из этапа A в файл не попадут, хотя сервер их тоже запомнил.</p>
+<p>Коды ответов и порядок сценариев у вас совпадут с авторским прогоном, а миллисекунды будут другими: на длительность влияют скорость компьютера, другие программы и планировщик операционной системы. Сравнивайте закономерность: точные числа совпадать не должны.</p>
+<p>После прогона в папке <code>results</code> появляются три файла. В <code>requests.csv</code> двадцать строк: номер, сценарий, код, <code>client_ms</code>, <code>handler_ms</code> и <code>request_id</code>. В <code>summary.json</code> записан итог: количества, среднее и p95 методом ближайшего ранга. В <code>events.json</code> — записи о событиях тех же двадцати запросов с этапами и traceback.</p>
+<p>Скрипт берёт события из <code>/events</code> и оставляет только те, чей <code>request_id</code> есть в CSV. Поэтому ручные запросы из этапа A в файл не попадут, хотя сервер их тоже запомнил.</p>
+<p class="bridge">Данные сохранены в трёх файлах. Задания следующего раздела выполняются по ним.</p>
 </section>
 <section
  id="tasks"><h2><span class="sec">§6</span><span class="h2-text">Задания по данным</span></h2><p>Все ответы записывайте в отчёт с указанием, из какого файла взяты данные и как посчитан результат.</p>
@@ -104,6 +107,7 @@ INFO:     Uvicorn running on http://127.0.0.1:8015 (Press CTRL+C to quit)</code>
 </li><li><b>Ошибочный запрос</b><p>Найдите его запись. Прочитайте traceback снизу вверх и укажите тип исключения, файл и строку.</p>
 </li></ol><aside class="margin-note"><b>Что можно утверждать по этим данным</b><p>Все выводы относятся к одному процессу, двадцати последовательным запросам и смоделированной зависимости. Эти ограничения нужно назвать в отчёте. Фраза «сервис медленный» по такому опыту неверна, а фраза «в этом прогоне 2 из 20 запросов длились больше 3 секунд из-за этапа dependency.wait» верна.</p>
 </aside>
+<p class="bridge">Первый прогон разобран. Этап C проверяет, как изменятся показатели, если изменить одну величину.</p>
 </section>
 <section
  id="stage-c"><h2><span class="sec">§7</span><span class="h2-text">Этап C. Изменение одной величины</span></h2><p>В опыте меняют одну величину за раз, иначе нельзя сказать, какое изменение вызвало результат.</p>
@@ -114,6 +118,7 @@ INFO:     Uvicorn running on http://127.0.0.1:8015 (Press CTRL+C to quit)</code>
 </li><li><b>Записать прогноз</b><p>До запуска запишите в отчёт, как изменятся доля медленных запросов, среднее, медиана и p95.</p>
 </li><li><b>Запустить и сравнить</b><p>Запустите скрипт и сравните прогноз с новым <code>summary.json</code>.</p>
 </li></ol><p>Метод расчёта, число запросов и длительность медленного сценария не меняйте.</p>
+<p class="bridge">Обязательная часть закончена. Следующий раздел необязательный: тот же сервис с Prometheus и Grafana.</p>
 </section>
 <section
  id="extra"><h2><span class="sec">§8</span><span class="h2-text">Дополнительно: тот же сервис в Prometheus и Grafana</span></h2><p>Эта часть показывает на вашем компьютере путь метрики из главы 1.8. Для неё нужен Docker Desktop или Docker Engine с Compose.</p>
@@ -123,7 +128,8 @@ INFO:     Uvicorn running on http://127.0.0.1:8015 (Press CTRL+C to quit)</code>
 </li><li><b>Дать нагрузку</b><p>Запустите <code>experiment.py</code> два-три раза подряд.</p>
 </li><li><b>Сверить числа</b><p>Откройте <code>http://127.0.0.1:3015/d/telemetry-intro</code> и сравните число на панели «Завершённые запросы» с суммой рядов <code>lab_http_requests_total</code> в Prometheus.</p>
 </li><li><b>Остановить</b><p>Выполните <code>docker compose down</code>.</p>
-</li></ol><p>Число на панели будет больше, чем строк во всех ваших CSV. Счётчик приложения учитывает все запросы к <code>/products</code>: из эксперимента, со страницы стенда и из Swagger. CSV описывает только один прогон скрипта. Это разные области учёта, а не ошибка сбора.</p>
+</li></ol><p>Число на панели будет больше, чем строк во всех ваших CSV. Счётчик приложения учитывает все запросы к <code>/products</code>: из эксперимента, со страницы стенда и из Swagger. CSV описывает только один прогон скрипта. Это разные области учёта, ошибки сбора здесь нет.</p>
+<p class="bridge">Осталось оформить результаты.</p>
 </section>
 <section
  id="report"><h2><span class="sec">§9</span><span class="h2-text">Отчёт и критерии проверки</span></h2><p>Результат практики — заполненный бланк <a href="../assets/investigation.md" download>investigation.md ↓</a> и папка с результатами обоих прогонов. Разделы бланка совпадают с отчётом из главы 1.7.</p>
@@ -131,7 +137,8 @@ INFO:     Uvicorn running on http://127.0.0.1:8015 (Press CTRL+C to quit)</code>
 </div><div class="example"><span class="eyebrow">Пример</span><h3>Одно наблюдение, три записи в отчёте</h3><p>Данные во всех трёх случаях одни и те же: файл <code>requests.csv</code> авторского прогона, двадцать строк.</p>
 <div class="table-scroll"><table><thead><tr><th scope="col">Запись в отчёте</th><th scope="col">Оценка</th></tr></thead><tbody><tr><td>«Сервис работает медленно»</td><td>Не принимается. Не названы выборка, величина и порог; проверить нельзя, и по двадцати запросам это не следует из данных</td></tr><tr><td>«Средняя длительность 379 мс»</td><td>Число верное, но одно среднее скрывает, что такой длительности нет ни у одного запроса прогона</td></tr><tr><td>«2 из 20 запросов прогона (10%) заняли больше 1000 мс; порог выбран для этого опыта; источник — results/requests.csv, столбец client_ms»</td><td>Принимается. Названы выборка, величина, порог, единица и файл; другой человек повторит расчёт и получит то же число</td></tr></tbody></table>
 </div><p>Принятая запись отличается тремя вещами: указана область учёта, указана единица измерения и назван файл с исходными данными. Те же требования стоят в критериях выше и в отчёте главы 1.7.</p>
-</div></section>
+</div><p class="bridge">Если на каком-то шаге возникла ошибка, причины и действия собраны в последнем разделе.</p>
+</section>
 <section
  id="troubleshooting"><h2><span class="sec">§10</span><span class="h2-text">Если что-то не запускается</span></h2><div class="table-scroll"><table><thead><tr><th scope="col">Сообщение или симптом</th><th scope="col">Причина</th><th scope="col">Что сделать</th></tr></thead><tbody><tr><td><code>No module named fastapi</code></td><td>Зависимости установлены в другой Python</td><td>Запускать Uvicorn тем же Python, которым выполнялся pip install: из .venv</td></tr><tr><td><code>Address already in use</code></td><td>Порт 8015 занят другой программой</td><td>Запустить сервер на другом порту и передать скрипту <code>--base http://127.0.0.1:НОВЫЙ_ПОРТ</code></td></tr><tr><td><code>Connection refused</code> в experiment.py</td><td>Сервер не запущен или слушает другой адрес</td><td>Проверить первый терминал и совпадение порта</td></tr><tr><td><code>py</code> не найден в PowerShell</td><td>Python установлен без py launcher</td><td>Использовать полный путь к python.exe версии 3.12</td></tr><tr><td>Пустая история после перезапуска сервера</td><td>События хранятся в памяти процесса</td><td>Использовать CSV и JSON, сохранённые на диске</td></tr><tr><td>Цель DOWN в Prometheus</td><td>API запущен с --host 127.0.0.1</td><td>Перезапустить API с --host 0.0.0.0</td></tr></tbody></table>
 </div></section>
@@ -151,7 +158,7 @@ INFO:     Uvicorn running on http://127.0.0.1:8015 (Press CTRL+C to quit)</code>
 </div></details>
 </div></section>
 <section
- id="cheatsheet"><h2><span class="sec">§13</span><span class="h2-text">Шпаргалка</span></h2><div class="recap"><ul><li>Сервер: python -m uvicorn app:app --host 127.0.0.1 --port 8015 в первом терминале.</li><li>Эксперимент: .venv/bin/python experiment.py во втором терминале.</li><li>Результаты: results/requests.csv, summary.json, events.json.</li><li>Сравнивают коды и закономерности, а не точные миллисекунды.</li><li>Перед повторным прогоном сохранить папку results под другим именем.</li><li>Одна изменённая величина и прогноз до запуска.</li><li>Для Prometheus API запускают с --host 0.0.0.0.</li><li>В отчёте обязательно названы ограничения опыта.</li></ul></div></section>
+ id="cheatsheet"><h2><span class="sec">§13</span><span class="h2-text">Шпаргалка</span></h2><div class="recap"><ul><li>Сервер: python -m uvicorn app:app --host 127.0.0.1 --port 8015 в первом терминале.</li><li>Эксперимент: .venv/bin/python experiment.py во втором терминале.</li><li>Результаты: results/requests.csv, summary.json, events.json.</li><li>Сравнивают коды и закономерности; точные миллисекунды совпадать не должны.</li><li>Перед повторным прогоном сохранить папку results под другим именем.</li><li>Одна изменённая величина и прогноз до запуска.</li><li>Для Prometheus API запускают с --host 0.0.0.0.</li><li>В отчёте обязательно названы ограничения опыта.</li></ul></div></section>
 <section
  class="references"><h3>Первоисточники</h3><ul><li><a href="https://fastapi.tiangolo.com/tutorial/first-steps/" target="_blank" rel="noreferrer">FastAPI · First steps ↗</a></li><li><a href="https://docs.python.org/3/library/venv.html" target="_blank" rel="noreferrer">Python · venv ↗</a></li><li><a href="https://docs.python.org/3/library/time.html#time.perf_counter" target="_blank" rel="noreferrer">Python · time.perf_counter ↗</a></li><li><a href="https://docs.python.org/3/library/asyncio-task.html#asyncio.sleep" target="_blank" rel="noreferrer">Python · asyncio.sleep ↗</a></li></ul></section>
 <nav class="chapter-nav" aria-label="Переходы"><a href="08-prometheus-grafana.html">← Глава 1.8</a><a href="../index.html">Всё содержание ↑</a></nav>

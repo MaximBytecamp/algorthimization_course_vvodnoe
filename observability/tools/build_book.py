@@ -34,6 +34,11 @@ def selfcheck(items):
         f'<details><summary>{q}</summary><div class="answer">{a}</div></details>' for q, a in items) + '</div>'
 
 
+def bridge_html(c, sid):
+    text = c['bridges'].get(sid)
+    return f'<p class="bridge">{text}</p>' if text else ''
+
+
 def render_chapter(i, c):
     body = (f'<header class="chapter-head"><span class="chapter-num">1.{i}</span><h1>{c["title"]}</h1>'
             f'<p class="lead">{c["lead"]}</p><div class="quote"><span class="eyebrow">Главное в главе</span><p>{c["epigraph"]}</p></div></header>')
@@ -43,7 +48,7 @@ def render_chapter(i, c):
              + ''.join(f'<li><a href="#{sid}">{name}</a></li>' for sid, name, _ in c['sections'])
              + ''.join(f'<li><a href="#{sid}">{name}</a></li>' for sid, name in tail) + '</ol></nav>')
     for k, (sid, title, html) in enumerate(c['sections'], 1):
-        body += f'<section id="{sid}"><h2><span class="sec">§{k}</span><span class="h2-text">{title}</span></h2>{html}</section>'
+        body += f'<section id="{sid}"><h2><span class="sec">§{k}</span><span class="h2-text">{title}</span></h2>{html}{bridge_html(c, sid)}</section>'
     n = len(c['sections'])
     body += (f'<section id="mistakes"><h2><span class="sec">§{n + 1}</span><span class="h2-text">Частые ошибки</span></h2>'
              + table(['Что делают', 'Что получается', 'Как правильно'], c['mistakes']) + '</section>')
