@@ -1,0 +1,131 @@
+        <header class="chapter-head">
+          <span class="chapter-num">2.7</span>
+          <h1>Формат YAML<br>и ряд up</h1>
+          <p class="lead">Короткая глава-справка о двух вещах, которые встречались во всём модуле. Первая — формат файла <code>prometheus.yml</code>: как он устроен и какие ошибки в нём делают чаще всего. Вторая — ряд <code>up</code>: откуда он берётся, что означает и как им пользоваться в запросах.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Справка</dd></div>
+          <div><dt>Уровень</dt><dd>Начальный</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 2.2 и 2.4</dd></div>
+          <div><dt>Результат</dt><dd>Читать и править prometheus.yml, проверять доступность по up</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Что такое YAML</a></li>
+            <li><a href="#s2">Пять правил записи</a></li>
+            <li><a href="#s3">Частые ошибки и что пишет promtool</a></li>
+            <li><a href="#s4">Ряд up</a></li>
+            <li><a href="#s5">Запросы с up</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Что такое YAML</h2>
+        <p>Настройки Prometheus записаны в файле <code>prometheus.yml</code>. Окончание <code>.yml</code> (или <code>.yaml</code>) означает формат YAML — текстовый способ записать вложенные настройки так, чтобы их читал и человек, и программа. В том же формате написаны <code>compose.yaml</code> для Docker Compose и настройки Grafana на стенде.</p>
+        <p>Устройство YAML похоже на оглавление книги. В оглавлении вложенность показана отступом: глава стоит у края, её разделы сдвинуты вправо, подразделы — ещё правее. Номера и рамки не нужны, всё видно по сдвигу. В YAML вложенность тоже задаётся только отступом, поэтому от отступа зависит смысл строки.</p>
+        <p>Вот рабочий файл стенда, и каждый уровень в нём сдвинут на два пробела.</p>
+        <figure class="code">
+          <figcaption><span>stand/prometheus.yml</span><span>три уровня вложенности</span></figcaption>
+<pre><span class="k">global</span>:                       <span class="c"># уровень 1: раздел</span>
+  <span class="k">scrape_interval</span>: <span class="n">15s</span>         <span class="c"># уровень 2: настройка внутри раздела</span>
+  <span class="k">scrape_timeout</span>: <span class="n">10s</span>
+
+<span class="k">scrape_configs</span>:               <span class="c"># уровень 1: список заданий</span>
+  - <span class="k">job_name</span>: api             <span class="c"># «-» начинает элемент списка: одно задание</span>
+    <span class="k">static_configs</span>:           <span class="c"># настройка этого задания</span>
+      - <span class="k">targets</span>: [<span class="s">'api:8000'</span>]  <span class="c"># список адресов в одну строку</span></pre>
+        </figure>
+        <p>Если читать файл как оглавление, получается: есть раздел общих настроек с двумя значениями и раздел заданий. В разделе заданий одно задание с именем <code>api</code>, у него список статических целей, а в нём один адрес.</p>
+        <p class="bridge">Чтобы так читать любой файл, достаточно пяти правил.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Пять правил записи</h2>
+        <p><b>Пара «ключ: значение».</b> Название настройки, двоеточие, пробел, значение: <code>scrape_interval: 15s</code>. Пробел после двоеточия обязателен.</p>
+        <p><b>Вложенность — отступом из пробелов.</b> Всё, что сдвинуто правее ключа, принадлежит ему. Отступы делают только пробелами; символ табуляции YAML запрещает. В Prometheus принято сдвигать каждый уровень на два пробела, и главное — сдвигать одинаково: элементы одного уровня стоят строго друг под другом.</p>
+        <p><b>Список.</b> Каждый элемент начинается с дефиса и пробела. Короткий список можно записать в одну строку в квадратных скобках. Две записи ниже означают одно и то же.</p>
+        <figure class="code">
+          <figcaption><span>Список адресов</span><span>две равноценные записи</span></figcaption>
+<pre>      - <span class="k">targets</span>: [<span class="s">'api:8000'</span>, <span class="s">'api2:8000'</span>]
+
+      - <span class="k">targets</span>:
+          - <span class="s">'api:8000'</span>
+          - <span class="s">'api2:8000'</span></pre>
+        </figure>
+        <p><b>Строки можно не брать в кавычки.</b> <code>job_name: api</code> и <code>job_name: 'api'</code> равноценны. Кавычки нужны, когда в значении есть символы, важные для YAML, например двоеточие с пробелом или <code>#</code> в начале.</p>
+        <p><b>Комментарий начинается с <code>#</code>.</b> Всё правее этого знака до конца строки программа пропускает.</p>
+        <div class="sep" role="separator"></div>
+        <h3>Длительности в Prometheus</h3>
+        <p>Это правило относится к самому Prometheus. Время в его настройках записывают числом с единицей без пробела: <code>500ms</code>, <code>15s</code>, <code>1m</code>, <code>2h</code>, <code>1d</code>. Число без единицы, например <code>15</code>, Prometheus не принимает.</p>
+        <p class="bridge">Правила простые, но ошибки в них частые. Следующий раздел показывает, как они выглядят в проверке.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Частые ошибки и что пишет promtool</h2>
+        <p>Перед перезагрузкой настроек файл проверяют программой <code>promtool</code>, которая входит в образ Prometheus. Она останавливается на первой ошибке и называет номер строки. Каждый файл из таблицы проверен на стенде, Prometheus 3.5.0.</p>
+        <figure class="code code--out">
+          <figcaption><span>Проверка файла</span><span>стенд модуля</span></figcaption>
+<pre>docker compose exec prometheus promtool check config /etc/prometheus/prometheus.yml</pre>
+        </figure>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Что написано в файле</th><th>Что ответил promtool</th><th>Что исправить</th></tr></thead>
+            <tbody>
+              <tr><td>Отступ сделан табуляцией</td><td><code>line 2: found character that cannot start any token</code></td><td>Заменить табуляцию пробелами</td></tr>
+              <tr><td><code>scrape_interval:15s</code> — нет пробела после двоеточия</td><td><code>line 2: cannot unmarshal !!str `scrape_...` into config.plain</code></td><td>Поставить пробел после двоеточия</td></tr>
+              <tr><td><code>scrape_intervall: 15s</code> — опечатка в имени</td><td><code>line 2: field scrape_intervall not found in type config.plain</code></td><td>Сверить имя с документацией</td></tr>
+              <tr><td><code>scrape_interval: 15</code> — нет единицы</td><td><code>not a valid duration string: "15"</code></td><td>Записать <code>15s</code></td></tr>
+              <tr><td><code>targets: api:8000</code> — строка вместо списка</td><td><code>line 4: cannot unmarshal !!str `api:8000` into []string</code></td><td>Записать <code>['api:8000']</code></td></tr>
+              <tr><td><code>labels</code> сдвинут на уровень задания вместо уровня target</td><td><code>line 5: field labels not found in type config.ScrapeConfig</code></td><td>Сдвинуть <code>labels</code> под <code>targets</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Последняя строка таблицы показывает, что отступ меняет смысл. Блок <code>labels</code> из главы 2.2 принадлежит одной группе адресов и стоит на одном уровне с <code>targets</code>. Если сдвинуть его на два пробела левее, он попадает внутрь задания, где такой настройки нет.</p>
+        <figure class="code">
+          <figcaption><span>prometheus.yml</span><span>правильное место для labels</span></figcaption>
+<pre>    <span class="k">static_configs</span>:
+      - <span class="k">targets</span>: [<span class="s">'api:8000'</span>]
+        <span class="k">labels</span>:           <span class="c"># под targets: те же 8 пробелов, что и у слова targets</span>
+          <span class="k">env</span>: dev</pre>
+        </figure>
+        <p>Сообщения <code>not found in type</code> полезно читать целиком: в конце указан раздел, в котором Prometheus искал настройку. <code>config.plain</code> — раздел <code>global</code>, <code>config.ScrapeConfig</code> — одно задание.</p>
+        <p class="bridge">Файл настроек задаёт, что опрашивать. Как прошёл каждый опрос, Prometheus записывает в ряд up.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Ряд up</h2>
+        <p>Ряд <code>up</code> встречался почти в каждой главе модуля. Здесь всё о нём собрано вместе.</p>
+        <p>Его можно сравнить с отметкой в журнале обхода. Контролёр записывает не только показания, но и то, удалось ли попасть в квартиру: «попал» или «не открыли». По этим отметкам видно, какие квартиры давно недоступны, даже если показаний нет.</p>
+        <div class="term-card">
+          <p class="term-card__head"><b>up</b><span>служебный ряд · один на каждый target</span></p>
+          <div class="term-card__body">
+            <p>Ряд, который Prometheus записывает сам после каждого scrape каждого target: 1 — scrape успешный, 0 — неуспешный. У ряда только метки target: <code>job</code>, <code>instance</code> и метки из <code>labels</code>.</p>
+          </div>
+        </div>
+        <p>У этого определения три следствия, и все они проверены на стенде модуля.</p>
+        <p><b>Приложение не может повлиять на up.</b> Ряда <code>up</code> нет в ответе <code>/metrics</code>: его создаёт Prometheus по результату опроса. Поэтому <code>up</code> показывает доступность, даже когда приложение упало и не может ничего сообщить.</p>
+        <p><b>up записывается и во время сбоя.</b> Ряды приложения при неуспешном scrape прерываются, а <code>up</code> продолжает писаться нулями. На стенде приложение остановили в 13:22:41, и картина была такой:</p>
+        <div class="pic">
+          <div class="pic__bar"><span>up{job="api"} во время остановки приложения</span><span>Prometheus 3.5.0 · время UTC</span></div>
+          <div class="pic__body">
+            <div class="tl" style="--n:6">
+              <b>время</b><span class="t">13:22:37</span><span class="t">13:22:52</span><span class="t">13:23:07</span><span class="t">13:23:22</span><span class="t">13:23:37</span><span class="t">13:23:52</span>
+              <b>up</b><span class="ok">1</span><span class="bad">0</span><span class="bad">0</span><span class="bad">0</span><span class="ok">1</span><span class="ok">1</span>
+            </div>
+          </div>
+        </div>
+        <p><b>up = 1 не означает, что сервис работает правильно.</b> Это значит только, что страница <code>/metrics</code> ответила без ошибок. Рабочий маршрут при этом может возвращать ошибку 500 в каждом запросе, и это видно уже по метрикам приложения. Ряд <code>up</code> отвечает на вопрос «получается ли собирать данные». Работает ли сервис правильно, по нему не узнать.</p>
+        <p>Для Pushgateway из главы 2.5 ряд <code>up</code> относится к самому Pushgateway. О задачах, которые в него отправляют данные, он ничего не говорит.</p>
+        <p class="bridge">Ряд up — обычный временной ряд, и с ним работают обычные запросы.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Запросы с up</h2>
+        <p>Четыре запроса покрывают почти все случаи. Их вводят на вкладке Query веб-интерфейса Prometheus.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Запрос</th><th>Что возвращает</th><th>Когда нужен</th></tr></thead>
+            <tbody>
+              <tr><td><code>up</code></td><td>По одному ряду на каждый target со значением 1 или 0</td><td>Проверить все цели сразу</td></tr>
+              <tr><td><code>up{job="api"}</code></td><td>Только target задания <code>api</code></td><td>Проверить один сервис</td></tr>
+              <tr><td><code>up == 0</code></td><td>Только недоступные target; если все доступны — пустой результат</td><td>Найти, что сломалось; основа правила оповещения</td></tr>
+              <tr><td><code>avg_over_time(up{job="api"}[1h])</code></td><td>Среднее значение up за час</td><td>Доля успешных опросов: 0,95 — 5% опросов за час не удались</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Запрос <code>up == 0</code> отличается от остальных: он оставляет только ряды со значением 0. Поэтому пустой результат здесь означает, что все target доступны. На нём строят первое правило оповещения почти в любой системе: «если <code>up == 0</code> дольше двух минут — сообщить дежурному». Без такого правила сломанный сбор выглядит так же, как сервис без запросов: графики пустеют.</p>
+        <p>Запрос с <code>avg_over_time</code> переводит ряд нулей и единиц в долю. За час при интервале 15 секунд набирается 240 отсчётов. Если 12 из них нули, среднее равно 228 / 240 = 0,95.</p>

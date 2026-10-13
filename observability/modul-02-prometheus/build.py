@@ -26,7 +26,8 @@ CHAPTERS = [
     ("04-scrape", "2.4", "Scrape: как Prometheus собирает значения"),
     ("05-pull-model", "2.5", "Pull-модель: запрос идёт от сервера"),
     ("06-pervyj-zapusk", "2.6", "Первый запуск: Prometheus и FastAPI"),
-    ("07-itogi", "2.7", "Итоги модуля: главное коротко"),
+    ("07-yaml-i-up", "2.7", "Формат YAML и ряд up"),
+    ("08-itogi", "2.8", "Итоги модуля: главное коротко"),
 ]
 
 FONTS = (
@@ -143,7 +144,7 @@ def main():
         cover,
         title="Как работает Prometheus · Метрики и наблюдаемость",
         description="Модуль 2 справочника «Метрики и наблюдаемость»: target, /metrics, scrape, pull-модель и первый запуск Prometheus.",
-        folio="7 глав",
+        folio="8 глав",
         cover=True,
     ), encoding="utf-8")
     for i, (slug, num, title) in enumerate(CHAPTERS):
