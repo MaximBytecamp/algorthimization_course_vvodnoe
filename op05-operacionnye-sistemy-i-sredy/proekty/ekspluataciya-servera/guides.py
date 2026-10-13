@@ -157,7 +157,7 @@ habits='<section><h2>Безопасные привычки</h2><ul class="plain"
   '<li><code>chmod 777</code> и <code>chmod -R</code> на системных каталогах не решают проблему доступа, а создают новую.</li>'
   '<li>Сначала TERM, затем проверка, и только потом KILL.</li>'
   '<li>Не работать постоянно из <code>sudo -i</code>: каждая команда через sudo попадает в журнал, команды внутри <code>sudo -i</code> — нет.</li></ul></section>',
-git_intro='<p>Репозиторий создаёт инженер 1: GitHub → New repository, затем Settings → Collaborators → добавить напарника. Каждый работает в своей ветке.</p>',
+git_intro='<p>Репозиторий создаёт практикант 1: GitHub → New repository, затем Settings → Collaborators → добавить напарника. Каждый работает в своей ветке.</p>',
 git_after='<p>Дальше на GitHub: Compare &amp; pull request. Напарник открывает вкладку Files changed, повторяет команды на своём стенде и оставляет замечания или Approve. После одобрения — Merge, и оба обновляют <code>main</code>: <code>git switch main</code>, <code>git pull</code>.</p>'
   '<p>Конфликт в <code>runbook.md</code> возникает, когда оба дописали строки в одно место. Git покажет обе версии между метками <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> и <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code>: оставьте строки обоих в порядке времени, удалите метки, затем <code>git add</code> и <code>git commit</code>.</p>',
 defense='<section><h2>Защита работы</h2><ul class="plain">'
