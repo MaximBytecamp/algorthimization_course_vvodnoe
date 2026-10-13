@@ -28,7 +28,7 @@
         </nav>
 
         <h2 id="s1"><span class="sec">§1</span>Состав стенда</h2>
-        <p>Стенд — папка <code>prometheus-start</code> из архива модуля. В ней приложение, настройки Prometheus и файлы для Docker. Python на компьютере для основного варианта не нужен.</p>
+        <p>Пять глав модуля описывали путь числа по частям. В этой главе весь путь запускается на вашем компьютере. Стенд — папка <code>prometheus-start</code> из архива модуля. В ней приложение, настройки Prometheus и файлы для Docker. Python на компьютере для основного варианта не нужен.</p>
         <p><a class="btn btn--main" href="prometheus-start.zip" download>↓ Скачать prometheus-start.zip</a></p>
         <div class="pic">
           <div class="pic__bar"><span>Что запускается на стенде</span><span>два контейнера в одной сети</span></div>
@@ -49,6 +49,8 @@
           </div>
           <p class="pic__note">Человек обращается к обоим контейнерам с компьютера через порты 8020 и 9092. Prometheus обращается к приложению внутри сети по имени <code>api</code> (глава 2.2, §4).</p>
         </div>
+        <p>Человек обращается к обоим контейнерам с компьютера, а Prometheus обращается к приложению внутри сети по имени <code>api</code>. Почему адреса разные, объясняла глава 2.2. Теперь по порядку: какие файлы лежат в папке и по каким адресам открывается стенд.</p>
+        <div class="sep" role="separator"></div>
         <h3>Файлы стенда</h3>
         <div class="tree">
           <div class="tree__head">prometheus-start/</div>
@@ -63,6 +65,7 @@
             <div class="tree__row"><span>README.md</span><em>команды для macOS, Linux и Windows</em></div>
           </div>
         </div>
+        <p>Три файла в дереве выделены: в них находится всё, что относится к метрикам. Остальные нужны для сборки образа и для опытов.</p>
         <h3>Адреса стенда</h3>
         <div class="table-scroll">
           <table>
@@ -76,7 +79,10 @@
         </div>
         <p>Номера 8020 и 9092 выбраны потому, что порты 8000 и 9090 часто заняты другими программами и стендом модуля 1. Оба порта открыты только на адресе <code>127.0.0.1</code>, поэтому с других компьютеров сети стенд недоступен.</p>
 
+        <p class="bridge">Из трёх выделенных файлов первым разобрано приложение: в нём числа появляются.</p>
+
         <h2 id="s2"><span class="sec">§2</span>Приложение app.py</h2>
+        <p>Приложение стенда делает две вещи: отдаёт товар по номеру и считает собственные запросы. Счёт ведётся в одном месте, через которое проходят все запросы, и сначала показано, как это место устроено.</p>
         <div class="analogy">
           <div class="analogy__head">Сравнение из жизни</div>
           <div class="analogy__pair">
@@ -99,6 +105,8 @@
           </div>
           <p class="pic__note">Счётчик увеличивается после шага 3: код ответа становится известен после того, как обработчик закончил работу.</p>
         </div>
+        <p>Счётчик увеличивается на четвёртом шаге, потому что код ответа становится известен только после работы обработчика. Ниже код, в котором эти четыре шага записаны.</p>
+        <div class="sep" role="separator"></div>
         <h3>Код приложения</h3>
         <p>Ниже — рабочая часть файла. В полном файле есть ещё три адреса для опыта с ошибками из главы 2.4: <code>/metrics/slow</code>, <code>/metrics/broken</code>, <code>/metrics/html</code>. Рабочая конфигурация к ним не обращается.</p>
         <figure class="code">
@@ -144,6 +152,7 @@ app = FastAPI(title=<span class="s">"Prometheus start"</span>)
 <span class="k">async def</span> <span class="f">metrics</span>():
     <span class="k">return</span> Response(generate_latest(registry), media_type=CONTENT_TYPE_LATEST)</pre>
         </figure>
+        <p>В таблице каждая существенная строка разобрана дважды: что она делает и что изменится в ответе <code>/metrics</code>, если её убрать.</p>
         <h3>Разбор по строкам</h3>
         <div class="table-scroll">
           <table>
@@ -177,6 +186,8 @@ demo_created{method="GET"} 1.790692138359471e+09
 Traceback (most recent call last):
   ...
 ValueError: Counters can only be incremented by non-negative amounts.</pre></div></details>
+
+        <p class="bridge">Приложение считает числа и отдаёт их по запросу. Теперь нужен тот, кто будет запрашивать, и это описывают два файла настроек.</p>
 
         <h2 id="s3"><span class="sec">§3</span>Конфигурация и Compose</h2>
         <p>На стенде два файла настроек. Файл <code>prometheus.yml</code> разобран в главе 2.2: одно задание <code>api</code>, target <code>api:8000</code>, интервал 15 секунд, timeout 10 секунд.</p>
@@ -221,24 +232,10 @@ ValueError: Counters can only be incremented by non-negative amounts.</pre></div
           </table>
         </div>
 
+        <p class="bridge">Все три выделенных файла разобраны. Остальное делается командами.</p>
+
         <h2 id="s4"><span class="sec">§4</span>Запуск</h2>
-        <p>Запуск состоит из пяти шагов. Команды выполняются в папке <code>prometheus-start</code>. Переключатель системы вверху страницы показывает команды для вашей операционной системы. В macOS и Linux команды одинаковые.</p>
-        <div class="pic">
-          <div class="pic__bar"><span>Пять шагов запуска</span><span>порядок</span></div>
-          <div class="pic__body">
-            <div class="chain">
-              <div class="chain__box"><small>шаг 1</small><b>Запустить</b>Два контейнера.</div>
-              <span class="chain__arr"></span>
-              <div class="chain__box"><small>шаг 2</small><b>Проверить</b>Оба контейнера работают.</div>
-              <span class="chain__arr"></span>
-              <div class="chain__box"><small>шаг 3</small><b>Отправить запросы</b>У счётчика появляются ряды.</div>
-              <span class="chain__arr"></span>
-              <div class="chain__box"><small>шаг 4</small><b>Открыть /metrics</b>Числа видны в тексте.</div>
-              <span class="chain__arr"></span>
-              <div class="chain__box is-key"><small>шаг 5</small><b>Открыть Prometheus</b>Target в состоянии UP.</div>
-            </div>
-          </div>
-        </div>
+        <p>Файлы разобраны, и стенд можно запускать. Запуск состоит из пяти шагов: запустить контейнеры, проверить их, отправить запросы к приложению, открыть страницу <code>/metrics</code> и открыть Prometheus. Команды выполняются в папке <code>prometheus-start</code>. Переключатель системы вверху страницы показывает команды для вашей операционной системы. В macOS и Linux команды одинаковые.</p>
         <ol class="steps">
           <li><b>Собрать образ приложения и запустить оба контейнера.</b> При первом запуске Docker скачивает образы Python и Prometheus. Это занимает от одной до нескольких минут.
             <figure class="code code--out"><figcaption><span>Терминал</span><span>папка prometheus-start</span></figcaption><pre>docker compose up -d --build</pre></figure></li>
@@ -263,6 +260,8 @@ http_requests_total{method="GET",status="404"} 1.0</pre></figure></li>
           <p>В Prometheus 2 страница называлась <b>Status → Targets</b>. В Prometheus 3 она называется <b>Status → Target health</b>. Адрес страницы прежний: <code>/targets</code>. В инструкциях в интернете часто встречается старое название.</p>
         </div>
 
+        <p class="bridge">Пятый шаг открывает страницу, по которой проверяют результат запуска. Она разобрана в следующем разделе.</p>
+
         <h2 id="s5"><span class="sec">§5</span>Status → Target health</h2>
         <p>На этой странице Prometheus показывает все target и результат последнего scrape каждого. Ниже — страница стенда и разбор её элементов.</p>
         <figure class="shot"><img src="shots/targets-up.png" alt="Status → Target health: scrape pool api, 1/1 up, http://api:8000/metrics, instance=api:8000, job=api, 4.335s ago, 4ms, UP" loading="lazy"><figcaption>Target стенда в состоянии UP · Prometheus 3.5.0</figcaption></figure>
@@ -279,16 +278,8 @@ http_requests_total{method="GET",status="404"} 1.0</pre></figure></li>
             </tbody>
           </table>
         </div>
-        <div class="pic">
-          <div class="pic__bar"><span>Три состояния target</span><span>колонка State</span></div>
-          <div class="pic__body">
-            <div class="cards">
-              <div class="is-soft"><small>сразу после запуска</small><b>UNKNOWN</b>Target в списке, первого scrape ещё не было. Ожидание длится до 15 секунд.</div>
-              <div class="is-ok"><small>scrape успешный</small><b>UP</b>Ряд <code>up</code> равен 1.</div>
-              <div class="is-bad"><small>scrape неуспешный</small><b>DOWN</b>Ряд <code>up</code> равен 0, рядом текст ошибки.</div>
-            </div>
-          </div>
-        </div>
+        <p>В колонке State бывает три значения. Сразу после запуска там стоит <code>UNKNOWN</code>: target уже в списке, но первого scrape ещё не было, и ждать его приходится до 15 секунд. После успешного scrape состояние становится <code>UP</code>, и ряд <code>up</code> равен 1. После неуспешного — <code>DOWN</code>: ряд <code>up</code> равен 0, а рядом записан текст ошибки.</p>
+        <p class="bridge">Target в состоянии UP означает, что числа попадают в базу. Следующий шаг — получить их оттуда запросом.</p>
 
         <h2 id="s6"><span class="sec">§6</span>Первые запросы</h2>
         <p>Запросы пишут на вкладке <b>Query</b>. В этой главе достаточно одного вида запроса — имени метрики. Такой запрос возвращает все ряды с этим именем.</p>
@@ -311,6 +302,8 @@ http_requests_total{method="GET",status="404"} 1.0</pre></figure></li>
         <h3>Почему число обновляется не сразу</h3>
         <p>Prometheus показывает значения последнего scrape. Если отправить 10 запросов и сразу нажать Execute, число может остаться прежним. Новое значение появится после следующего scrape, не позже чем через 15 секунд.</p>
 
+        <p class="bridge">Пока всё работало без сбоев. Следующий опыт показывает, что видно в Prometheus, когда приложение останавливается.</p>
+
         <h2 id="s7"><span class="sec">§7</span>Остановка приложения</h2>
         <p>Опыт повторяет главу 2.4, §8 на вашем компьютере. В нём приложение останавливается и запускается снова, а Prometheus продолжает работать.</p>
         <ol class="steps">
@@ -320,6 +313,9 @@ http_requests_total{method="GET",status="404"} 1.0</pre></figure></li>
           <li>Запустить приложение: <code>docker compose start api</code>. После следующего scrape состояние станет <code>UP</code>. Запрос <code>http_requests_total</code> возвращает пустой результат до первого запроса к приложению: счётчик после запуска начинается заново.</li>
           <li>На вкладке Graph выполнить запрос <code>up</code> за 5 минут. На графике значение опускается до 0 на время остановки.</li>
         </ol>
+
+        <p>Опыт подтверждает четыре наблюдения из главы 2.4: ряд <code>up</code> записывается и во время остановки, ряд приложения прерывается сразу, а счётчик после запуска начинается заново.</p>
+        <p class="bridge">Остановка была намеренной. Следующий раздел помогает, когда target не работает без видимой причины.</p>
 
         <h2 id="s8"><span class="sec">§8</span>Если target не UP</h2>
         <p>В таблице собраны восемь частых случаев. Для каждого указано, что видно на экране, в чём причина и что сделать.</p>
@@ -347,6 +343,8 @@ Checking /etc/prometheus/prometheus.yml
  SUCCESS: /etc/prometheus/prometheus.yml is valid prometheus config file syntax</pre>
         </figure>
 
+        <p class="bridge">Все случаи выше относятся к запуску в Docker. Если Docker недоступен, стенд запускается иначе.</p>
+
         <h2 id="s9"><span class="sec">§9</span>Вариант без Docker</h2>
         <p>Когда Docker недоступен, приложение и Prometheus запускают как обычные программы. Вариант проверен в macOS с архивом <code>prometheus-3.5.0.darwin-arm64</code>: target <code>localhost:8020</code> получил состояние UP.</p>
         <ol class="steps">
@@ -357,6 +355,8 @@ Checking /etc/prometheus/prometheus.yml
         </ol>
         <p>В файле <code>prometheus-local.yml</code> записан target <code>localhost:8020</code>. Обе программы работают на одном компьютере, и <code>localhost</code> у них общий.</p>
 
+        <p class="bridge">Стенд запущен одним из двух способов. Осталось проверить результат и поработать с ним самостоятельно.</p>
+
         <h2 id="s10"><span class="sec">§10</span>Задания и проверка</h2>
         <p>Сначала проверьте результат запуска по четырём признакам.</p>
         <div class="checklist">
@@ -366,6 +366,7 @@ Checking /etc/prometheus/prometheus.yml
           <div class="checklist__item"><span><b>Запрос счётчика</b><code>http_requests_total</code> возвращает не меньше двух рядов, значения совпадают с <code>/metrics</code>.</span></div>
           <div class="checklist__item"><span><b>Отказ</b>После остановки приложения <code>up</code> = 0 и состояние <code>DOWN</code>; после запуска — снова <code>UP</code>.</span></div>
         </div>
+        <div class="sep" role="separator"></div>
         <h3>Задания</h3>
         <p>В каждом задании меняется одна настройка. Результат проверяется в веб-интерфейсе Prometheus.</p>
         <ol class="steps">
@@ -374,6 +375,7 @@ Checking /etc/prometheus/prometheus.yml
           <li><b>Ошибка пути.</b> Добавьте в задание <code>metrics_path: /stats</code>. Запишите текст ошибки и найдите, что изменилось в ответе <code>/metrics</code> приложения через минуту.</li>
           <li><b>Вторая метрика.</b> Добавьте в <code>app.py</code> gauge <code>items_in_progress</code>, который увеличивается в начале обработки <code>/items/{id}</code> и уменьшается в конце. Пересоберите образ (<code>docker compose up -d --build</code>) и найдите метрику в Query.</li>
         </ol>
+        <div class="sep" role="separator"></div>
         <h3>Итоговый стенд</h3>
         <p>В архиве <code>prometheus-final</code> собран готовый результат главы: все задания выполнены, для каждого опыта есть свой файл настроек. Стенд запускается теми же командами, что и основной.</p>
         <p><a class="btn btn--main" href="prometheus-final.zip" download>↓ Скачать prometheus-final.zip</a></p>
@@ -392,19 +394,9 @@ Checking /etc/prometheus/prometheus.yml
             <div class="tree__row"><span>dolgie-zaprosy.sh, dolgie-zaprosy.ps1</span><em>пять запросов по 40 секунд: значение items_in_progress становится равным 5</em></div>
           </div>
         </div>
-        <div class="pic">
-          <div class="pic__bar"><span>Девять шагов из файла PROHOD.md</span><span>порядок прохода</span></div>
-          <div class="pic__body">
-            <div class="cards">
-              <div><small>шаги 1–4</small><b>Запуск</b>Два контейнера, запросы, страница /metrics, target в состоянии UP, первые запросы.</div>
-              <div class="is-key"><small>шаг 5</small><b>Вторая метрика</b>Пять долгих запросов, значение gauge 5 и возврат к 0.</div>
-              <div><small>шаг 6</small><b>Остановка приложения</b>Ряд up равен 0, счётчик после запуска начинается заново.</div>
-              <div><small>шаги 7–9</small><b>Опыты с настройками</b>Интервал 5 секунд, неверный путь, шесть заданий с ошибками.</div>
-            </div>
-          </div>
-          <p class="pic__note">Основной и итоговый стенды занимают порты 8020 и 9092. Перед запуском одного остановите другой командой <code>docker compose down</code>.</p>
-        </div>
-        <h3>Шпаргалка</h3>
+        <p>Порядок работы с итоговым стендом записан в файле <code>PROHOD.md</code>. Первые четыре шага повторяют запуск из этой главы. На пятом шаге проверяется вторая метрика: пять долгих запросов поднимают значение gauge до 5, затем оно возвращается к 0. Шестой шаг — остановка приложения. Шаги с седьмого по девятый — опыты с настройками: интервал 5 секунд, неверный путь и шесть заданий с ошибками. Основной и итоговый стенды занимают порты 8020 и 9092, поэтому перед запуском одного остановите другой командой <code>docker compose down</code>.</p>
+        <div class="sep" role="separator"></div>
+                <h3>Шпаргалка</h3>
         <div class="cheat">
           <div><b>Запуск и остановка</b><code>docker compose up -d --build
 docker compose ps
@@ -422,6 +414,7 @@ http_requests_total{status="404"}
 scrape_duration_seconds</code><p>Значения обновляются раз в <code>scrape_interval</code>.</p></div>
         </div>
 
+        <div class="sep" role="separator"></div>
         <h3>Проверьте себя</h3>
         <div class="quiz">
           <p class="quiz__q"><b>Вопрос 1</b>Ссылка <code>http://api:8000/metrics</code> в колонке Endpoint не открывается в браузере. Что это значит?</p>

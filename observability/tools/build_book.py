@@ -22,7 +22,7 @@ def layout(title, body, number=None):
     nav = ''.join(f'<a href="{"" if number else "temy/"}{c["slug"]}.html"' + (' aria-current="page"' if number == i + 1 else '')
                   + f'>1.{i + 1} {c["title"]}</a>' for i, c in enumerate(CH))
     return f'''<!doctype html>
-<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#302330"><meta name="description" content="{escape(title)}. Справочник Макарова М. Н.: объяснения, измерения на стенде, схемы и снимки экрана."><title>{escape(title)} · Наблюдаемость · Макаров М. Н.</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="{FONT}" rel="stylesheet"><link rel="stylesheet" href="{prefix}styles.css"><script src="{prefix}assets/experiment-data.js" defer></script><script src="{prefix}book.js" defer></script></head><body>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#1d1f27"><meta name="description" content="{escape(title)}. Справочник Макарова М. Н.: объяснения, измерения на стенде, схемы и снимки экрана."><title>{escape(title)} · Наблюдаемость · Макаров М. Н.</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="{FONT}" rel="stylesheet"><link rel="stylesheet" href="{prefix}styles.css"><script src="{prefix}assets/experiment-data.js" defer></script><script src="{prefix}book.js" defer></script></head><body>
 <a class="skip" href="#main">К содержанию</a><div class="progress" aria-hidden="true"><span></span></div>
 <header class="topbar"><a class="brand" href="{home}"><b>∿</b><span>Метрики и<br>наблюдаемость</span></a><div class="top-links"><a href="{prefix}../index.html">Все дисциплины</a><a href="https://python-theory-makarov.vercel.app/" target="_blank" rel="noreferrer">Справочник Python ↗</a></div><details class="chapter-menu"><summary>Главы темы 1</summary><nav aria-label="Главы первой темы">{nav}</nav></details></header>
 <div class="book"><div class="book-body"><aside class="spine" aria-hidden="true"><span>Наблюдаемость / Метрики · Логи · Трассы / Макаров М. Н.</span></aside><main class="leaf" id="main"><div class="running"><a href="{home}">Практический справочник</a><span>{'Глава 1.' + str(number) if number else 'Макаров Максим Николаевич'}</span></div>{body}<footer><a href="{home}">К оглавлению ↑</a><span>Автор: Макаров Максим Николаевич</span><a href="{prefix}SOURCES.md">Источники и снимки</a></footer></main></div></div>
@@ -87,7 +87,10 @@ m2_title, m2_lead, m2_chapters = module2
 body += (f'<div class="module module-ready"><div class="module-spine">МОДУЛЬ 2 · ГОТОВ</div><div class="module-body"><h3>{m2_title}</h3><p>{m2_lead}</p><ol class="toc">'
          + ''.join(f'<li><a href="modul-02-prometheus/{slug}.html"><b>2.{j}</b><span>{t}</span><em>читать ↗</em></a></li>' for j, (slug, t) in enumerate(m2_chapters, 1))
          + f'</ol><a class="practice-link" href="modul-02-prometheus/{m2_chapters[-1][0]}.html">Практика · Prometheus и FastAPI, target UP →</a>'
-         '<a class="practice-link" href="testy/modul-2/index.html">Тест по модулю 2 · 23 задания на разбор ситуаций →</a></div></div>')
+         '<a class="test-card" href="testy/modul-2/index.html"><span class="test-card-tag">Тест</span>'
+         '<span class="test-card-body"><b>Проверочная работа по модулю 2</b>'
+         '<span>23 задания на разбор ситуаций · 45 минут · одна попытка · разбор после отправки</span></span>'
+         '<span class="test-card-go">Открыть тест →</span></a></div></div>')
 for i, (title, topics) in enumerate(roadmap, 3):
     body += (f'<div class="module planned"><div class="module-spine">МОДУЛЬ {i} · ПЛАН</div><div class="module-body"><h3>{title}</h3><p>Главы готовятся.</p><ol class="toc">'
              + ''.join(f'<li><span class="planned-row"><b>{i}.{j}</b><span>{t}</span></span></li>' for j, t in enumerate(topics, 1)) + '</ol></div></div>')

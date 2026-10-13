@@ -39,7 +39,7 @@ HEAD = """<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#F1F2EC">
+  <meta name="theme-color" content="#EEF1F5">
   <meta name="description" content="{description}">
   <title>{title}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
