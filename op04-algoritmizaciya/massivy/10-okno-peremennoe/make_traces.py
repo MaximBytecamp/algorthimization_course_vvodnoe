@@ -646,6 +646,8 @@ def mock_caption(line, fr, nxt, key, a):
         c = g('count')
         return f"Сжатие: уходит nums[{l}] = {a[l]}, count[{a[l]}] = {c[a[l]]} − 1 = {c[a[l]] - 1}."
     if line == 'l += 1':
+        if key == 'max_erasure':
+            return f"l: {l} → {l + 1}. Без пришедшего элемента окно теперь {seg(a, l + 1, r - 1)}."
         return f"l: {l} → {l + 1}. Окно теперь {seg(a, l + 1, r)}."
     if line == 'best = max(best, r - l + 1)':
         c, b = r - l + 1, g('best')
@@ -658,6 +660,8 @@ def mock_caption(line, fr, nxt, key, a):
     if line == 'while nums[r] in seen:':
         if a[r] in g('seen'):
             return f"Значение {a[r]} уже есть в окне {seg(a, l, r - 1)}: после прихода будет повтор. Окно нужно сжать слева."
+        if l > r - 1:
+            return f"Окно пустое, значение {a[r]} в нём не повторится. Цикл while закончен."
         return f"Значения {a[r]} в окне {seg(a, l, r - 1)} нет. Цикл while закончен."
     if line == 'seen.remove(nums[l])':
         return f"Сжатие: значение {a[l]} убрано из множества."
@@ -691,13 +695,11 @@ def mock_caption(line, fr, nxt, key, a):
         if tt == tg:
             return f"Сумма окна {seg(a, l, r)} равна {tg}: эти числа можно оставить, а остальные убрать с краёв."
         return f"Сумма окна {tt} не равна {tg}, длина не записывается."
-    if line == 'best = max(best, r - l + 1)' or line == 'best = max(best, r - l + 1) ':
-        pass
     if line == 'return -1 if best == -1 else len(nums) - best':
         b = g('best')
         if b == -1:
             return "Отрезка с нужной суммой нет: свести x к нулю нельзя, ответ −1."
-        return f"Самый длинный оставшийся отрезок — {b} чисел. Убрать нужно len(nums) − {b} = {len(a) - b}."
+        return f"Длина самого длинного оставшегося отрезка — {b}. Убрать нужно len(nums) − {b} = {len(a) - b}."
     # shortest_all_kinds
     if line == 'need = len(set(nums))':
         return f"need — сколько разных значений во всём списке: {len(set(a))}. Окно подходит, если в нём все они."
