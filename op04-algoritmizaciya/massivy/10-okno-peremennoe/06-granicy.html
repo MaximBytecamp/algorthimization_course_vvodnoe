@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>10.6 Границы: пустая строка, повторы, ответа нет · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 10 · Окно переменного размера · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 10 · окно переменного размера</p>
+          <p class="running__folio">Глава 10.6</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">10.6</span>
+          <h1>Границы: пустая строка,<br>повторы, ответа нет</h1>
+          <p class="lead">В этой главе разобран контроль КТП занятия 10: «Кандидат объясняет условие while и состояние окна. Проверяются дубликаты и пустая строка». Сначала обе функции занятия разобраны по строкам: какая строка отвечает за какой граничный вход. Затем запущены четыре версии, в которых одна строка записана иначе, — каждая рядом с верной на том же входе. Дальше — что все функции модуля возвращают на граничных входах и чем ответ «отрезка нет» отличается от ошибки вызова. В конце — тесты границ из стартового набора с настоящим выводом pytest, функция для исправления и разбор того, как объяснить условие <code>while</code>.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Проверка решения</dd></div>
+          <div><dt>Уровень</dt><dd>Начальный</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 10.4 и 10.5: обе задачи КТП; глава 9.6: тесты границ и исключения</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Контроль занятия по КТП и вопросы интервьюера о крайних случаях</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Разбор двух функций по строкам</a></li>
+            <li><a href="#s2">Запуск изменённых версий</a></li>
+            <li><a href="#s3">Граничные входы всех функций</a></li>
+            <li><a href="#s4">Ответ «отрезка нет» и ошибка вызова</a></li>
+            <li><a href="#s5">Тесты границ</a></li>
+            <li><a href="#s6">Исправьте функции</a></li>
+            <li><a href="#s7">Как объяснить условие while и состояние окна</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Разбор двух функций по строкам</h2>
+        <p>В главах 10.4 и 10.5 функции собраны из строк и пройдены по шагам на обычных входах. Здесь каждая строка разобрана с другой стороны: на каком граничном входе она проявляется и что получится, если записать её иначе. Граничный вход — это вход на краю допустимого: пустой список, один элемент, порог, которого не достигает сумма, строка из одинаковых символов. На таких входах цикл выполняется ноль раз или один раз, и ошибки, незаметные на обычном примере, дают неверный ответ.</p>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>shortest_window из главы 10.4</span></figcaption>
+<pre><span class="k">def</span> <span class="f">shortest_window</span>(nums, s):
+    <span class="k">if</span> s &lt; <span class="n">1</span>:
+        <span class="k">raise</span> ValueError(<span class="s">"s должно быть не меньше 1"</span>)
+    best = <span class="n">0</span>
+    total = <span class="n">0</span>
+    l = <span class="n">0</span>
+    <span class="k">for</span> r <span class="k">in</span> <span class="k">range</span>(<span class="k">len</span>(nums)):
+        total += nums[r]
+        <span class="k">while</span> total &gt;= s:
+            length = r - l + <span class="n">1</span>
+            <span class="k">if</span> best == <span class="n">0</span> <span class="k">or</span> length &lt; best:
+                best = length
+            total -= nums[l]
+            l += <span class="n">1</span>
+    <span class="k">return</span> best</pre>
+        </figure>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Строка</th><th>Граничный вход</th><th>Если записать иначе</th></tr></thead>
+            <tbody>
+              <tr><td><code>if s &lt; 1:</code> и <code>raise</code></td><td><code>s = 0</code>, <code>s &lt; 0</code></td><td>Без проверки пустое окно с суммой 0 считается подходящим, цикл <code>while</code> не останавливается, и индекс <code>l</code> выходит за конец списка: <code>IndexError</code>, §2</td></tr>
+              <tr><td><code>best = 0</code></td><td>Отрезка нет: сумма всего списка меньше <code>s</code></td><td><code>best = len(nums)</code> как «наибольшая возможная длина» — функция возвращает длину списка там, где ответ 0, §2</td></tr>
+              <tr><td><code>for r in range(len(nums)):</code></td><td>Пустой список</td><td>Отдельная проверка <code>if not nums: return 0</code> не нужна: цикл не выполняется, возвращается <code>best = 0</code></td></tr>
+              <tr><td><code>while total &gt;= s:</code></td><td>Сумма отрезка точно равна <code>s</code></td><td><code>&gt;</code> — окна с суммой точно на пороге не записываются, глава 10.4, §6</td></tr>
+              <tr><td><code>if best == 0 or length &lt; best:</code></td><td>Первое подходящее окно</td><td><code>best = min(best, length)</code> при <code>best = 0</code> — ответ всегда 0, глава 10.4, §7</td></tr>
+              <tr><td><code>total -= nums[l]</code>, затем <code>l += 1</code></td><td>Один элемент не меньше порога: окно сжимается до пустого</td><td>Обратный порядок вычитает элемент, оставшийся в окне, глава 10.3, §9</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>У второй функции проверки входа нет: у единственного параметра неверных значений не бывает. Граничные входы у неё другие — пустая строка, повторы и вопросы о том, что считать одинаковыми символами.</p>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>longest_unique из главы 10.5</span></figcaption>
+<pre><span class="k">def</span> <span class="f">longest_unique</span>(text):
+    count = {}
+    best = <span class="n">0</span>
+    l = <span class="n">0</span>
+    <span class="k">for</span> r <span class="k">in</span> <span class="k">range</span>(<span class="k">len</span>(text)):
+        ch = text[r]
+        count[ch] = count.get(ch, <span class="n">0</span>) + <span class="n">1</span>
+        <span class="k">while</span> count[ch] &gt; <span class="n">1</span>:
+            count[text[l]] -= <span class="n">1</span>
+            l += <span class="n">1</span>
+        best = <span class="k">max</span>(best, r - l + <span class="n">1</span>)
+    <span class="k">return</span> best</pre>
+        </figure>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Строка</th><th>Граничный вход</th><th>Если записать иначе</th></tr></thead>
+            <tbody>
+              <tr><td><code>best = 0</code></td><td>Пустая строка</td><td><code>best = 1</code> — «подстрока из одного символа всегда есть»: для пустой строки функция возвращает 1, §2</td></tr>
+              <tr><td><code>ch = text[r]</code></td><td>Буквы разного регистра: <code>'aA'</code></td><td><code>text[r].lower()</code> — <code>'a'</code> и <code>'A'</code> попадают под один ключ и считаются повтором, §2</td></tr>
+              <tr><td><code>count[ch] = count.get(ch, 0) + 1</code></td><td>Символ встретился впервые</td><td><code>count[ch] += 1</code> без <code>get</code> — исключение <code>KeyError</code> на первом же символе</td></tr>
+              <tr><td><code>while count[ch] &gt; 1:</code></td><td>Повтор, перед которым в окне стоят другие символы: <code>'abba'</code></td><td><code>if</code> — одно сжатие, повтор остаётся в окне, глава 10.5, §7</td></tr>
+              <tr><td><code>count[text[l]] -= 1</code></td><td>Слева уходит не тот символ, что повторился: <code>'pwwkew'</code></td><td><code>count[ch] -= 1</code> — карта перестаёт соответствовать окну, глава 10.5, §7</td></tr>
+              <tr><td><code>for r in range(len(text)):</code></td><td>Пустая строка</td><td>Отдельная проверка не нужна: цикл не выполняется, возвращается <code>best = 0</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s2"><span class="sec">§2</span>Запуск изменённых версий</h2>
+        <p>Четыре изменения из таблиц, которые в главах 10.3–10.5 ещё не запускались. На каждой вкладке сначала прогон версии с изменённой строкой, под ним — верная версия на том же входе. Вход подобран так, чтобы изменение проявилось.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>Функции с одной изменённой строкой</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>без проверки s</button>
+            <button>best = len(nums)</button>
+            <button>best = 1</button>
+            <button>text[r].lower()</button>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>shortest_window</code> нет проверки порога. Вход — <code>[1, 2]</code>, <code>s = 0</code>.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="var_no_check" data-zone="events" data-title="без проверки s, s = 0"></div>
+            <p class="demo__verdict"><b>IndexError</b>При пороге 0 подходит любое окно, в том числе пустое: его сумма 0 не меньше 0. На шаге 12 окно уже пустое, а цикл <code>while</code> продолжается. На шаге 16 из суммы вычитается <code>nums[1]</code> — элемент, который в окно ещё не входил. На шаге 25 индекс <code>l = 2</code> выходит за конец списка, и функция заканчивается исключением <code>IndexError</code>. На пустом списке эта версия возвращает 0 без исключения, поэтому одного теста на пустой список для неё мало.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_no_check" data-zone="events" data-title="с проверкой s"></div>
+            <p class="demo__verdict"><b>ValueError</b>Проверка в первой строке останавливает функцию до работы с окном. Исключение называет неверный аргумент.</p>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>shortest_window</code> начальное значение ответа — длина списка, сравнение — <code>if length &lt; best</code>. Вход — <code>[1, 1, 1, 1]</code>, <code>s = 5</code>: сумма всего списка 4, отрезка нет.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="var_best_n" data-zone="events" data-title="best = len(nums)"></div>
+            <p class="demo__verdict"><b>4</b>Цикл <code>while</code> не выполняется ни разу, в <code>best</code> остаётся начальное значение 4. Функция сообщает, что подходит весь список. На входе <code>[1, 2, 3]</code> с <code>s = 6</code> эта версия возвращает верный ответ 3: весь список там действительно подходит. Отличить два случая по ответу нельзя.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_best_n" data-zone="events" data-title="best = 0"></div>
+            <p class="demo__verdict"><b>0</b>Значение 0 не может быть длиной подходящего окна, поэтому оно однозначно означает «отрезка нет».</p>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>longest_unique</code> начальное значение ответа — 1. Вход — пустая строка.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="var_best_one" data-zone="events" data-title="best = 1"></div>
+            <p class="demo__verdict"><b>1</b>Цикл не выполняется, функция возвращает начальное значение. На любой непустой строке эта версия верна: подстрока из одного символа в ней есть, и ответ не меньше 1. Ошибка видна только на пустой строке — поэтому контроль КТП называет её отдельно.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_best_one" data-zone="events" data-title="best = 0"></div>
+            <p class="demo__verdict"><b>0</b>В пустой строке нет подстрок, кроме пустой, её длина 0.</p>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>longest_unique</code> символ приводится к нижнему регистру: <code>ch = text[r].lower()</code>. Вход — <code>'aA'</code>.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="var_lower" data-zone="events" data-title="text[r].lower()"></div>
+            <p class="demo__verdict"><b>1</b>На шаге 10 буква <code>A</code> записывается в карту под ключом <code>'a'</code>, и на шаге 12 окно <code>'aA'</code> считается окном с повтором. По контракту из главы 10.2 регистр различается, верный ответ 2. На строке <code>'Aa'</code> эта версия заканчивается исключением <code>KeyError</code>: в карте есть только ключ <code>'a'</code>, а при сжатии уменьшается счётчик <code>'A'</code>.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_lower" data-zone="events" data-title="text[r]"></div>
+            <p class="demo__verdict"><b>2</b><code>'a'</code> и <code>'A'</code> — разные ключи словаря, повтора нет.</p>
+          </div>
+        </div>
+        <p>Если интервьюер ответил бы, что регистр не различается, верной стала бы версия с приведением регистра, но приводить нужно всю строку до цикла: <code>text = text.lower()</code>. Тогда и расширение, и сжатие работают с одними и теми же символами, и <code>KeyError</code> не возникает.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Граничные входы всех функций</h2>
+        <p>В модуле шесть функций. Значения в таблицах получены запуском эталонных решений. Первая таблица — функции с порогом или лимитом.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Вход</th><th>shortest_window(nums, s)</th><th>longest_within(nums, limit)</th></tr></thead>
+            <tbody>
+              <tr><td>пустой список, порог 3</td><td><code>0</code></td><td><code>0</code></td></tr>
+              <tr><td><code>[7]</code>, порог 7</td><td><code>1</code></td><td><code>1</code></td></tr>
+              <tr><td><code>[7]</code>, порог 8 / лимит 6</td><td><code>0</code></td><td><code>0</code></td></tr>
+              <tr><td><code>[0, 0, 0]</code>, порог 1 / лимит 0</td><td><code>0</code></td><td><code>3</code></td></tr>
+              <tr><td><code>[5, 5]</code>, порог 5</td><td><code>1</code></td><td><code>1</code></td></tr>
+              <tr><td>порог 0 / лимит −1</td><td><code>ValueError</code></td><td><code>ValueError</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>У <code>shortest_window</code> и <code>longest_within</code> ноль в списке ведёт себя по-разному. Для порога сумма из нулей никогда не достигает 1, поэтому ответ 0. Для лимита 0 нули допустимы, и самый длинный отрезок — весь список. Вторая таблица — функции главы 10.5 и задачи с LeetCode.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Вход</th><th>longest_unique</th><th>longest_unique_jump</th><th>count_unique_windows</th></tr></thead>
+            <tbody>
+              <tr><td>пустой вход</td><td><code>0</code></td><td><code>0</code></td><td><code>0</code></td></tr>
+              <tr><td>один элемент</td><td><code>1</code></td><td><code>1</code></td><td><code>1</code></td></tr>
+              <tr><td>два одинаковых</td><td><code>1</code></td><td><code>1</code></td><td><code>2</code></td></tr>
+              <tr><td><code>'abba'</code> / <code>[1, 2, 1, 3]</code></td><td><code>2</code></td><td><code>2</code></td><td><code>8</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><code>longest_ones</code> из главы 10.4 — решение LeetCode 1004, где условие гарантирует <code>0 ≤ k ≤ len(nums)</code> и непустой список, поэтому проверки входа в ней нет. На пустом списке она возвращает 0, на <code>[0, 0]</code> с <code>k = 0</code> — тоже 0. На <code>k = −1</code> она заканчивается исключением <code>IndexError</code>: условие <code>zeros &gt; −1</code> истинно и для пустого окна, как условие <code>total &gt;= 0</code> в первой вкладке §2.</p>
+        <div class="margin-note margin-note--steel">
+          <b>На полях: почему пустой вход проверяют отдельно</b>
+          <p>Ни в одной функции модуля нет строки <code>if not nums</code>. Пустой вход всё равно нужно проверять тестом: верный ответ на нём даёт только начальное значение ответа, а оно не участвует ни в одном шаге обычного прогона. Ошибка <code>best = 1</code> из §2 не видна ни на одном непустом входе.</p>
+        </div>
+
+        <h2 id="s4"><span class="sec">§4</span>Ответ «отрезка нет» и ошибка вызова</h2>
+        <p>В задаче о минимальном отрезке два разных случая, когда ответа в обычном смысле нет. Первый — подходящего отрезка в списке нет, например сумма всех чисел меньше порога. Второй — неверный вызов: порог 0 или отрицательный. Интервьюер в главе 10.2 дал на них разные ответы: в первом случае вернуть 0, во втором — исключение <code>ValueError</code>.</p>
+        <p>Различие следует из того, кто виноват. Список без подходящего отрезка — обычные данные: за час с маленькими продажами ответ «не набралось» правильный, и программа продолжает работу. Порог 0 — ошибка в коде, который вызвал функцию: задача с таким порогом не имеет смысла, и продолжать работу с ответом на неё нельзя. Об ошибках вызова, как в главе 9.6, сообщают исключением.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Способ сообщить «отрезка нет»</th><th>Где встречается</th><th>Что нужно вызывающему коду</th></tr></thead>
+            <tbody>
+              <tr><td><code>0</code></td><td>LeetCode 209, этот модуль</td><td>Проверить <code>if length == 0</code>. Ноль не бывает длиной подходящего отрезка, поэтому путаницы нет</td></tr>
+              <tr><td><code>-1</code></td><td>LeetCode 862 — тот же вопрос, но числа бывают отрицательными</td><td>Проверить <code>if length == -1</code>. Выбор между 0 и −1 — договорённость, о ней спрашивают до кода</td></tr>
+              <tr><td><code>None</code></td><td>Функции, которые возвращают сам отрезок</td><td>Проверить <code>if result is None</code>; без проверки ошибка появится позже, при работе с результатом</td></tr>
+              <tr><td>Исключение</td><td>В этом модуле — только для неверного порога</td><td>Для отсутствия отрезка не подходит: это обычный результат, его не перехватывают через <code>try</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Для <code>longest_unique</code> вопроса «что вернуть, если ответа нет» не возникает: в любой непустой строке есть подстрока из одного символа без повторов. Остаётся только пустая строка, для неё ответ 0 — длина пустой подстроки.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Тесты границ</h2>
+        <p>Тесты ниже — файл <code>tests.py</code> стартового набора занятия 10 в его нынешнем виде: проверки границ обеих функций. Остальные тесты будут добавлены к нему в главе 10.10, эти при этом не изменятся. Каждый тест параметризован: один набор строк <code>parametrize</code> даёт несколько проверок, а параметр <code>ids</code> задаёт им короткие имена, которые видны в выводе pytest.</p>
+        <figure class="code">
+          <figcaption><span>tests.py</span><span>границы обеих функций</span></figcaption>
+<pre><span class="k">import</span> pytest
+
+<span class="k">from</span> solution <span class="k">import</span> longest_unique, shortest_window
+
+
+@pytest.mark.parametrize(<span class="s">"s"</span>, [<span class="n">0</span>, -<span class="n">1</span>], ids=[<span class="s">"s_zero"</span>, <span class="s">"s_negative"</span>])
+<span class="k">def</span> <span class="f">test_bad_s_raises</span>(s):
+    <span class="k">with</span> pytest.raises(ValueError):
+        shortest_window([<span class="n">1</span>, <span class="n">2</span>], s)
+
+
+@pytest.mark.parametrize(<span class="s">"nums, s, want"</span>, [
+    ([], <span class="n">3</span>, <span class="n">0</span>),
+    ([<span class="n">1</span>, <span class="n">1</span>, <span class="n">1</span>, <span class="n">1</span>], <span class="n">5</span>, <span class="n">0</span>),
+    ([<span class="n">7</span>], <span class="n">7</span>, <span class="n">1</span>),
+    ([<span class="n">7</span>], <span class="n">8</span>, <span class="n">0</span>),
+    ([<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>], <span class="n">6</span>, <span class="n">3</span>),
+], ids=[<span class="s">"empty"</span>, <span class="s">"no_window"</span>, <span class="s">"one_exact"</span>, <span class="s">"one_short"</span>, <span class="s">"whole_list"</span>])
+<span class="k">def</span> <span class="f">test_shortest_edges</span>(nums, s, want):
+    <span class="k">assert</span> shortest_window(nums, s) == want
+
+
+@pytest.mark.parametrize(<span class="s">"text, want"</span>, [
+    (<span class="s">""</span>, <span class="n">0</span>),
+    (<span class="s">"z"</span>, <span class="n">1</span>),
+    (<span class="s">"bbbbb"</span>, <span class="n">1</span>),
+    (<span class="s">"pwwkew"</span>, <span class="n">3</span>),
+    (<span class="s">"abba"</span>, <span class="n">2</span>),
+    (<span class="s">"aA"</span>, <span class="n">2</span>),
+    (<span class="s">"a b a"</span>, <span class="n">3</span>),
+], ids=[<span class="s">"empty"</span>, <span class="s">"one_char"</span>, <span class="s">"all_same"</span>, <span class="s">"adjacent_repeat"</span>, <span class="s">"repeat_left_window"</span>, <span class="s">"case"</span>, <span class="s">"space"</span>])
+<span class="k">def</span> <span class="f">test_unique_edges</span>(text, want):
+    <span class="k">assert</span> longest_unique(text) == want</pre>
+        </figure>
+        <p>Контроль КТП назван в тестах прямо. Пустая строка — <code>test_unique_edges[empty]</code>. Дубликаты — четыре случая: все символы одинаковые, повтор рядом, повтор символа, который уже вышел из окна, и повтор пробела. Вывод на эталонном решении:</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>python -m pytest tests.py -v</span></figcaption>
+<pre>collected 14 items
+
+tests.py::test_bad_s_raises[s_zero] PASSED                               [  7%]
+tests.py::test_bad_s_raises[s_negative] PASSED                           [ 14%]
+tests.py::test_shortest_edges[empty] PASSED                              [ 21%]
+tests.py::test_shortest_edges[no_window] PASSED                          [ 28%]
+tests.py::test_shortest_edges[one_exact] PASSED                          [ 35%]
+tests.py::test_shortest_edges[one_short] PASSED                          [ 42%]
+tests.py::test_shortest_edges[whole_list] PASSED                         [ 50%]
+tests.py::test_unique_edges[empty] PASSED                                [ 57%]
+tests.py::test_unique_edges[one_char] PASSED                             [ 64%]
+tests.py::test_unique_edges[all_same] PASSED                             [ 71%]
+tests.py::test_unique_edges[adjacent_repeat] PASSED                      [ 78%]
+tests.py::test_unique_edges[repeat_left_window] PASSED                   [ 85%]
+tests.py::test_unique_edges[case] PASSED                                 [ 92%]
+tests.py::test_unique_edges[space] PASSED                                [100%]
+
+============================== 14 passed in 0.01s ==============================</pre>
+        </figure>
+        <p>Вывод, если в <code>shortest_window</code> убрать проверку порога и начать с <code>best = len(nums)</code>, а в <code>longest_unique</code> приводить символ к нижнему регистру, — три изменения из §2:</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>python -m pytest tests.py -q · три изменения из §2</span></figcaption>
+<pre>FAILED tests.py::test_bad_s_raises[s_zero] - IndexError: list index out of range
+FAILED tests.py::test_bad_s_raises[s_negative] - IndexError: list index out o...
+FAILED tests.py::test_shortest_edges[no_window] - assert 4 == 0
+FAILED tests.py::test_shortest_edges[one_short] - assert 1 == 0
+FAILED tests.py::test_unique_edges[case] - AssertionError: assert 1 == 2
+5 failed, 9 passed in 0.02s</pre>
+        </figure>
+        <p>Тест <code>whole_list</code> с изменённой версией проходит: на нём <code>best = len(nums)</code> совпадает с верным ответом. Ошибку находят только тесты, где отрезка нет. Тест <code>empty</code> для <code>shortest_window</code> тоже проходит: на пустом списке <code>len(nums)</code> равно 0. Поэтому в наборе есть оба случая «отрезка нет» — пустой список и короткая сумма.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Исправьте функции</h2>
+        <p>В окне ниже обе функции занятия, в каждой по две ошибки из §2: в <code>shortest_window</code> нет проверки порога и ответ начинается с длины списка, в <code>longest_unique</code> ответ начинается с 1 и символ приводится к нижнему регистру. Исправьте их так, чтобы прошли все девять тестов. Сначала запустите тесты и посмотрите, какие падают и с каким сообщением.</p>
+        <div class="sandbox" data-title="Исправьте shortest_window и longest_unique" data-call="print(shortest_window([1, 1, 1, 1], 5), longest_unique(&quot;&quot;), longest_unique(&quot;aA&quot;))">
+<script type="text/plain" class="sandbox__start">
+def shortest_window(nums, s):
+    best = len(nums)
+    total = 0
+    l = 0
+    for r in range(len(nums)):
+        total += nums[r]
+        while total >= s:
+            length = r - l + 1
+            if length < best:
+                best = length
+            total -= nums[l]
+            l += 1
+    return best
+
+
+def longest_unique(text):
+    count = {}
+    best = 1
+    l = 0
+    for r in range(len(text)):
+        ch = text[r].lower()
+        count[ch] = count.get(ch, 0) + 1
+        while count[ch] > 1:
+            count[text[l]] -= 1
+            l += 1
+        best = max(best, r - l + 1)
+    return best
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_shortest_example():
+    """заказы по часам, s = 30"""
+    r = shortest_window([5, 8, 3, 12, 20, 6, 22, 9], 30)
+    assert r == 2, f"ожидалось 2, получено {r!r}"
+
+def test_shortest_no_window():
+    """сумма всего списка меньше s — ответ 0"""
+    r = shortest_window([1, 1, 1, 1], 5)
+    assert r == 0, f"ожидалось 0, получено {r!r}"
+
+def test_shortest_one_short():
+    """один элемент меньше порога — ответ 0"""
+    r = shortest_window([7], 8)
+    assert r == 0, f"ожидалось 0, получено {r!r}"
+
+def test_shortest_bad_s():
+    """s = 0 и s < 0 — ValueError"""
+    for s in (0, -1):
+        try:
+            r = shortest_window([1, 2], s)
+        except ValueError:
+            continue
+        except Exception as e:
+            assert False, f"s = {s}: ожидалась ValueError, получено {type(e).__name__}"
+        assert False, f"s = {s}: ожидалась ValueError, функция вернула {r!r}"
+
+def test_unique_example():
+    """'abcabcbb' — ответ 3"""
+    r = longest_unique("abcabcbb")
+    assert r == 3, f"ожидалось 3, получено {r!r}"
+
+def test_unique_empty():
+    """пустая строка — ответ 0"""
+    r = longest_unique("")
+    assert r == 0, f"ожидалось 0, получено {r!r}"
+
+def test_unique_case():
+    """'aA' — регистр различается"""
+    r = longest_unique("aA")
+    assert r == 2, f"ожидалось 2, получено {r!r}"
+
+def test_unique_case_reversed():
+    """'Aa' — регистр различается"""
+    try:
+        r = longest_unique("Aa")
+    except KeyError as e:
+        assert False, f"исключение KeyError: {e}"
+    assert r == 2, f"ожидалось 2, получено {r!r}"
+
+def test_unique_duplicates():
+    """повторы: 'bbbbb', 'pwwkew', 'abba'"""
+    for text, want in (("bbbbb", 1), ("pwwkew", 3), ("abba", 2)):
+        r = longest_unique(text)
+        assert r == want, f"{text!r}: ожидалось {want}, получено {r!r}"
+</script>
+</div>
+
+        <h2 id="s7"><span class="sec">§7</span>Как объяснить условие while и состояние окна</h2>
+        <p>Первая часть контроля КТП — «кандидат объясняет условие while и состояние окна». На собеседовании это звучит как вопросы «что хранится в этой переменной между итерациями?» и «почему здесь <code>while</code> с таким условием?». Ответ строится из трёх частей, они одинаковы для всех задач модуля.</p>
+        <ol class="steps">
+          <li><b>Состояние окна.</b> Назвать переменную и что она хранит для окна с <code>l</code> по <code>r</code>: «<code>total</code> — сумма элементов окна», «<code>count</code> — для каждого символа окна, сколько раз он в нём встречается». Назвать, как она меняется при сдвиге каждой границы.</li>
+          <li><b>Условие цикла.</b> Назвать условие допустимости и объяснить, почему цикл проверяет его или его отрицание: «ищем самый короткий отрезок, поэтому сжимаем, пока окно подходит, — <code>total &gt;= s</code>»; «ищем самый длинный, поэтому сжимаем, пока окно недопустимо, — <code>count[ch] &gt; 1</code>». Назвать, почему здесь нужен цикл: одного сжатия может не хватить, и <code>if</code> оставит повтор в окне.</li>
+          <li><b>Инвариант после цикла.</b> Сказать, что верно, когда цикл закончился: «после цикла в окне нет повторов, и это самая длинная подстрока без повторов с концом в <code>r</code>». Из инварианта следуют место записи ответа и время O(n).</li>
+        </ol>
+        <div class="checklist">
+          <p class="checklist__head">Объяснение принято, если кандидат</p>
+          <div class="checklist__item"><span><b>Называет состояние окна и его смысл</b>Например: «для каждого символа окна — сколько раз он в нём встречается». Слова «словарь» для этого мало.</span></div>
+          <div class="checklist__item"><span><b>Показывает обновление при каждой границе</b>Расширение добавляет пришедший элемент, сжатие убирает ушедший до сдвига <code>l</code>.</span></div>
+          <div class="checklist__item"><span><b>Выводит условие цикла из задачи</b>Короткий отрезок — пока окно подходит, длинный — пока недопустимо.</span></div>
+          <div class="checklist__item"><span><b>Объясняет, зачем нужен цикл while</b>И приводит вход, на котором <code>if</code> ошибается: <code>'abba'</code>.</span></div>
+          <div class="checklist__item"><span><b>Говорит, где записывается ответ и почему</b>Внутри цикла — для короткого отрезка, после цикла — для длинного.</span></div>
+          <div class="checklist__item"><span><b>Называет граничные входы и ответы на них</b>Пустой вход, повторы, отрезка нет, неверный порог.</span></div>
+        </div>
+        <div class="quiz">
+          <div class="quiz__q"><b>Разбор 1</b>Кандидат объясняет <code>shortest_window</code>. Какое объяснение условия цикла верное?<pre>while total &gt;= s:
+    length = r - l + 1
+    ...
+    total -= nums[l]
+    l += 1</pre></div>
+          <ul class="quiz__opts">
+            <li><button>«Сжимаем окно, пока сумма слишком большая для ответа»</button><p class="quiz__why">Большая сумма ответу не мешает: подходит любое окно с суммой не меньше <code>s</code>. Окно сжимают, чтобы проверить, подойдёт ли окно короче.</p></li>
+            <li data-ok><button>«Пока окно подходит, записываем длину и пробуем короче»</button><p class="quiz__why">Верно. Условие цикла совпадает с условием допустимости, длина записывается перед каждым сжатием, а после цикла окно уже не подходит.</p></li>
+            <li><button>«Цикл убирает из окна элементы, которые уже проверены»</button><p class="quiz__why">Слева уходят элементы, которые могли бы войти в более короткое окно, если бы суммы хватило. Причина сжатия — поиск самого короткого окна.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <div class="quiz__q"><b>Разбор 2</b>Кандидат говорит: «В <code>count</code> хранятся все символы строки, которые мы уже видели». Что не так в этом объяснении?</div>
+          <ul class="quiz__opts">
+            <li><button>Ничего: словарь заполняется по мере прохода строки</button><p class="quiz__why">При сжатии счётчики ушедших символов уменьшаются. Если бы в карте были все просмотренные символы, условие <code>count[ch] &gt; 1</code> срабатывало бы на повторах вне окна.</p></li>
+            <li><button>В <code>count</code> хранятся позиции символов, встреченных в строке</button><p class="quiz__why">Позиции хранит словарь <code>last</code> в варианте из главы 10.5, §8. В <code>count</code> — числа вхождений.</p></li>
+            <li data-ok><button>Карта описывает окно: у ушедших символов счётчик 0</button><p class="quiz__why">Верно. Состояние окна описывает только окно с <code>l</code> по <code>r</code>. Символ, который ушёл, остаётся ключом со счётчиком 0 и на условие цикла не влияет.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <div class="quiz__q"><b>Разбор 3</b>В Pull Request к <code>longest_unique</code> добавлены тесты. Каких тестов не хватает до контроля КТП?<pre>def test_example():
+    assert longest_unique("abcabcbb") == 3
+
+def test_all_different():
+    assert longest_unique("abcdef") == 6
+
+def test_case():
+    assert longest_unique("aA") == 2</pre></div>
+          <ul class="quiz__opts">
+            <li data-ok><button>Пустой строки и повторов вида <code>'pwwkew'</code> и <code>'abba'</code></button><p class="quiz__why">Верно. Контроль КТП — «проверяются дубликаты и пустая строка». Пустой строки в тестах нет, а версии с <code>if</code> и с <code>count[ch] -= 1</code> проходят все три теста.</p></li>
+            <li><button>Строки из миллиона символов для проверки скорости</button><p class="quiz__why">Скорость проверяют замером, глава 10.7. Тесты границ проверяют правильность на крайних входах.</p></li>
+            <li><button>Ничего: пример уже содержит повторы и проверяет их</button><p class="quiz__why">На <code>'abcabcbb'</code> версия с <code>count[ch] -= 1</code> возвращает верный ответ 3, глава 10.5, §7. Одного примера с повторами мало.</p></li>
+          </ul>
+        </div>
+
+        <div class="pager"><a href="05-podstroka-bez-povtorov.html">← 10.5 Подстрока без повторов и частотная карта</a><a href="07-zamer.html">10.7 Замер: окно и перебор подотрезков →</a></div>
+        <div class="colophon">
+          <span>Модуль 10 · Окно переменного размера · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>

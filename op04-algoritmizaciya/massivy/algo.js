@@ -897,14 +897,15 @@
      короткий отрезок с суммой не меньше порога, окно сжимают, пока сумма
      не меньше порога. data-goal="uniq": data-a — список символов, ищется
      самая длинная подстрока без повторов, под лентой показана частотная
-     карта окна. Окно — элементы с l по r включительно, как в коде модуля 10. Неверный ход не выполняется, вместо него — объяснение. */
+     карта окна. data-goal="distinct": самый длинный отрезок, в котором разных
+     значений не больше data-limit. Окно — элементы с l по r включительно, как в коде модуля 10. Неверный ход не выполняется, вместо него — объяснение. */
   document.querySelectorAll('.vwinhand').forEach(root => {
     const a = json(root, 'a') || [];
-    const n = a.length, lim = Number(root.dataset.limit) || 0, toMin = root.dataset.goal === 'min', uniq = root.dataset.goal === 'uniq';
+    const n = a.length, lim = Number(root.dataset.limit) || 0, toMin = root.dataset.goal === 'min', distinct = root.dataset.goal === 'distinct', uniq = root.dataset.goal === 'uniq' || distinct;
     let l, r, sum, best, errors, done, gone, cnt;
     root.classList.add('widget');
     root.innerHTML = `
-      <div class="widget__head"><b>Двигайте границы сами</b><span>${uniq ? 'в окне нет повторов' : toMin ? `сумма не меньше ${lim}` : `сумма не больше ${lim}`}</span></div>
+      <div class="widget__head"><b>Двигайте границы сами</b><span>${distinct ? `разных значений не больше ${lim}` : uniq ? 'в окне нет повторов' : toMin ? `сумма не меньше ${lim}` : `сумма не больше ${lim}`}</span></div>
       <div class="widget__body">
         <div class="cells"></div>
         <p class="rwg__now"></p>
@@ -918,11 +919,12 @@
       </div>`;
     const cells = root.querySelector('.cells'), now = root.querySelector('.rwg__now'), msg = root.querySelector('.hunt__msg');
     const say = (t, kind = '') => { msg.className = 'hunt__msg' + (kind ? ' is-' + kind : ''); msg.innerHTML = t; };
-    const win = () => l > r ? 'пустое' : uniq ? `'${a.slice(l, r + 1).join('')}'` : `nums[${l}:${r + 1}]`;
-    const mustShrink = () => uniq ? (r >= l && cnt[a[r]] > 1) : toMin ? sum >= lim : sum > lim;
+    const kinds = () => Object.values(cnt).filter(v => v > 0).length;
+    const win = () => l > r ? 'пустое' : distinct ? `[${a.slice(l, r + 1).join(', ')}]` : uniq ? `'${a.slice(l, r + 1).join('')}'` : `nums[${l}:${r + 1}]`;
+    const mustShrink = () => distinct ? kinds() > lim : uniq ? (r >= l && cnt[a[r]] > 1) : toMin ? sum >= lim : sum > lim;
     function reset() {
       l = 0; r = -1; sum = 0; best = 0; errors = 0; done = false; gone = -1; cnt = {};
-      say(uniq ? 'Нужна самая длинная подстрока без повторов. Окно пустое, частотная карта пустая. Выберите, какую границу сдвинуть.' : toMin
+      say(distinct ? `Нужен самый длинный отрезок, в котором разных значений не больше ${lim}. Окно пустое, частотная карта пустая. Выберите, какую границу сдвинуть.` : uniq ? 'Нужна самая длинная подстрока без повторов. Окно пустое, частотная карта пустая. Выберите, какую границу сдвинуть.' : toMin
         ? `Нужен самый короткий отрезок с суммой не меньше ${lim}. Окно пустое, сумма 0. Выберите, какую границу сдвинуть.`
         : `Нужен самый длинный отрезок с суммой не больше ${lim}. Окно пустое, сумма 0. Выберите, какую границу сдвинуть.`);
       draw();
@@ -933,29 +935,30 @@
       put('l', l); put('r', r);
       drawCells(cells, a, { tags, tailTags: l >= n ? ['l'] : [], cls: i => (i >= l && i <= r) ? 'is-win' : i === gone ? 'is-gone' : '' });
       now.innerHTML = uniq
-        ? `Окно ${win()}, длина ${r - l + 1}. Карта: <b>${Object.keys(cnt).map(c => `'${c}': ${cnt[c]}`).join(', ') || 'пустая'}</b>. Самая длинная подстрока без повторов: <b>${best || 'пока нет'}</b>.`
+        ? `Окно ${win()}, длина ${r - l + 1}. Карта: <b>${Object.keys(cnt).filter(c => cnt[c] > 0).map(c => distinct ? `${c}: ${cnt[c]}` : `'${c}': ${cnt[c]}`).join(', ') || 'пустая'}</b>. ${distinct ? 'Самый длинный допустимый отрезок' : 'Самая длинная подстрока без повторов'}: <b>${best || 'пока нет'}</b>.`
         : `Окно ${win()}, сумма <b>${sum}</b>, длина ${r - l + 1}. ${toMin ? 'Самое короткое подходящее' : 'Самое длинное допустимое'}: <b>${best || 'пока нет'}</b>.`;
       root.querySelectorAll('[data-act="grow"],[data-act="shrink"]').forEach(b => { b.disabled = done; });
     }
     function finish(t) {
       done = true;
-      say(`${t} Готово: правая граница прошла ${uniq ? 'всю строку' : 'весь список'}. Ответ — <b>${best}</b>${best ? '' : ': подходящего отрезка нет'}. Ошибок: ${errors}.`, 'ok');
+      say(`${t} Готово: правая граница прошла ${uniq && !distinct ? 'всю строку' : 'весь список'}. Ответ — <b>${best}</b>${best ? '' : ': подходящего отрезка нет'}. Ошибок: ${errors}.`, 'ok');
     }
     function growU() {
-      if (mustShrink()) { errors++; return say(`В окне ${win()} символ '${a[r]}' встречается дважды: окно недопустимо. Расширение повтор не уберёт. Окно нужно сжать.`, 'no'); }
+      if (mustShrink()) { errors++; return say(distinct ? `В окне ${win()} разных значений ${kinds()}, больше ${lim}: окно недопустимо. Расширение их число не уменьшит. Окно нужно сжать.` : `В окне ${win()} символ '${a[r]}' встречается дважды: окно недопустимо. Расширение повтор не уберёт. Окно нужно сжать.`, 'no'); }
       r++; cnt[a[r]] = (cnt[a[r]] || 0) + 1; gone = -1;
-      let t = `Пришёл символ '${a[r]}', count['${a[r]}'] = ${cnt[a[r]]}. `;
-      if (cnt[a[r]] > 1) t += 'Символ уже был в окне: появился повтор.';
-      else { const len = r - l + 1; t += `Повторов нет, длина окна ${len}. ` + (len > best ? 'Это больше прежней лучшей длины, запись обновлена.' : 'Лучшая длина не изменилась.'); if (len > best) best = len; }
+      let t = distinct ? `Пришло значение ${a[r]}, count[${a[r]}] = ${cnt[a[r]]}, разных значений в окне ${kinds()}. ` : `Пришёл символ '${a[r]}', count['${a[r]}'] = ${cnt[a[r]]}. `;
+      if (distinct && mustShrink()) t += `Это больше ${lim}: окно недопустимо.`;
+      else if (!distinct && cnt[a[r]] > 1) t += 'Символ уже был в окне: появился повтор.';
+      else { const len = r - l + 1; t += `${distinct ? 'Окно допустимо' : 'Повторов нет'}, длина окна ${len}. ` + (len > best ? 'Это больше прежней лучшей длины, запись обновлена.' : 'Лучшая длина не изменилась.'); if (len > best) best = len; }
       if (r === n - 1 && !mustShrink()) finish(t); else say(t);
       draw();
     }
     function shrinkU() {
-      if (!mustShrink()) { errors++; return say(l > r ? 'Окно пустое, сжимать нечего. Окно нужно расширить.' : `В окне ${win()} повторов нет: окно допустимо. Сжатие сделает его короче, а нужна самая длинная подстрока. Окно нужно расширить.`, 'no'); }
+      if (!mustShrink()) { errors++; return say(l > r ? 'Окно пустое, сжимать нечего. Окно нужно расширить.' : `В окне ${win()} ${distinct ? `разных значений ${kinds()}, не больше ${lim}` : 'повторов нет'}: окно допустимо. Сжатие сделает его короче, а нужна самая длинная подстрока. Окно нужно расширить.`, 'no'); }
       const x = a[l]; cnt[x]--; gone = l; l++;
-      let t = `Ушёл символ '${x}', count['${x}'] = ${cnt[x]}. `;
-      if (mustShrink()) t += `Символ '${a[r]}' всё ещё встречается дважды.`;
-      else { const len = r - l + 1; t += `Повторов больше нет, длина окна ${len}. ` + (len > best ? 'Запись обновлена.' : 'Лучшая длина не изменилась.'); if (len > best) best = len; }
+      let t = distinct ? `Ушло значение ${x}, count[${x}] = ${cnt[x]}${cnt[x] === 0 ? ': его в окне не осталось' : ''}. ` : `Ушёл символ '${x}', count['${x}'] = ${cnt[x]}. `;
+      if (mustShrink()) t += distinct ? `Разных значений всё ещё ${kinds()}.` : `Символ '${a[r]}' всё ещё встречается дважды.`;
+      else { const len = r - l + 1; t += `${distinct ? `Разных значений ${kinds()}, окно допустимо` : 'Повторов больше нет'}, длина окна ${len}. ` + (len > best ? 'Запись обновлена.' : 'Лучшая длина не изменилась.'); if (len > best) best = len; }
       if (r === n - 1 && !mustShrink()) finish(t); else say(t);
       draw();
     }
