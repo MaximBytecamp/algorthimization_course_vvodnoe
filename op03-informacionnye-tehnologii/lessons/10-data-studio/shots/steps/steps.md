@@ -1,0 +1,122 @@
+- `001-ds-open.png` — Открыт datastudio.google.com — что показывает первый вход
+- `002-lookerstudio-open.png` — Открыт lookerstudio.google.com — тот же отказ «Service Unavailable»
+- `003-datalens-open.png` — Открыт DataLens — первый вход
+- `004-datalens-app.png` — Вход в приложение DataLens
+- `005-datalens-start.png` — После «Начать в облаке»
+- `006-ga4-explore-home.png` — GA4 → Исследования: список исследований перед созданием выгрузки для DataLens
+- `007-ga4-explore-list.png` — GA4 → Исследования: шаблон «Свободная форма» для выгрузки трафика
+- `008-ga4-freeform-new.png` — Новое исследование «Свободная форма» с полями по умолчанию
+- `009-ga4-name.png` — Название исследования: «DataLens · выгрузка GA4»
+- `010-ga4-dim-date.png` — Импорт параметров: найден и отмечен «Дата»
+- `011-ga4-dim-source.png` — Импорт параметров: отмечен «Источник сеанса»
+- `012-ga4-dim-campaign.png` — Импорт параметров: отмечен «Кампания сеанса»
+- `013-ga4-dim-campaign.png` — Импорт параметров: отмечен «Кампания, связанная с сеансом»
+- `014-ga4-dims-imported.png` — Параметры импортированы: Дата, Источник сеанса, Кампания, связанная с сеансом
+- `015-ga4-dims-imported.png` — Параметры импортированы: в списке появились Источник сеанса и Кампания, связанная с сеансом
+- `016-ga4-metrics-pick.png` — Импорт показателей: отмечены «Сеансы» и «Количество событий»
+- `017-ga4-dim-date.png` — Импорт параметров: поиск «Дата», отмечен параметр «Дата» (группа «Время»)
+- `018-ga4-rows.png` — Строки: Дата, Источник сеанса, Кампания, связанная с сеансом, Тип устройства
+- `019-ga4-values.png` — Количество строк 500, значения: Активные пользователи и Сеансы, тип ячейки «Обычная таблица»
+- `020-ga4-traffic-table.png` — Вкладка трафика готова: 4 параметра в строках, Активные пользователи и Сеансы; всего 60 пользователей, 90 сеансов за 16.09–13.10.2026
+- `021-ga4-export-menu.png` — Кнопка «Экспортировать данные»: варианты выгрузки
+- `022-sheets-import-confirm.png` — Экспорт из GA4 в Google Таблицы: страница «Импорт документа», кнопка «Импортировать данные»
+- `023-sheets-export-raw.png` — Выгрузка GA4 в новой таблице: 6 служебных строк сверху, строка «Общий итог» под заголовками
+- `024-sheets-del-total-menu.png` — Строка 8 «Общий итог» выделена, контекстное меню → «Удалить строку»
+- `025-sheets-del-header-menu.png` — Строки 1–6 выделены, контекстное меню → «Удалить строки 1–6»
+- `026-sheets-headers.png` — Заголовки заменены латинскими именами: date, utm_source, utm_campaign, device, active_users, sessions
+- `027-sheets-renamed.png` — Таблица «GA4 для DataLens», лист ga4_traffic
+- `028-ga4-tab-menu.png` — Меню вкладки исследования: «Создать копию»
+- `029-ga4-tab-copy.png` — Создана копия вкладки трафика
+- `030-ga4-filter-lead.png` — Фильтр вкладки: Название события точно соответствует generate_lead
+- `031-ga4-lead-table.png` — Вкладка generate_lead: Дата, Источник сеанса, Кампания; Количество событий только для generate_lead
+- `032-sheets-ga4-leads.png` — Лист ga4_leads: выгрузка вкладки generate_lead без служебных строк и итога, столбец lead_events
+- `033-datalens-landing.png` — datalens.ru: главная страница, кнопка «Начать в облаке»
+- `034-datalens-org.png` — Выбор организации: «ТВОЯ СРЕДА» (DataLens не настроен)
+- `035-datalens-home.png` — Главная DataLens: Подключения, Датасеты, Чарты, Дашборды
+- `036-conn-types.png` — Подключения → Создать: список типов источников
+- `037-conn-gsheets-form.png` — Новое подключение Google Sheets: форма
+- `038-google-choose-account.png` — Вход через Google для DataLens: выбор аккаунта
+- `039-google-consent.png` — Google: запрос доступа DataLens к таблицам
+- `040-conn-after-google.png` — Подключение Google Sheets после входа через Google
+- `041-conn-after-google.png` — Подключение Google Sheets: «Аутентификация пройдена», кнопка «Добавить файл»
+- `042-conn-link-leads.png` — Ссылка на таблицу GA4 Analytics Lab — Leads вставлена в поле «Ссылка на файл»
+- `043-conn-leads-added.png` — Файл Leads добавлен: листы и предпросмотр данных
+- `044-conn-sheet-leads.png` — «Добавить листы»: отмечен только лист leads
+- `045-conn-leads-preview.png` — Лист leads в подключении: предпросмотр столбцов
+- `046-conn-link-ga4.png` — Вторая ссылка: таблица «GA4 для DataLens»
+- `047-conn-sheets-ga4.png` — «Добавить листы»: отмечены оба листа — ga4_traffic и ga4_leads
+- `048-conn-ga4-preview.png` — В подключении три листа; предпросмотр ga4_traffic
+- `049-conn-ga4-headers-yes.png` — ga4_traffic: «Показывать заголовки столбцов» → Да; типы полей пересчитаны
+- `050-conn-ga4leads-before.png` — Лист ga4_leads до исправления заголовков
+- `051-conn-ga4leads-headers-yes.png` — ga4_leads: заголовки включены, lead_events — число
+- `052-conn-ga4leads-no-headers.png` — ga4_leads: DataLens не нашёл заголовки (стоит «Нет», столбцы A–D)
+- `053-conn-ga4leads-headers-yes.png` — ga4_leads: «Показывать заголовки столбцов» → Да
+- `054-conn-workbook-pick.png` — Сохранение подключения: нужно выбрать воркбук, коллекция пуста
+- `055-workbook-name.png` — Новый воркбук «ОП.03 · Маркетинг и заявки»
+- `056-conn-workbook-chosen.png` — Выбран воркбук «ОП03 Маркетинг и заявки»
+- `057-conn-name.png` — Название подключения: «Google Sheets — заявки и GA4»
+- `058-conn-saved.png` — Подключение сохранено в воркбуке
+- `059-ds-new.png` — Новый датасет из подключения: слева таблицы подключения
+- `060-ds-new.png` — Новый датасет: слева листы подключения, справа область для таблиц
+- `061-ds-traffic-dropped.png` — Лист ga4_traffic перетащен в область датасета; внизу предпросмотр
+- `062-ds-traffic-fields.png` — Вкладка «Поля»: все поля пока «Строка»
+- `063-ds-type-menu.png` — Поле sessions: список типов данных
+- `064-ds-agg-menu.png` — Поле sessions: тип «Целое число», список агрегаций
+- `065-ds-agg-menu.png` — Поле sessions: тип «Целое число», список агрегаций
+- `066-ds-traffic-numbers.png` — active_users и sessions: «Целое число», агрегация «Сумма»
+- `067-ds-field-date-formula.png` — Новое поле «Дата»: формула собирает дату из текста ГГГГММДД
+- `068-ds-date-error.png` — Поле «Дата» с LEFT/MID/RIGHT: «датасет не прошёл валидацию»
+- `069-ds-date-parse.png` — Поле «Дата»: формула DATE_PARSE([date])
+- `070-ds-field-source.png` — Поле source: (direct) из GA4 записываем как direct — так же, как в leads
+- `071-ds-field-campaign.png` — Поле campaign: (direct) и (not set) из GA4 записываем как not_set
+- `072-ds-traffic-keys.png` — Датасет трафика: поля Дата, source, campaign и числовые sessions, active_users
+- `073-ds-traffic-save.png` — Сохранение датасета: название «GA4 трафик»
+- `074-ds-leads-ga4-dropped.png` — Датасет generate_lead: лист ga4_leads в области датасета
+- `075-ds-lead-events-type.png` — lead_events: «Целое число», агрегация «Сумма»
+- `076-ds-leadevents-fields.png` — Датасет generate_lead: те же поля Дата, source, campaign, что в «GA4 трафик»
+- `077-ds-leads-dropped.png` — Датасет «Заявки»: лист leads в области датасета
+- `078-ds-leads-fields.png` — Поля листа leads: created_at распознан как «Дата и время», остальные — строки
+- `079-ds-leads-hide-pii.png` — Поля name и email скрыты (значок глаза): в чартах их не выбрать
+- `080-ds-field-leadcount.png` — Поле Lead Count: COUNTD([request_id]) — число уникальных заявок
+- `081-ds-field-donecount.png` — Поле Done Count: уникальные request_id только со статусом done
+- `082-ds-leads-fields-done.png` — Датасет «Заявки»: Дата, source, campaign, Lead Count, Done Count; name и email скрыты
+- `083-ds-leads-save.png` — Сохранение датасета «Заявки»
+- `084-wiz-new.png` — Новый чарт из датасета «GA4 трафик»: слева поля, по умолчанию тип «Столбчатая диаграмма»
+- `085-wiz-types.png` — Список типов визуализации
+- `086-wiz-indicator.png` — Тип «Индикатор»: секции «Показатель», «Сортировка», «Фильтры»
+- `087-wiz-indicator-sessions.png` — sessions перетащен в «Показатель»: индикатор показывает сумму сеансов
+- `088-wiz-field-rename.png` — Настройки поля в чарте: название «Сеансы», агрегация «Сумма»
+- `089-wiz-save-dialog.png` — Сохранение чарта: название «Сеансы»
+- `090-wiz-indicator-saved.png` — Чарт-индикатор «Сеансы» сохранён
+- `091-wiz-indicator-users.png` — Индикатор active_users: сумма строк по дням и устройствам
+- `092-wiz-indicator-leadevents.png` — Индикатор из датасета «GA4 generate_lead»: сумма lead_events
+- `093-wiz-line-x.png` — Линейная диаграмма: «Дата» в секции X
+- `094-wiz-line-y1.png` — sessions в секции Y: одна линия
+- `095-wiz-line-y2.png` — active_users добавлен в Y: две линии на одном графике
+- `096-wiz-line-renamed.png` — Линии подписаны: «Пользователи» и «Сеансы»
+- `097-wiz-table-empty.png` — Тип «Таблица»: секция «Столбцы»
+- `098-wiz-table-cols.png` — Таблица: source, campaign, sessions, active_users
+- `099-wiz-table-cols.png` — Таблица: source, campaign, sessions, active_users в секции «Столбцы»
+- `100-wiz-table-sorted.png` — Таблица «Источники и кампании»: столбцы подписаны, сортировка по сеансам (по убыванию)
+- `101-wiz-pie-empty.png` — Круговая диаграмма: секции «Цвет», «Показатели», «Подписи»
+- `102-wiz-pie-device.png` — Круговая диаграмма: device в «Цвет», sessions в «Показатели» и «Подписи»; desktop 70, mobile 22
+- `103-wiz-leads-fields.png` — Чарт по датасету «Заявки»: name и email в списке полей нет — они скрыты в датасете
+- `104-wiz-leadcount.png` — Индикатор Actual Leads: Lead Count = COUNTD(request_id)
+- `105-wiz-filter-new.png` — Фильтр status: «Принадлежит множеству», выбрано значение new
+- `106-wiz-new-card.png` — Карточка «Новые»: Lead Count с фильтром status = new
+- `107-wiz-save-as-menu.png` — Меню у кнопки «Сохранить»: сохранить как новый чарт
+- `108-wiz-filter-replace.png` — Копия карточки: старое значение new убрано («Очистить»), выбрано только in_progress
+- `109-wiz-inprogress-card.png` — Карточка «В обработке»: фильтр status = in_progress
+- `110-wiz-done-card.png` — Карточка Done: поле Done Count считает request_id со статусом done, фильтр не нужен
+- `111-wiz-status-bar.png` — Столбчатая диаграмма: status по X, Lead Count по Y
+- `112-wiz-status-bar-labels.png` — Столбцы подписаны числом заявок: done 1, in_progress 1, new 5
+- `113-wiz-leads-table.png` — Таблица заявок по source и campaign: Lead Count и Done Count
+- `114-wiz-leads-trend.png` — Динамика заявок: Дата (из created_at) по X, Lead Count по Y
+- `115-wiz-add-dataset.png` — Список датасетов чарта: «Добавить датасет»
+- `116-wiz-dataset-pick.png` — Выбор второго датасета из воркбука
+- `117-wiz-dataset-added.png` — В чарт добавлен датасет «Заявки»: у общих полей значок связи
+- `118-wiz-datasets-list.png` — Два датасета в чарте; снова «Добавить датасет»
+- `119-wiz-three-datasets.png` — В чарте три датасета: GA4 трафик, Заявки, GA4 generate_lead
+- `120-wiz-links-auto.png` — «Настройки датасетов» → «Связи»: DataLens связал все поля с одинаковыми именами
+- `121-wiz-link-edit.png` — Связь по utm_source: в окне связи есть кнопка «Удалить»
+- `122-wiz-links-clean.png` — Остались только связи по source, campaign и Дата
