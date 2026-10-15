@@ -12,6 +12,7 @@ OUT = ROOT / 'shots' / 'edited'
 
 # файл шага → список (x1, y1, x2, y2) в долях кадра
 MASKS = {
+    '058-conn-saved.png': [(0.494, 0.17, 0.67, 0.49)],                       # name и email тестовых заявок
     '038-google-choose-account.png': [(0.535, 0.37, 0.67, 0.435)],          # имя и почта аккаунта Google
     '039-google-consent.png': [(0.155, 0.465, 0.31, 0.51)],                # почта аккаунта Google
     '045-conn-leads-preview.png': [(0.494, 0.235, 0.67, 0.505)],          # name и email тестовых заявок

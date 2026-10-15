@@ -41,7 +41,7 @@
 | 44 | 638a | 638a-shot.png | steps/049-conn-ga4-headers-yes.png | ga4_traffic: заголовки включены. |
 | 45 | 639 | 639-shot.png | steps/054-conn-workbook-pick.png | Сохранение подключения: выбор воркбука. |
 | 46 | 639a | 639a-shot.png | steps/057-conn-name.png | Название подключения. |
-| 47 | 640 | 640-shot.png | steps/058-conn-saved.png | Подключение в воркбуке «ОП03 Маркетинг и заявки». |
+| 47 | 640 | 640-shot.png | steps/058-conn-saved.png (обработан) | Подключение в воркбуке «ОП03 Маркетинг и заявки». name и email закрашены. |
 | 49 | 642 | 642-shot.png | steps/060-ds-new.png | Новый датасет: листы подключения слева. |
 | 50 | 642a | 642a-shot.png | steps/061-ds-traffic-dropped.png | ga4_traffic в области датасета. |
 | 51 | 643 | 643-shot.png | steps/062-ds-traffic-fields.png | Вкладка «Поля»: все поля строковые. |
@@ -81,7 +81,7 @@
 | 90 | 674 | 674-shot.png | steps/114-wiz-leads-trend.png | Динамика заявок по дате создания. |
 | 95 | 678 | 678-shot.png | steps/115-wiz-add-dataset.png | Список датасетов чарта: «Добавить датасет». |
 | 96 | 678a | 678a-shot.png | steps/117-wiz-dataset-added.png | Датасет «Заявки» в чарте: значки связей. |
-| 97 | 678b | 678b-shot.png | steps/119-wiz-three-datasets.png | Три датасета: GA4 трафик, Заявки, GA4 generate_lead. |
+| 97 | 678b | 678b-shot.png | steps/119-wiz-three-datasets.png | Активный датасет — GA4 generate_lead: его поля в списке слева. |
 | 98 | 679 | 679-shot.png | steps/120-wiz-links-auto.png | Связи, созданные автоматически. |
 | 99 | 679a | 679a-shot.png | steps/121-wiz-link-edit.png | Окно связи: кнопка «Удалить». |
 | 100 | 679b | 679b-shot.png | steps/122-wiz-links-clean.png | Связи по source, campaign и Дата. |
@@ -97,9 +97,9 @@
 | 115 | 691 | 691-shot.png | steps/135-dash-selector-date.png | Селектор «Дата»: календарь с диапазоном. |
 | 116 | 691a | 691a-shot.png | steps/136-dash-selector-source.png | Второй селектор группы: source. |
 | 117 | 692 | 692-shot.png | steps/138-dash-selectors-pinned.png | Селекторы закреплены сверху. |
-| 118 | 693 | 693-shot.png | steps/139-dash-tabs.png | Настройки → Вкладки. |
+| 118 | 693 | 693-shot.png | steps/140-dash-tabs.png | Настройки → Вкладки: Web Analytics, Заявки, Маркетинг и заявки. |
 | 119 | 694 | 694-shot.png | steps/141-dash-links-period.png | Связи селектора «Период». |
-| 120 | 694a | 694a-shot.png | steps/142-dash-alias.png | Алиас по полю «Дата». |
+| 120 | 694a | 694a-shot.png | steps/142-dash-alias.png | Окно «Настройка алиасов» для виджета GA4 Lead Events. |
 | 121 | 695 | 695-shot.png | steps/145-dash-tab2-layout.png | Раскладка вкладки «Заявки». |
 | 122 | 696 | 696-shot.png | steps/146-dash-trap-status.png | «Новые» и «В обработке» показывают 7. |
 | 123 | 696a | 696a-shot.png | steps/149-dash-status-unlink.png | Связи карточки «Новые»: «Статус» — «Не связаны». |
