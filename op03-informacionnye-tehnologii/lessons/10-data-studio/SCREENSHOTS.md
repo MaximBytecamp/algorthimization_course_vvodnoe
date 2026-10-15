@@ -1,109 +1,118 @@
-# Тема 10 · часть 2 · Data Studio · 91 кадров
+# Тема 10 · часть 2 · DataLens · 112 кадров
 
-## Инструкция для Claude
+Кадры сняты 14–15.10.2026 фоновым Chrome (CDP). Все промежуточные шаги — shots/steps с журналом steps.md (166 PNG). Слайд ссылается на номер шага в datalens.mjs; build.mjs копирует его в shots/<номер>-shot.png. Кадры с личными данными берутся из shots/edited (prep_shots.py).
 
-Сними настоящие экраны Data Studio, GA4 и Google Sheets по порядку презентации. Папка: op03-informacionnye-tehnologii/lessons/10-data-studio/shots/. PNG — по точным именам таблицы. «Экран» — позиция в колоде; «исходник» — постоянный номер. Прямая ссылка: index.html#606, index.html#688a и т. д.
-
-Сначала прочитай files/README.md, formulas.md и dashboard-spec.md. Используй существующие GA4 Property и leads из предыдущих тем. Перед началом зафиксируй период, часовой пояс и исходные числа. Не заменяй реальные показатели числами примеров. Если нет данных/прав — сними фактическое состояние и укажи причину.
-
-Построй три страницы по презентации: GA4, Sheets, затем Blend. У каждого компонента сверяй источник, поле даты и фильтры. Event name=generate_lead относится к отдельной карточке либо третьей таблице Blend, не ко всему трафику. После копирования status-карточек удаляй старый фильтр. Все периоды согласованы.
-
-Blend: таблица GA4 Traffic слева; Sheets Leads справа; позднее третья таблица того же GA4 с Event count и фильтром generate_lead. Два ключа source/campaign, Left Outer. Date и created_at — для отбора периода. Не добавляй request_id/status/device в Dimensions агрегатов. Проверяй NULL, несовпавшие правые записи и отсутствие умножения Sessions. Done Count — условный подсчёт ID, а не status в ключах.
-
-На кадрах не показывай чужие name/email, пароли или токены. Съёмка Share не требует отправлять приглашения; не открывай публичный доступ. Изменения источников и прав делай только в согласованном ресурсе. Для проверки зрителем используй разрешённый тестовый аккаунт. Wireframe и модель JOIN в презентации — схемы, не скриншоты.
-
-Снимай читаемые PNG, желательно от 1600×1000. Если шаг требует два состояния, допустим составной PNG без изменения данных. В shots/evidence.json запиши время, интерфейс, URL/объект без секретов, имя файла и фактический результат. После съёмки выполни node build.mjs, проверь каждый кадр в увеличении и статус manifest.
-
-| Экран | Исходник | PNG | Что снять | Статус |
+| Экран | Номер | PNG | Шаг | Что на кадре |
 |---|---|---|---|---|
-| 10 | 614a | 614a-shot.png | GA4 и Sheets: один период, исходные показатели; заполненная шапка спецификации.  | pending |
-| 11 | 615 | 615-shot.png | Главная страница Data Studio.  | pending |
-| 12 | 616 | 616-shot.png | Create → Report.  | pending |
-| 13 | 617 | 617-shot.png | Панель connectors. Google Analytics. | pending |
-| 14 | 618 | 618-shot.png | Authorization screen.  | pending |
-| 15 | 619 | 619-shot.png | Список GA4 Properties.  | pending |
-| 16 | 620 | 620-shot.png | Add to report.  | pending |
-| 17 | 620a | 620a-shot.png | Список источников отчёта и GA4 fields с названием GA4 · Funnel.  | pending |
-| 18 | 621 | 621-shot.png | Весь интерфейс Data Studio.  Подписать основные области.  | pending |
-| 20 | 623 | 623-shot.png | Название отчёта сверху.  | pending |
-| 21 | 624 | 624-shot.png | Page → Manage pages.  | pending |
-| 22 | 625 | 625-shot.png | Макет Page 1 в редакторе: верхние KPI, controls, место для динамики и таблиц.  | pending |
-| 25 | 627 | 627-shot.png | Scorecard + Properties.  | pending |
-| 26 | 628 | 628-shot.png | Две карточки.  | pending |
-| 27 | 629 | 629-shot.png | Key Events Scorecard.  | pending |
-| 28 | 630 | 630-shot.png | Filter configuration.  | pending |
-| 29 | 630a | 630a-shot.png | Карточка generate_lead с фильтром; рядом Sessions без него.  | pending |
-| 30 | 631 | 631-shot.png | Подпись GA4 Lead Events на карточке и её выбранная метрика.  | pending |
-| 31 | 632 | 632-shot.png | Date Range Control.  | pending |
-| 32 | 632a | 632a-shot.png | Date range control и настройки Auto у карточки; два состояния периода.  | pending |
-| 34 | 634 | 634-shot.png | Time Series chart.  | pending |
-| 35 | 635 | 635-shot.png | Time Series с двумя линиями.  | pending |
-| 37 | 637 | 637-shot.png | Table.  | pending |
-| 39 | 639 | 639-shot.png | Campaign table.  | pending |
-| 40 | 640 | 640-shot.png | Content table.  | pending |
-| 42 | 642 | 642-shot.png | Device chart.  | pending |
-| 43 | 643 | 643-shot.png | Drop-down control.  | pending |
-| 44 | 644 | 644-shot.png | Campaign Drop-down.  | pending |
-| 46 | 646 | 646-shot.png | Chart interactions → Cross-filtering.  | pending |
-| 47 | 647 | 647-shot.png | Dashboard после cross-filter.  | pending |
-| 48 | 647a | 647a-shot.png | Page 1 после сброса: controls без выбранных категорий и исходные KPI.  | pending |
-| 49 | 648 | 648-shot.png | Page 1 целиком в View с периодом и фильтрами.  | pending |
-| 51 | 650 | 650-shot.png | Manage pages.  | pending |
-| 52 | 651 | 651-shot.png | Google Sheets leads: структура из девяти полей; name/email скрыты.  | pending |
-| 53 | 651a | 651a-shot.png | Лист leads: девять заголовков, даты, идентификаторы и статусы; скрыть имя/email.  | pending |
-| 56 | 654 | 654-shot.png | Google Sheets connector.  | pending |
-| 57 | 655 | 655-shot.png | Spreadsheet + Worksheet picker.  | pending |
-| 58 | 656 | 656-shot.png | Connector options.  | pending |
-| 59 | 657 | 657-shot.png | Data source fields.  | pending |
-| 60 | 657a | 657a-shot.png | Редактор поля даты: исходное значение, выбранный тип либо формула разбора и результат.  | pending |
-| 62 | 659 | 659-shot.png | Create field.  | pending |
-| 63 | 659a | 659a-shot.png | Редактор вычисляемого Lead Count и поле после сохранения.  | pending |
-| 65 | 661 | 661-shot.png | Scorecard.  | pending |
-| 66 | 661a | 661a-shot.png | Page 2: control периода и created_at в Date range dimension карточки.  | pending |
-| 67 | 662 | 662-shot.png | Filtered scorecard.  | pending |
-| 68 | 663 | 663-shot.png | New scorecard.  | pending |
-| 69 | 664 | 664-shot.png | 4 Scorecards.  | pending |
-| 70 | 664a | 664a-shot.png | Четыре карточки и их разные status-фильтры; Actual Leads без фильтра статуса.  | pending |
-| 71 | 665 | 665-shot.png | Status chart.  | pending |
-| 73 | 667 | 667-shot.png | Leads by Source.  | pending |
-| 74 | 668 | 668-shot.png | Campaign leads table.  | pending |
-| 75 | 669 | 669-shot.png | Lead trend.  | pending |
-| 76 | 670 | 670-shot.png | Data Source → field type.  | pending |
-| 77 | 671 | 671-shot.png | Status control.  | pending |
-| 78 | 672 | 672-shot.png | utm_source filter.  | pending |
-| 79 | 672a | 672a-shot.png | Page 2: source и campaign controls с двумя выбранными условиями.  | pending |
-| 80 | 673 | 673-shot.png | Page 2 целиком в View: Actual Leads, статусы, динамика и controls.  | pending |
-| 86 | 678a | 678a-shot.png | Две контрольные таблицы с source/campaign; совпадающие и несовпадающие пары видны.  | pending |
-| 87 | 679 | 679-shot.png | Pages.  | pending |
-| 88 | 680 | 680-shot.png | Manage blends.  | pending |
-| 89 | 681 | 681-shot.png | Blend editor → GA4 table.  | pending |
-| 90 | 682 | 682-shot.png | Blend editor → Sheets.  | pending |
-| 91 | 682a | 682a-shot.png | Blend editor: Date / created_at как поля диапазона; Auto; по два измерения на сторону.  | pending |
-| 92 | 683 | 683-shot.png | Join configuration.  | pending |
-| 93 | 684 | 684-shot.png | Два join conditions.  | pending |
-| 94 | 685 | 685-shot.png | Join configuration: Left Outer, GA4 слева.  | pending |
-| 95 | 685a | 685a-shot.png | Join configuration: Left Outer и два ключа; результат с отсутствующим совпадением.  | pending |
-| 97 | 687 | 687-shot.png | Blend name + Save.  | pending |
-| 98 | 688 | 688-shot.png | Blended table.  | pending |
-| 99 | 688a | 688a-shot.png | Третья таблица Blend: GA4 с фильтром generate_lead, Event count, два ключа и Left Outer.  | pending |
-| 100 | 688b | 688b-shot.png | Три таблицы рядом: GA4 отдельно, Sheets отдельно, Blend для одинаковых ключей и дат.  | pending |
-| 104 | 692 | 692-shot.png | Итоговая таблица с Lead Count и Done Count.  | pending |
-| 105 | 692a | 692a-shot.png | Done Count в источнике Sheets, затем среди метрик Sheets-таблицы Blend.  | pending |
-| 108 | 695 | 695-shot.png | Отношение Actual Leads / Sessions в Blend и контроль ручного расчёта.  | pending |
-| 109 | 695a | 695a-shot.png | Вычисляемое поле диаграммы Blend, тип Percent и ручная сверка одной строки.  | pending |
-| 116 | 700a | 700a-shot.png | Page 3: controls используют Blend; переключение страниц не переносит чужой source-фильтр.  | pending |
-| 117 | 701 | 701-shot.png | created_at как Date range dimension у компонента Sheets.  | pending |
-| 119 | 702a | 702a-shot.png | Период, сведения об обновлении и дата на обеих сторонах; фактическая ошибка при её наличии.  | pending |
-| 127 | 710 | 710-shot.png | View Mode.  | pending |
-| 128 | 711 | 711-shot.png | Отфильтрованный Page 1.  | pending |
-| 129 | 712 | 712-shot.png | Campaign filter.  | pending |
-| 130 | 713 | 713-shot.png | Page 2 Instagram.  | pending |
-| 131 | 714 | 714-shot.png | Blend table.  | pending |
-| 132 | 714a | 714a-shot.png | Page 2 и Page 3 для одного периода; список пар Sheets без соответствия в GA4.  | pending |
-| 136 | 718 | 718-shot.png | Share dialog.  | pending |
-| 137 | 718a | 718a-shot.png | Share dialog: текущий ограниченный доступ и роли; без лишних персональных данных.  | pending |
-| 140 | 721 | 721-shot.png | Report permissions и Data credentials как отдельные настройки.  | pending |
-| 143 | 723a | 723a-shot.png | Редакторы GA4 и Sheets: фактическая модель credentials без секретов.  | pending |
-| 146 | 725a | 725a-shot.png | Страница Leads без name/email; настройки ограниченного набора и проверка экспорта.  | pending |
-| 150 | 729 | 729-shot.png | Три страницы отчёта и список двух источников плюс Blend.  | pending |
-| 151 | 729a | 729a-shot.png | Заполненная спецификация отчёта и сверка исходных/объединённых показателей.  | pending |
+| 2 | 607 | 607-shot.png | steps/002-lookerstudio-open.png (обработан) | lookerstudio.google.com из России: «Service Unavailable». |
+| 10 | 615 | 615-shot.png | steps/007-ga4-explore-list.png | GA4 → Исследования: шаблон «Свободная форма». |
+| 11 | 615a | 615a-shot.png | steps/008-ga4-freeform-new.png | Новое исследование «Свободная форма». |
+| 12 | 616 | 616-shot.png | steps/009-ga4-name.png | Название исследования «DataLens · выгрузка GA4». |
+| 13 | 617 | 617-shot.png | steps/017-ga4-dim-date.png | Импорт параметров: отмечена «Дата». |
+| 14 | 617a | 617a-shot.png | steps/011-ga4-dim-source.png | Отмечен «Источник сеанса». |
+| 15 | 617b | 617b-shot.png | steps/013-ga4-dim-campaign.png | Отмечена «Кампания, связанная с сеансом». |
+| 16 | 618 | 618-shot.png | steps/016-ga4-metrics-pick.png | Импорт показателей: «Сеансы» и «Количество событий». |
+| 17 | 619 | 619-shot.png | steps/018-ga4-rows.png | Строки: Дата, Источник сеанса, Кампания, Тип устройства. |
+| 18 | 620 | 620-shot.png | steps/019-ga4-values.png | 500 строк, значения «Активные пользователи» и «Сеансы». |
+| 19 | 621 | 621-shot.png | steps/020-ga4-traffic-table.png | Свободная форма: 4 параметра, Активные пользователи и Сеансы. |
+| 20 | 622 | 622-shot.png | steps/021-ga4-export-menu.png | Меню «Экспортировать данные»: Google Таблицы, TSV, CSV, PDF. |
+| 21 | 622a | 622a-shot.png | steps/022-sheets-import-confirm.png | Страница «Импорт документа». |
+| 22 | 623 | 623-shot.png | steps/023-sheets-export-raw.png | Выгрузка GA4: служебные строки сверху, «Общий итог» под заголовками. |
+| 23 | 624 | 624-shot.png | steps/024-sheets-del-total-menu.png | Строка «Общий итог» → «Удалить строку». |
+| 24 | 624a | 624a-shot.png | steps/025-sheets-del-header-menu.png | Строки 1–6 выделены → «Удалить строки 1–6». |
+| 25 | 625 | 625-shot.png | steps/026-sheets-headers.png | Заголовки заменены латинскими именами. |
+| 26 | 625a | 625a-shot.png | steps/027-sheets-renamed.png | Таблица «GA4 для DataLens», лист ga4_traffic. |
+| 27 | 626 | 626-shot.png | steps/028-ga4-tab-menu.png | Меню вкладки: «Создать копию». |
+| 28 | 626a | 626a-shot.png | steps/030-ga4-filter-lead.png | Фильтр вкладки: Название события = generate_lead. |
+| 29 | 627 | 627-shot.png | steps/031-ga4-lead-table.png | Вкладка generate_lead: 6 строк, всего 11 событий. |
+| 30 | 628 | 628-shot.png | steps/032-sheets-ga4-leads.png | Лист ga4_leads без служебных строк и итога. |
+| 32 | 630 | 630-shot.png | steps/033-datalens-landing.png | datalens.ru: кнопка «Начать в облаке». |
+| 33 | 630a | 630a-shot.png | steps/034-datalens-org.png | Выбор организации. |
+| 34 | 631 | 631-shot.png | steps/035-datalens-home.png | Главная DataLens. |
+| 35 | 632 | 632-shot.png | steps/036-conn-types.png | Типы подключений: «Google Sheets» в разделе «Файлы и сервисы». |
+| 36 | 632a | 632a-shot.png | steps/037-conn-gsheets-form.png | Форма Google Sheets: «Войти через Google». |
+| 37 | 633 | 633-shot.png | steps/039-google-consent.png (обработан) | Google: DataLens запрашивает просмотр таблиц. Почта аккаунта скрыта. |
+| 38 | 634 | 634-shot.png | steps/041-conn-after-google.png | Подключение: «Аутентификация пройдена». |
+| 39 | 635 | 635-shot.png | steps/042-conn-link-leads.png | Ссылка на таблицу Leads в поле «Ссылка на файл». |
+| 40 | 635a | 635a-shot.png | steps/044-conn-sheet-leads.png | «Добавить листы»: отмечен лист leads. |
+| 41 | 636 | 636-shot.png | steps/045-conn-leads-preview.png (обработан) | Лист leads в подключении. name и email закрашены. |
+| 42 | 637 | 637-shot.png | steps/047-conn-sheets-ga4.png | «Добавить листы»: ga4_traffic и ga4_leads. |
+| 43 | 638 | 638-shot.png | steps/048-conn-ga4-preview.png | ga4_traffic: заголовки попали в данные. |
+| 44 | 638a | 638a-shot.png | steps/049-conn-ga4-headers-yes.png | ga4_traffic: заголовки включены. |
+| 45 | 639 | 639-shot.png | steps/054-conn-workbook-pick.png | Сохранение подключения: выбор воркбука. |
+| 46 | 639a | 639a-shot.png | steps/057-conn-name.png | Название подключения. |
+| 47 | 640 | 640-shot.png | steps/058-conn-saved.png | Подключение в воркбуке «ОП03 Маркетинг и заявки». |
+| 49 | 642 | 642-shot.png | steps/060-ds-new.png | Новый датасет: листы подключения слева. |
+| 50 | 642a | 642a-shot.png | steps/061-ds-traffic-dropped.png | ga4_traffic в области датасета. |
+| 51 | 643 | 643-shot.png | steps/062-ds-traffic-fields.png | Вкладка «Поля»: все поля строковые. |
+| 52 | 644 | 644-shot.png | steps/063-ds-type-menu.png | Список типов данных. |
+| 53 | 644a | 644a-shot.png | steps/065-ds-agg-menu.png | Список агрегаций. |
+| 54 | 644b | 644b-shot.png | steps/066-ds-traffic-numbers.png | active_users и sessions — числа. |
+| 55 | 645 | 645-shot.png | steps/068-ds-date-error.png | Поле с LEFT/MID/RIGHT: «датасет не прошёл валидацию». |
+| 56 | 646 | 646-shot.png | steps/069-ds-date-parse.png | Поле «Дата» с формулой DATE_PARSE([date]). |
+| 58 | 648 | 648-shot.png | steps/070-ds-field-source.png | Поле source. |
+| 59 | 648a | 648a-shot.png | steps/071-ds-field-campaign.png | Поле campaign. |
+| 60 | 649 | 649-shot.png | steps/072-ds-traffic-keys.png | Поля Дата, source, campaign и числа. |
+| 61 | 650 | 650-shot.png | steps/076-ds-leadevents-fields.png | Датасет GA4 generate_lead. |
+| 62 | 651 | 651-shot.png | steps/078-ds-leads-fields.png (обработан) | Поля листа leads. name и email в предпросмотре закрашены. |
+| 63 | 652 | 652-shot.png | steps/079-ds-leads-hide-pii.png | name и email скрыты. |
+| 64 | 653 | 653-shot.png | steps/080-ds-field-leadcount.png | Поле Lead Count. |
+| 66 | 655 | 655-shot.png | steps/081-ds-field-donecount.png | Поле Done Count. |
+| 68 | 657 | 657-shot.png | steps/082-ds-leads-fields-done.png | Датасет «Заявки»: поля и формулы. |
+| 69 | 658 | 658-shot.png | steps/084-wiz-new.png | Новый чарт. |
+| 70 | 658a | 658a-shot.png | steps/085-wiz-types.png | Список типов визуализации. |
+| 71 | 659 | 659-shot.png | steps/087-wiz-indicator-sessions.png | Индикатор: сумма sessions = 92. |
+| 73 | 661 | 661-shot.png | steps/088-wiz-field-rename.png | Настройки поля: название «Сеансы». |
+| 74 | 661a | 661a-shot.png | steps/089-wiz-save-dialog.png | Сохранение чарта «Сеансы». |
+| 75 | 662 | 662-shot.png | steps/091-wiz-indicator-users.png | Индикатор active_users: 70. |
+| 77 | 664 | 664-shot.png | steps/092-wiz-indicator-leadevents.png | Индикатор GA4 Lead Events: 11. |
+| 78 | 665 | 665-shot.png | steps/093-wiz-line-x.png | Линейная диаграмма: «Дата» в X. |
+| 79 | 665a | 665a-shot.png | steps/096-wiz-line-renamed.png | Линии «Пользователи» и «Сеансы». |
+| 80 | 666 | 666-shot.png | steps/100-wiz-table-sorted.png | Таблица «Источники и кампании». |
+| 81 | 667 | 667-shot.png | steps/102-wiz-pie-device.png | Круговая диаграмма «Устройства». |
+| 82 | 668 | 668-shot.png | steps/104-wiz-leadcount.png | Индикатор Actual Leads: 7. |
+| 83 | 669 | 669-shot.png | steps/105-wiz-filter-new.png | Фильтр status: выбрано new. |
+| 84 | 669a | 669a-shot.png | steps/107-wiz-save-as-menu.png | Меню «Сохранить как копию». |
+| 85 | 670 | 670-shot.png | steps/108-wiz-filter-replace.png | Фильтр копии: new убран, выбран in_progress. |
+| 86 | 670a | 670a-shot.png | steps/109-wiz-inprogress-card.png | Карточка «В обработке». |
+| 87 | 671 | 671-shot.png | steps/110-wiz-done-card.png | Карточка Done через Done Count. |
+| 88 | 672 | 672-shot.png | steps/112-wiz-status-bar-labels.png | Заявки по статусам. |
+| 89 | 673 | 673-shot.png | steps/113-wiz-leads-table.png | Таблица заявок по source и campaign. |
+| 90 | 674 | 674-shot.png | steps/114-wiz-leads-trend.png | Динамика заявок по дате создания. |
+| 95 | 678 | 678-shot.png | steps/115-wiz-add-dataset.png | Список датасетов чарта: «Добавить датасет». |
+| 96 | 678a | 678a-shot.png | steps/117-wiz-dataset-added.png | Датасет «Заявки» в чарте: значки связей. |
+| 97 | 678b | 678b-shot.png | steps/119-wiz-three-datasets.png | Три датасета: GA4 трафик, Заявки, GA4 generate_lead. |
+| 98 | 679 | 679-shot.png | steps/120-wiz-links-auto.png | Связи, созданные автоматически. |
+| 99 | 679a | 679a-shot.png | steps/121-wiz-link-edit.png | Окно связи: кнопка «Удалить». |
+| 100 | 679b | 679b-shot.png | steps/122-wiz-links-clean.png | Связи по source, campaign и Дата. |
+| 101 | 680 | 680-shot.png | steps/123-wiz-blend-table.png | Таблица из трёх датасетов. |
+| 106 | 684 | 684-shot.png | steps/124-wiz-blend-renamed.png | Сводная таблица с подписями. |
+| 108 | 686 | 686-shot.png | steps/125-workbook-list.png | Воркбук «ОП03 Маркетинг и заявки». |
+| 109 | 686a | 686a-shot.png | steps/127-workbook-create-menu.png | Меню «Создать». |
+| 110 | 687 | 687-shot.png | steps/128-dash-new.png | Новый дашборд. |
+| 111 | 688 | 688-shot.png | steps/130-dash-chart-picked.png | Выбран чарт «Сеансы». |
+| 112 | 688a | 688a-shot.png | steps/132-dash-page1-widgets.png | Виджеты одной колонкой. |
+| 113 | 689 | 689-shot.png | steps/133-dash-save.png | Создание дашборда. |
+| 114 | 690 | 690-shot.png | steps/134-dash-page1-layout.png | Раскладка вкладки Web Analytics. |
+| 115 | 691 | 691-shot.png | steps/135-dash-selector-date.png | Селектор «Дата»: календарь с диапазоном. |
+| 116 | 691a | 691a-shot.png | steps/136-dash-selector-source.png | Второй селектор группы: source. |
+| 117 | 692 | 692-shot.png | steps/138-dash-selectors-pinned.png | Селекторы закреплены сверху. |
+| 118 | 693 | 693-shot.png | steps/139-dash-tabs.png | Настройки → Вкладки. |
+| 119 | 694 | 694-shot.png | steps/141-dash-links-period.png | Связи селектора «Период». |
+| 120 | 694a | 694a-shot.png | steps/142-dash-alias.png | Алиас по полю «Дата». |
+| 121 | 695 | 695-shot.png | steps/145-dash-tab2-layout.png | Раскладка вкладки «Заявки». |
+| 122 | 696 | 696-shot.png | steps/146-dash-trap-status.png | «Новые» и «В обработке» показывают 7. |
+| 123 | 696a | 696a-shot.png | steps/149-dash-status-unlink.png | Связи карточки «Новые»: «Статус» — «Не связаны». |
+| 124 | 696b | 696b-shot.png | steps/150-dash-tab2-fixed.png | Вкладка «Заявки» после исправления. |
+| 125 | 697 | 697-shot.png | steps/153-dash-tab3-view.png | Вкладка «Маркетинг и заявки». |
+| 126 | 698 | 698-shot.png | steps/154-dash-tab1-view.png | Web Analytics в режиме просмотра. |
+| 127 | 698a | 698a-shot.png | steps/155-dash-source-open.png | Список значений селектора «Источник». |
+| 128 | 699 | 699-shot.png | steps/157-dash-trap-alias.png | Источник instagram, но GA4 Lead Events — 11. |
+| 129 | 699a | 699a-shot.png | steps/158-dash-alias-source.png | Алиасы: Дата = Дата и source = source. |
+| 130 | 699b | 699b-shot.png | steps/159-dash-source-instagram.png | Источник instagram: все виджеты пересчитаны. |
+| 131 | 700 | 700-shot.png | steps/161-dash-period-pick.png | Выбран период 01.10–13.10.2026. |
+| 132 | 700a | 700a-shot.png | steps/162-dash-period-applied.png | Период 01.10–13.10.2026 и источник instagram. |
+| 133 | 701 | 701-shot.png | steps/163-dash-tab3-campaign.png | Кампания backend_guide на вкладке «Маркетинг и заявки». |
+| 136 | 704 | 704-shot.png | steps/164-share-org.png (обработан) | «Поделиться»: права на воркбук. Имя и почта автора закрашены. |
+| 137 | 704a | 704a-shot.png | steps/165-share-public.png | Вкладка «Публично». Публикация не создавалась. |
+| 138 | 705 | 705-shot.png | steps/166-conn-credentials.png (обработан) | Подключение: «Аутентификация пройдена». name и email закрашены. |
