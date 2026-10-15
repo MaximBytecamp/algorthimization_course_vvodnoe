@@ -28,7 +28,7 @@
 | 30 | 628 | 628-shot.png | steps/032-sheets-ga4-leads.png | Лист ga4_leads без служебных строк и итога. |
 | 32 | 630 | 630-shot.png | steps/033-datalens-landing.png | datalens.ru: кнопка «Начать в облаке». |
 | 33 | 630a | 630a-shot.png | steps/034-datalens-org.png | Выбор организации. |
-| 34 | 631 | 631-shot.png | steps/035-datalens-home.png | Главная DataLens. |
+| 34 | 631 | 631-shot.png | steps/035-datalens-home.png | Главная страница DataLens. |
 | 35 | 632 | 632-shot.png | steps/036-conn-types.png | Типы подключений: «Google Sheets» в разделе «Файлы и сервисы». |
 | 36 | 632a | 632a-shot.png | steps/037-conn-gsheets-form.png | Форма Google Sheets: «Войти через Google». |
 | 37 | 633 | 633-shot.png | steps/039-google-consent.png (обработан) | Google: DataLens запрашивает просмотр таблиц. Почта аккаунта скрыта. |

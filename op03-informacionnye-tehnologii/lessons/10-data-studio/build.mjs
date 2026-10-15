@@ -28,7 +28,8 @@ const table=(headers,rows)=>`<div class="table-scroll"><table><thead><tr>${heade
 const joinLab=`<div class="join-lab"><p>Условный набор: три кампании Instagram; слева 180 сеансов. Выберите ключи и детализацию справа.</p><div class="lab-controls"><label>Ключи<select id="join-keys"><option value="both">Source + Campaign</option><option value="source">Только Source</option></select></label><label>Правая таблица<select id="join-grain"><option value="grouped">По Source + Campaign</option><option value="raw">Отдельные заявки</option></select></label></div><div id="join-result" aria-live="polite"></div></div>`;
 const FIRST=606,LAST=734;
 const deck=[];let stg='',num=FIRST-1,letter=0;
-for(const item of deckSource({bullets,click,result,note,cards,code,flow,table,joinLab})){
+const para=s=>`<p>${inline(s)}</p>`;
+for(const item of deckSource({bullets,click,result,note,cards,code,flow,table,joinLab,para})){
  if(item.stage){stg=item.stage;continue;}
  let id;if(item.sub&&deck.length){letter++;id=num+String.fromCharCode(96+letter);}else{num++;letter=0;id=String(num);}
  deck.push({...item,id,stage:stg});
