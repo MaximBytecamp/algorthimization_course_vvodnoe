@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body data-title-py="4.7 Докстринг: где пишется и как читается · Аннотации типов и документация" data-title-go="4.7 Комментарий документации · Типы и документация в Go">
   <div class="book">
     <div class="book__body">
       <div class="spine"><span>Тема 04 · Аннотации типов и документация кода</span></div>
@@ -21,6 +21,7 @@
           <p class="running__folio">Глава 4.7</p>
         </div>
 
+        <div data-lang="py">
         <header class="chapter-head">
           <span class="chapter-num">4.7</span>
           <h1>Докстринг:<br>где пишется и как читается</h1>
@@ -423,6 +424,402 @@ calculate_average(grades: list[int]) -&gt; float
         </div>
 
         <div class="pager"><a href="06-vidy-dokumentacii.html">← 4.6 Виды документации кода</a><a href="08-formaty.html">4.8 Четыре формата на одной функции →</a></div>
+        </div>
+
+        <div data-lang="go">
+        <header class="chapter-head">
+          <span class="chapter-num">4.7</span>
+          <h1>Комментарий документации:<br>где пишется и как читается</h1>
+          <p class="lead">В этой главе разобрано устройство комментария документации Go: в каком месте файла он должен стоять, чтобы его увидели инструменты, как прочитать его командой <code>go doc</code> и в подсказке редактора, какие правила задаёт руководство Go Doc Comments и чем отличаются короткая и подробная запись. В конце — восемь ошибок, из-за которых описание не доходит до читателя.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Синтаксис и правила</dd></div>
+          <div><dt>Уровень</dt><dd>Начальный</dd></div>
+          <div><dt>Опирается на</dt><dd>Глава 4.6, пакеты Go</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Писать комментарии так, чтобы их видели инструменты</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#g1">Определение и место в файле</a></li>
+            <li><a href="#g2">Команда go doc</a></li>
+            <li><a href="#g3">Подсказка редактора</a></li>
+            <li><a href="#g4">Короткий комментарий</a></li>
+            <li><a href="#g5">Подробный комментарий</a></li>
+            <li><a href="#g6">Правила Go Doc Comments</a></li>
+            <li><a href="#g7">Комментарий пакета и программы</a></li>
+            <li><a href="#g8">Тип, поля и методы</a></li>
+            <li><a href="#g9">Восемь ошибок</a></li>
+            <li><a href="#g10">Мини-практика: пять минут</a></li>
+            <li><a href="#g11">Проверьте себя</a></li>
+            <li><a href="#g12">Шпаргалка по главе</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="g1"><span class="sec">§1</span>Определение и место в файле</h2>
+        <p><span class="term">Комментарий документации</span> — комментарий, который стоит непосредственно перед объявлением верхнего уровня: <code>package</code>, <code>func</code>, <code>type</code>, <code>var</code> или <code>const</code>. Инструменты Go — <code>go doc</code>, gopls, pkgsite — считают его описанием этого объявления. Записывают его строками, начинающимися с <code>//</code>; запись <code>/* … */</code> тоже допустима, но в коде на Go почти не встречается.</p>
+        <div class="term-card">
+          <p class="term-card__head"><b>Комментарий документации</b><span>doc comment</span></p>
+          <div class="term-card__body">
+            <p>Стоит вплотную над объявлением, без пустой строки между последней строкой комментария и словом <code>func</code>, <code>type</code> и другими. Объявление должно быть верхнего уровня, то есть вне функций: комментарий над переменной внутри тела функции документацией не становится.</p>
+          </div>
+        </div>
+        <p>Место в файле решает, попадёт ли текст в документацию. Ниже одна и та же функция из <code>internal/utils/text.go</code> с одним и тем же комментарием: в первой вкладке он стоит вплотную, во второй его отделяет пустая строка.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>Один комментарий, два места</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>Вплотную над func</button>
+            <button>Через пустую строку</button>
+          </div>
+          <div class="demo__pane">
+            <figure class="code">
+              <figcaption><span>internal/utils/text.go</span><span>комментарий сразу над func</span></figcaption>
+<pre><span class="c">// NormalizeName приводит имя официанта к виду «Фамилия Имя».</span>
+<span class="k">func</span> <span class="f">NormalizeName</span>(name <span class="k">string</span>) <span class="k">string</span> {</pre>
+            </figure>
+            <figure class="code code--out">
+              <figcaption><span>Терминал</span><span>go doc ./internal/utils NormalizeName</span></figcaption>
+<pre>package utils // import "example.com/otchet-kafe/internal/utils"
+
+func NormalizeName(name string) string
+    NormalizeName приводит имя официанта к виду «Фамилия Имя».</pre>
+            </figure>
+            <p class="demo__verdict"><b>Документация</b>Комментарий стоит вплотную над объявлением, поэтому <code>go doc</code> напечатал его под подписью. Его же покажут подсказка редактора и pkgsite.</p>
+          </div>
+          <div class="demo__pane">
+            <figure class="code">
+              <figcaption><span>internal/utils/text.go</span><span>между комментарием и func пустая строка</span></figcaption>
+<pre><span class="c">// NormalizeName приводит имя официанта к виду «Фамилия Имя».</span>
+
+<span class="k">func</span> <span class="f">NormalizeName</span>(name <span class="k">string</span>) <span class="k">string</span> {</pre>
+            </figure>
+            <figure class="code code--out">
+              <figcaption><span>Терминал</span><span>go doc ./internal/utils NormalizeName</span></figcaption>
+<pre>package utils // import "example.com/otchet-kafe/internal/utils"
+
+func NormalizeName(name string) string</pre>
+            </figure>
+            <p class="demo__verdict"><b>Обычный комментарий</b>Пустая строка оторвала комментарий от объявления. Программа собирается и работает по-прежнему, ошибки нет, а описания нет нигде: <code>go doc</code> печатает одну подпись, подсказка редактора пустая. Найти такое место помогает <code>revive</code>: он сообщит, что у <code>NormalizeName</code> нет комментария.</p>
+          </div>
+        </div>
+        <p>Разница видна только инструментам: текст в файле на месте, и человек, открывший файл, его прочитает. Тот, кто вызывает функцию из другого пакета и смотрит подсказку, описания не увидит.</p>
+
+        <h2 id="g2"><span class="sec">§2</span>Команда go doc</h2>
+        <p>Команда <code>go doc</code> печатает документацию в терминале. Ей передают путь к пакету и, если нужно, имя внутри него. Путь к пакету своего модуля начинается с <code>./</code>: <code>./internal/utils</code> — пакет в этой папке. Пакеты стандартной библиотеки называют по имени: <code>strings</code>, <code>fmt</code>. Все команды ниже выполнены в папке третьего архива.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Команда</th><th>Что печатает</th></tr></thead>
+            <tbody>
+              <tr><td><code>go doc ./internal/utils</code></td><td>комментарий пакета и подписи всех экспортируемых имён, без их описаний</td></tr>
+              <tr><td><code>go doc ./internal/utils NormalizeName</code></td><td>подпись и полный комментарий одной функции</td></tr>
+              <tr><td><code>go doc ./internal/domain Shift</code></td><td>объявление типа с полями, его комментарий и перечень методов</td></tr>
+              <tr><td><code>go doc ./internal/domain Shift.Add</code></td><td>один метод типа</td></tr>
+              <tr><td><code>go doc -all ./internal/ui</code></td><td>пакет целиком: все имена с полными описаниями</td></tr>
+              <tr><td><code>go doc -src ./internal/utils TodayLabel</code></td><td>исходный текст объявления вместе с комментарием</td></tr>
+              <tr><td><code>go doc strings.Fields</code></td><td>то же для стандартной библиотеки</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>На пакете <code>go doc</code> печатает его комментарий и перечень того, что пакет предоставляет. Так проверяют, что описание пакета на месте:</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go doc ./internal/services</span></figcaption>
+<pre>$ go doc ./internal/services
+package services // import "example.com/otchet-kafe/internal/services"
+
+Package services — служебный слой: чтение данных и расчёты.
+
+Функции пакета работают только с данными и ничего не печатают.
+
+var ErrNoGrades = errors.New("список оценок пуст")
+var ErrNoOrders = errors.New("список заказов пуст")
+func CalculateAverage(grades []int) (float64, error)
+func GradeBounds(grades []int) (low, high int, err error)
+func LoadOrders(path string) ([]domain.Order, error)
+func ReadRows(path string) iter.Seq2[map[string]string, error]
+func SaveReport(path string, lines []string) (int, error)
+func SortOrdersInPlace(orders []domain.Order)
+type WaiterRevenue struct{ ... }
+    func RevenueByWaiter(orders []domain.Order, top int) ([]WaiterRevenue, error)</pre>
+        </figure>
+        <p>Первая строка — имя пакета и путь, по которому его импортируют. Ниже — комментарий пакета, затем переменные, функции и типы. <code>RevenueByWaiter</code> напечатана с отступом под типом <code>WaiterRevenue</code>: <code>go doc</code> относит к типу функции, которые возвращают значения этого типа, — так их проще найти. Описаний функций в этом перечне нет: чтобы прочитать описание, передают имя.</p>
+        <p>С флагом <code>-all</code> печатается всё сразу. Так выглядит небольшой пакет <code>ui</code>:</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go doc -all ./internal/ui</span></figcaption>
+<pre>$ go doc -all ./internal/ui
+package ui // import "example.com/otchet-kafe/internal/ui"
+
+Package ui выводит готовый отчёт пользователю.
+
+FUNCTIONS
+
+func PrintReport(lines []string)
+    PrintReport печатает готовый отчёт в консоль построчно.
+
+    Функция только печатает: расчёты и форматирование выполняются до вызова,
+    в пакетах services и utils.
+</pre>
+        </figure>
+        <p>Текст комментария <code>go doc</code> заново разбивает на строки по ширине около 80 знаков, поэтому переносы в выводе не совпадают с переносами в файле. Абзацы при этом сохраняются: их разделяет строка из одного <code>//</code>. Через ту же команду читаются описания стандартной библиотеки: <code>go doc strings.Fields</code> печатает комментарий из исходников Go. Комментарии документации устроены одинаково и в вашем коде, и в самом языке.</p>
+        <div class="margin-note margin-note--steel">
+          <b>На полях: go doc без сети</b>
+          <p><code>go doc</code> читает исходники с диска: файлы своего модуля, кэш скачанных модулей и исходники стандартной библиотеки, которые ставятся вместе с Go. Интернет для него не нужен. pkgsite из главы 4.6 показывает тот же текст в браузере.</p>
+        </div>
+
+        <h2 id="g3"><span class="sec">§3</span>Подсказка редактора</h2>
+        <p>VS Code показывает комментарий документации при наведении указателя на имя в месте вызова: под подписью идёт текст комментария. Подсказка вызывается и с клавиатуры — <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>K</kbd>, затем <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>I</kbd>. Пустая подсказка означает, что комментария нет или он стоит не вплотную.</p>
+        <p>Разница видна в одной и той же подсказке. Сначала второй архив, в котором комментариев ещё нет, следом третий, задокументированный. В обоих курсор стоит на вызове <code>RevenueByWaiter</code> в <code>main.go</code>.</p>
+        <figure class="shot">
+          <img src="img/vscode-go-hover-empty.png" alt="Подсказка VS Code на вызове RevenueByWaiter в проекте без комментариев: только подпись функции">
+          <figcaption>Второй архив. В подсказке только подпись: имя, параметры с типами и типы результатов. Что означает <code>top</code>, в каком порядке идут официанты и когда возвращается ошибка, придётся смотреть в файле функции.</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="img/vscode-go-hover-doc.png" alt="Подсказка VS Code на том же вызове в задокументированном проекте: под подписью текст комментария документации">
+          <figcaption>Третий архив. Под подписью появился текст комментария документации: что считает функция, в каком порядке результат, что значит <code>top</code> и когда возвращается <code>ErrNoOrders</code>. Текст взят из комментария над <code>func RevenueByWaiter</code> целиком.</figcaption>
+        </figure>
+
+        <h2 id="g4"><span class="sec">§4</span>Короткий комментарий</h2>
+        <p>Короткая запись применяется, когда назначение выражается одним предложением, а параметры понятны из имён и типов. Правила записи такие:</p>
+        <ul>
+          <li>первое слово — имя того, что описывается: <code>// TodayLabel возвращает…</code>;</li>
+          <li>дальше — полное предложение о действии: «возвращает…», «считает…», «записывает…»;</li>
+          <li>предложение заканчивается точкой;</li>
+          <li>между комментарием и объявлением нет пустой строки.</li>
+        </ul>
+        <figure class="code">
+          <figcaption><span>internal/utils/clock.go и internal/domain/shift.go</span><span>короткие комментарии</span></figcaption>
+<pre><span class="c">// TodayLabel возвращает текущую дату в виде «21.09.2026» для шапки отчёта.</span>
+<span class="k">func</span> <span class="f">TodayLabel</span>() <span class="k">string</span> {
+
+<span class="c">// NewShift создаёт пустую смену на указанную дату.</span>
+<span class="k">func</span> <span class="f">NewShift</span>(day time.Time) *Shift {
+
+<span class="c">// Add добавляет заказ в конец списка смены.</span>
+<span class="k">func</span> (s *Shift) <span class="f">Add</span>(order Order) {</pre>
+        </figure>
+        <p>Почему комментарий начинается с имени: строка комментария тогда понятна и без объявления рядом. Поиск по файлам проекта выдаёт отдельные строки, и строка <code>// TodayLabel возвращает текущую дату…</code> сама сообщает, о какой функции речь. Первое слово-имя проверяет <code>revive</code> — правило разобрано в §9.</p>
+
+        <h2 id="g5"><span class="sec">§5</span>Подробный комментарий</h2>
+        <p>Подробная запись нужна, когда у параметров есть ограничения, результат требует пояснения или функция возвращает ошибку. Устройство такое: первое предложение о действии, пустая строка комментария <code>//</code>, затем абзацы с подробностями.</p>
+        <figure class="code">
+          <figcaption><span>internal/services/orders.go</span><span>строение подробного комментария</span></figcaption>
+<pre><span class="c">// LoadOrders читает заказы из файла смены с колонками waiter и kopeks.</span>   <span class="c">← первое предложение</span>
+<span class="c">//</span>                                                                         <span class="c">← граница абзаца</span>
+<span class="c">// Заказы возвращаются в порядке строк файла. Ошибка возвращается, если</span>
+<span class="c">// файла нет или в колонке kopeks записано не целое число.</span>
+<span class="k">func</span> <span class="f">LoadOrders</span>(path <span class="k">string</span>) ([]domain.Order, <span class="k">error</span>) {</pre>
+        </figure>
+        <p>Пометки со стрелками справа добавлены для разбора и в коде не пишутся. В отличие от Python, в Go нет разделов вроде <code>Args:</code> и <code>Returns:</code>. Параметры, результат и ошибки описывают обычными предложениями, называя параметры по имени: «параметр <code>top</code> ограничивает…», «для пустого списка возвращается <code>[ErrNoOrders]</code>». Так принято во всей стандартной библиотеке Go.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Часть</th><th>Что в ней</th><th>Обязательна</th></tr></thead>
+            <tbody>
+              <tr><td>Первое предложение</td><td>Имя и действие: что делает функция</td><td>Да</td></tr>
+              <tr><td>Строка <code>//</code></td><td>Отделяет абзацы</td><td>Да, если есть подробности</td></tr>
+              <tr><td>Пояснение</td><td>Смысл, ограничения, порядок результата, побочные действия</td><td>По необходимости</td></tr>
+              <tr><td>Параметры</td><td>Что допустимо в параметре — словами, с именем параметра</td><td>Если ограничения не видны из подписи</td></tr>
+              <tr><td>Ошибки</td><td>В каком случае возвращается ошибка, лучше с именем переменной ошибки</td><td>Если в результатах есть <code>error</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="g6"><span class="sec">§6</span>Правила Go Doc Comments</h2>
+        <p><span class="term">Go Doc Comments</span> — руководство на сайте go.dev, которое описывает, как пишутся комментарии документации и как инструменты их показывают. В Go оно одно на весь язык: отдельных форматов, как у Python, нет. Основные правила:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Правило</th><th>Как это выглядит</th></tr></thead>
+            <tbody>
+              <tr><td>Комментарий вплотную над объявлением</td><td>без пустой строки перед <code>func</code></td></tr>
+              <tr><td>Первое слово — имя описываемого</td><td><code>// LoadOrders читает…</code></td></tr>
+              <tr><td>Полные предложения с точкой в конце</td><td><code>// Add добавляет заказ в конец списка смены.</code></td></tr>
+              <tr><td>Комментарий пакета начинается словами <code>Package имя</code></td><td><code>// Package utils форматирует строки…</code></td></tr>
+              <tr><td>Абзацы разделяет строка <code>//</code></td><td>см. §5</td></tr>
+              <tr><td>Описание сообщает, что функция делает и что возвращает, а не как она устроена</td><td>подробности реализации — обычным комментарием в теле</td></tr>
+              <tr><td>Функция, которая возвращает <code>bool</code>, описывается словами «сообщает, …ли»</td><td><code>// IsBig сообщает, больше ли сумма порога.</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Про форму первого предложения. В англоязычном коде Go пишут <code>// LoadOrders reads…</code>: имя, затем глагол в третьем лице. В русском тексте та же форма: «LoadOrders читает…», «Add добавляет…». В курсе она принята для всего проекта. Если имени нет или оно не первое, <code>revive</code> выдаёт замечание.</p>
+        <div class="swap">
+          <div class="swap__row">
+            <div class="swap__old"><b>Разнобой в проекте</b>
+              <p><code>// Загрузить заказы.</code><br><code>// функция для чтения файла</code><br><code>// отчёт</code></p>
+            </div>
+            <div class="swap__arrow">→</div>
+            <div class="swap__new"><b>Одна форма</b>
+              <p><code>// LoadOrders читает заказы из файла.</code><br><code>// SaveReport записывает отчёт в файл.</code><br><code>// PrintReport печатает отчёт.</code></p>
+            </div>
+          </div>
+        </div>
+
+        <h2 id="g7"><span class="sec">§7</span>Комментарий пакета и программы</h2>
+        <p>Комментарий пакета стоит над строкой <code>package</code> и начинается словами <code>Package имя</code>. Он называет, за что отвечает пакет, и печатается первым в выводе <code>go doc</code> на пакете. У пакета обычно несколько файлов, а комментарий пакета пишут в одном из них. Если написать его в двух файлах, инструменты склеят оба текста, и порядок абзацев будет зависеть от имён файлов.</p>
+        <figure class="code">
+          <figcaption><span>internal/services/calculator.go</span><span>первые строки файла</span></figcaption>
+<pre><span class="c">// Package services — служебный слой: чтение данных и расчёты.</span>
+<span class="c">//</span>
+<span class="c">// Функции пакета работают только с данными и ничего не печатают.</span>
+<span class="k">package</span> services</pre>
+        </figure>
+        <p>В пакете <code>services</code> четыре файла, и комментарий пакета есть только в <code>calculator.go</code>; в <code>importer.go</code>, <code>orders.go</code> и <code>report_file.go</code> строка <code>package services</code> стоит без комментария. В больших пакетах для комментария заводят отдельный файл <code>doc.go</code>, в котором кроме комментария и строки <code>package</code> ничего нет: так его проще найти.</p>
+        <p>У пакета <code>main</code> комментарий описывает программу: что она делает и как её запустить. Слов <code>Package main</code> в нём не пишут — читателю программы они ничего не сообщают.</p>
+        <figure class="code">
+          <figcaption><span>main.go</span><span>комментарий программы</span></figcaption>
+<pre><span class="c">// Программа «Отчёт кафе» читает файл смены, считает выручку</span>
+<span class="c">// по официантам и печатает отчёт в консоль.</span>
+<span class="c">//</span>
+<span class="c">// Запуск из папки с go.mod:</span>
+<span class="c">//</span>
+<span class="c">//	go run .</span>
+<span class="k">package</span> main</pre>
+        </figure>
+        <p>Строка <code>//	go run .</code> начинается с табуляции после <code>//</code>. Так в комментарии записывают блок кода или команду: инструменты покажут его моноширинным шрифтом и не станут переносить по словам. Этот и другие элементы разметки разобраны в главе 4.8. Перечислять в комментарии пакета все его функции не нужно: их перечень <code>go doc</code> и pkgsite получают из самого кода.</p>
+
+        <h2 id="g8"><span class="sec">§8</span>Тип, поля и методы</h2>
+        <p>Комментарий типа стоит над словом <code>type</code> и описывает, что представляет значение этого типа. Поля структуры описывают коротким комментарием в конце строки поля — отдельного раздела, как <code>Attributes:</code> в Python, нет. У методов свои комментарии, по тем же правилам, что у функций.</p>
+        <figure class="code">
+          <figcaption><span>internal/domain/order.go</span><span>тип, поля, конструктор</span></figcaption>
+<pre><span class="c">// Order — один заказ из файла смены.</span>
+<span class="c">//</span>
+<span class="c">// Создавать заказ нужно через [NewOrder]: она проверяет сумму</span>
+<span class="c">// и приводит имя официанта к виду «Фамилия Имя».</span>
+<span class="k">type</span> <span class="f">Order</span> <span class="k">struct</span> {
+	Waiter <span class="k">string</span> <span class="c">// имя официанта в виде «Фамилия Имя»</span>
+	Kopeks <span class="k">int</span>    <span class="c">// сумма заказа в копейках, неотрицательная</span>
+}
+
+<span class="c">// NewOrder создаёт заказ с проверкой данных.</span>
+<span class="c">//</span>
+<span class="c">// Имя официанта нормализуется функцией [utils.NormalizeName].</span>
+<span class="c">// Если сумма отрицательная, возвращается [ErrNegativeKopeks].</span>
+<span class="k">func</span> <span class="f">NewOrder</span>(waiter <span class="k">string</span>, kopeks <span class="k">int</span>) (Order, <span class="k">error</span>) {</pre>
+        </figure>
+        <p>В комментарии типа сказано, что заказ представляет и как его правильно создавать. Единицы суммы — копейки — записаны у поля <code>Kopeks</code>: из типа <code>int</code> их не видно. Проверки при создании описаны у конструктора <code>NewOrder</code>, а не у типа: именно в нём они выполняются.</p>
+        <p>Так этот текст печатает <code>go doc</code>: объявление типа вместе с комментариями полей, затем комментарий типа и функции, которые его создают.</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go doc ./internal/domain Order</span></figcaption>
+<pre>$ go doc ./internal/domain Order
+package domain // import "example.com/otchet-kafe/internal/domain"
+
+type Order struct {
+	Waiter string // имя официанта в виде «Фамилия Имя»
+	Kopeks int    // сумма заказа в копейках, неотрицательная
+}
+    Order — один заказ из файла смены.
+
+    Создавать заказ нужно через NewOrder: она проверяет сумму и приводит имя
+    официанта к виду «Фамилия Имя».
+
+func NewOrder(waiter string, kopeks int) (Order, error)</pre>
+        </figure>
+
+        <h2 id="g9"><span class="sec">§9</span>Восемь ошибок</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Ошибка</th><th>Что получается</th><th>Как правильно</th></tr></thead>
+            <tbody>
+              <tr><td>Пустая строка между комментарием и объявлением</td><td><code>go doc</code> и подсказка показывают одну подпись; revive: <code>should have comment or be unexported</code></td><td>Комментарий вплотную над <code>func</code></td></tr>
+              <tr><td>Первое слово — не имя: <code>// Приводит имя…</code></td><td>Описание показывается, но revive: <code>comment on exported function NormalizeName should be of the form "NormalizeName ..."</code></td><td><code>// NormalizeName приводит…</code></td></tr>
+              <tr><td>Пересказ кода построчно</td><td>Описание длиннее функции и устаревает после первой правки</td><td>Назначение, ограничения, результат</td></tr>
+              <tr><td>Перечисление типов словами</td><td>Дублирует подпись, расходится с ней после правки</td><td>Типы в подписи, смысл в комментарии</td></tr>
+              <tr><td>Описание осталось от прежнего поведения</td><td>Читатель получает неверные сведения и не может их проверить</td><td>Править комментарий в том же коммите, что и функцию</td></tr>
+              <tr><td>Не сказано, когда возвращается ошибка</td><td>Вызывающий код не знает, какие ошибки проверять через <code>errors.Is</code></td><td>Предложение со случаем и именем ошибки: <code>[ErrNoOrders]</code></td></tr>
+              <tr><td>Пояснение к реализации в комментарии документации</td><td>Подробности устройства попадают в подсказку и на сайт</td><td>Пояснения к строкам кода — комментарием в теле</td></tr>
+              <tr><td>Комментарий пакета в нескольких файлах</td><td>Тексты склеиваются в один, порядок зависит от имён файлов</td><td>Один файл — например, <code>doc.go</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Первые две ошибки получены на проекте темы: замечания <code>revive</code> в таблице — его настоящий вывод. Ни одна из восьми ошибок не мешает сборке: компилятор комментарии не читает. Их находят программой проверки из главы 4.10 и чтением на ревью.</p>
+
+        <h2 id="g10"><span class="sec">§10</span>Мини-практика: пять минут</h2>
+        <p>Шаги выполняются на втором архиве проекта из главы 4.6.</p>
+        <ol class="steps">
+          <li>Откройте файл <code>internal/services/calculator.go</code>. Добавьте над строкой <code>package services</code> комментарий пакета, начиная со слов <code>// Package services</code>.</li>
+          <li>Добавьте короткий комментарий над <code>func CalculateAverage</code>, начиная с имени функции.</li>
+          <li>Выполните в терминале <code>go doc ./internal/services</code>. В выводе должен появиться комментарий пакета.</li>
+          <li>Выполните <code>go doc ./internal/services CalculateAverage</code> и сверьте текст с файлом.</li>
+          <li>Вставьте пустую строку между комментарием и <code>func</code> и повторите предыдущую команду. В выводе останется одна подпись.</li>
+          <li>Уберите пустую строку. Наведите указатель на вызов <code>CalculateAverage</code> в любом файле, где она вызывается, или наберите её вызов в <code>main.go</code>: в подсказке появился текст описания.</li>
+        </ol>
+
+        <h2 id="g11"><span class="sec">§11</span>Проверьте себя</h2>
+        <details>
+          <summary>Почему комментарий должен стоять вплотную над объявлением?</summary>
+          <p>Инструменты Go считают описанием объявления только комментарий, который заканчивается на строке прямо над ним. Пустая строка отрывает текст: он остаётся в файле, но <code>go doc</code>, подсказка редактора и pkgsite его не показывают.</p>
+        </details>
+        <details>
+          <summary>Чем отличаются <code>go doc ./internal/utils</code> и <code>go doc -all ./internal/utils</code>?</summary>
+          <p>Первая команда печатает комментарий пакета и подписи экспортируемых имён без их описаний. Вторая печатает пакет целиком: каждое имя с полным комментарием.</p>
+        </details>
+        <details>
+          <summary>Что напечатает <code>go doc</code> для функции без комментария?</summary>
+          <p>Строку пакета и подпись функции. Описания не будет: брать его негде. Такие функции программой находит <code>revive</code>, это разобрано в главе 4.10.</p>
+        </details>
+        <details>
+          <summary>Где пишется комментарий пакета?</summary>
+          <p>Над строкой <code>package</code> в одном из файлов пакета, со слов <code>Package имя</code>. В большом пакете для него заводят файл <code>doc.go</code>. У пакета <code>main</code> комментарий описывает программу и слов <code>Package main</code> не содержит.</p>
+        </details>
+        <details>
+          <summary>Как описать поля структуры?</summary>
+          <p>Коротким комментарием в конце строки поля: <code>Kopeks int // сумма заказа в копейках</code>. <code>go doc</code> печатает эти комментарии вместе с объявлением типа.</p>
+        </details>
+        <details>
+          <summary>Функция изменилась, а комментарий остался прежним. Чем это хуже отсутствия комментария?</summary>
+          <p>Без описания читателю приходится открыть код. Неверное описание читатель принимает за верное и строит на нём вызывающий код, а расхождение обнаруживается при работе программы. Поэтому комментарий правят в том же изменении, что и поведение функции.</p>
+        </details>
+
+        <h2 id="g12"><span class="sec">§12</span>Шпаргалка по главе</h2>
+        <div class="cheat">
+          <div>
+            <b>Место</b>
+            <code>вплотную над func, type, var</code>
+            <code>над package — у пакета</code>
+          </div>
+          <div>
+            <b>Запись</b>
+            <code>// Имя действие.</code>
+            <code>// — граница абзаца</code>
+          </div>
+          <div>
+            <b>Прочитать</b>
+            <code>go doc ./pkg Имя</code>
+            <code>go doc -all ./pkg</code>
+            <code>go doc -src ./pkg Имя</code>
+          </div>
+          <div>
+            <b>Подсказка в VS Code</b>
+            <code>наведение на имя</code>
+            <code>Cmd/Ctrl+K, затем Cmd/Ctrl+I</code>
+          </div>
+          <div>
+            <b>Строение</b>
+            <code>первое предложение с именем</code>
+            <code>пустая строка //</code>
+            <code>ограничения, результат, ошибки</code>
+          </div>
+          <div>
+            <b>Пакет и поля</b>
+            <code>// Package utils …</code>
+            <code>Kopeks int // в копейках</code>
+          </div>
+        </div>
+
+        <h3>Итог главы</h3>
+        <p>Комментарий документации — комментарий вплотную над объявлением верхнего уровня. Его читают <code>go doc</code>, подсказка редактора и pkgsite; комментарий, отделённый пустой строкой, становится обычным, и ошибки при этом не возникает: описание просто не доходит до читателя. Первое предложение начинается с имени описываемого и сообщает действие. Подробности идут абзацами через строку <code>//</code>; разделов для параметров и результата в Go нет, их описывают предложениями. Комментарий пакета начинается словами <code>Package имя</code>, поля структуры описывают в конце строки. В следующей главе разобрана разметка внутри комментария — ссылки, списки, блоки кода — и примеры, которые проверяются запуском.</p>
+
+        <div class="sources">
+          <b>Откуда взяты факты</b>
+          <ol>
+            <li>Место комментария, форма первого предложения, комментарии пакета и программы — <a href="https://go.dev/doc/comment">Go Doc Comments</a>.</li>
+            <li>Флаги <code>go doc</code> — <a href="https://pkg.go.dev/cmd/go#hdr-Show_documentation_for_package_or_symbol">документация команды go</a>.</li>
+            <li>Правило <code>exported</code> программы revive — <a href="https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md#exported">описание правил revive</a>.</li>
+            <li>Выводы <code>go doc</code> и <code>revive</code> получены на архивах проекта темы с Go <code>1.27</code> и revive <code>1.17</code>.</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="06-vidy-dokumentacii.html">← 4.6 Виды документации кода</a><a href="08-formaty.html">4.8 Разметка и примеры →</a></div>
+        </div>
 
         <div class="colophon">
           <span>Глава 4.7 · Докстринг: где пишется и как читается · МДК.01.01</span>

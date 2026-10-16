@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body data-title-py="4.8 Четыре формата докстрингов · Аннотации типов и документация" data-title-go="4.8 Разметка и примеры · Типы и документация в Go">
   <div class="book">
     <div class="book__body">
       <div class="spine"><span>Тема 04 · Аннотации типов и документация кода</span></div>
@@ -21,6 +21,7 @@
           <p class="running__folio">Глава 4.8</p>
         </div>
 
+        <div data-lang="py">
         <header class="chapter-head">
           <span class="chapter-num">4.8</span>
           <h1>Четыре формата<br>на одной функции</h1>
@@ -428,6 +429,365 @@
         </div>
 
         <div class="pager"><a href="07-chto-takoe-dokstring.html">← 4.7 Докстринг: где пишется и как читается</a><a href="09-razbor-sluchaev.html">4.9 Разбор случаев: двенадцать функций →</a></div>
+        </div>
+
+        <div data-lang="go">
+        <header class="chapter-head">
+          <span class="chapter-num">4.8</span>
+          <h1>Разметка комментария<br>и примеры, которые проверяются</h1>
+          <p class="lead">В Python для докстрингов сложились четыре формата, в Go формат один на весь язык. В этой главе разобрана его разметка — абзацы, ссылки на имена, списки, блоки кода, заголовки, пометка об устаревании — и то, как <code>gofmt</code> приводит её к одному виду. Вторая половина главы — функции-примеры <code>Example…</code>: они показываются в документации и проверяются командой <code>go test</code>.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Формат записи</dd></div>
+          <div><dt>Уровень</dt><dd>Начальный</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 4.6 и 4.7, тесты Go из темы 02</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Читать документацию чужих пакетов и писать свою в том же виде</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#g1">Один формат на весь язык</a></li>
+            <li><a href="#g2">Абзацы</a></li>
+            <li><a href="#g3">Ссылки на имена и адреса</a></li>
+            <li><a href="#g4">Списки, блоки кода, заголовки</a></li>
+            <li><a href="#g5">Пометка Deprecated</a></li>
+            <li><a href="#g6">gofmt приводит разметку</a></li>
+            <li><a href="#g7">Как разметка выглядит на сайте</a></li>
+            <li><a href="#g8">Примеры, которые проверяются запуском</a></li>
+            <li><a href="#g9">Сравнение с форматами Python</a></li>
+            <li><a href="#g10">Что писать в этом курсе</a></li>
+            <li><a href="#g11">Проверьте себя</a></li>
+            <li><a href="#g12">Шпаргалка по главе</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="g1"><span class="sec">§1</span>Один формат на весь язык</h2>
+        <p>В Python PEP 257 задаёт только общие правила, а разметку разделов придумали отдельные проекты: так появились форматы reStructuredText, Google и NumPy. В Go разметку комментариев определяет сам язык — руководство <a href="https://go.dev/doc/comment">Go Doc Comments</a>, — и все инструменты читают её одинаково: <code>go doc</code>, gopls, pkgsite и сайт pkg.go.dev. Выбирать формат для проекта не нужно.</p>
+        <p>Разметка намеренно бедная. В ней нет разделов <code>Args:</code> и <code>Returns:</code>, нет полужирного шрифта и таблиц. Комментарий читается как обычный текст и в файле, и в терминале. Элементов разметки шесть:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Элемент</th><th>Как записывается</th><th>Где разобран</th></tr></thead>
+            <tbody>
+              <tr><td>Абзац</td><td>строки текста; абзацы разделяет строка <code>//</code></td><td>§2</td></tr>
+              <tr><td>Ссылка на имя</td><td><code>[FormatKopeks]</code>, <code>[strings.Fields]</code></td><td>§3</td></tr>
+              <tr><td>Ссылка на адрес</td><td><code>[текст]</code> в абзаце и строка <code>[текст]: https://…</code> внизу</td><td>§3</td></tr>
+              <tr><td>Список</td><td>строки с отступом и знаком <code>-</code> или номером</td><td>§4</td></tr>
+              <tr><td>Блок кода</td><td>строки с отступом, без знака списка</td><td>§4</td></tr>
+              <tr><td>Заголовок</td><td>строка <code># Заголовок</code> между пустыми строками</td><td>§4</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Отдельно стоит абзац, начинающийся словом <code>Deprecated:</code>, — пометка об устаревшем имени (§5). Все примеры главы взяты из третьего архива: там у пакета <code>utils</code> есть файл <code>doc.go</code>, в котором использованы почти все элементы.</p>
+
+        <h2 id="g2"><span class="sec">§2</span>Абзацы</h2>
+        <p>Абзац — подряд идущие строки текста. Переносы строк внутри абзаца ничего не значат: <code>go doc</code> и pkgsite склеивают строки и переносят текст заново по ширине экрана. Поэтому строки в файле обрывают там, где удобно читать код, — обычно до 70–80 знаков. Новый абзац начинается после строки, в которой стоит только <code>//</code>.</p>
+        <figure class="code">
+          <figcaption><span>internal/services/orders.go</span><span>два абзаца</span></figcaption>
+<pre><span class="c">// RevenueByWaiter считает выручку по каждому официанту и возвращает</span>
+<span class="c">// её в порядке убывания суммы.</span>
+<span class="c">//</span>
+<span class="c">// Параметр top ограничивает число официантов в результате;</span>
+<span class="c">// значение 0 означает «все». Для пустого списка заказов</span>
+<span class="c">// возвращается [ErrNoOrders].</span></pre>
+        </figure>
+        <p>Первый абзац — что делает функция. Второй — подробности: смысл параметра <code>top</code> и случай ошибки. Параметры называются по имени прямо в тексте; отдельного раздела для них нет.</p>
+
+        <h2 id="g3"><span class="sec">§3</span>Ссылки на имена и адреса</h2>
+        <p>Имя в квадратных скобках — <span class="term">ссылка на документацию</span> (<i>doc link</i>). На сайте она становится переходом к описанию этого имени, в подсказке редактора — тоже ссылкой, в выводе <code>go doc</code> скобки просто убираются. Ссылаться можно на имя своего пакета, на имя другого пакета и на метод:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Запись</th><th>Куда ведёт</th></tr></thead>
+            <tbody>
+              <tr><td><code>[ErrNoOrders]</code></td><td>имя из того же пакета</td></tr>
+              <tr><td><code>[utils.NormalizeName]</code></td><td>имя из другого пакета, который импортирован в этом файле</td></tr>
+              <tr><td><code>[strings.Fields]</code></td><td>имя из стандартной библиотеки</td></tr>
+              <tr><td><code>[Shift.Add]</code></td><td>метод типа</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Ссылки на имена проверяются: если имени нет, скобки останутся в тексте как есть, без перехода. Поэтому ссылку на ошибку <code>[ErrNoOrders]</code> лучше писать, чем просто слово: после переименования переменной неработающую ссылку видно на сайте.</p>
+        <p>Ссылка на внешний адрес записывается в два места. В тексте — слово или фраза в квадратных скобках, в конце комментария — отдельная строка с этой же фразой, двоеточием и адресом:</p>
+        <figure class="code">
+          <figcaption><span>internal/utils/doc.go</span><span>ссылка на адрес</span></figcaption>
+<pre><span class="c">// Правила записи этих комментариев — в руководстве [Go Doc Comments].</span>
+<span class="c">//</span>
+<span class="c">// [Go Doc Comments]: https://go.dev/doc/comment</span></pre>
+        </figure>
+        <p>Строку с адресом называют определением ссылки. На сайте её не видно: фраза в тексте становится ссылкой, а сама строка скрывается. Адрес, записанный в тексте без скобок, например <code>https://go.dev</code>, тоже становится ссылкой.</p>
+
+        <h2 id="g4"><span class="sec">§4</span>Списки, блоки кода, заголовки</h2>
+        <p>Эти три элемента видны в комментарии пакета <code>utils</code>. Он вынесен в отдельный файл <code>doc.go</code>, в котором кроме комментария и строки <code>package</code> ничего нет:</p>
+        <figure class="code">
+          <figcaption><span>internal/utils/doc.go</span><span>файл целиком</span></figcaption>
+<pre><span class="c">// Package utils форматирует строки, суммы и даты для отчёта.</span>
+<span class="c">//</span>
+<span class="c">// # Суммы</span>
+<span class="c">//</span>
+<span class="c">// Все суммы в проекте хранятся в копейках, целыми числами.</span>
+<span class="c">// Строку с рублями возвращает [FormatKopeks]:</span>
+<span class="c">//</span>
+<span class="c">//	FormatKopeks(125000) // "1 250,00 ₽"</span>
+<span class="c">//</span>
+<span class="c">// # Имена</span>
+<span class="c">//</span>
+<span class="c">// Имена официантов приводятся к одному виду функцией [NormalizeName]:</span>
+<span class="c">//   - лишние пробелы убираются;</span>
+<span class="c">//   - каждое слово начинается с заглавной буквы.</span>
+<span class="c">//</span>
+<span class="c">// Правила записи этих комментариев — в руководстве [Go Doc Comments].</span>
+<span class="c">//</span>
+<span class="c">// [Go Doc Comments]: https://go.dev/doc/comment</span>
+<span class="k">package</span> utils</pre>
+        </figure>
+        <p><b>Заголовок</b> — строка, которая начинается с <code>#</code> и пробела, с пустыми строками <code>//</code> до и после. Здесь их два: «Суммы» и «Имена». Заголовки нужны в длинных комментариях пакета; в комментарии одной функции их не пишут.</p>
+        <p><b>Блок кода</b> — строки с отступом после <code>//</code>. Строка <code>//	FormatKopeks(125000) // "1 250,00 ₽"</code> начинается с табуляции, поэтому инструменты покажут её моноширинным шрифтом и не станут склеивать с соседними строками. Перед блоком нужна пустая строка <code>//</code>.</p>
+        <p><b>Список</b> — строки с отступом, которые начинаются знаком <code>-</code>, <code>*</code>, <code>+</code> или номером с точкой. Знак списка без отступа списком не считается: строки <code>// * в копейках</code> и <code>// * в рублях</code> склеятся в обычный абзац «Суммы бывают: * в копейках * в рублях». Так их печатает <code>go doc</code>, если убрать отступ в комментарии проекта.</p>
+        <p>Так этот комментарий печатает <code>go doc</code>. Заголовки остались строками с <code>#</code>, блок кода получил отступ, абзацы перенесены заново, а скобки ссылок убраны:</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go doc ./internal/utils</span></figcaption>
+<pre>$ go doc ./internal/utils
+package utils // import "example.com/otchet-kafe/internal/utils"
+
+Package utils форматирует строки, суммы и даты для отчёта.
+
+# Суммы
+
+Все суммы в проекте хранятся в копейках, целыми числами. Строку с рублями
+возвращает FormatKopeks:
+
+    FormatKopeks(125000) // "1 250,00 ₽"
+
+# Имена
+
+Имена официантов приводятся к одному виду функцией NormalizeName:
+  - лишние пробелы убираются;
+  - каждое слово начинается с заглавной буквы.
+
+Правила записи этих комментариев — в руководстве Go Doc Comments.
+
+[Go Doc Comments]: https://go.dev/doc/comment
+
+func FormatKopeks(kopeks int) string
+func FormatTitle(text string, width int) string
+func NormalizeName(name string) string
+func TodayLabel() string</pre>
+        </figure>
+
+        <h2 id="g5"><span class="sec">§5</span>Пометка Deprecated</h2>
+        <p>Если имя устарело, но удалить его сразу нельзя — его ещё вызывают в других местах, — в его комментарий добавляют абзац, который начинается словом <code>Deprecated:</code> и называет замену:</p>
+        <figure class="code">
+          <figcaption><span>пример</span><span>устаревшая функция</span></figcaption>
+<pre><span class="c">// FormatRubles переводит сумму в рублях в строку.</span>
+<span class="c">//</span>
+<span class="c">// Deprecated: суммы хранятся в копейках, используйте [FormatKopeks].</span>
+<span class="k">func</span> <span class="f">FormatRubles</span>(rubles <span class="k">float64</span>) <span class="k">string</span> {</pre>
+        </figure>
+        <p>Эту пометку читают программы. pkgsite сворачивает описание устаревшего имени, gopls зачёркивает имя в автодополнении, а <code>staticcheck</code> выдаёт замечание в каждом месте, где устаревшее имя ещё вызывают. Слово пишется именно так, по-английски, с двоеточием и в начале абзаца: иначе программы пометку не узнают.</p>
+
+        <h2 id="g6"><span class="sec">§6</span>gofmt приводит разметку</h2>
+        <p>Программа <code>gofmt</code>, которая при сохранении выравнивает код, с версии Go 1.19 приводит к одному виду и комментарии документации. Она ставит табуляцию в начале строк блока кода, добавляет пустую строку перед блоком и переносит определения ссылок в конец комментария. Ниже — что <code>gofmt -d</code> предлагает исправить в небрежно записанном комментарии из пробного файла <code>markup.go</code>; строки с минусом будут убраны, с плюсом — добавлены:</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>gofmt -d internal/utils/markup.go</span></figcaption>
+<pre>@@ -7,11 +7,12 @@
+ // * в рублях
+ //
+ // Пример вызова:
+-//    FormatKopeks(125000)
++//
++//	FormatKopeks(125000)
+ //
+ // Подробнее — в [FormatKopeks] и [strings.Fields], а также на [сайте Go].
+ //
+-// [сайте Go]: https://go.dev/doc/comment
+-//
+ // Deprecated: используйте [FormatKopeks].
++//
++// [сайте Go]: https://go.dev/doc/comment</pre>
+        </figure>
+        <p>Блок кода получил пустую строку перед собой и табуляцию вместо четырёх пробелов, определение ссылки переехало в самый конец. Строки <code>// * в рублях</code> <code>gofmt</code> не тронул: без отступа это не список, а текст абзаца, и что автор имел в виду список, программа не знает. Отступ у списка ставят руками.</p>
+        <p>В VS Code с расширением Go <code>gofmt</code> срабатывает при каждом сохранении файла, поэтому разметку блоков и ссылок вручную выравнивать не нужно.</p>
+
+        <h2 id="g7"><span class="sec">§7</span>Как разметка выглядит на сайте</h2>
+        <p>Тот же комментарий пакета на странице, которую собирает pkgsite из главы 4.6. Запустите его в папке третьего архива и откройте пакет <code>internal/utils</code>:</p>
+        <figure class="shot">
+          <img src="img/pkgsite-utils.png" alt="Страница pkgsite пакета utils: заголовки Суммы и Имена, блок кода серым фоном, маркированный список, ссылки FormatKopeks, NormalizeName и Go Doc Comments">
+          <figcaption>Заголовки «Суммы» и «Имена» набраны крупно и попали в оглавление страницы слева. Блок кода стоит на сером фоне моноширинным шрифтом. Список размечен точками. <code>FormatKopeks</code>, <code>NormalizeName</code> и <code>Go Doc Comments</code> стали ссылками, а строка с адресом скрыта.</figcaption>
+        </figure>
+
+        <h2 id="g8"><span class="sec">§8</span>Примеры, которые проверяются запуском</h2>
+        <p>В Python пример вызова записывают прямо в докстринг строками <code>&gt;&gt;&gt;</code>, а модуль <code>doctest</code> его выполняет. В Go пример — отдельная функция в файле тестов. Её называют <span class="term">функцией-примером</span>: имя начинается словом <code>Example</code>, а в конце тела стоит комментарий <code>// Output:</code> с ожидаемым выводом.</p>
+        <figure class="code">
+          <figcaption><span>internal/utils/example_test.go</span><span>два примера</span></figcaption>
+<pre><span class="k">package</span> utils_test
+
+<span class="k">import</span> (
+	<span class="s">"fmt"</span>
+
+	<span class="s">"example.com/otchet-kafe/internal/utils"</span>
+)
+
+<span class="k">func</span> <span class="f">ExampleFormatKopeks</span>() {
+	fmt.Println(utils.FormatKopeks(<span class="n">125000</span>))
+	fmt.Println(utils.FormatKopeks(<span class="n">0</span>))
+	<span class="c">// Output:</span>
+	<span class="c">// 1 250,00 ₽</span>
+	<span class="c">// 0,00 ₽</span>
+}
+
+<span class="k">func</span> <span class="f">ExampleFormatTitle</span>() {
+	fmt.Println(utils.FormatTitle(<span class="s">" Итог "</span>, <span class="n">20</span>))
+	<span class="c">// Output:</span>
+	<span class="c">// ======= Итог =======</span>
+}</pre>
+        </figure>
+        <p>Разберём файл по частям. Имя файла оканчивается на <code>_test.go</code>: такие файлы не входят в собранную программу, их компилирует только <code>go test</code>. Пакет назван <code>utils_test</code> — это отдельный пакет для проверки снаружи. Функции из <code>utils</code> он вызывает так же, как вызывал бы любой другой пакет: с приставкой <code>utils.</code> и только экспортируемые. Поэтому пример показывает вызов ровно в том виде, в каком его напишет читатель документации.</p>
+        <p>Имя функции говорит, к чему относится пример. <code>ExampleFormatKopeks</code> — пример к функции <code>FormatKopeks</code>; на сайте он появится под её описанием. Варианты имён:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Имя функции-примера</th><th>К чему относится</th></tr></thead>
+            <tbody>
+              <tr><td><code>Example</code></td><td>к пакету целиком</td></tr>
+              <tr><td><code>ExampleFormatKopeks</code></td><td>к функции <code>FormatKopeks</code></td></tr>
+              <tr><td><code>ExampleShift</code></td><td>к типу <code>Shift</code></td></tr>
+              <tr><td><code>ExampleShift_Add</code></td><td>к методу <code>Add</code> типа <code>Shift</code></td></tr>
+              <tr><td><code>ExampleFormatKopeks_zero</code></td><td>второй пример к той же функции; часть после подчёркивания — с маленькой буквы</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Комментарий <code>// Output:</code> превращает пример в проверку. <code>go test</code> выполняет функцию, собирает всё, что она напечатала, и сравнивает со строками после <code>// Output:</code>. Запуск на третьем архиве:</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go test -run Example -v ./internal/utils</span></figcaption>
+<pre>$ go test -run Example -v ./internal/utils
+=== RUN   ExampleFormatKopeks
+--- PASS: ExampleFormatKopeks (0.00s)
+=== RUN   ExampleFormatTitle
+--- PASS: ExampleFormatTitle (0.00s)
+PASS
+ok  	example.com/otchet-kafe/internal/utils	1.348s</pre>
+        </figure>
+        <p>Флаг <code>-run Example</code> оставляет только функции, в имени которых есть слово <code>Example</code>, флаг <code>-v</code> печатает каждую. Без флагов <code>go test ./...</code> выполняет примеры вместе с обычными тестами. Если поведение функции разойдётся с примером, проверка упадёт. Для опыта в строке ожидаемого вывода <code>0,00 ₽</code> заменено на <code>0 ₽</code>:</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>пример разошёлся с поведением</span></figcaption>
+<pre>$ go test ./internal/utils
+--- FAIL: ExampleFormatKopeks (0.00s)
+got:
+1 250,00 ₽
+0,00 ₽
+want:
+1 250,00 ₽
+0 ₽
+FAIL
+FAIL	example.com/otchet-kafe/internal/utils	1.387s
+FAIL</pre>
+        </figure>
+        <p>Под <code>got:</code> — что функция напечатала на самом деле, под <code>want:</code> — что записано в примере. Так описание перестаёт устаревать молча: устаревший пример становится упавшей проверкой.</p>
+        <p>Ещё две проверки делает <code>go vet</code>. Если имя примера ссылается на несуществующую функцию — например, после переименования, — он сообщит: <code>ExampleTodayLabels refers to unknown identifier: TodayLabels</code>. А пример без строки <code>// Output:</code> компилируется, но не выполняется: <code>go test</code> его пропускает, и в документации он покажется без проверки.</p>
+        <div class="margin-note margin-note--steel">
+          <b>На полях: что не годится для примеров с Output</b>
+          <p>Вывод сравнивается построчно как текст. Вызов, результат которого меняется от запуска к запуску — текущая дата, случайное число, путь к файлу на конкретном компьютере, — так проверить нельзя. Поэтому у <code>TodayLabel</code> в проекте примера нет. Для таких функций пишут пример без <code>// Output:</code> или обычный тест.</p>
+        </div>
+
+        <h2 id="g9"><span class="sec">§9</span>Сравнение с форматами Python</h2>
+        <p>Те, кто пишет на обоих языках, встречают одни и те же сведения в разной записи. Соответствие такое:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Что описывается</th><th>Python, формат Google</th><th>Go</th></tr></thead>
+            <tbody>
+              <tr><td>Краткое описание</td><td>первая строка докстринга</td><td>первое предложение, начинается с имени</td></tr>
+              <tr><td>Параметры</td><td>раздел <code>Args:</code></td><td>предложения с именем параметра</td></tr>
+              <tr><td>Результат</td><td>раздел <code>Returns:</code></td><td>предложение «возвращает…»</td></tr>
+              <tr><td>Ошибки</td><td>раздел <code>Raises:</code></td><td>предложение «возвращается <code>[ErrX]</code>, если…»</td></tr>
+              <tr><td>Поля класса</td><td>раздел <code>Attributes:</code></td><td>комментарий в конце строки поля</td></tr>
+              <tr><td>Пример</td><td>раздел <code>Examples:</code> со строками <code>&gt;&gt;&gt;</code>, проверяет <code>doctest</code></td><td>функция <code>Example…</code> с <code>// Output:</code>, проверяет <code>go test</code></td></tr>
+              <tr><td>Устаревшее</td><td>свободный текст или предупреждение в коде</td><td>абзац <code>Deprecated:</code></td></tr>
+              <tr><td>Ссылка на другое имя</td><td>зависит от сборщика документации</td><td><code>[Имя]</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="g10"><span class="sec">§10</span>Что писать в этом курсе</h2>
+        <p>В курсе для Go принят формат Go Doc Comments без отступлений — других вариантов в языке нет. Договорённости проекта касаются содержания:</p>
+        <div class="checklist">
+          <p class="checklist__head">Комментарий в проекте курса</p>
+          <div class="checklist__item"><span><b>Первое предложение с имени</b>Имя, затем глагол в третьем лице: «LoadOrders читает…».</span></div>
+          <div class="checklist__item"><span><b>Ошибки со ссылкой</b>Каждая экспортируемая переменная ошибки описана, а функция, которая её возвращает, называет её в квадратных скобках.</span></div>
+          <div class="checklist__item"><span><b>Единицы и ограничения</b>Копейки, неотрицательные суммы, непустые срезы — словами, раз в типе их не видно.</span></div>
+          <div class="checklist__item"><span><b>Пример к функции форматирования</b>У функций, результат которых не зависит от времени и окружения, — функция-пример с <code>// Output:</code>.</span></div>
+        </div>
+        <p>Форматы Python из ветки Python этой главы знать полезно и в Go-проекте: в смешанных командах сервисы на двух языках часто живут в одном репозитории.</p>
+
+        <h2 id="g11"><span class="sec">§11</span>Проверьте себя</h2>
+        <details>
+          <summary>Как в комментарии Go сослаться на функцию <code>Fields</code> из пакета <code>strings</code>?</summary>
+          <p>Записать имя в квадратных скобках с именем пакета: <code>[strings.Fields]</code>. На сайте и в подсказке это будет ссылка, в выводе <code>go doc</code> — просто слово.</p>
+        </details>
+        <details>
+          <summary>Почему строки <code>// * в копейках</code> и <code>// * в рублях</code> не стали списком?</summary>
+          <p>Список в комментарии Go — строки с отступом после <code>//</code>. Без отступа знак <code>*</code> — обычный символ текста, и строки склеиваются в абзац. Правильно: <code>//   - в копейках</code>.</p>
+        </details>
+        <details>
+          <summary>Чем функция-пример с <code>// Output:</code> отличается от примера без него?</summary>
+          <p>С <code>// Output:</code> пример выполняется командой <code>go test</code>, и его вывод сравнивается с записанным: расхождение — упавшая проверка. Без <code>// Output:</code> пример только компилируется и показывается в документации.</p>
+        </details>
+        <details>
+          <summary>Как назвать пример к методу <code>TotalKopeks</code> типа <code>Shift</code>?</summary>
+          <p><code>ExampleShift_TotalKopeks</code>: имя типа, подчёркивание, имя метода.</p>
+        </details>
+        <details>
+          <summary>Где в Go пишут то, что в Python идёт в разделы <code>Args:</code> и <code>Raises:</code>?</summary>
+          <p>Обычными предложениями в абзацах комментария: параметр называют по имени, а ошибку — ссылкой на переменную ошибки, например «Для пустого списка возвращается <code>[ErrNoGrades]</code>».</p>
+        </details>
+
+        <h2 id="g12"><span class="sec">§12</span>Шпаргалка по главе</h2>
+        <div class="cheat">
+          <div>
+            <b>Абзацы и заголовки</b>
+            <code>// — граница абзаца</code>
+            <code>// # Заголовок</code>
+          </div>
+          <div>
+            <b>Ссылки</b>
+            <code>[ErrNoOrders] [strings.Fields]</code>
+            <code>// [текст]: https://…</code>
+          </div>
+          <div>
+            <b>Список и код</b>
+            <code>//   - пункт</code>
+            <code>//	код с табуляцией</code>
+          </div>
+          <div>
+            <b>Устаревшее</b>
+            <code>// Deprecated: используйте [X].</code>
+          </div>
+          <div>
+            <b>Пример</b>
+            <code>func ExampleFormatKopeks()</code>
+            <code>// Output:</code>
+          </div>
+          <div>
+            <b>Проверка</b>
+            <code>go test -run Example -v ./...</code>
+            <code>gofmt -d файл.go</code>
+          </div>
+        </div>
+
+        <h3>Итог главы</h3>
+        <p>Разметку комментариев в Go определяет сам язык, и формат у всех проектов один. Абзацы разделяет строка <code>//</code>, имя в квадратных скобках становится ссылкой, строки с отступом — списком или блоком кода, строка <code># …</code> — заголовком, абзац <code>Deprecated:</code> помечает устаревшее имя. <code>gofmt</code> выравнивает блоки и ссылки при сохранении файла. Примеры вызова пишут функциями <code>Example…</code> в файлах <code>_test.go</code>: строка <code>// Output:</code> делает их проверкой, которую выполняет <code>go test</code>, а pkgsite показывает их рядом с описанием. В следующей главе на этих правилах разобраны двенадцать случаев — от функции без параметров до пакета.</p>
+
+        <div class="sources">
+          <b>Откуда взяты факты</b>
+          <ol>
+            <li>Абзацы, заголовки, ссылки, списки, блоки кода, Deprecated и переформатирование в gofmt — <a href="https://go.dev/doc/comment">Go Doc Comments</a>.</li>
+            <li>Функции-примеры, их имена и <code>// Output:</code> — <a href="https://pkg.go.dev/testing#hdr-Examples">документация пакета testing, Examples</a>; статья <a href="https://go.dev/blog/examples">Testable Examples in Go</a>.</li>
+            <li>Проверка имён примеров — анализатор <a href="https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/tests">tests</a> в составе <code>go vet</code>.</li>
+            <li>Выводы <code>go doc</code>, <code>gofmt</code>, <code>go test</code> и <code>go vet</code> получены на третьем архиве с Go <code>1.27</code>; страница pkgsite снята с того же архива.</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="07-chto-takoe-dokstring.html">← 4.7 Комментарий документации</a><a href="09-razbor-sluchaev.html">4.9 Разбор случаев →</a></div>
+        </div>
 
         <div class="colophon">
           <span>Глава 4.8 · Четыре формата на одной функции · МДК.01.01</span>

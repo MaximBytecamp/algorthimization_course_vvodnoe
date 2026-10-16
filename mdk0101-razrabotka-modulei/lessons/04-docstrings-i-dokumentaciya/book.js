@@ -48,6 +48,58 @@
   }
 
 
+  /* ---- Переключатель языка материала --------------------------- */
+  /* Книга одна, веток две: блоки помечены data-lang="py" или "go",
+     видимостью управляет CSS. Ключ хранилища общий с темой 02, поэтому
+     выбранный там язык открывается и здесь. Заголовок вкладки для каждой
+     ветки лежит в data-title-py и data-title-go у body. */
+  if (document.querySelector('.book [data-lang]')) {
+    const langs = [['py', 'Python'], ['go', 'Go']];
+    const key = 'modules-book-lang';
+
+    const read = () => {
+      try {
+        const saved = localStorage.getItem(key);
+        return langs.some(([id]) => id === saved) ? saved : 'py';
+      } catch (_) {
+        return 'py';
+      }
+    };
+
+    const bar = document.createElement('div');
+    bar.className = 'osbar langbar';
+    bar.innerHTML = '<span class="osbar__label">язык</span>';
+
+    const buttons = langs.map(([id, title]) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = title;
+      button.dataset.value = id;
+      bar.appendChild(button);
+      return button;
+    });
+
+    const apply = (value, save) => {
+      document.documentElement.setAttribute('data-lang', value);
+      buttons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.value === value)));
+      const titles = document.body.dataset;
+      if (titles.titlePy && titles.titleGo) document.title = value === 'go' ? titles.titleGo : titles.titlePy;
+      if (save) {
+        try { localStorage.setItem(key, value); } catch (_) { /* приватный режим */ }
+      }
+    };
+
+    buttons.forEach(button => button.addEventListener('click', () => apply(button.dataset.value, true)));
+
+    const running = document.querySelector('.running');
+    if (running) running.appendChild(bar);
+    apply(read(), false);
+
+    window.addEventListener('storage', event => {
+      if (event.key === key && event.newValue) apply(read(), false);
+    });
+  }
+
   /* ---- Переключатель операционной системы ---------------------- */
   /* Инструкции по установке разные, а глава одна: блоки помечены
      data-os, видимостью управляет CSS, выбор запоминается на все главы. */

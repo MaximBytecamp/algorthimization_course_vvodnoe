@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body data-title-py="4.1 Аннотация типа · Аннотации типов и документация" data-title-go="4.1 Тип в подписи функции · Типы и документация в Go">
   <div class="book">
     <div class="book__body">
       <div class="spine"><span>Тема 04 · Аннотации типов и документация кода</span></div>
@@ -21,6 +21,7 @@
           <p class="running__folio">Глава 4.1</p>
         </div>
 
+        <div data-lang="py">
         <header class="chapter-head">
           <span class="chapter-num">4.1</span>
           <h1>Аннотация типа:<br>что это и что она делает</h1>
@@ -409,6 +410,473 @@ TypeError: unsupported operand type(s) for +: 'int' and 'str'</pre>
         </div>
 
         <div class="pager"><a href="index.html">← К содержанию темы</a><a href="02-tipy-v-annotaciyah.html">4.2 Типы в аннотациях →</a></div>
+        </div>
+
+        <div data-lang="go">
+        <header class="chapter-head">
+          <span class="chapter-num">4.1</span>
+          <h1>Тип в подписи функции:<br>что Go проверяет до запуска</h1>
+          <p class="lead">В этой главе разобрано, где в Go записывается тип — у параметра, у результата и у переменной — и как читать подпись функции целиком. На функциях учебного проекта показано, что делает компилятор, когда тип аргумента не совпадает с подписью, и как редактор использует типы в подсказке и в автодополнении.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Понятия</dd></div>
+          <div><dt>Уровень</dt><dd>Начальный</dd></div>
+          <div><dt>Опирается на</dt><dd>Модули и пакеты Go, тема 02</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Понимать, какие значения принимает функция, не открывая её тело</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#g1">Тип значения</a></li>
+            <li><a href="#g2">Проект темы</a></li>
+            <li><a href="#g3">Где записывается тип</a></li>
+            <li><a href="#g4">Как читать подпись функции</a></li>
+            <li><a href="#g5">Что Go делает с типом</a></li>
+            <li><a href="#g6">Подсказка редактора</a></li>
+            <li><a href="#g7">Автодополнение</a></li>
+            <li><a href="#g8">Частые вопросы</a></li>
+            <li><a href="#g9">Проверьте себя</a></li>
+            <li><a href="#g10">Шпаргалка по главе</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="g1"><span class="sec">§1</span>Тип значения</h2>
+        <p><span class="term">Тип</span> — вид значения, от которого зависит, что с ним можно делать. У числа <code>5</code> тип <code>int</code>: его можно складывать и делить. У строки <code>"5"</code> тип <code>string</code>: её можно склеить с другой строкой, а сложить с числом нельзя. Узнать тип значения можно функцией <code>fmt.Printf</code> с указателем <code>%T</code>: для <code>125000</code> она напечатает <code>int</code>, для <code>"Смена"</code> — <code>string</code>, для <code>0.15</code> — <code>float64</code>.</p>
+        <p>Go определяет тип каждой переменной, параметра и результата до запуска программы, при сборке. Такой подход называют <span class="term">статической типизацией</span>. У любой переменной тип один и не меняется: если в переменную <code>price</code> положено целое число, строку в неё положить уже нельзя. Программа, в которой тип значения где-то не совпадает с ожидаемым, не собирается, и запускать нечего.</p>
+        <p>Отсюда главное отличие от Python, где тип у параметра можно не писать. В Go подпись функции без типов не существует: <code>func CalculateAverage(grades)</code> — синтаксическая ошибка. Тип параметра и тип результата пишутся всегда, и поэтому первая строка любой функции уже отвечает на вопрос, что ей передать и что она вернёт. Эта глава учит читать такой ответ.</p>
+        <div class="lang-note">
+          <b>Как соотносится с веткой Python</b>
+          <p>В Python запись типа называется аннотацией и необязательна: интерпретатор её не проверяет, сверку выполняют отдельные программы. В Go тип в подписи — часть языка: без него код не компилируется, а сверку выполняет сам компилятор. Слово «аннотация» к Go не применяют, говорят просто «тип параметра», «тип результата».</p>
+        </div>
+
+        <h2 id="g2"><span class="sec">§2</span>Проект темы</h2>
+        <p>Трудность «что передать и что вернётся» видна только в проекте, где функций много и они лежат в разных пакетах. Поэтому все примеры темы взяты из одного такого проекта — «Отчёт кафе». Он читает файл смены с заказами, считает выручку по каждому официанту и печатает отчёт в консоль. Код разложен по пакетам внутри папки <code>internal</code>, как в теме 02: <code>domain</code> — заказ и смена, <code>services</code> — чтение файла и расчёты, <code>utils</code> — имена, суммы и дата, <code>ui</code> — печать. Суммы хранятся в копейках, целыми числами: <code>125000</code> означает <code>1 250,00 ₽</code>.</p>
+        <p>Проект выдаётся в трёх архивах с одним и тем же кодом на разных этапах темы. Первый архив не собирается: в нём двенадцать ошибок типов, их исправляют в практике главы 4.5. Второй — рабочий код без комментариев документации; на нём построены главы 4.1–4.4 и вся вторая часть темы. Третий — тот же код с документацией, эталон для сверки в конце.</p>
+        <div class="downloads">
+          <a class="download" href="materials/otchet-kafe-go-oshibki.zip" download>
+            <span>↓</span>
+            <b>1 · С ошибками типов<small>ZIP · практика 4.5</small></b>
+          </a>
+          <a class="download" href="materials/otchet-kafe-go-start.zip" download>
+            <span>↓</span>
+            <b>2 · Рабочий, без документации<small>ZIP · главы 4.1–4.4 и 4.6–4.11</small></b>
+          </a>
+          <a class="download" href="materials/otchet-kafe-go-dokumentirovan.zip" download>
+            <span>↓</span>
+            <b>3 · С документацией<small>ZIP · эталон для сверки в конце темы</small></b>
+          </a>
+        </div>
+        <p>Для этой главы нужен второй архив. Подготовьте его к работе:</p>
+        <ol class="steps">
+          <li>Распакуйте архив. <span data-os="win">В Проводнике щёлкните по архиву правой кнопкой и выберите <b>Извлечь всё</b>.</span><span data-os="mac">В Finder дважды щёлкните по архиву: рядом появится папка.</span><span data-os="linux">В файловом менеджере щёлкните по архиву правой кнопкой и выберите <b>Извлечь</b> или выполните в терминале <code>unzip имя-архива.zip</code>.</span></li>
+          <li>Откройте получившуюся папку в VS Code: <b>File → Open Folder</b>. Открывать нужно папку, в которой лежат <code>go.mod</code> и <code>main.go</code>: по файлу <code>go.mod</code> Go и редактор находят корень модуля.</li>
+          <li>Откройте терминал редактора (<kbd>Ctrl</kbd> + <kbd>`</kbd>) и проверьте версию Go: <code>go version</code>. Нужна версия <code>1.23</code> или новее. Установка Go разобрана в <a href="../02-struktura-python-proekta/01-venv.html">главе 2.1</a>, ветка Go.</li>
+          <li>Соберите все пакеты: <code>go build ./...</code>. Запись <code>./...</code> означает «текущая папка и все вложенные». Если команда ничего не напечатала, сборка прошла без ошибок.</li>
+          <li>Запустите проект: <code>go run .</code>. В терминале появится отчёт по смене.</li>
+        </ol>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>что печатает проект</span></figcaption>
+<pre>$ go run .
+=========== Смена 21.09.2026 ===========
+Петрова Анна                  2 480,50 ₽
+Иванов Пётр                   1 685,00 ₽
+Сидоров Илья                    772,00 ₽
+=========== Итого 4 937,50 ₽ ===========</pre>
+        </figure>
+        <p>Дата в шапке — текущая: проект берёт её из часов компьютера. Команды Go одинаковы в Windows, macOS и Linux, окружение, как у Python, создавать не нужно: зависимости модуля записаны в <code>go.mod</code>, а у этого проекта внешних зависимостей нет совсем.</p>
+
+        <h2 id="g3"><span class="sec">§3</span>Где записывается тип</h2>
+        <p>Откройте файл <code>internal/services/calculator.go</code> и найдите первую строку функции <code>CalculateAverage</code>. Рядом для сравнения — та же функция из ветки Python:</p>
+        <div class="swap">
+          <div class="swap__row">
+            <div class="swap__old"><b>Python, с аннотациями</b>
+              <p><code>def calculate_average(grades: list[int]) -&gt; float:</code></p>
+              <p>Тип пишется после имени через двоеточие, результат — после стрелки. Аннотации можно не писать.</p>
+            </div>
+            <div class="swap__arrow">→</div>
+            <div class="swap__new"><b>Go</b>
+              <p><code>func CalculateAverage(grades []int) (float64, error)</code></p>
+              <p>Тип пишется после имени через пробел, без двоеточия. Результатов два: дробное число и ошибка. Без типов строка не скомпилируется.</p>
+            </div>
+          </div>
+        </div>
+        <p>В Go тип записывается в трёх местах: у параметра, у результата и у переменной. Все три показаны на схеме. Для неё взята функция <code>FormatTitle</code> из <code>internal/utils/formatter.go</code>: у неё два параметра разных типов и один результат. Пример переменной — строка из функции <code>RevenueByWaiter</code>.</p>
+        <figure class="scheme">
+          <svg viewBox="0 0 680 250" role="img" aria-label="Схема подписи функции FormatTitle: имя параметра и тип через пробел, тип результата после скобки; объявление переменной через var">
+            <rect x="8" y="70" width="664" height="56" fill="var(--page)" stroke="var(--ink)" stroke-width="3"/>
+            <text x="24" y="105" font-family="Roboto Mono, monospace" font-size="17" fill="var(--steel)">func</text>
+            <text x="74" y="105" font-family="Roboto Mono, monospace" font-size="17" fill="var(--ink)">FormatTitle(</text>
+            <rect x="196" y="84" width="118" height="30" fill="var(--fire-pale)" stroke="var(--fire)" stroke-width="2"/>
+            <text x="202" y="105" font-family="Roboto Mono, monospace" font-size="17" fill="var(--ink)">text string</text>
+            <text x="317" y="105" font-family="Roboto Mono, monospace" font-size="17" fill="var(--ink)">,</text>
+            <rect x="332" y="84" width="98" height="30" fill="var(--fire-pale)" stroke="var(--fire)" stroke-width="2"/>
+            <text x="338" y="105" font-family="Roboto Mono, monospace" font-size="17" fill="var(--ink)">width int</text>
+            <text x="433" y="105" font-family="Roboto Mono, monospace" font-size="17" fill="var(--ink)">)</text>
+            <rect x="452" y="84" width="76" height="30" fill="var(--steel-pale)" stroke="var(--steel)" stroke-width="2"/>
+            <text x="458" y="105" font-family="Roboto Mono, monospace" font-size="17" fill="var(--ink)">string</text>
+            <text x="540" y="105" font-family="Roboto Mono, monospace" font-size="17" fill="var(--ink)">{</text>
+
+            <path d="M 255 84 L 255 50" stroke="var(--fire)" stroke-width="2"/>
+            <text x="190" y="40" font-family="Roboto Mono, monospace" font-size="12" fill="var(--fire-deep)">имя тип</text>
+            <path d="M 381 84 L 381 50" stroke="var(--fire)" stroke-width="2"/>
+            <text x="320" y="40" font-family="Roboto Mono, monospace" font-size="12" fill="var(--fire-deep)">имя тип</text>
+            <path d="M 490 114 L 490 150" stroke="var(--steel)" stroke-width="2"/>
+            <text x="420" y="168" font-family="Roboto Mono, monospace" font-size="12" fill="var(--steel)">тип результата</text>
+
+            <text x="24" y="210" font-family="Roboto Mono, monospace" font-size="15" fill="var(--steel)">var</text>
+            <text x="58" y="210" font-family="Roboto Mono, monospace" font-size="15" fill="var(--ink)">names</text>
+            <rect x="110" y="192" width="88" height="26" fill="var(--fire-pale)" stroke="var(--fire)" stroke-width="2"/>
+            <text x="116" y="210" font-family="Roboto Mono, monospace" font-size="15" fill="var(--ink)">[]string</text>
+            <text x="230" y="210" font-family="Roboto Mono, monospace" font-size="12" fill="var(--fire-deep)">var имя тип — значение будет «нулевым»: пустой срез</text>
+          </svg>
+          <figcaption>Три места, где пишется тип. У параметра — после имени через пробел. У результата — после закрывающей скобки параметров, перед телом функции. У переменной, объявленной словом <code>var</code>, — после имени.</figcaption>
+        </figure>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Где</th><th>Запись</th><th>Читается как</th></tr></thead>
+            <tbody>
+              <tr><td>Параметр</td><td><code>text string</code></td><td>параметр <code>text</code> принимает строку</td></tr>
+              <tr><td>Несколько параметров одного типа</td><td><code>a, b int</code></td><td>оба параметра — целые числа; тип пишут один раз в конце</td></tr>
+              <tr><td>Один результат</td><td><code>) string</code></td><td>функция возвращает строку</td></tr>
+              <tr><td>Несколько результатов</td><td><code>) (float64, error)</code></td><td>функция возвращает дробное число и ошибку; список в скобках</td></tr>
+              <tr><td>Результаты с именами</td><td><code>) (low, high int, err error)</code></td><td>три результата, у каждого есть имя</td></tr>
+              <tr><td>Нет результата</td><td><code>func PrintReport(lines []string)</code></td><td>после скобок ничего: функция ничего не возвращает</td></tr>
+              <tr><td>Переменная с типом</td><td><code>var names []string</code></td><td>срез строк, сейчас пустой</td></tr>
+              <tr><td>Переменная без записи типа</td><td><code>total := 0</code></td><td>тип <code>int</code> выведен из значения <code>0</code></td></tr>
+              <tr><td>Поле структуры</td><td><code>Kopeks int</code></td><td>поле <code>Kopeks</code> хранит целое число</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>В таблице кроме трёх мест есть частные случаи. Если у функции несколько результатов, их типы перечисляют в скобках через запятую. Самое частое сочетание в Go — значение и ошибка: <code>(float64, error)</code>. Тип <code>error</code> означает «ошибка или её отсутствие»; когда всё прошло хорошо, на месте ошибки возвращается <code>nil</code>. Функция без результата ничего не пишет после скобок: аналога <code>-&gt; None</code> в Go нет.</p>
+        <p>У переменной тип можно не писать, если он понятен из значения. Запись <code>total := 0</code> — короткое объявление: компилятор сам выводит тип <code>int</code> из числа <code>0</code>. Тип у такой переменной всё равно есть и не меняется, его просто не набирают руками. Запись <code>var names []string</code> нужна, когда значения пока нет: переменная получает <span class="term">нулевое значение</span> своего типа — <code>0</code> у чисел, <code>""</code> у строки, пустой срез у среза.</p>
+        <p>Правила оформления в Go не обсуждаются: их применяет программа <code>gofmt</code>, а VS Code с расширением Go запускает её при каждом сохранении файла. Пробелы, отступы и выравнивание полей структуры приводятся к одному виду сами.</p>
+        <p>В примерах уже встречались составные типы: <code>[]int</code> — «срез целых чисел», то есть список; <code>map[string]int</code> — «словарь со строковыми ключами и целыми значениями». Для чтения подписей в этой главе этого достаточно; все такие записи разобраны в главе 4.2.</p>
+
+        <h2 id="g4"><span class="sec">§4</span>Как читать подпись функции</h2>
+        <p><span class="term">Подпись функции</span> — первая строка её объявления: имя, параметры с типами и типы результатов. Подпись отвечает на три вопроса: какие значения передать, в каком порядке и что вернётся. Таблица ниже собрана из второго архива: из каждого пакета выписаны функции, которые вызываются из других пакетов, а справа записано, как эти строки читаются. Подпись читают слева направо: имя, затем каждый параметр с типом, в конце типы результатов.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Подпись</th><th>Что передают</th><th>Что получают</th></tr></thead>
+            <tbody>
+              <tr><td><code>func TodayLabel() string</code></td><td>ничего</td><td>строку с датой, например <code>"21.09.2026"</code></td></tr>
+              <tr><td><code>func NormalizeName(name string) string</code></td><td>строку с именем</td><td>строку: имя в виде «Фамилия Имя»</td></tr>
+              <tr><td><code>func FormatKopeks(kopeks int) string</code></td><td>целое число копеек</td><td>строку <code>"1 250,00 ₽"</code></td></tr>
+              <tr><td><code>func FormatTitle(text string, width int) string</code></td><td>строку и ширину — оба аргумента обязательны</td><td>строку заданной ширины</td></tr>
+              <tr><td><code>func CalculateAverage(grades []int) (float64, error)</code></td><td>срез целых чисел</td><td>дробное число и ошибку</td></tr>
+              <tr><td><code>func GradeBounds(grades []int) (low, high int, err error)</code></td><td>срез целых чисел</td><td>минимум, максимум и ошибку</td></tr>
+              <tr><td><code>func NewOrder(waiter string, kopeks int) (Order, error)</code></td><td>имя и сумму</td><td>заказ и ошибку</td></tr>
+              <tr><td><code>func LoadOrders(path string) ([]domain.Order, error)</code></td><td>путь к файлу строкой</td><td>срез заказов и ошибку</td></tr>
+              <tr><td><code>func RevenueByWaiter(orders []domain.Order, top int) ([]WaiterRevenue, error)</code></td><td>срез заказов и число</td><td>срез пар «официант — сумма» и ошибку</td></tr>
+              <tr><td><code>func SortOrdersInPlace(orders []domain.Order)</code></td><td>срез заказов</td><td>ничего: функция меняет порядок в переданном срезе</td></tr>
+              <tr><td><code>func SaveReport(path string, lines []string) (int, error)</code></td><td>путь и срез строк</td><td>целое число и ошибку</td></tr>
+              <tr><td><code>func PrintReport(lines []string)</code></td><td>срез строк</td><td>ничего: функция только печатает</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Все сведения в правых колонках взяты только из подписей. Значит, по таблице можно составить вызов, не открывая ни одного пакета. <code>LoadOrders</code> возвращает <code>[]domain.Order</code> и ошибку, а <code>RevenueByWaiter</code> принимает <code>[]domain.Order</code>. Поэтому первый результат одной функции передаётся в другую без преобразований — так они и вызываются в <code>main.go</code>:</p>
+        <figure class="code">
+          <figcaption><span>main.go</span><span>результат одной функции идёт в другую</span></figcaption>
+<pre><span class="k">func</span> <span class="f">buildReport</span>(path <span class="k">string</span>) ([]<span class="k">string</span>, <span class="k">error</span>) {
+	orders, err := services.LoadOrders(path)          <span class="c">// []domain.Order, error</span>
+	<span class="k">if</span> err != <span class="k">nil</span> {
+		<span class="k">return</span> <span class="k">nil</span>, err
+	}
+	revenue, err := services.RevenueByWaiter(orders, <span class="n">0</span>) <span class="c">// []services.WaiterRevenue, error</span>
+	...</pre>
+        </figure>
+        <p>Из этого фрагмента видны три правила вызова, которые следуют из подписей. Первое: если функция возвращает два значения, их принимают в две переменные — <code>orders, err := …</code>. Второе: ошибку проверяют сразу после вызова, сравнивая с <code>nil</code>. Третье: у параметров Go нет значений по умолчанию, поэтому <code>RevenueByWaiter</code> вызывается с явным <code>0</code> на месте <code>top</code>. В Python этот аргумент можно было пропустить.</p>
+        <p>Имя пакета перед функцией тоже часть чтения. <code>services.LoadOrders</code> — функция <code>LoadOrders</code> из пакета <code>services</code>; в подписи тип <code>domain.Order</code> — тип <code>Order</code> из пакета <code>domain</code>. Внутри своего пакета имя пишут без приставки: в <code>internal/domain/order.go</code> это просто <code>Order</code>. Имена с заглавной буквы видны из других пакетов, со строчной — только внутри своего; это правило разобрано в <a href="../02-struktura-python-proekta/04-moduli.html">главе 2.4</a>, ветка Go.</p>
+        <p>В таблицу не попали методы типа <code>Shift</code> из <code>internal/domain/shift.go</code>: у подписи метода есть особенность. Перед именем метода в скобках стоит <span class="term">получатель</span> — объект, у которого метод вызывают, с его типом. В Python это <code>self</code> без аннотации; в Go у получателя тип пишется всегда:</p>
+        <figure class="code">
+          <figcaption><span>internal/domain/shift.go</span><span>тип Shift и его методы</span></figcaption>
+<pre><span class="k">type</span> <span class="f">Shift</span> <span class="k">struct</span> {
+	Day    time.Time
+	Orders []Order
+}
+
+<span class="k">func</span> <span class="f">NewShift</span>(day time.Time) *Shift {
+	<span class="k">return</span> &amp;Shift{Day: day}
+}
+
+<span class="k">func</span> (s *Shift) <span class="f">Add</span>(order Order) {
+	s.Orders = <span class="f">append</span>(s.Orders, order)
+}
+
+<span class="k">func</span> (s *Shift) <span class="f">TotalKopeks</span>() <span class="k">int</span> {
+	total := <span class="n">0</span>
+	<span class="k">for</span> _, order := <span class="k">range</span> s.Orders {
+		total += order.Kopeks
+	}
+	<span class="k">return</span> total
+}</pre>
+        </figure>
+        <p>Здесь видны все три места записи типа. Поля структуры: <code>Day time.Time</code> — дата из пакета <code>time</code>, <code>Orders []Order</code> — срез заказов. Получатель <code>(s *Shift)</code> читается так: «метод вызывают у указателя на смену, внутри метода смена называется <code>s</code>». Звёздочка нужна, чтобы <code>Add</code> менял ту самую смену, у которой его вызвали, а не её копию; указатели разобраны в главе 4.2. Результат <code>int</code> у <code>TotalKopeks</code> — сумма копеек. У <code>Add</code> после скобок ничего нет: метод меняет объект и ничего не возвращает. Функция <code>NewShift</code> — <span class="term">конструктор</span>: обычная функция, которая создаёт и возвращает новый объект. Отдельного <code>__init__</code> в Go нет.</p>
+
+        <h2 id="g5"><span class="sec">§5</span>Что Go делает с типом</h2>
+        <p>Подписи из §4 сообщают, что функция ожидает. Следующий вопрос — что будет, если передать не то. Ответ дают опыты. Создайте в корне проекта папку <code>proba</code>, а в ней файл <code>main.go</code>: это отдельная маленькая программа внутри того же модуля, она может импортировать пакеты проекта. Запускается она командой <code>go run ./proba</code>. Во всех вкладках ниже меняется только содержимое <code>proba/main.go</code>; выводы получены запуском.</p>
+        <p>Первые три вкладки вызывают <code>CalculateAverage(grades []int) (float64, error)</code> — сначала с подходящим аргументом, затем с двумя неподходящими. Для четвёртой нужна функция, которой в проекте нет, — сложение двух сумм; она записана прямо в <code>proba/main.go</code>.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>Тип при сборке</b><span>переключите вызов</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>Целые числа</button>
+            <button>Дробные числа</button>
+            <button>Строки</button>
+            <button>Сложение строк</button>
+          </div>
+          <div class="demo__pane">
+            <figure class="code">
+              <figcaption><span>proba/main.go</span><span>тип совпадает с подписью</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> (
+	<span class="s">"fmt"</span>
+
+	<span class="s">"example.com/otchet-kafe/internal/services"</span>
+)
+
+<span class="k">func</span> <span class="f">main</span>() {
+	average, err := services.CalculateAverage([]<span class="k">int</span>{<span class="n">5</span>, <span class="n">4</span>, <span class="n">5</span>, <span class="n">3</span>, <span class="n">5</span>})
+	fmt.Println(average, err)
+}</pre>
+            </figure>
+            <figure class="code code--out">
+              <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre>4.4 &lt;nil&gt;</pre>
+            </figure>
+            <p class="demo__verdict"><b>Собралось и работает</b>Передан срез целых чисел, как записано в подписи. Программа собрана и запущена: среднее <code>4.4</code>, ошибки нет — на её месте <code>&lt;nil&gt;</code>.</p>
+          </div>
+          <div class="demo__pane">
+            <figure class="code">
+              <figcaption><span>proba/main.go</span><span>в срезе целых — дробное число</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> (
+	<span class="s">"fmt"</span>
+
+	<span class="s">"example.com/otchet-kafe/internal/services"</span>
+)
+
+<span class="k">func</span> <span class="f">main</span>() {
+	average, err := services.CalculateAverage([]<span class="k">int</span>{<span class="n">5.5</span>, <span class="n">4.0</span>})
+	fmt.Println(average, err)
+}</pre>
+            </figure>
+            <figure class="code code--out">
+              <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre># example.com/otchet-kafe/proba
+proba/main.go:10:50: cannot use 5.5 (untyped float constant) as int value in array or slice literal (truncated)</pre>
+            </figure>
+            <p class="demo__verdict"><b>Не собралось</b>Компилятор отказался собирать программу: <code>5.5</code> нельзя положить в срез целых чисел без потери дробной части — «(truncated)», «было бы обрезано». Число <code>4.0</code> ошибки не вызвало: оно равно целому <code>4</code>, и компилятор переводит его без потерь. В Python тот же вызов выполнился и вернул <code>4.75</code>.</p>
+          </div>
+          <div class="demo__pane">
+            <figure class="code">
+              <figcaption><span>proba/main.go</span><span>срез строк вместо среза чисел</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> (
+	<span class="s">"fmt"</span>
+
+	<span class="s">"example.com/otchet-kafe/internal/services"</span>
+)
+
+<span class="k">func</span> <span class="f">main</span>() {
+	average, err := services.CalculateAverage([]<span class="k">string</span>{<span class="s">"5"</span>, <span class="s">"4"</span>})
+	fmt.Println(average, err)
+}</pre>
+            </figure>
+            <figure class="code code--out">
+              <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre># example.com/otchet-kafe/proba
+proba/main.go:10:44: cannot use []string{…} (value of type []string) as []int value in argument to services.CalculateAverage</pre>
+            </figure>
+            <p class="demo__verdict"><b>Не собралось</b>Сообщение указывает на строку вызова — <code>proba/main.go</code>, строка 10 — и называет оба типа: передан <code>[]string</code>, ожидался <code>[]int</code>. В Python ошибка возникла внутри функции, в строке с <code>sum</code>, и место неверного вызова из неё видно не было.</p>
+          </div>
+          <div class="demo__pane">
+            <figure class="code">
+              <figcaption><span>proba/main.go</span><span>сложение двух сумм</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> <span class="s">"fmt"</span>
+
+<span class="k">func</span> <span class="f">addKopeks</span>(a <span class="k">int</span>, b <span class="k">int</span>) <span class="k">int</span> {
+	<span class="k">return</span> a + b
+}
+
+<span class="k">func</span> <span class="f">main</span>() {
+	fmt.Println(addKopeks(<span class="n">150</span>, <span class="n">200</span>))
+	fmt.Println(addKopeks(<span class="s">"150"</span>, <span class="s">"200"</span>))
+}</pre>
+            </figure>
+            <figure class="code code--out">
+              <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre># example.com/otchet-kafe/proba
+proba/main.go:11:24: cannot use "150" (untyped string constant) as int value in argument to addKopeks
+proba/main.go:11:31: cannot use "200" (untyped string constant) as int value in argument to addKopeks</pre>
+            </figure>
+            <p class="demo__verdict"><b>Не собралось, ни одна строка не выполнена</b>Ошибочна только строка 11, но не выполнилась и строка 10 с верным вызовом: программа с ошибкой типа не собирается целиком. В Python этот вызов тихо вернул строку <code>"150200"</code> вместо суммы <code>350</code>. В Go такая подмена невозможна: строку из CSV-файла нужно явно перевести в число вызовом <code>strconv.Atoi</code>, как в <code>LoadOrders</code>.</p>
+          </div>
+        </div>
+        <p>Из четырёх опытов следует: в Go тип в подписи — требование, а не пожелание. Компилятор сверяет каждый вызов с подписью до запуска и не собирает программу, пока есть хоть одно несовпадение. Ошибка указывает на строку вызова и называет оба типа — переданный и ожидаемый.</p>
+        <p>Компилятор проверяет и количество результатов. Если забыть, что <code>CalculateAverage</code> возвращает два значения, и принять одно, программа тоже не соберётся:</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>принят один результат из двух</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> (
+	<span class="s">"fmt"</span>
+
+	<span class="s">"example.com/otchet-kafe/internal/services"</span>
+)
+
+<span class="k">func</span> <span class="f">main</span>() {
+	average := services.CalculateAverage([]<span class="k">int</span>{<span class="n">5</span>, <span class="n">4</span>, <span class="n">5</span>, <span class="n">3</span>, <span class="n">5</span>})
+	fmt.Println(average)
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre># example.com/otchet-kafe/proba
+proba/main.go:10:13: assignment mismatch: 1 variable but services.CalculateAverage returns 2 values</pre>
+        </figure>
+        <p>Сообщение читается так: «несовпадение при присваивании: одна переменная, а функция возвращает два значения». Ошибку из результата нельзя случайно потерять: её нужно принять в переменную. Если ошибка точно не нужна, её место явно занимают знаком подчёркивания: <code>average, _ := …</code>.</p>
+        <div class="analogy">
+          <p class="analogy__head">Ассоциация: турникет в метро</p>
+          <div class="analogy__pair">
+            <div class="analogy__side">
+              <b>В жизни</b>
+              <p>Турникет сверяет билет на входе. С неподходящим билетом человек не проходит на станцию вовсе — разбираться с ним в вагоне не придётся.</p>
+            </div>
+            <div class="analogy__side">
+              <b>В коде</b>
+              <p>Компилятор сверяет каждый вызов с подписью при сборке. Программа с неверным типом аргумента не собирается и до запуска не доходит.</p>
+            </div>
+          </div>
+          <p class="analogy__limit"><b>Где не совпадает</b>Турникет пропускает людей по одному, а компилятор проверяет всю программу целиком: одна неверная строка останавливает сборку всего пакета, даже верные строки не выполняются.</p>
+        </div>
+
+        <h2 id="g6"><span class="sec">§6</span>Подсказка редактора</h2>
+        <p>Компилятор проверяет типы при сборке. Редактор использует те же типы раньше — пока код читают и пишут. В VS Code этим занимается расширение <b>Go</b>: оно запускает программу <span class="term">gopls</span> (произносится «гоу-плиз», от <i>Go please</i>) — языковой сервер Go. Языковой сервер — программа, которая постоянно разбирает код проекта и отвечает редактору: какой тип у имени под курсором, где объявлена функция, какие ошибки в файле. Установка расширения и gopls показана по шагам в главе 4.3; если расширение уже стоит, опыт можно повторить сразу.</p>
+        <p>Подсказку вызывают наведением указателя на имя или клавишами: курсор на имя, затем <kbd>Ctrl</kbd> + <kbd>K</kbd> и <kbd>Ctrl</kbd> + <kbd>I</kbd> (на macOS — <kbd>Cmd</kbd> вместо <kbd>Ctrl</kbd>). Откройте <code>main.go</code>, найдите строку 17 — <code>revenue, err := services.RevenueByWaiter(orders, 0)</code> — и наведите указатель на <code>RevenueByWaiter</code>.</p>
+        <figure class="shot">
+          <img src="img/vscode-go-hover-call.png" alt="Подсказка VS Code на вызове services.RevenueByWaiter: func services.RevenueByWaiter(orders []domain.Order, top int) ([]services.WaiterRevenue, error)">
+          <figcaption>В подсказке — подпись функции из пакета <code>services</code>: параметры <code>orders []domain.Order</code> и <code>top int</code>, результаты <code>[]services.WaiterRevenue</code> и <code>error</code>. Из места вызова видно, что передать и что вернётся. Ниже подписи — ссылка на страницу документации пакета; во втором архиве комментариев документации нет, поэтому текста под подписью нет.</figcaption>
+        </figure>
+        <p>Наведите указатель на переменную <code>revenue</code> слева от <code>:=</code>. Тип у неё не записан, но он есть: компилятор вывел его из результата функции, и gopls показывает его так же, как записанный.</p>
+        <figure class="shot">
+          <img src="img/vscode-go-hover-variable.png" alt="Подсказка VS Code на переменной revenue: var revenue []services.WaiterRevenue">
+          <figcaption>Подсказка <code>var revenue []services.WaiterRevenue</code>: переменная — срез значений типа <code>WaiterRevenue</code> из пакета <code>services</code>. Так проверяют тип любой переменной, объявленной через <code>:=</code>.</figcaption>
+        </figure>
+
+        <h2 id="g7"><span class="sec">§7</span>Автодополнение</h2>
+        <p>Подсказка показывает типы в готовом коде. Те же типы редактор использует, пока код набирается, — в автодополнении.</p>
+        <p><span class="term">Автодополнение</span> — список, который редактор показывает при наборе: имена переменных, функций, полей и методов, подходящих в этом месте. После точки в нём перечислены поля и методы значения слева от точки. Составить такой список редактор может, только если знает тип значения, а в Go тип известен всегда. Откройте <code>internal/services/orders.go</code>, поставьте курсор в конец строки <code>func SortOrdersInPlace(orders []domain.Order) {</code>, нажмите <kbd>Enter</kbd> и наберите <code>orders[0].</code> — первый элемент среза и точку. Если список не появился сам, вызовите его клавишами <kbd>Ctrl</kbd> + <kbd>Пробел</kbd>; на macOS это сочетание часто занято переключением раскладки, тогда список вызывают командой <b>Trigger Suggest</b> из палитры команд (<kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd>). После опыта отмените набранное: <kbd>Ctrl</kbd> + <kbd>Z</kbd>.</p>
+        <figure class="shot">
+          <img src="img/vscode-go-completion.png" alt="VS Code: после orders[0]. редактор предлагает поля Kopeks и Waiter, рядом их тип int и string">
+          <figcaption>Элемент среза — <code>domain.Order</code>, и в списке его поля <code>Kopeks</code> и <code>Waiter</code> с типами <code>int</code> и <code>string</code>. Служебных имён, как у объектов Python, в списке нет: у структуры Go есть только объявленные поля и методы.</figcaption>
+        </figure>
+        <div class="why">
+          <p class="why__head">Что дают типы в подписи при работе с кодом: итог §4–§7</p>
+          <ul class="why__list">
+            <li><b>Вызов без чтения тела функции.</b> Подсказка показывает, какие значения передавать и что вернётся.</li>
+            <li><b>Имена полей из списка.</b> Автодополнение предлагает поля структуры, и <code>order.Kopeks</code> выбирается из списка; набирать имя по памяти не нужно.</li>
+            <li><b>Проверка до запуска.</b> Компилятор сверяет каждый вызов с подписью и не собирает программу с неверным типом; gopls показывает ту же ошибку в редакторе ещё до сборки.</li>
+          </ul>
+        </div>
+        <p>Как увидеть ошибки в редакторе и в терминале, по шагам показано в главе 4.3. Перед этим, в главе 4.2, разобрано, как записать любой тип Go — от <code>int</code> до «значение или ничего». В главе 4.4 собраны ошибки, которые компилятор находит в каждом из этих типов.</p>
+
+        <h2 id="g8"><span class="sec">§8</span>Частые вопросы</h2>
+        <div class="myths">
+          <div class="myth">
+            <div class="myth__no"><b>Обычно думают</b>Раз у переменной, объявленной через <code>:=</code>, тип не записан, у неё нет типа, как в Python.</div>
+            <div class="myth__yes"><b>На самом деле</b>Тип есть всегда: компилятор выводит его из значения справа и запоминает. <code>total := 0</code> — переменная типа <code>int</code>, положить в неё строку нельзя.</div>
+          </div>
+          <div class="myth">
+            <div class="myth__no"><b>Обычно думают</b>Если тип записан, Go сам переведёт значение в этот тип.</div>
+            <div class="myth__yes"><b>На самом деле</b>Сам Go переводит только константы, записанные в коде, и только без потерь: <code>4.0</code> в <code>int</code> можно, <code>5.5</code> — нельзя. Строку в число переводят явно: <code>strconv.Atoi(row["kopeks"])</code>, целое в дробное — <code>float64(sum)</code>.</div>
+          </div>
+          <div class="myth">
+            <div class="myth__no"><b>Обычно думают</b>Если программа собралась, ошибок типов в ней не будет и при работе.</div>
+            <div class="myth__yes"><b>На самом деле</b>Компилятор проверяет то, что видно в тексте. Деление на ноль, выход за границу среза, обращение через пустой указатель случаются при работе. Эти случаи разобраны в главе 4.3.</div>
+          </div>
+        </div>
+
+        <h2 id="g9"><span class="sec">§9</span>Проверьте себя</h2>
+        <details>
+          <summary>Где пишется тип у параметра, у результата и у переменной?</summary>
+          <p>У параметра — после имени через пробел: <code>text string</code>. У результата — после закрывающей скобки параметров: <code>) string</code>, а если результатов несколько, — списком в скобках: <code>) (float64, error)</code>. У переменной — после имени в объявлении <code>var</code>: <code>var names []string</code>; в записи <code>:=</code> тип выводится из значения.</p>
+        </details>
+        <details>
+          <summary>Прочитайте подпись: <code>func IsBig(kopeks, limit int) bool</code>.</summary>
+          <p>Функция принимает два целых числа — сумму и порог; тип <code>int</code> записан один раз и относится к обоим параметрам. Возвращает <code>true</code> или <code>false</code>. Значения по умолчанию у порога нет: передавать нужно оба аргумента.</p>
+        </details>
+        <details>
+          <summary>Прочитайте подпись: <code>func SaveReport(path string, lines []string) (int, error)</code>.</summary>
+          <p>Функция принимает путь строкой и срез строк. Возвращает целое число и ошибку. Что это за число — количество записанных строк, — из подписи не видно: такие сведения пишут в комментарии документации.</p>
+        </details>
+        <details>
+          <summary>Что будет при сборке вызова <code>CalculateAverage([]int{5.5, 4.0})</code>?</summary>
+          <p>Программа не соберётся: <code>5.5</code> нельзя положить в срез <code>[]int</code> без потери дробной части. Компилятор сообщит <code>cannot use 5.5 (untyped float constant) as int value</code>.</p>
+        </details>
+        <details>
+          <summary>Что означает <code>(s *Shift)</code> перед именем метода?</summary>
+          <p>Это получатель: метод вызывают у указателя на <code>Shift</code>, внутри метода объект называется <code>s</code>. Через указатель метод меняет ту самую смену, у которой его вызвали.</p>
+        </details>
+        <details>
+          <summary>Почему <code>RevenueByWaiter(orders)</code> без второго аргумента не собирается, хотя в Python так было можно?</summary>
+          <p>У параметров Go нет значений по умолчанию. Подпись требует два аргумента — <code>orders</code> и <code>top</code>, — и вызов с одним компилятор отклоняет. Значение «все официанты» передают явно: <code>RevenueByWaiter(orders, 0)</code>.</p>
+        </details>
+
+        <h2 id="g10"><span class="sec">§10</span>Шпаргалка по главе</h2>
+        <div class="cheat">
+          <div>
+            <b>Параметр</b>
+            <code>text string</code>
+            <code>a, b int — общий тип</code>
+          </div>
+          <div>
+            <b>Результат</b>
+            <code>) string</code>
+            <code>) (float64, error)</code>
+          </div>
+          <div>
+            <b>Переменная и поле</b>
+            <code>var names []string</code>
+            <code>total := 0 — тип int выведен</code>
+          </div>
+          <div>
+            <b>Метод</b>
+            <code>func (s *Shift) Add(order Order)</code>
+            <code>получатель — с типом</code>
+          </div>
+          <div>
+            <b>При сборке</b>
+            <code>несовпадение — не собирается</code>
+            <code>%T — напечатать тип</code>
+          </div>
+          <div>
+            <b>В редакторе</b>
+            <code>подсказка: Ctrl+K, Ctrl+I</code>
+            <code>автодополнение: Ctrl+Пробел</code>
+          </div>
+        </div>
+
+        <h3>Итог главы</h3>
+        <p>В Go тип записывается у каждого параметра и результата, а у переменной выводится из значения, если не записан явно. По подписям можно составить вызов, не открывая пакет. Компилятор сверяет вызовы с подписями до запуска и не собирает программу, пока есть несовпадение; сообщение называет строку вызова и оба типа. Редактор через gopls показывает те же типы в подсказке и в автодополнении.</p>
+
+        <div class="sources">
+          <b>Откуда взяты факты</b>
+          <ol>
+            <li>Объявления функций, параметров и результатов — <a href="https://go.dev/ref/spec#Function_declarations">The Go Programming Language Specification, Function declarations</a>; короткое объявление переменной и нулевые значения — разделы <a href="https://go.dev/ref/spec#Short_variable_declarations">Short variable declarations</a> и <a href="https://go.dev/ref/spec#The_zero_value">The zero value</a>.</li>
+            <li>Методы и получатели — <a href="https://go.dev/ref/spec#Method_declarations">спецификация, Method declarations</a>; несколько результатов и ошибки — <a href="https://go.dev/doc/effective_go#multiple-returns">Effective Go, Multiple return values</a>.</li>
+            <li>Языковой сервер — <a href="https://go.dev/gopls/">документация gopls</a>.</li>
+            <li>Выводы в терминале получены запуском второго архива на Go <code>1.27</code>; кадры сняты в VS Code <code>1.138</code> с расширением Go <code>0.56</code> и gopls <code>0.24</code>.</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="index.html">← К содержанию темы</a><a href="02-tipy-v-annotaciyah.html">4.2 Типы Go →</a></div>
+        </div>
 
         <div class="colophon">
           <span>Глава 4.1 · Аннотация типа · МДК.01.01</span>
