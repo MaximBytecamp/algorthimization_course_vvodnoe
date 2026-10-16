@@ -286,6 +286,30 @@ async def st_run(e: Editor) -> None:
     await e.shot(f"{RAW}/go-project-run.png")
 
 
+
+async def st_quickfix(e: Editor) -> None:
+    """4.5 §5: быстрое исправление gopls для not enough return values."""
+    await reset(e)
+    await open_file(e, "calculator.go", 10.0)
+    line, _ = line_of("internal/services/calculator.go", "return slices.Min(grades), slices.Max(grades)")
+    await goto(e, line, 6)
+    await e.palette("Quick Fix...", 3.0)
+    await e.shot(f"{RAW}/go-quickfix.png")
+    await e.key("Escape", 0.4)
+
+
+async def st_final(e: Editor) -> None:
+    """4.5 §8: четыре команды на исправленном проекте."""
+    subprocess.run(["rm", "-rf", str(project() / "proba")])
+    await reset(e)
+    await open_file(e, "main.go", 5.0)
+    await terminal(e, "go build ./... && go vet ./... && go test ./... && go run .", 25.0)
+    await e.palette("View: Toggle Maximized Panel", 1.5)
+    await park(e)
+    await e.shot(f"{RAW}/go-final.png")
+    await e.palette("View: Toggle Maximized Panel", 1.0)
+
+
 STAGES = {name[3:]: fn for name, fn in globals().items() if name.startswith("st_")}
 
 

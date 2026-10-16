@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body data-title-py="4.5 Практика: аннотации в проекте · Аннотации типов и документация" data-title-go="4.5 Практика: проект с ошибками типов · Типы и документация в Go">
   <div class="book">
     <div class="book__body">
       <div class="spine"><span>Тема 04 · Аннотации типов и документация кода</span></div>
@@ -21,6 +21,7 @@
           <p class="running__folio">Глава 4.5</p>
         </div>
 
+        <div data-lang="py">
         <header class="chapter-head">
           <span class="chapter-num">4.5</span>
           <h1>Практика:<br>аннотации в проекте</h1>
@@ -296,6 +297,277 @@ app/services/orders.py:26: error: Function is missing a type annotation  [no-unt
         <p>Аннотации расставляют по пакетам, начиная с тех, что ничего из проекта не вызывают: <code>utils</code>, <code>domain</code>, <code>services</code>, <code>ui</code>. Тип параметра берут из того, как его используют и что передаёт вызывающий код, тип результата — из <code>return</code> или подсказки Pylance. После каждого пакета mypy показывает, сколько осталось: <code>17</code>, <code>12</code>, <code>8</code>, <code>1</code>, <code>Success</code>. Работа принята, когда проверка чистая, тесты проходят и отчёт не изменился; результат совпадает со вторым архивом, и с него начинается часть про документацию.</p>
 
         <div class="pager"><a href="04-tipy-na-primerah.html">← 4.4 Ошибки типов</a><a href="06-vidy-dokumentacii.html">4.6 Документация кода: какая она бывает →</a></div>
+        </div>
+
+        <div data-lang="go">
+        <header class="chapter-head">
+          <span class="chapter-num">4.5</span>
+          <h1>Практика:<br>проект с ошибками типов</h1>
+          <p class="lead">В этой главе проект «Отчёт кафе», который не собирается из-за двенадцати ошибок типов, доводится до чистой сборки и проверки <code>go vet</code>. Разобраны порядок работы по пакетам, способ найти исправление по сообщению, быстрые исправления gopls, один пакет целиком до и после и то, почему число ошибок в терминале сначала растёт, а потом падает до нуля. Итог работы совпадает со вторым архивом темы — с него начинается часть про документацию.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Практика</dd></div>
+          <div><dt>Время на паре</dt><dd>Около 60 минут</dd></div>
+          <div><dt>Проверка</dt><dd>go build, go vet, тесты, запуск</dd></div>
+          <div><dt>Результат</dt><dd>Проект собирается, <code>go vet</code> без замечаний</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#g1">Задача</a></li>
+            <li><a href="#g2">Подготовка</a></li>
+            <li><a href="#g3">Порядок: от листьев к корню</a></li>
+            <li><a href="#g4">Как найти исправление</a></li>
+            <li><a href="#g5">Быстрые исправления gopls</a></li>
+            <li><a href="#g6">Один пакет до и после</a></li>
+            <li><a href="#g7">Двенадцать ошибок проекта</a></li>
+            <li><a href="#g8">Как меняется число ошибок</a></li>
+            <li><a href="#g9">Что сдаётся с пары</a></li>
+            <li><a href="#g10">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="g1"><span class="sec">§1</span>Задача</h2>
+        <p>В главах 4.1–4.4 ошибки типов читались в маленьких файлах <code>proba/main.go</code>. В этой главе их исправляют в целом проекте. Первый архив темы — «Отчёт кафе», написанный так, как его написал бы человек, привыкший к Python: функция вызвана без аргумента, у которого «было значение по умолчанию», строка склеивается с числом, из двух результатов принят один. Компилятор Go такой код не собирает: в нём двенадцать ошибок в шести файлах.</p>
+        <p>Задача: исправить все двенадцать, не меняя подписей функций, и получить чистые <code>go build ./...</code> и <code>go vet ./...</code>, двенадцать проходящих тестов и тот же отчёт, что печатает второй архив.</p>
+        <div class="downloads">
+          <a class="download" href="materials/otchet-kafe-go-oshibki.zip" download>
+            <span>↓</span>
+            <b>Проект с ошибками типов<small>ZIP · 12 ошибок, с ним работают на паре</small></b>
+          </a>
+          <a class="download" href="materials/otchet-kafe-go-start.zip" download>
+            <span>↓</span>
+            <b>Тот же проект без ошибок<small>ZIP · эталон для сверки</small></b>
+          </a>
+        </div>
+        <div class="lang-note">
+          <b>Как соотносится с веткой Python</b>
+          <p>В ветке Python практика — расставить аннотации в проекте, где их нет: программа при этом всё время работает. В Go проекта без типов не бывает, поэтому задача обратная: типы записаны, но код с ними не согласован, и программа не собирается вовсе. Навык тот же — прочитать подпись и сообщение проверки и привести код в соответствие.</p>
+        </div>
+
+        <h2 id="g2"><span class="sec">§2</span>Подготовка</h2>
+        <ol class="steps">
+          <li>Распакуйте первый архив и откройте папку <code>otchet-kafe-go-oshibki</code> в VS Code — ту, в которой лежит <code>go.mod</code>.</li>
+          <li>Откройте панель Problems (<kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>Shift</kbd> + <kbd>M</kbd>). В ней двенадцать ошибок — список работы. Такой же кадр показан в главе 4.3, §8.</li>
+          <li>Выполните в терминале <code>go build ./...</code>. В ответе три ошибки пакета <code>internal/utils</code>: остальные пакеты компилятор пока не проверяет. Почему так — в §3.</li>
+          <li>Запустить проект и тесты сейчас нельзя: <code>go run .</code> и <code>go test ./...</code> начинают со сборки и останавливаются на тех же ошибках. Ожидаемый результат известен по второму архиву: итог отчёта <code>4 937,50 ₽</code>, все тесты проходят.</li>
+        </ol>
+
+        <h2 id="g3"><span class="sec">§3</span>Порядок: от листьев к корню</h2>
+        <p>Двенадцать ошибок лежат в шести файлах четырёх пакетов, и первым решается вопрос, с какого пакета начать. Пакеты проекта зависят друг от друга. Это видно по импортам: <code>domain</code> вызывает <code>NormalizeName</code> из <code>utils</code>, <code>services</code> создаёт заказы из <code>domain</code>, а <code>main.go</code> вызывает <code>services</code>, <code>ui</code> и <code>utils</code>. Исправляют в том же порядке, в каком компилятор собирает пакеты, — начиная с тех, что ничего из проекта не импортируют.</p>
+        <figure class="scheme">
+          <svg viewBox="0 0 680 300" role="img" aria-label="Схема зависимостей пакетов: utils внизу, над ним domain, над ним services, наверху main; ui сбоку; цифры — порядок работы и число ошибок">
+            <rect x="250" y="16" width="180" height="46" fill="var(--page)" stroke="var(--ink)" stroke-width="3"/>
+            <text x="268" y="45" font-family="Roboto Mono, monospace" font-size="15" fill="var(--ink)">main.go</text>
+            <text x="352" y="45" font-family="Roboto Mono, monospace" font-size="12" fill="var(--fire-deep)">4 · 1 ош.</text>
+
+            <rect x="250" y="96" width="180" height="46" fill="var(--page)" stroke="var(--ink)" stroke-width="3"/>
+            <text x="268" y="125" font-family="Roboto Mono, monospace" font-size="15" fill="var(--ink)">services</text>
+            <text x="352" y="125" font-family="Roboto Mono, monospace" font-size="12" fill="var(--fire-deep)">3 · 6 ош.</text>
+
+            <rect x="250" y="176" width="180" height="46" fill="var(--page)" stroke="var(--ink)" stroke-width="3"/>
+            <text x="268" y="205" font-family="Roboto Mono, monospace" font-size="15" fill="var(--ink)">domain</text>
+            <text x="352" y="205" font-family="Roboto Mono, monospace" font-size="12" fill="var(--fire-deep)">2 · 2 ош.</text>
+
+            <rect x="250" y="246" width="180" height="46" fill="var(--fire-pale)" stroke="var(--fire)" stroke-width="3"/>
+            <text x="268" y="275" font-family="Roboto Mono, monospace" font-size="15" fill="var(--ink)">utils</text>
+            <text x="352" y="275" font-family="Roboto Mono, monospace" font-size="12" fill="var(--fire-deep)">1 · 3 ош.</text>
+
+            <rect x="500" y="96" width="160" height="46" fill="var(--steel-pale)" stroke="var(--steel)" stroke-width="3"/>
+            <text x="518" y="125" font-family="Roboto Mono, monospace" font-size="15" fill="var(--ink)">ui</text>
+            <text x="560" y="125" font-family="Roboto Mono, monospace" font-size="12" fill="var(--steel)">0 ош.</text>
+
+            <path d="M 340 62 L 340 96" stroke="var(--ink)" stroke-width="2"/>
+            <path d="M 340 142 L 340 176" stroke="var(--ink)" stroke-width="2"/>
+            <path d="M 340 222 L 340 246" stroke="var(--ink)" stroke-width="2"/>
+            <path d="M 430 39 C 470 39, 520 60, 560 96" fill="none" stroke="var(--ink)" stroke-width="2"/>
+            <path d="M 250 39 C 120 39, 120 269, 250 269" fill="none" stroke="var(--ink)" stroke-width="2" stroke-dasharray="5 4"/>
+            <text x="30" y="160" font-family="Roboto Mono, monospace" font-size="11" fill="var(--ink-soft)">main.go</text>
+            <text x="30" y="176" font-family="Roboto Mono, monospace" font-size="11" fill="var(--ink-soft)">тоже импортирует</text>
+            <text x="30" y="192" font-family="Roboto Mono, monospace" font-size="11" fill="var(--ink-soft)">utils</text>
+          </svg>
+          <figcaption>Линии построены по импортам: блок выше пользуется тем, с которым соединён. Компилятор собирает пакеты снизу вверх, и работа идёт так же: <code>utils</code>, затем <code>domain</code>, затем <code>services</code>, последним <code>main.go</code>. Пакет <code>ui</code> ни от кого из проекта не зависит, ошибок в нём нет. Цифры — порядок работы и число ошибок в пакете.</figcaption>
+        </figure>
+        <p>Почему не начать с <code>main.go</code>, где ошибка одна? Начать можно — gopls показывает её в Problems. Но <code>go build</code> до неё не дойдёт, пока не собраны пакеты ниже, и проверить исправление сборкой будет нельзя. При работе снизу вверх каждый исправленный пакет сразу подтверждается командой.</p>
+
+        <h2 id="g4"><span class="sec">§4</span>Как найти исправление</h2>
+        <p>Порядок пакетов задан. Для каждой ошибки нужно решить, что менять: место вызова или объявление. Правило практики — <b>подписи функций не меняются</b>: на них опираются тесты и другие пакеты, и подпись в этом проекте верная. Меняется код, который с подписью не согласован. Ответ ищется в трёх местах по очереди.</p>
+        <div class="table-scroll">
+            <table>
+              <thead><tr><th>Где искать</th><th>Что там видно</th></tr></thead>
+              <tbody>
+                <tr><td>Сообщение</td><td>Что передано, какого типа и какой тип ожидался: <code>cannot use X (value of type A) as B value</code>. Строки <code>have</code> и <code>want</code> под сообщением перечисляют типы целиком.</td></tr>
+                <tr><td>Подпись вызываемой функции</td><td>Наведение указателя на имя показывает её. <code>strings.Join</code> — <code>func(elems []string, sep string) string</code>: аргумента два, а не один.</td></tr>
+                <tr><td>Подпись своей функции</td><td>Что функция обещает вернуть: <code>(low, high int, err error)</code> — три значения, значит, в каждом <code>return</code> их три.</td></tr>
+              </tbody>
+            </table>
+        </div>
+        <p>Когда исправление найдено, его сверяют с тем, что функция должна делать по смыслу: компилятор проверит типы, но не поведение. Поведение проверяют тесты в конце работы. Как записать нужный тип, показано в главе 4.2, а разборы похожих сообщений собраны в главе 4.4, §14.</p>
+
+        <h2 id="g5"><span class="sec">§5</span>Быстрые исправления gopls</h2>
+        <p>Для части ошибок gopls предлагает готовое исправление. Значок лампочки слева от строки означает, что исправление есть. Вызывают его сочетанием <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>.</kbd> или командой палитры <b>Quick Fix…</b>, когда курсор стоит на подчёркнутой строке.</p>
+        <figure class="shot">
+          <img src="img/vscode-go-quickfix.png" alt="VS Code: курсор на строке 28 calculator.go, меню Quick Fix с пунктом Fill in return values">
+          <figcaption>Первый архив, <code>internal/services/calculator.go</code>, строка 28: <code>return slices.Min(grades), slices.Max(grades)</code> — не хватает третьего значения. В меню <b>Quick Fix</b> пункт <b>Fill in return values</b> — «дописать возвращаемые значения». Он добавит в конец <code>nil</code> — нулевое значение для ошибки. Пункт ниже, <b>Browse gopls feature documentation</b>, открывает описание возможностей gopls.</figcaption>
+        </figure>
+        <p>Быстрых исправлений для ошибок типов немного: <code>Fill in return values</code>, удаление лишнего импорта, объявление неизвестной переменной. Для большинства ошибок этого проекта исправления нет: какое значение нужно передать, решает разработчик. Перед тем как принять предложенное исправление, его читают: <code>nil</code> на месте ошибки верен, только если ошибки в этой ветке действительно нет.</p>
+
+        <h2 id="g6"><span class="sec">§6</span>Один пакет до и после</h2>
+        <p>Как приёмы §4 и §5 работают вместе, видно на первом пакете — <code>internal/utils</code>. В нём три ошибки в двух файлах:</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go build ./..., первый архив</span></figcaption>
+<pre># example.com/otchet-kafe/internal/utils
+internal/utils/formatter.go:18:9: invalid operation: strings.Join(groups, " ") + "," + cents (mismatched types string and int)
+internal/utils/text.go:9:22: not enough arguments in call to strings.Join
+	have ([]string)
+	want ([]string, string)
+internal/utils/text.go:16:30: cannot use word[0] (value of type byte) as rune value in argument to unicode.ToUpper</pre>
+        </figure>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>internal/utils</b><span>переключите вариант</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>До: три ошибки</button>
+            <button>После: собирается</button>
+          </div>
+          <div class="demo__pane">
+            <figure class="code">
+              <figcaption><span>formatter.go и text.go</span><span>строки с ошибками</span></figcaption>
+<pre><span class="c">// formatter.go, строка 18</span>
+	<span class="k">return</span> strings.Join(groups, <span class="s">" "</span>) + <span class="s">","</span> + cents + <span class="s">" ₽"</span>
+
+<span class="c">// text.go, строка 9</span>
+	<span class="k">return</span> strings.Join(strings.Fields(value))
+
+<span class="c">// text.go, строка 16</span>
+		runes[<span class="n">0</span>] = unicode.ToUpper(word[<span class="n">0</span>])</pre>
+            </figure>
+            <p class="demo__verdict"><b>Что не так</b>Число склеивается со строкой, как в f-строке Python. <code>Join</code> вызван с одним аргументом, как <code>" ".join(…)</code>, где разделитель стоит перед точкой. Первая буква взята индексом строки — в Go это байт, а не знак.</p>
+          </div>
+          <div class="demo__pane">
+            <figure class="code">
+              <figcaption><span>formatter.go и text.go</span><span>исправленные строки</span></figcaption>
+<pre><span class="c">// formatter.go, строка 18</span>
+	<span class="k">return</span> strings.Join(groups, <span class="s">" "</span>) + <span class="s">","</span> + strconv.Itoa(cents/<span class="n">10</span>) + strconv.Itoa(cents%<span class="n">10</span>) + <span class="s">" ₽"</span>
+
+<span class="c">// text.go, строка 9</span>
+	<span class="k">return</span> strings.Join(strings.Fields(value), <span class="s">" "</span>)
+
+<span class="c">// text.go, строка 16</span>
+		runes[<span class="n">0</span>] = unicode.ToUpper(runes[<span class="n">0</span>])</pre>
+            </figure>
+            <p class="demo__verdict"><b>Что изменилось</b>Копейки переведены в строку двумя цифрами — десятки и единицы, чтобы <code>5</code> копеек печатались как <code>05</code>. У <code>Join</code> появился разделитель. Первая буква берётся из среза знаков <code>runes</code>, который строкой выше уже построен из слова. Подписи функций не тронуты.</p>
+          </div>
+        </div>
+        <p>Как выбраны исправления. В первой строке сообщение назвало типы — <code>string and int</code>: число нужно перевести в строку, и функция для этого в файле уже импортирована — <code>strconv.Itoa</code>. Во второй строки <code>have</code> и <code>want</code> показали недостающий аргумент типа <code>string</code> — это разделитель. В третьей сообщение сказало <code>byte</code> вместо <code>rune</code>: индекс строки в Go даёт байт, а кириллическая буква занимает в UTF-8 два байта, поэтому первый знак берут из среза <code>[]rune</code>. Если исправить третью ошибку переводом <code>rune(word[0])</code>, программа соберётся, но «и» превратится в бессмысленный знак: компилятор такое исправление пропустит, а тест <code>NormalizeName</code> — нет.</p>
+
+        <h2 id="g7"><span class="sec">§7</span>Двенадцать ошибок проекта</h2>
+        <p>В таблице все ошибки архива в порядке работы. Колонка «Привычка из Python» объясняет, откуда ошибка берётся: так эту строку написал бы человек, переносящий код с Python.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Место</th><th>Сообщение</th><th>Привычка из Python</th><th>Исправление</th></tr></thead>
+            <tbody>
+              <tr><td><code>utils/formatter.go:18</code></td><td><code>mismatched types string and int</code></td><td>склейка числа со строкой</td><td><code>strconv.Itoa(…)</code></td></tr>
+              <tr><td><code>utils/text.go:9</code></td><td><code>not enough arguments in call to strings.Join</code></td><td><code>" ".join(слова)</code></td><td>второй аргумент <code>" "</code></td></tr>
+              <tr><td><code>utils/text.go:16</code></td><td><code>cannot use word[0] (value of type byte) as rune</code></td><td>строка[0] — первая буква</td><td><code>runes[0]</code></td></tr>
+              <tr><td><code>domain/order.go:18</code></td><td><code>cannot use nil as Order value in return statement</code></td><td><code>return None</code></td><td><code>return Order{}, ErrNegativeKopeks</code></td></tr>
+              <tr><td><code>domain/shift.go:15</code></td><td><code>cannot use &amp;order (value of type *Order) as Order value</code></td><td>объект передаётся ссылкой сам</td><td><code>append(s.Orders, order)</code></td></tr>
+              <tr><td><code>services/calculator.go:21</code></td><td><code>cannot use sum / len(grades) * 100 (value of type int) as float64</code></td><td>деление <code>/</code> даёт дробное</td><td><code>float64(sum)/float64(len(grades))</code></td></tr>
+              <tr><td><code>services/calculator.go:28</code></td><td><code>not enough return values</code></td><td>ошибка через <code>raise</code>, а не результатом</td><td>дописать <code>nil</code> — Quick Fix</td></tr>
+              <tr><td><code>services/orders.go:24</code></td><td><code>assignment mismatch: 1 variable but strconv.Atoi returns 2 values</code></td><td><code>int(текст)</code> бросает исключение</td><td><code>kopeks, err := …</code> и проверка <code>err</code></td></tr>
+              <tr><td><code>services/orders.go:48</code></td><td><code>cannot use totals[name] (…int) as WaiterRevenue value</code></td><td>результат — словарь</td><td><code>WaiterRevenue{Waiter: name, Kopeks: totals[name]}</code></td></tr>
+              <tr><td><code>services/orders.go:61</code></td><td><code>cannot use a.Kopeks &gt; b.Kopeks (untyped bool value) as int</code></td><td>сравнение <code>&gt;</code> для сортировки</td><td><code>return b.Kopeks - a.Kopeks</code></td></tr>
+              <tr><td><code>services/report_file.go:9</code></td><td><code>cannot use strings.Join(…) (value of type string) as []byte</code></td><td><code>write()</code> принимает строку</td><td><code>[]byte(strings.Join(…))</code></td></tr>
+              <tr><td><code>main.go:17</code></td><td><code>not enough arguments in call to services.RevenueByWaiter</code></td><td>значение по умолчанию <code>top=0</code></td><td><code>RevenueByWaiter(orders, 0)</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Две строки таблицы требуют пояснения. В <code>orders.go:24</code> мало принять два результата: ошибку нужно проверить и вернуть наверх — <code>if err != nil { return nil, err }</code>, как это сделано тремя строками ниже для <code>NewOrder</code>. Иначе неверная сумма в файле превратится в ноль без сообщения. В <code>orders.go:61</code> функция сравнения для <code>slices.SortStableFunc</code> возвращает не «да или нет», а число: отрицательное, если <code>a</code> должен стоять раньше <code>b</code>. Для сортировки по убыванию суммы это <code>b.Kopeks - a.Kopeks</code>.</p>
+
+        <h2 id="g8"><span class="sec">§8</span>Как меняется число ошибок</h2>
+        <p>Работа идёт по пакетам в порядке §3, и после каждого пакета запускают <code>go build ./...</code>. Число ошибок в ответе меняется не так, как у mypy в ветке Python: оно сначала растёт. Ниже настоящие итоги прогонов при работе в порядке §3:</p>
+        <div class="flowline" data-play>
+          <p class="flowline__head">Ошибок в ответе go build ./... после каждого пакета</p>
+          <div class="flowline__track">
+            <div class="flowline__step">
+              <b>Исходно · 3</b>
+              <span>Все три — в <code>internal/utils</code>.</span>
+              <em>первый архив</em>
+            </div>
+            <div class="flowline__step">
+              <b>После utils · 2</b>
+              <span>Компилятор дошёл до <code>domain</code>.</span>
+              <em>−3, +2</em>
+            </div>
+            <div class="flowline__step">
+              <b>После domain · 6</b>
+              <span>Открылись все ошибки <code>services</code>.</span>
+              <em>−2, +6</em>
+            </div>
+            <div class="flowline__step">
+              <b>После services · 1</b>
+              <span>Осталась ошибка в <code>main.go</code>.</span>
+              <em>−6, +1</em>
+            </div>
+            <div class="flowline__step">
+              <b>После main · 0</b>
+              <span>Команда ничего не печатает.</span>
+              <em>готово</em>
+            </div>
+          </div>
+          <p class="flowline__foot">Рост с <code>2</code> до <code>6</code> не означает, что работа пошла назад: исправленный пакет <code>domain</code> собрался, и компилятор впервые проверил <code>services</code>. Сумма по всем шагам — <code>3 + 2 + 6 + 1 = 12</code>, ровно столько, сколько ошибок в панели Problems с самого начала.</p>
+        </div>
+        <p>Число в панели Problems, напротив, уменьшается ровно на количество исправленных ошибок: 12, 9, 7, 1, 0. Если после правки оно не уменьшилось или выросло, значит, исправление внесло новую ошибку — она появится в панели рядом с местом правки.</p>
+        <p>Когда <code>go build</code> ничего не печатает, проверьте остальное четырьмя командами подряд:</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>проверка законченной работы</span></figcaption>
+<pre>$ go build ./... &amp;&amp; go vet ./... &amp;&amp; go test ./... &amp;&amp; go run .</pre>
+        </figure>
+        <figure class="shot">
+          <img src="img/vscode-go-final.png" alt="Терминал: go test печатает ok для domain, services и utils, затем отчёт по смене с итогом 4 937,50 ₽">
+          <figcaption>Законченная работа. <code>go build</code> и <code>go vet</code> ничего не напечатали. <code>go test</code> — строка на пакет: <code>ok</code> у <code>domain</code>, <code>services</code> и <code>utils</code>, <code>[no test files]</code> у пакетов без тестов. Затем <code>go run .</code> напечатал отчёт с тем же итогом <code>4 937,50 ₽</code>, что во втором архиве.</figcaption>
+        </figure>
+        <p>Получившийся проект совпадает со вторым архивом темы во всех файлах, кроме README: архив с ошибками собран из второго заменой двенадцати строк. С этого проекта начинается следующая часть темы: в главе 4.6 в него добавляются комментарии документации.</p>
+
+        <h2 id="g9"><span class="sec">§9</span>Что сдаётся с пары</h2>
+        <p>Работа закончена, когда выполнены все условия ниже; по ним её и проверяют.</p>
+        <div class="checklist">
+          <p class="checklist__head">Работа принята, когда</p>
+          <div class="checklist__item"><span><b>Сборка и vet чистые</b><code>go build ./...</code> и <code>go vet ./...</code> ничего не печатают.</span></div>
+          <div class="checklist__item"><span><b>Поведение верное</b><code>go test ./...</code> — <code>ok</code> у трёх пакетов, итог отчёта — <code>4 937,50 ₽</code>.</span></div>
+          <div class="checklist__item"><span><b>Подписи не тронуты</b>Изменены только строки с ошибками; ни у одной функции не поменялись параметры и результаты.</span></div>
+          <div class="checklist__item"><span><b>Ошибки не проглочены</b>Каждый результат <code>error</code> проверяется; нет <code>_</code> на месте ошибки, которую можно проверить.</span></div>
+          <div class="checklist__item"><span><b>Редактор чист</b>В панели Problems нет ни ошибок, ни предупреждений.</span></div>
+        </div>
+
+        <h2 id="g10"><span class="sec">§10</span>Проверьте себя</h2>
+        <details>
+          <summary>Почему работу начинают с пакета <code>utils</code>, а не с <code>main.go</code>, где одна ошибка?</summary>
+          <p>Компилятор собирает пакеты снизу вверх и не проверяет пакеты, которые зависят от несобранного. Пока <code>utils</code> с ошибками, <code>go build</code> не дойдёт до <code>main.go</code>, и исправление там нельзя подтвердить сборкой.</p>
+        </details>
+        <details>
+          <summary>После исправления <code>domain</code> число ошибок в терминале выросло с 2 до 6. Работа пошла назад?</summary>
+          <p>Нет. Пакет <code>domain</code> собрался, и компилятор впервые проверил <code>services</code>, где шесть ошибок. В панели Problems, которая видит все пакеты сразу, число за это время уменьшилось.</p>
+        </details>
+        <details>
+          <summary>Почему в <code>orders.go:24</code> недостаточно написать <code>kopeks, _ := strconv.Atoi(…)</code>?</summary>
+          <p>Программа соберётся, но неверная сумма в файле молча станет нулём, и отчёт окажется неверным без всякого сообщения. Ошибку принимают в переменную, проверяют и возвращают наверх.</p>
+        </details>
+        <details>
+          <summary>Чем исправление <code>rune(word[0])</code> хуже <code>runes[0]</code> в <code>text.go:16</code>?</summary>
+          <p><code>word[0]</code> — первый байт строки, а кириллическая буква занимает два байта. Перевод байта в <code>rune</code> соберётся, но даст не ту букву. Компилятор этого не увидит; увидит тест или отчёт с испорченными именами.</p>
+        </details>
+        <details>
+          <summary>gopls предлагает Quick Fix «Fill in return values». Когда его можно принять без раздумий?</summary>
+          <p>Никогда без чтения: он подставит нулевые значения. <code>nil</code> на месте ошибки верен, только если в этой ветке ошибки действительно нет, как в <code>GradeBounds</code> после проверки на пустой список.</p>
+        </details>
+
+        <h3>Итог главы</h3>
+        <p>Ошибки типов исправляют по пакетам, начиная с тех, что ничего из проекта не импортируют: <code>utils</code>, <code>domain</code>, <code>services</code>, <code>main.go</code>. Исправление ищут в сообщении, в подписи вызываемой функции и в подписи своей; подписи не меняют, меняют несогласованный с ними код. Для части ошибок gopls предлагает быстрое исправление, но его читают перед тем, как принять. Число ошибок в терминале меняется как 3, 2, 6, 1, 0, потому что компилятор открывает пакеты по одному, а в панели Problems — уменьшается с 12 до 0. Работа принята, когда сборка, <code>go vet</code> и тесты чистые, отчёт не изменился, а все ошибки из результатов проверяются; результат совпадает со вторым архивом, и с него начинается часть про документацию.</p>
+
+        <div class="pager"><a href="04-tipy-na-primerah.html">← 4.4 Ошибки типов</a><a href="06-vidy-dokumentacii.html">4.6 Документация кода: какая она бывает →</a></div>
+        </div>
 
         <div class="colophon">
           <span>Глава 4.5 · Практика: аннотации в проекте · МДК.01.01</span>
