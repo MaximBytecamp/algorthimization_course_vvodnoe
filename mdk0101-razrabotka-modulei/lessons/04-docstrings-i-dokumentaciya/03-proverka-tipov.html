@@ -20,7 +20,7 @@
     } catch (e) {}
   </script>
 </head>
-<body>
+<body data-title-py="4.3 Проверка типов · Аннотации типов и документация" data-title-go="4.3 Проверка типов · Типы и документация в Go">
   <div class="book">
     <div class="book__body">
       <div class="spine"><span>Тема 04 · Аннотации типов и документация кода</span></div>
@@ -31,6 +31,7 @@
           <p class="running__folio">Глава 4.3</p>
         </div>
 
+        <div data-lang="py">
         <header class="chapter-head">
           <span class="chapter-num">4.3</span>
           <h1>Проверка типов:<br>Pylance и mypy по шагам</h1>
@@ -571,6 +572,501 @@ Success: no issues found in 1 source file</pre>
         </div>
 
         <div class="pager"><a href="02-tipy-v-annotaciyah.html">← 4.2 Типы в аннотациях</a><a href="04-tipy-na-primerah.html">4.4 Ошибки типов →</a></div>
+        </div>
+
+        <div data-lang="go">
+        <header class="chapter-head">
+          <span class="chapter-num">4.3</span>
+          <h1>Проверка типов:<br>gopls, компилятор и go vet по шагам</h1>
+          <p class="lead">В этой главе по шагам разобраны программы, которые сверяют код Go с типами до запуска: gopls в редакторе VS Code, компилятор в терминале и <code>go vet</code>, который находит подозрительные места в коде, который уже собирается. Для каждой показано, как её запустить, где увидеть ошибку и как прочитать сообщение. Все шаги выполняются на втором архиве проекта и на одном файле с двумя неверными вызовами.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Инструменты</dd></div>
+          <div><dt>Уровень</dt><dd>Начальный</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 4.1 и 4.2</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Находить неверные вызовы до запуска программы</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#g1">Что такое проверка типов в Go</a></li>
+            <li><a href="#g2">Подготовка</a></li>
+            <li><a href="#g3">gopls: проверка в редакторе</a></li>
+            <li><a href="#g4">Три уровня проверки на одном файле</a></li>
+            <li><a href="#g5">go build и go vet в терминале</a></li>
+            <li><a href="#g6">Как читать строку ошибки</a></li>
+            <li><a href="#g7">Одна ошибка в двух программах</a></li>
+            <li><a href="#g8">Ошибки в нескольких пакетах</a></li>
+            <li><a href="#g9">Какой тип видит проверка</a></li>
+            <li><a href="#g10">Чего проверка не находит</a></li>
+            <li><a href="#g11">Проверьте себя</a></li>
+            <li><a href="#g12">Шпаргалка по главе</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="g1"><span class="sec">§1</span>Что такое проверка типов в Go</h2>
+        <p>В главе 4.1 опыты показали, что Go не собирает программу, в которой тип аргумента не совпадает с подписью. В главе 4.2 разобрано, как типы записываются. Остался вопрос, где и когда эта сверка происходит и как увидеть её результат.</p>
+        <p><span class="term">Проверка типов</span> — чтение кода программой, которая сверяет каждый вызов, присваивание и возврат значения с объявленными типами. Сам код при этом не запускается: программа работает с текстом файлов. Если в <code>FormatTitle(text string, width int)</code> передано число вместо строки, она сообщит об этом и назовёт строку файла.</p>
+        <p>В Python проверку выполняют отдельные программы, и её можно не запускать. В Go проверка типов — часть компилятора: без неё программа не собирается. Поэтому вопрос не в том, включать ли проверку, а в том, где удобнее видеть её результат. Мест три, а четвёртая программа добавляет проверки сверх типов:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Программа</th><th>Где работает</th><th>Когда проверяет</th><th>Что находит</th></tr></thead>
+            <tbody>
+              <tr><td><b>gopls</b></td><td>внутри VS Code, ставится вместе с расширением Go</td><td>во время набора, после каждого изменения</td><td>ошибки компиляции во всех пакетах модуля и часть замечаний <code>go vet</code></td></tr>
+              <tr><td><b>go build</b></td><td>в терминале, входит в Go</td><td>по команде: перед запуском, перед коммитом, в проверках запроса на слияние</td><td>ошибки компиляции</td></tr>
+              <tr><td><b>go vet</b></td><td>в терминале, входит в Go</td><td>по команде, после успешной сборки</td><td>код, который собирается, но почти наверняка ошибочен</td></tr>
+              <tr><td><b>staticcheck</b></td><td>в терминале, ставится отдельно</td><td>по команде</td><td>ещё более широкий набор подозрительных мест</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="analogy">
+          <p class="analogy__head">Ассоциация: проверка орфографии</p>
+          <div class="analogy__pair">
+            <div class="analogy__side">
+              <b>В жизни</b>
+              <p>Текстовый редактор подчёркивает слово с ошибкой сразу при наборе. Перед отправкой большого документа запускают проверку всего текста, и она выдаёт полный список ошибок по страницам.</p>
+            </div>
+            <div class="analogy__side">
+              <b>В коде</b>
+              <p>gopls подчёркивает неверный вызов при наборе. <code>go build</code> по команде проверяет весь модуль и печатает список ошибок с именами файлов и номерами строк.</p>
+            </div>
+          </div>
+          <p class="analogy__limit"><b>Где не совпадает</b>Документ с орфографическими ошибками всё равно можно отправить. Программу на Go с ошибкой типа собрать нельзя: компилятор не создаст исполняемый файл, пока ошибка не исправлена.</p>
+        </div>
+
+        <h2 id="g2"><span class="sec">§2</span>Подготовка</h2>
+        <p>Для работы нужен второй архив проекта. Если он ещё не подготовлен по шагам из главы 4.1, скачайте его, распакуйте и откройте папку с <code>go.mod</code> в VS Code.</p>
+        <div class="downloads">
+          <a class="download" href="materials/otchet-kafe-go-start.zip" download>
+            <span>↓</span>
+            <b>2 · Рабочий, без документации<small>ZIP · с ним работают в этой главе</small></b>
+          </a>
+        </div>
+        <p>Ошибки для опыта делаются не в коде проекта, а в отдельной маленькой программе: её можно править как угодно, а после опытов удалить, и проект останется рабочим. Создайте в корне проекта папку <code>proba</code>, а в ней файл <code>main.go</code>. В нём два вызова функций проекта с аргументами не того типа. Обе функции есть в таблице подписей главы 4.1, §4:</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>файл для опытов</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> <span class="s">"example.com/otchet-kafe/internal/utils"</span>
+
+<span class="k">func</span> <span class="f">main</span>() {
+	title := utils.FormatTitle(<span class="n">40</span>, <span class="n">40</span>)
+	price := utils.FormatKopeks(<span class="s">"1250"</span>)
+	_, _ = title, price
+}</pre>
+        </figure>
+        <p>Подписи обеих функций — в пакете <code>internal/utils</code>: <code>FormatTitle(text string, width int) string</code> и <code>FormatKopeks(kopeks int) string</code>. В строке 6 вместо текста заголовка передано число, в строке 7 вместо числа копеек — строка. Строка 8 нужна, чтобы переменные <code>title</code> и <code>price</code> где-то использовались: неиспользованная переменная в Go — тоже ошибка сборки, и она заслонила бы опыт. Знак <code>_</code> означает «значение не нужно».</p>
+        <p>Ошибки известны заранее, поэтому по ним удобно проверять, что инструмент работает: он должен найти обе. Сначала их ищет редактор, затем терминал.</p>
+
+        <h2 id="g3"><span class="sec">§3</span>gopls: проверка в редакторе</h2>
+        <p>gopls — языковой сервер Go, который запускает расширение Go в VS Code. Подсказки и автодополнение из главы 4.1 строил он. Ошибки типов gopls показывает сразу: включать проверку, как режим Pylance в ветке Python, не нужно. Ниже шесть шагов: первые два готовят редактор, остальные — работа с найденными ошибками.</p>
+        <div class="walk">
+          <div class="walk__step">
+            <p class="walk__head"><span>Убедитесь, что стоит расширение Go</span></p>
+            <div class="walk__body">
+              <p>Откройте панель расширений: <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>Shift</kbd> + <kbd>X</kbd>, или значок из четырёх квадратов на левой полосе. Введите в поле поиска <code>@installed</code> — останутся только установленные расширения.</p>
+              <figure class="shot shot--narrow">
+                <img src="img/vscode-go-ext-installed.png" alt="Панель расширений VS Code с фильтром @installed: расширение Go от Go Team at Google">
+                <figcaption>В списке должно быть расширение <b>Go</b> с пометкой <b>Go Team at Google</b> и синей галочкой проверенного издателя. Если его нет, найдите в поиске идентификатор <code>golang.go</code> и нажмите <b>Install</b>.</figcaption>
+              </figure>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Проверьте, что расширение нашло Go и gopls</span></p>
+            <div class="walk__body">
+              <p>Откройте любой файл <code>.go</code> проекта. В правом нижнем углу окна, в строке состояния, появится версия Go — на кадрах этой главы <code>1.27.1</code>. Это значит, что расширение нашло установленный Go.</p>
+              <p>Если gopls ещё не установлен, расширение при первом открытии файла Go сообщит об этом уведомлением внизу справа; нажмите в нём <b>Install</b>. То же делает команда палитры <b>Go: Install/Update Tools</b>: в открывшемся списке отметьте <code>gopls</code> и нажмите <b>OK</b>. Установка выполняется командой <code>go install</code> и занимает до минуты.</p>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Откройте proba/main.go и посмотрите на подчёркивания</span></p>
+            <div class="walk__body">
+              <p>Откройте <code>proba/main.go</code> из проводника. Через секунду-две gopls проверит файл.</p>
+              <figure class="shot">
+                <img src="img/vscode-go-squiggle.png" alt="VS Code: в proba/main.go подчёркнуты 40 в строке 6 и &quot;1250&quot; в строке 7, на вкладке цифра 2">
+                <figcaption>Подчёркнуты аргументы, тип которых не совпал: <code>40</code> в строке 6 и <code>"1250"</code> в строке 7. На вкладке после имени файла — цифра 2: столько ошибок в файле. Та же цифра стоит у имени файла в проводнике, а папка <code>proba</code> помечена красной точкой.</figcaption>
+              </figure>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Прочитайте сообщение</span></p>
+            <div class="walk__body">
+              <p>Наведите указатель на подчёркнутое <code>40</code> или поставьте на него курсор и нажмите <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>K</kbd>, затем <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>I</kbd>.</p>
+              <figure class="shot">
+                <img src="img/vscode-go-hover-error.png" alt="Сообщение над строкой 6: cannot use 40 (untyped int constant) as string value in argument to utils.FormatTitle compiler(IncompatibleAssign)">
+                <figcaption>Сообщение появилось над строкой 6, где стоит курсор. Ниже — ссылка <b>View Problem</b> и надпись <b>No quick fixes available</b>: готового исправления нет.</figcaption>
+              </figure>
+              <p>Сообщение читается по частям:</p>
+              <ul>
+                <li><code>cannot use 40</code> — нельзя использовать значение <code>40</code>;</li>
+                <li><code>(untyped int constant)</code> — что это за значение: целое число, записанное прямо в коде, у которого ещё нет окончательного типа. Такую константу Go переводит в нужный тип сам, если это возможно без потерь, но в строку число не переводится;</li>
+                <li><code>as string value</code> — там, где ожидается строка;</li>
+                <li><code>in argument to utils.FormatTitle</code> — в аргументе функции <code>FormatTitle</code> пакета <code>utils</code>;</li>
+                <li><code>compiler(IncompatibleAssign)</code> — кто сообщил и вид ошибки: сообщение компилятора, вид «несовместимое присваивание». Передача аргумента для Go — тоже присваивание: значение кладётся в параметр.</li>
+              </ul>
+              <p>Для ошибок типов готового исправления обычно нет: какое значение нужно передать, решает разработчик.</p>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Откройте панель Problems</span></p>
+            <div class="walk__body">
+              <p>Наведение показывает одно сообщение. Чтобы увидеть все ошибки сразу, открывают панель Problems: <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>Shift</kbd> + <kbd>M</kbd>, или щелчок по счётчику ошибок в левом нижнем углу окна.</p>
+              <figure class="shot">
+                <img src="img/vscode-go-problems.png" alt="Панель Problems: две ошибки в main.go пакета proba, у обеих источник compiler(IncompatibleAssign) и место">
+                <figcaption>Ошибки сгруппированы по файлам: у <code>main.go</code> в папке <code>proba</code> их две. В каждой строке — сообщение, источник <code>compiler(IncompatibleAssign)</code> и место: <code>[Ln 6, Col 29]</code> — строка 6, столбец 29. Щелчок по строке переводит курсор к месту ошибки.</figcaption>
+              </figure>
+              <p>gopls в отличие от Pylance показывает ошибки не только открытых файлов, а всех пакетов модуля: файл может быть закрыт, а ошибка в нём всё равно окажется в панели. Это видно в §8.</p>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Исправьте вызовы</span></p>
+            <div class="walk__body">
+              <p>Передайте значения тех типов, которые записаны в подписях: текст заголовка и целое число копеек.</p>
+              <figure class="code">
+                <figcaption><span>proba/main.go</span><span>исправленные вызовы</span></figcaption>
+<pre>	title := utils.FormatTitle(<span class="s">" Итог "</span>, <span class="n">40</span>)
+	price := utils.FormatKopeks(<span class="n">125000</span>)</pre>
+              </figure>
+              <p>Подчёркивания пропадут, панель Problems опустеет, счётчик в левом нижнем углу покажет 0. Файл проверен, хотя ни разу не собирался и не запускался.</p>
+            </div>
+          </div>
+        </div>
+
+        <h2 id="g4"><span class="sec">§4</span>Три уровня проверки на одном файле</h2>
+        <p>Режимов строгости, как у Pylance, у компилятора Go нет: всё, что противоречит типам, — ошибка, и программа не собирается. Но бывает код, который собирается и при этом почти наверняка ошибочен. Его находят следующие уровни проверки: <code>go vet</code> из поставки Go и отдельная программа staticcheck. Чтобы было видно, что добавляет каждый уровень, один файл проверен всеми тремя. Замените содержимое <code>proba/main.go</code>:</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>файл, который собирается</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> (
+	<span class="s">"fmt"</span>
+	<span class="s">"strings"</span>
+
+	<span class="s">"example.com/otchet-kafe/internal/utils"</span>
+)
+
+<span class="k">func</span> <span class="f">main</span>() {
+	name := <span class="s">"иванов пётр"</span>
+	strings.ToUpper(name)
+	total := <span class="n">125000</span>
+	fmt.Printf(<span class="s">"Итог: %d\n"</span>, utils.FormatKopeks(total))
+	<span class="k">for</span> i := <span class="n">0</span>; i &lt; <span class="n">3</span>; i++ {
+		total = total
+	}
+	fmt.Println(utils.FormatKopeks(total))
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go vet ./proba</span></figcaption>
+<pre>proba/main.go:16:3: self-assignment of total
+proba/main.go:14:24: fmt.Printf format %d has arg utils.FormatKopeks(total) of wrong type string</pre>
+        </figure>
+        <p>Что не так в каждом месте и какой уровень это находит:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Строка</th><th>Что не так</th><th>Что будет при запуске</th><th>go build</th><th>go vet</th><th>staticcheck</th></tr></thead>
+            <tbody>
+              <tr><td>14, <code>Printf("… %d", строка)</code></td><td>Указатель <code>%d</code> ждёт число, а <code>FormatKopeks</code> возвращает строку</td><td>печатает <code>Итог: %!d(string=1 250,00 ₽)</code></td><td>—</td><td>⚠</td><td>⚠</td></tr>
+              <tr><td>16, <code>total = total</code></td><td>Переменная присваивается сама себе: строка ничего не делает, задуманное действие потеряно</td><td>работает, сумма не меняется</td><td>—</td><td>⚠</td><td>⚠</td></tr>
+              <tr><td>12, <code>strings.ToUpper(name)</code></td><td>Результат вызова не сохранён. <code>ToUpper</code> возвращает новую строку и не меняет <code>name</code></td><td>работает, имя остаётся строчными буквами</td><td>—</td><td>—</td><td>⚠</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Обозначения: ⚠ — замечание, — — уровень строку не отмечает. Таблица читается слева направо как лестница: компилятор собирает файл без ошибок, <code>go vet</code> находит два места, staticcheck — все три. Ни одно из этих мест не противоречит типам: <code>Printf</code> принимает аргументы любого типа, присваивание <code>int</code> в <code>int</code> законно, вызов функции без сохранения результата разрешён. Поэтому компилятор молчит, а находят их программы, которые знают типичные ошибки.</p>
+        <p>staticcheck в поставку Go не входит. Запустить его без установки можно так же, как pkgsite в главе 4.6:</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>staticcheck на том же файле</span></figcaption>
+<pre>$ go run honnef.co/go/tools/cmd/staticcheck@latest ./proba
+proba/main.go:12:2: ToUpper doesn't have side effects and its return value is ignored (SA4017)
+proba/main.go:14:13: Printf format %d has arg #1 of wrong type string (SA5009)
+proba/main.go:16:3: self-assignment of total to total (SA4018)
+exit status 1</pre>
+        </figure>
+        <p>У каждого замечания staticcheck в скобках код правила: <code>SA4017</code> — «результат функции без побочных действий не используется». По коду правило находят в документации staticcheck. Строка <code>exit status 1</code> добавлена командой <code>go run</code>: программа завершилась с кодом 1, потому что нашла замечания.</p>
+        <p>Как этот файл выглядит в редакторе:</p>
+        <figure class="shot">
+          <img src="img/vscode-go-ladder.png" alt="VS Code: proba/main.go с жёлтыми подчёркиваниями в строках 14 и 16, в панели Problems два предупреждения printf и assign">
+          <figcaption>gopls подчеркнул жёлтым строки 14 и 16, в панели Problems два предупреждения с источниками <code>printf</code> и <code>assign</code> — это те же проверки, что выполняет <code>go vet</code>. Строку 12 gopls не отметил: правила staticcheck в нём по умолчанию выключены. Три точки под <code>i</code> в строке 15 — не замечание, а подсказка gopls, что цикл можно записать короче; в панель Problems она не попадает.</figcaption>
+        </figure>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Уровень</th><th>Что проверяет</th><th>Когда запускают</th></tr></thead>
+            <tbody>
+              <tr><td><code>go build</code></td><td>Всё, что противоречит типам и правилам языка: неверный аргумент, неиспользованная переменная, лишний импорт</td><td>Всегда: без этого программы нет</td></tr>
+              <tr><td><code>go vet</code></td><td>Типичные ошибки в коде, который собирается: форматы <code>Printf</code>, присваивание самому себе, неверные имена примеров</td><td>Перед коммитом и в проверках запроса на слияние — режим курса</td></tr>
+              <tr><td>staticcheck</td><td>То же и сотни других правил: неиспользованные результаты, лишний код, устаревшие функции</td><td>Можно включить для себя: замечания полезные, но в проверках при сдаче их нет</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>В курсе обязательны <code>go build</code> и <code>go vet</code>: обе команды входят в Go и не требуют установки, а gopls в редакторе показывает почти то же самое. После опыта удалите папку <code>proba</code> или верните в неё файл с двумя вызовами из §2 — он нужен в следующем параграфе.</p>
+
+        <h2 id="g5"><span class="sec">§5</span>go build и go vet в терминале</h2>
+        <p>gopls нашёл обе ошибки, но работает только у того, кто пишет код в VS Code с расширением Go. Для проверки при сдаче работы нужны команды, которые одинаково выполняются на любом компьютере и на сервере репозитория. Это <code>go build</code> и <code>go vet</code>. Верните в <code>proba/main.go</code> оба неверных вызова из §2 и сохраните файл.</p>
+        <div class="walk">
+          <div class="walk__step">
+            <p class="walk__head"><span>Откройте терминал и соберите модуль</span></p>
+            <div class="walk__body">
+              <p>Терминал редактора открывается сочетанием <kbd>Ctrl</kbd> + <kbd>`</kbd> (на всех системах) или через меню <b>Terminal → New Terminal</b>. Он запускается в папке проекта. Выполните две команды одной строкой:</p>
+              <figure class="code code--out">
+                <figcaption><span>Терминал</span><span>версия Go и сборка всех пакетов</span></figcaption>
+<pre>$ go version &amp;&amp; go build ./...</pre>
+              </figure>
+              <figure class="shot">
+                <img src="img/vscode-go-terminal-build.png" alt="Терминал VS Code: go version go1.27.1 darwin/arm64, затем две ошибки компиляции proba/main.go:6:29 и proba/main.go:7:30">
+                <figcaption>Первая строка ответа — версия Go и система. Строка <code># example.com/otchet-kafe/proba</code> называет пакет, в котором найдены ошибки. Дальше по строке на ошибку: <code>proba/main.go:6:29</code> и <code>proba/main.go:7:30</code> — файл, строка и столбец. Итоговой строки со словом «найдено», как у mypy, нет: если ошибки есть, они напечатаны, а исполняемые файлы не созданы.</figcaption>
+              </figure>
+              <p>Запись <code>./...</code> означает «все пакеты в этой папке и во вложенных». Команда <code>go build ./proba</code> для одного пакета здесь не подойдёт: собрав пакет <code>main</code>, она попробует записать исполняемый файл с именем <code>proba</code> рядом и споткнётся о папку с тем же именем. При сборке нескольких пакетов <code>go build</code> исполняемые файлы не сохраняет, а только проверяет, что всё собирается.</p>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Перейдите к месту ошибки</span></p>
+            <div class="walk__body">
+              <p>Имя файла с номером строки в выводе — ссылка. Удерживайте <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> и щёлкните по <code>proba/main.go:6:29</code>: VS Code откроет файл и поставит курсор в строку 6, столбец 29. В длинном отчёте так не приходится искать файл в проводнике.</p>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Исправьте и проверьте снова</span></p>
+            <div class="walk__body">
+              <p>Замените вызовы на исправленные, как в последнем шаге §3, сохраните файл (<kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>S</kbd>) и выполните сборку вместе с <code>go vet</code>. Стрелка <kbd>↑</kbd> в терминале возвращает предыдущую команду.</p>
+              <figure class="code code--out">
+                <figcaption><span>Терминал</span><span>сборка и проверка vet</span></figcaption>
+<pre>$ go build ./... &amp;&amp; go vet ./...</pre>
+              </figure>
+              <figure class="shot">
+                <img src="img/vscode-go-terminal-fixed.png" alt="Терминал VS Code: после команды go build ./... &amp;&amp; go vet ./... сразу новое приглашение, сообщений нет">
+                <figcaption>Ответа нет: сразу после команды снова приглашение. Для команд Go это и есть успех — сообщения печатаются только о проблемах. Знак <code>&amp;&amp;</code> запускает вторую команду, только если первая прошла без ошибок.</figcaption>
+              </figure>
+              <p><code>go build</code> читает файлы с диска, поэтому перед запуском файл нужно сохранить. gopls проверяет и несохранённый текст. Если редактор ошибок не показывает, а терминал показывает, первым делом проверьте, сохранён ли файл: на вкладке несохранённого файла вместо крестика стоит точка.</p>
+            </div>
+          </div>
+        </div>
+        <p>Пара <code>go build ./...</code> и <code>go vet ./...</code> запускается перед коммитом и в проверках репозитория. Вместе с <code>go test ./...</code> из темы 02 это три команды, после которых работу можно сдавать. Папку <code>proba</code> после опытов удаляют.</p>
+
+        <h2 id="g6"><span class="sec">§6</span>Как читать строку ошибки</h2>
+        <p>Каждая ошибка в выводе компилятора занимает одну строку, иногда с пояснением на следующих строках. Строение у всех одинаковое. Разберём первую строку из §5:</p>
+        <figure class="scheme">
+          <svg viewBox="0 0 680 190" role="img" aria-label="Схема строки ошибки компилятора: путь к файлу, строка, столбец, сообщение">
+            <rect x="8" y="60" width="664" height="50" fill="var(--page)" stroke="var(--ink)" stroke-width="3"/>
+            <rect x="18" y="72" width="112" height="28" fill="var(--fire-pale)" stroke="var(--fire)" stroke-width="2"/>
+            <text x="24" y="91" font-family="Roboto Mono, monospace" font-size="14" fill="var(--ink)">proba/main.go</text>
+            <text x="132" y="91" font-family="Roboto Mono, monospace" font-size="14" fill="var(--ink)">:</text>
+            <rect x="142" y="72" width="22" height="28" fill="var(--steel-pale)" stroke="var(--steel)" stroke-width="2"/>
+            <text x="148" y="91" font-family="Roboto Mono, monospace" font-size="14" fill="var(--ink)">6</text>
+            <text x="166" y="91" font-family="Roboto Mono, monospace" font-size="14" fill="var(--ink)">:</text>
+            <rect x="176" y="72" width="30" height="28" fill="var(--steel-pale)" stroke="var(--steel)" stroke-width="2"/>
+            <text x="182" y="91" font-family="Roboto Mono, monospace" font-size="14" fill="var(--ink)">29</text>
+            <text x="208" y="91" font-family="Roboto Mono, monospace" font-size="14" fill="var(--ink)">:</text>
+            <rect x="222" y="72" width="440" height="28" fill="var(--fire-pale)" stroke="var(--fire)" stroke-width="2"/>
+            <text x="228" y="91" font-family="Roboto Mono, monospace" font-size="12" fill="var(--ink)">cannot use 40 (untyped int constant) as string value …</text>
+
+            <path d="M 74 72 L 74 44" stroke="var(--fire)" stroke-width="2"/>
+            <text x="20" y="36" font-family="Roboto Mono, monospace" font-size="12" fill="var(--fire-deep)">файл от корня модуля</text>
+            <path d="M 153 100 L 153 134" stroke="var(--steel)" stroke-width="2"/>
+            <text x="100" y="152" font-family="Roboto Mono, monospace" font-size="12" fill="var(--steel)">строка</text>
+            <path d="M 191 100 L 191 166" stroke="var(--steel)" stroke-width="2"/>
+            <text x="166" y="182" font-family="Roboto Mono, monospace" font-size="12" fill="var(--steel)">столбец</text>
+            <path d="M 440 72 L 440 44" stroke="var(--fire)" stroke-width="2"/>
+            <text x="300" y="36" font-family="Roboto Mono, monospace" font-size="12" fill="var(--fire-deep)">что сделано и что ожидалось</text>
+          </svg>
+          <figcaption>Четыре части строки. Файл, строка и столбец ведут к месту ошибки; столбец считается в байтах, а табуляция — один байт, поэтому в редакторе, где табуляция шириной в четыре знака, позиция по счёту отличается. Сообщение называет, что не совпало. Над строками ошибок одного пакета стоит заголовок <code># путь/пакета</code>.</figcaption>
+        </figure>
+        <p>Целиком сообщение читается так: «нельзя использовать <code>40</code> (целую константу) как строковое значение в аргументе функции <code>utils.FormatTitle</code>». Кодов правил, как у mypy, в выводе компилятора нет; gopls добавляет к тому же тексту вид ошибки в скобках — по нему ошибку находят в документации. Сообщения, которые встречаются чаще других:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Сообщение компилятора</th><th>Вид в gopls</th><th>Что не так</th><th>Пример</th></tr></thead>
+            <tbody>
+              <tr><td><code>cannot use X (…) as T value in argument to F</code></td><td><code>IncompatibleAssign</code></td><td>Аргумент, присваивание или возврат не того типа</td><td><code>FormatTitle(40, 40)</code></td></tr>
+              <tr><td><code>invalid operation: … (mismatched types A and B)</code></td><td><code>MismatchedTypes</code></td><td>Операция над значениями разных типов</td><td><code>"," + cents</code>, где <code>cents int</code></td></tr>
+              <tr><td><code>not enough arguments in call to F</code></td><td><code>WrongArgCount</code></td><td>Передано меньше аргументов, чем в подписи</td><td><code>RevenueByWaiter(orders)</code></td></tr>
+              <tr><td><code>assignment mismatch: 1 variable but F returns 2 values</code></td><td><code>WrongAssignCount</code></td><td>Принято меньше результатов, чем возвращает функция</td><td><code>avg := CalculateAverage(…)</code></td></tr>
+              <tr><td><code>not enough return values</code></td><td><code>WrongResultCount</code></td><td>В <code>return</code> меньше значений, чем в подписи</td><td>нет <code>nil</code> для ошибки</td></tr>
+              <tr><td><code>X.Y undefined (type T has no field or method Y)</code></td><td><code>MissingFieldOrMethod</code></td><td>У значения нет такого поля или метода</td><td><code>order.Kopek</code> вместо <code>order.Kopeks</code></td></tr>
+              <tr><td><code>declared and not used: x</code></td><td><code>UnusedVar</code></td><td>Переменная объявлена и ни разу не использована</td><td><code>heading := …</code> без чтения</td></tr>
+              <tr><td><code>"os" imported and not used</code></td><td><code>UnusedImport</code></td><td>Пакет импортирован и не используется</td><td>лишний <code>import "os"</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Почти все сообщения построены по одной схеме: какое значение, какого оно типа и где ожидался другой тип. Две последние строки таблицы — особенность Go: в Python неиспользованная переменная или лишний импорт не мешают запуску, в Go это ошибки сборки. Примеры с настоящим выводом по каждому виду — в главе 4.4.</p>
+
+        <h2 id="g7"><span class="sec">§7</span>Одна ошибка в двух программах</h2>
+        <p>gopls и компилятор нашли в <code>proba/main.go</code> одни и те же две ошибки, и описали их одинаково. Это не совпадение: gopls проверяет типы пакетом <code>go/types</code> из поставки Go, а в компилятор встроена его копия с теми же правилами и текстами сообщений. Сравнение для строки 6:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th></th><th>gopls</th><th>go build</th></tr></thead>
+            <tbody>
+              <tr><td>Где видно</td><td>Подчёркивание, всплывающее сообщение, панель Problems</td><td>Строка в терминале</td></tr>
+              <tr><td>Текст сообщения</td><td><code>cannot use 40 (untyped int constant) as string value in argument to utils.FormatTitle</code></td><td>тот же</td></tr>
+              <tr><td>Вид ошибки</td><td><code>compiler(IncompatibleAssign)</code></td><td>не печатается</td></tr>
+              <tr><td>Место</td><td><code>[Ln 6, Col 29]</code></td><td><code>proba/main.go:6:29</code></td></tr>
+              <tr><td>Какие пакеты</td><td>все пакеты модуля сразу</td><td>до первого пакета с ошибками, см. §8</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>В отличие от пары Pylance и mypy, по сути ошибки gopls и компилятор практически не расходятся: если gopls подчеркнул строку красным как ошибку компилятора, программа не соберётся, и наоборот. Отличается только объём: сколько ошибок видно за один раз.</p>
+
+        <h2 id="g8"><span class="sec">§8</span>Ошибки в нескольких пакетах</h2>
+        <p>До сих пор ошибки были в одном пакете. В проекте их обычно больше, и здесь <code>go build</code> и gopls ведут себя по-разному. Опыт делается на первом архиве — в нём двенадцать ошибок типов в разных пакетах, его исправляют в практике 4.5.</p>
+        <div class="downloads">
+          <a class="download" href="materials/otchet-kafe-go-oshibki.zip" download>
+            <span>↓</span>
+            <b>1 · С ошибками типов<small>ZIP · для опыта в этом параграфе и практики 4.5</small></b>
+          </a>
+        </div>
+        <p>Распакуйте архив, откройте его папку в VS Code и выполните в терминале <code>go build ./...</code>:</p>
+        <figure class="shot">
+          <img src="img/vscode-go-oshibki-build.png" alt="Терминал: go build ./... на архиве с ошибками печатает три ошибки, все в пакете internal/utils">
+          <figcaption>Первый архив, терминал. Напечатаны три ошибки, и все в одном пакете — <code>internal/utils</code>. Об ошибках в <code>domain</code>, <code>services</code> и <code>main.go</code> ни слова.</figcaption>
+        </figure>
+        <p>Причина — порядок сборки. Пакеты собираются от тех, что ни от чего не зависят, к тем, что их импортируют: сначала <code>utils</code>, затем <code>domain</code>, который импортирует <code>utils</code>, затем <code>services</code>, последним <code>main</code>. Если пакет не собрался, пакеты, которые от него зависят, компилятор не проверяет вовсе: опираться им не на что. Поэтому в терминале видны ошибки только «нижнего» пакета. Кроме того, компилятор прекращает перечислять ошибки одного пакета после десятой.</p>
+        <p>Теперь откройте панель Problems:</p>
+        <figure class="shot">
+          <img src="img/vscode-go-oshibki-problems.png" alt="Панель Problems: 12 ошибок в файлах order.go, shift.go, calculator.go, orders.go, report_file.go, formatter.go, text.go и main.go">
+          <figcaption>Тот же архив, панель Problems развёрнута на всё окно. Все двенадцать ошибок, сгруппированные по файлам и пакетам: от <code>order.go</code> в <code>internal/domain</code> до <code>main.go</code>. У ошибок с пояснением — например, <code>not enough arguments in call to strings.Join</code> — ниже две строки <code>have</code> и <code>want</code>: какие типы переданы и какие ожидались.</figcaption>
+        </figure>
+        <p>gopls проверяет каждый пакет, даже если пакет, от которого он зависит, содержит ошибки: о функциях <code>utils</code> ему достаточно подписей, а подписи в нём верные. Поэтому в редакторе видна вся картина сразу, а в терминале — по слоям: исправили <code>utils</code>, запустили снова — появились ошибки <code>domain</code>, и так далее. Как это использовать для порядка работы, разобрано в практике 4.5.</p>
+
+        <h2 id="g9"><span class="sec">§9</span>Какой тип видит проверка</h2>
+        <p>В сообщениях выше компилятор называл типы значений: <code>untyped int constant</code>, <code>[]string</code>. Не все эти типы записаны в коде: у переменных, объявленных через <code>:=</code>, тип выводится из значения. Когда сообщение непонятно, полезно посмотреть, какой тип вывел компилятор. Способов два.</p>
+        <p><b>В редакторе</b> — наведением указателя на имя переменной. Замените содержимое <code>proba/main.go</code> программой ниже и наведите указатель на <code>low</code> в строке 10:</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>три результата в три переменные</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> (
+	<span class="s">"fmt"</span>
+
+	<span class="s">"example.com/otchet-kafe/internal/services"</span>
+)
+
+<span class="k">func</span> <span class="f">main</span>() {
+	low, high, err := services.GradeBounds([]<span class="k">int</span>{<span class="n">5</span>, <span class="n">3</span>, <span class="n">4</span>})
+	fmt.Println(low, high, err)
+}</pre>
+        </figure>
+        <figure class="shot">
+          <img src="img/vscode-go-hover-bounds.png" alt="Подсказка VS Code над переменной low: var low int">
+          <figcaption><code>var low int</code> — gopls взял тип из подписи <code>GradeBounds(…) (low, high int, err error)</code>. Так же можно навести указатель на <code>high</code> и <code>err</code>.</figcaption>
+        </figure>
+        <p><b>При запуске</b> — указателем <code>%T</code> в <code>fmt.Printf</code>: он печатает тип значения. Отдельной команды вроде <code>reveal_type</code> в mypy в Go нет, и она не нужна: тип известен на любом шаге, и программа с <code>%T</code> обычная, её можно запустить.</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>тип значения при запуске</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> (
+	<span class="s">"fmt"</span>
+
+	<span class="s">"example.com/otchet-kafe/internal/services"</span>
+)
+
+<span class="k">func</span> <span class="f">main</span>() {
+	low, high, err := services.GradeBounds([]<span class="k">int</span>{<span class="n">5</span>, <span class="n">3</span>, <span class="n">4</span>})
+	fmt.Printf(<span class="s">"%T %T %T\n"</span>, low, high, err)
+	fmt.Println(low, high, err)
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre>int int &lt;nil&gt;
+3 5 &lt;nil&gt;</pre>
+        </figure>
+        <p>Третий тип напечатан как <code>&lt;nil&gt;</code>, а не <code>error</code>: <code>%T</code> показывает тип значения, которое лежит в переменной при работе. Ошибки не было, и в переменной типа <code>error</code> пусто. Так видна разница между типом переменной — его знает компилятор — и типом значения внутри интерфейса, который становится известен только при работе.</p>
+
+        <h2 id="g10"><span class="sec">§10</span>Чего проверка не находит</h2>
+        <p>Компилятор находит любые несовпадения с типами. Есть ошибки другого рода, которых он не видит: проверка работает с текстом программы, а данные, которые появятся при работе, ей недоступны. В <code>LoadOrders</code> сумма читается из файла вызовом <code>strconv.Atoi(row["kopeks"])</code>. Для компилятора всё верно: функция возвращает целое число и ошибку. Если в файле окажется слово «сто», <code>Atoi</code> вернёт ошибку при работе, и только проверка <code>if err != nil</code> не даст программе продолжить с нулём вместо суммы.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Находит компилятор</th><th>Не находит компилятор</th></tr></thead>
+            <tbody>
+              <tr><td>Аргумент, присваивание или возврат не того типа</td><td>Неверные данные в файле или в ответе сервера</td></tr>
+              <tr><td>Неверное число аргументов и результатов</td><td>Ошибку в расчёте: <code>+</code> вместо <code>-</code> между числами</td></tr>
+              <tr><td>Опечатку в имени поля или метода</td><td>Обращение через пустой указатель <code>nil</code></td></tr>
+              <tr><td>Неиспользованную переменную и импорт</td><td>Запись в нулевой словарь, выход за границу среза</td></tr>
+              <tr><td>Операцию над значениями разных типов</td><td>Неверное утверждение типа у <code>any</code>: <code>value.(int)</code> при строке внутри</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Ошибки из правой колонки при работе останавливают программу с сообщением <code>panic</code> — их примеры в главах 4.2 и 4.4. Их закрывают тесты, проверки данных внутри функций и проверка ошибок после каждого вызова. Часть таких мест находит <code>go vet</code>: например, неверный формат в <code>Printf</code>, как в §4.</p>
+        <p>Подавить ошибку компиляции нельзя: аналога <code># type: ignore</code> в Go нет. Ошибку исправляют, иначе программа не собирается. Для замечаний staticcheck подавление есть — комментарий <code>//lint:ignore КОД причина</code> на строке перед замечанием, но в работах курса подавления не используются: каждое замечание исправляется кодом.</p>
+
+        <h2 id="g11"><span class="sec">§11</span>Проверьте себя</h2>
+        <details>
+          <summary>Расширение Go установлено, но ошибки в коде не подчёркиваются. Что проверить?</summary>
+          <p>Что расширение нашло Go и gopls: в строке состояния внизу справа должна стоять версия Go, а уведомления об отсутствии <code>gopls</code> быть не должно. Если gopls не установлен, выполните команду палитры <b>Go: Install/Update Tools</b> и отметьте его. И что открыта папка с <code>go.mod</code>, а не папка выше неё.</p>
+        </details>
+        <details>
+          <summary>Что означает строка <code>proba/main.go:7:30: cannot use "1250" (untyped string constant) as int value in argument to utils.FormatKopeks</code>?</summary>
+          <p>В файле <code>proba/main.go</code>, строка 7, столбец 30, передана строка <code>"1250"</code> туда, где функция <code>FormatKopeks</code> ждёт целое число.</p>
+        </details>
+        <details>
+          <summary>Файл исправлен, gopls подчёркиваний не показывает, а <code>go build</code> по-прежнему сообщает об ошибке. Почему?</summary>
+          <p>Файл не сохранён. gopls проверяет текст в редакторе, <code>go build</code> — файл на диске.</p>
+        </details>
+        <details>
+          <summary>Почему <code>go build ./...</code> на первом архиве показывает 3 ошибки, а панель Problems — 12?</summary>
+          <p>Компилятор не собирает пакеты, которые зависят от несобранного пакета, поэтому видны только ошибки <code>internal/utils</code>. gopls проверяет каждый пакет отдельно, опираясь на подписи, и показывает ошибки всех пакетов сразу.</p>
+        </details>
+        <details>
+          <summary>Программа собирается. Что найдёт <code>go vet</code> в строке <code>fmt.Printf("Итог: %d\n", utils.FormatKopeks(total))</code>?</summary>
+          <p>Что указатель <code>%d</code> ждёт целое число, а передана строка: <code>fmt.Printf format %d has arg … of wrong type string</code>. Компилятор это не находит: <code>Printf</code> принимает аргументы любого типа.</p>
+        </details>
+        <details>
+          <summary>Программа прошла <code>go build</code> и <code>go vet</code>. Может ли она остановиться с ошибкой при запуске?</summary>
+          <p>Может. Данные из файлов и сети проверке недоступны, а обращение через <code>nil</code>, запись в нулевой словарь, выход за границу среза и неверное утверждение типа обнаруживаются только при работе. Такие ошибки находят тесты и проверки внутри функций.</p>
+        </details>
+
+        <h2 id="g12"><span class="sec">§12</span>Шпаргалка по главе</h2>
+        <div class="cheat">
+          <div>
+            <b>Редактор</b>
+            <code>расширение golang.go</code>
+            <code>Go: Install/Update Tools → gopls</code>
+            <code>включать проверку не нужно</code>
+          </div>
+          <div>
+            <b>Где смотреть</b>
+            <code>подчёркивание и наведение</code>
+            <code>панель Problems: Ctrl+Shift+M</code>
+          </div>
+          <div>
+            <b>Терминал</b>
+            <code>go build ./...</code>
+            <code>go vet ./...</code>
+            <code>тишина — значит, ошибок нет</code>
+          </div>
+          <div>
+            <b>Строка ошибки</b>
+            <code>файл:строка:столбец: сообщение</code>
+            <code># путь/пакета — заголовок</code>
+          </div>
+          <div>
+            <b>Сверх типов</b>
+            <code>go vet — форматы, самоприсваивание</code>
+            <code>go run honnef.co/go/tools/cmd/staticcheck@latest ./...</code>
+          </div>
+          <div>
+            <b>Узнать тип</b>
+            <code>наведение на имя — gopls</code>
+            <code>fmt.Printf("%T", x) — при запуске</code>
+          </div>
+        </div>
+
+        <h3>Итог главы</h3>
+        <p>В Go проверку типов выполняет компилятор, и отключить её нельзя: программа с ошибкой типа не собирается. gopls в редакторе проверяет код по тем же правилам во время набора, показывает ошибки подчёркиванием, во всплывающем сообщении и в панели Problems — сразу для всех пакетов модуля. <code>go build ./...</code> в терминале печатает по строке на ошибку: файл, строка, столбец и сообщение «что передано / что ожидалось», и останавливается на первом пакете с ошибками. <code>go vet</code> находит ошибки в коде, который собирается, staticcheck — ещё больше таких мест. Тип, который вывел компилятор, показывает наведение в редакторе, а при работе — <code>%T</code>.</p>
+
+        <div class="sources">
+          <b>Откуда взяты факты</b>
+          <ol>
+            <li>Команды <code>go build</code> и <code>go vet</code> — <a href="https://pkg.go.dev/cmd/go">документация команды go</a>; анализаторы vet — <a href="https://pkg.go.dev/cmd/vet">cmd/vet</a>.</li>
+            <li>Языковой сервер и его диагностика — <a href="https://go.dev/gopls/">документация gopls</a>; расширение — <a href="https://github.com/golang/vscode-go">vscode-go</a>.</li>
+            <li>Правила staticcheck и их коды — <a href="https://staticcheck.dev/docs/checks/">staticcheck.dev, Checks</a>.</li>
+            <li>Выводы получены на архивах проекта темы с Go <code>1.27</code> и staticcheck <code>2026.2</code>; кадры сняты в VS Code <code>1.138</code> с расширением Go <code>0.56</code> и gopls <code>0.24</code>.</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="02-tipy-v-annotaciyah.html">← 4.2 Типы Go</a><a href="04-tipy-na-primerah.html">4.4 Ошибки типов →</a></div>
+        </div>
 
         <div class="colophon">
           <span>Глава 4.3 · Проверка типов · МДК.01.01</span>

@@ -21,7 +21,8 @@ from cdp import Editor, launch
 cdp.PROFILE = "/private/tmp/vsc-go"
 MATERIALS = Path(__file__).resolve().parent.parent / "materials"
 STUDENT = Path("/private/tmp/student-go-shots")
-NAMES = {"start": "otchet-kafe-go-start", "dok": "otchet-kafe-go-dokumentirovan"}
+NAMES = {"start": "otchet-kafe-go-start", "dok": "otchet-kafe-go-dokumentirovan",
+         "oshibki": "otchet-kafe-go-oshibki"}
 RAW = Path(__file__).resolve().parent / "raw"
 W, H = 1240, 780
 
@@ -37,7 +38,8 @@ def prepare(kind: str) -> None:
     with zipfile.ZipFile(MATERIALS / f"{name}.zip") as zf:
         zf.extractall(STUDENT)
     target = STUDENT / name
-    subprocess.run(["go", "build", "./..."], cwd=target, check=True)
+    if kind != "oshibki":
+        subprocess.run(["go", "build", "./..."], cwd=target, check=True)
     open(".shot-project-go", "w").write(str(target))
     launch(str(target))
 
@@ -92,6 +94,196 @@ async def st_hoverdoc(e: Editor) -> None:
     await e.palette("Show or Focus Hover", 4.0)
     await e.shot(f"{RAW}/go-hover-{tag()}.png")
     await e.key("Escape", 0.3)
+
+
+async def st_hovercall(e: Editor) -> None:
+    """4.1 §6: подсказка на вызове и на переменной, объявленной через :=."""
+    await reset(e)
+    await open_file(e, "main.go", 8.0)
+    line, col = line_of("main.go", "RevenueByWaiter(orders")
+    await goto(e, line, col + 3)
+    await e.palette("Show or Focus Hover", 4.0)
+    await e.shot(f"{RAW}/go-hover-call.png")
+    await e.key("Escape", 0.3)
+    line, col = line_of("main.go", "revenue, err :=")
+    await goto(e, line, col + 2)
+    await e.palette("Show or Focus Hover", 4.0)
+    await e.shot(f"{RAW}/go-hover-variable.png")
+    await e.key("Escape", 0.3)
+
+
+async def st_completion(e: Editor) -> None:
+    """4.1 §7: автодополнение после orders[0]."""
+    await reset(e)
+    await open_file(e, "orders.go", 8.0)
+    line, _ = line_of("internal/services/orders.go", "func SortOrdersInPlace(")
+    await goto(e, line)
+    await e.key("End", 0.3)
+    await e.paste("\n", 0.6)
+    await e.type("orders[0].", 2.5)
+    await e.key("Ctrl+Space", 3.0)
+    await e.shot(f"{RAW}/go-completion.png")
+    await e.key("Escape", 0.3)
+    await e.palette("File: Revert File", 1.5)
+    await e.palette("View: Close All Editors", 0.8)
+
+
+PROBA_BAD = """package main
+
+import "example.com/otchet-kafe/internal/utils"
+
+func main() {
+	title := utils.FormatTitle(40, 40)
+	price := utils.FormatKopeks("1250")
+	_, _ = title, price
+}
+"""
+PROBA_GOOD = PROBA_BAD.replace("FormatTitle(40, 40)", 'FormatTitle(" Итог ", 40)').replace('FormatKopeks("1250")', "FormatKopeks(125000)")
+PROBA_LADDER = """package main
+
+import (
+	"fmt"
+	"strings"
+
+	"example.com/otchet-kafe/internal/utils"
+)
+
+func main() {
+	name := "иванов пётр"
+	strings.ToUpper(name)
+	total := 125000
+	fmt.Printf("Итог: %d\\n", utils.FormatKopeks(total))
+	for i := 0; i < 3; i++ {
+		total = total
+	}
+	fmt.Println(utils.FormatKopeks(total))
+}
+"""
+PROBA_BOUNDS = """package main
+
+import (
+	"fmt"
+
+	"example.com/otchet-kafe/internal/services"
+)
+
+func main() {
+	low, high, err := services.GradeBounds([]int{5, 3, 4})
+	fmt.Println(low, high, err)
+}
+"""
+
+
+def write_proba(text: str) -> None:
+    (project() / "proba").mkdir(exist_ok=True)
+    (project() / "proba" / "main.go").write_text(text, encoding="utf-8")
+
+
+async def terminal(e: Editor, command: str, wait: float = 8.0) -> None:
+    await e.palette("Terminal: Kill All Terminals", 1.2)
+    await e.palette("Terminal: Create New Terminal", 3.0)
+    await e.paste("clear", 0.2)
+    await e.key("Enter", 0.6)
+    await e.paste(command, 0.3)
+    await e.key("Enter", wait)
+
+
+async def park(e: Editor) -> None:
+    """Указатель — на пустое место проводника, где нет всплывающих подсказок."""
+    await e.move(200, 640, 0.3)
+
+
+async def st_ext(e: Editor) -> None:
+    """4.3 шаг 1: расширение Go в списке установленных."""
+    await reset(e)
+    await e.palette("Extensions: Show Installed Extensions", 3.0)
+    await panel(e, False)
+    await park(e)
+    await e.shot(f"{RAW}/go-ext-installed.png")
+
+
+async def st_squiggle(e: Editor) -> None:
+    """4.3 шаги 3–5: подчёркивания, сообщение, панель Problems."""
+    write_proba(PROBA_BAD)
+    await reset(e)
+    await open_file(e, "proba/main.go", 8.0)
+    await goto(e, 9)
+    await park(e)
+    await e.shot(f"{RAW}/go-squiggle.png")
+    await goto(e, 6, 32)                        # столбец в VS Code: табуляция = 4
+    await e.palette("Show or Focus Hover", 3.0)
+    await e.shot(f"{RAW}/go-hover-error.png")
+    await e.key("Escape", 0.4)
+    await e.palette("View: Focus Problems (Errors, Warnings, Infos)", 2.5)
+    await park(e)
+    await e.shot(f"{RAW}/go-problems.png")
+
+
+async def st_build(e: Editor) -> None:
+    """4.3 §5: go build в терминале — с ошибками и после исправления."""
+    write_proba(PROBA_BAD)
+    await reset(e)
+    await open_file(e, "proba/main.go", 4.0)
+    await terminal(e, "go version && go build ./...", 10.0)
+    await park(e)
+    await e.shot(f"{RAW}/go-terminal-build.png")
+    write_proba(PROBA_GOOD)
+    await asyncio.sleep(2.0)
+    await terminal(e, "go build ./... && go vet ./...", 12.0)
+    await park(e)
+    await e.shot(f"{RAW}/go-terminal-fixed.png")
+
+
+async def st_ladder(e: Editor) -> None:
+    """4.3 §4: файл, который собирается, но вызывает замечания go vet."""
+    write_proba(PROBA_LADDER)
+    await reset(e)
+    await e.size(W, 980)
+    await open_file(e, "proba/main.go", 8.0)
+    await e.palette("View: Focus Problems (Errors, Warnings, Infos)", 2.5)
+    await e.palette("View: Focus Active Editor Group", 1.0)
+    await goto(e, 1)
+    await park(e)
+    await e.shot(f"{RAW}/go-ladder.png")
+
+
+async def st_bounds(e: Editor) -> None:
+    """4.3 §9: тип переменной из нескольких результатов."""
+    write_proba(PROBA_BOUNDS)
+    await reset(e)
+    await open_file(e, "proba/main.go", 8.0)
+    await goto(e, 10, 6)
+    await e.palette("Show or Focus Hover", 3.0)
+    await e.shot(f"{RAW}/go-hover-bounds.png")
+    await e.key("Escape", 0.3)
+
+
+async def st_oshibki(e: Editor) -> None:
+    """4.3 §8: архив с ошибками — терминал видит один пакет, редактор все."""
+    await reset(e)
+    await open_file(e, "main.go", 10.0)
+    await terminal(e, "go build ./...", 10.0)
+    await e.palette("View: Toggle Maximized Panel", 1.5)
+    await park(e)
+    await e.shot(f"{RAW}/go-oshibki-build.png")
+    await e.palette("View: Toggle Maximized Panel", 1.0)
+    await e.palette("View: Focus Problems (Errors, Warnings, Infos)", 3.0)
+    await e.palette("View: Toggle Maximized Panel", 1.5)
+    await park(e)
+    await e.shot(f"{RAW}/go-oshibki-problems.png")
+    await e.palette("View: Toggle Maximized Panel", 1.0)
+
+
+
+async def st_run(e: Editor) -> None:
+    """4.6: проект после запуска — дерево, main.go, отчёт в терминале."""
+    subprocess.run(["rm", "-rf", str(project() / "proba")])
+    await reset(e)
+    await open_file(e, "main.go", 6.0)
+    await e.palette("View: Collapse Folders in Explorer", 0.8)
+    await terminal(e, "go run .", 10.0)
+    await park(e)
+    await e.shot(f"{RAW}/go-project-run.png")
 
 
 STAGES = {name[3:]: fn for name, fn in globals().items() if name.startswith("st_")}

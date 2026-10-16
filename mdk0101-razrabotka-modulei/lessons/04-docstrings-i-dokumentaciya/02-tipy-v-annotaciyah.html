@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body data-title-py="4.2 Типы в аннотациях · Аннотации типов и документация" data-title-go="4.2 Типы Go · Типы и документация в Go">
   <div class="book">
     <div class="book__body">
       <div class="spine"><span>Тема 04 · Аннотации типов и документация кода</span></div>
@@ -21,6 +21,7 @@
           <p class="running__folio">Глава 4.2</p>
         </div>
 
+        <div data-lang="py">
         <header class="chapter-head">
           <span class="chapter-num">4.2</span>
           <h1>Типы<br>в аннотациях</h1>
@@ -366,6 +367,400 @@ parse(<span class="s">"125"</span>)</pre>
         </div>
 
         <div class="pager"><a href="01-annotacii-tipov.html">← 4.1 Аннотация типа</a><a href="03-proverka-tipov.html">4.3 Проверка типов →</a></div>
+        </div>
+
+        <div data-lang="go">
+        <header class="chapter-head">
+          <span class="chapter-num">4.2</span>
+          <h1>Типы Go:<br>как записать тип</h1>
+          <p class="lead">В этой главе показано, как в Go записать тип параметра, результата и переменной: простые значения, срезы, словари и массивы, собственные структуры, указатели и вариант «значение или ничего», интерфейсы, функции как значения, именованные типы и тип <code>any</code>. Для каждой записи сказано, как она читается и какие значения под неё подходят. Как компилятор и редактор сверяют код с этими записями, разобрано в главе 4.3, а их ответы на неверный код по каждому типу — в главе 4.4.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Синтаксис</dd></div>
+          <div><dt>Уровень</dt><dd>Начальный</dd></div>
+          <div><dt>Опирается на</dt><dd>Глава 4.1</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Записать и прочитать тип любого значения из проекта</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#g1">Простые типы</a></li>
+            <li><a href="#g2">Срезы, словари, массивы</a></li>
+            <li><a href="#g3">Структуры и типы других пакетов</a></li>
+            <li><a href="#g4">Значение или ничего: указатели, nil и ok</a></li>
+            <li><a href="#g5">Несколько возможных типов: интерфейсы</a></li>
+            <li><a href="#g6">Функции и перебор</a></li>
+            <li><a href="#g7">Именованные типы и псевдонимы</a></li>
+            <li><a href="#g8">Тип any</a></li>
+            <li><a href="#g9">Переменные и нулевые значения</a></li>
+            <li><a href="#g10">Проверьте себя</a></li>
+            <li><a href="#g11">Шпаргалка по главе</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="g1"><span class="sec">§1</span>Простые типы</h2>
+        <p>Простые типы записываются своими именами. Те же имена служат для преобразования значения: <code>float64(sum)</code> переводит целое число в дробное, <code>string(runes)</code> собирает строку из знаков.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Тип</th><th>Какие значения</th><th>Примеры из проекта</th></tr></thead>
+            <tbody>
+              <tr><td><code>int</code></td><td>целые числа: <code>0</code>, <code>125000</code>, <code>-3</code></td><td><code>kopeks int</code> — сумма заказа, <code>width int</code></td></tr>
+              <tr><td><code>float64</code></td><td>дробные числа: <code>4.4</code>, <code>0.5</code></td><td>первый результат <code>CalculateAverage</code></td></tr>
+              <tr><td><code>string</code></td><td>строки: <code>"Иванов Пётр"</code>, <code>""</code></td><td><code>name string</code> у <code>NormalizeName</code></td></tr>
+              <tr><td><code>bool</code></td><td><code>true</code> и <code>false</code></td><td>второе значение в <code>_, seen := totals[name]</code></td></tr>
+              <tr><td><code>rune</code></td><td>один знак Unicode: <code>'П'</code></td><td>срез <code>[]rune(word)</code> в <code>NormalizeName</code></td></tr>
+              <tr><td><code>byte</code></td><td>один байт: <code>0</code>–<code>255</code></td><td>срез <code>[]byte</code> при записи файла</td></tr>
+              <tr><td><code>error</code></td><td>ошибка или <code>nil</code>, если ошибки нет</td><td>последний результат <code>LoadOrders</code>, <code>SaveReport</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>У целых и дробных чисел в Go есть варианты по размеру: <code>int8</code>, <code>int32</code>, <code>int64</code>, <code>uint</code>, <code>float32</code>. В прикладном коде обычно пишут <code>int</code> и <code>float64</code>; остальные нужны, когда размер числа задан извне — форматом файла или протоколом.</p>
+        <p>В отличие от Python, числа разных типов в Go не смешиваются. Сложить <code>int</code> и <code>float64</code> нельзя, даже если оба значения — числа: одно из них сначала явно переводят в тип другого. Отсюда и поведение деления. Деление двух <code>int</code> даёт <code>int</code>, дробная часть отбрасывается: <code>7 / 2</code> равно <code>3</code>. Чтобы получить <code>3.5</code>, делят <code>float64(7) / 2</code>. Поэтому в <code>CalculateAverage</code> сумма переводится в <code>float64</code> до деления.</p>
+        <figure class="code">
+          <figcaption><span>пример</span><span>подписи с простыми типами</span></figcaption>
+<pre><span class="k">func</span> <span class="f">isBig</span>(kopeks, limit <span class="k">int</span>) <span class="k">bool</span> {
+	<span class="k">return</span> kopeks &gt;= limit
+}
+
+<span class="k">func</span> <span class="f">share</span>(part, total <span class="k">int</span>) <span class="k">float64</span> {
+	<span class="k">return</span> <span class="f">float64</span>(part) / <span class="f">float64</span>(total)
+}
+
+<span class="k">func</span> <span class="f">show</span>(name <span class="k">string</span>) {
+	fmt.Println(name)
+}</pre>
+        </figure>
+        <p>Первая подпись читается так: функция принимает два целых числа и возвращает <code>true</code> или <code>false</code>. Вторая принимает два целых и возвращает дробное число; оба целых переводятся в <code>float64</code>, иначе доля <code>1</code> от <code>3</code> получилась бы <code>0</code>. Третья принимает строку и ничего не возвращает: после скобок ничего не стоит.</p>
+
+        <h2 id="g2"><span class="sec">§2</span>Срезы, словари, массивы</h2>
+        <p>Для коллекции указывают, что в ней лежит. Тип содержимого пишется сразу после обозначения коллекции, без отдельных скобок вокруг него.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Запись</th><th>Что означает</th><th>Пример значения</th></tr></thead>
+            <tbody>
+              <tr><td><code>[]int</code></td><td>срез целых чисел любой длины</td><td><code>[]int{5, 4, 5}</code> — оценки в <code>CalculateAverage</code></td></tr>
+              <tr><td><code>[]string</code></td><td>срез строк</td><td>строки отчёта в <code>PrintReport</code></td></tr>
+              <tr><td><code>[]domain.Order</code></td><td>срез заказов</td><td>результат <code>LoadOrders</code></td></tr>
+              <tr><td><code>[][]int</code></td><td>срез срезов целых чисел</td><td><code>[][]int{{5, 4}, {3, 5, 5}}</code> — оценки по группам</td></tr>
+              <tr><td><code>map[string]int</code></td><td>словарь: ключ — строка, значение — целое</td><td><code>totals</code> в <code>RevenueByWaiter</code></td></tr>
+              <tr><td><code>map[string]string</code></td><td>строка → строка</td><td>строка CSV-файла в <code>ReadRows</code></td></tr>
+              <tr><td><code>map[string][]int</code></td><td>строка → срез целых</td><td><code>{"Иванова": {5, 4}}</code> — журнал оценок</td></tr>
+              <tr><td><code>[2]int</code></td><td>массив ровно из двух целых</td><td><code>[2]int{3, 5}</code></td></tr>
+              <tr><td><code>map[string]bool</code></td><td>множество строк: ключи без повторов</td><td>официанты смены: <code>{"Иванов Пётр": true}</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Как устроены эти записи:</p>
+        <ul>
+          <li><b>Срез</b> <code>[]T</code> — последовательность элементов одного типа, длина которой меняется: <code>append</code> добавляет элемент в конец. Это основная коллекция Go, аналог списка Python.</li>
+          <li><b>Массив</b> <code>[N]T</code> — последовательность ровно из <code>N</code> элементов; число <code>N</code> входит в тип, и <code>[2]int</code> и <code>[3]int</code> — разные типы. В прикладном коде массивы встречаются редко.</li>
+          <li><b>Словарь</b> <code>map[K]V</code> — тип ключей в квадратных скобках, тип значений сразу за ними. Порядок ключей при переборе не задан, поэтому <code>RevenueByWaiter</code> возвращает не словарь, а срез: в срезе порядок «по убыванию суммы» сохраняется.</li>
+          <li><b>Множества</b> отдельным типом в Go нет: его заменяет словарь, у которого значения не нужны, — <code>map[string]bool</code> или <code>map[string]struct{}</code>.</li>
+          <li><b>Кортежей</b> в Go нет. Пару значений возвращают двумя результатами функции, как в <code>GradeBounds</code>, или собирают в структуру с именованными полями, как <code>WaiterRevenue</code>.</li>
+        </ul>
+        <p>Составную запись читают слева направо. <code>map[string][]int</code> — «словарь, в котором по строке лежит срез целых чисел».</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Запись</th><th>Подходит</th><th>Не подходит</th><th>Почему</th></tr></thead>
+            <tbody>
+              <tr><td><code>[]int</code></td><td><code>[]int{5, 4, 5}</code></td><td><code>[]int{5, "4", 5}</code></td><td>второй элемент — строка</td></tr>
+              <tr><td><code>[]int</code></td><td><code>[]int{5, 4}</code></td><td><code>[]float64{5, 4}</code></td><td>срез другого типа, даже если числа целые</td></tr>
+              <tr><td><code>map[string]int</code></td><td><code>{"Иванов Пётр": 100}</code></td><td><code>{1: 100}</code></td><td>ключ — число, а нужна строка</td></tr>
+              <tr><td><code>map[string][]int</code></td><td><code>{"Сидоров": {5}}</code></td><td><code>{"Сидоров": 5}</code></td><td>значение — число, а нужен срез</td></tr>
+              <tr><td><code>[2]int</code></td><td><code>[2]int{3, 5}</code></td><td><code>[2]int{3, 5, 4}</code></td><td>три элемента вместо двух</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Вторая строка таблицы показывает отличие от Python. Срез <code>[]float64</code> не передаётся туда, где ждут <code>[]int</code>, даже если в нём одни целые числа: тип среза определяется записью, а не содержимым.</p>
+
+        <h2 id="g3"><span class="sec">§3</span>Структуры и типы других пакетов</h2>
+        <p><span class="term">Структура</span> — тип из нескольких именованных полей, у каждого свой тип. Её объявляют словами <code>type … struct</code>, и после объявления имя структуры пишется в подписи так же, как <code>int</code>. Типы стандартной библиотеки записываются с именем пакета: <code>time.Time</code> из пакета <code>time</code>. Типы своего модуля из другого пакета — тоже с именем пакета: <code>domain.Order</code>. Пакет при этом нужно импортировать.</p>
+        <figure class="code">
+          <figcaption><span>internal/services/orders.go</span><span>тип Order в подписях</span></figcaption>
+<pre><span class="k">import</span> (
+	<span class="s">"example.com/otchet-kafe/internal/domain"</span>
+)
+
+<span class="k">type</span> <span class="f">WaiterRevenue</span> <span class="k">struct</span> {
+	Waiter <span class="k">string</span>
+	Kopeks <span class="k">int</span>
+}
+
+<span class="k">func</span> <span class="f">LoadOrders</span>(path <span class="k">string</span>) ([]domain.Order, <span class="k">error</span>) {
+	...
+}
+
+<span class="k">func</span> <span class="f">RevenueByWaiter</span>(orders []domain.Order, top <span class="k">int</span>) ([]WaiterRevenue, <span class="k">error</span>) {
+	...
+}</pre>
+        </figure>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Запись</th><th>Откуда тип</th><th>Где в проекте</th></tr></thead>
+            <tbody>
+              <tr><td><code>order Order</code></td><td>тот же пакет <code>domain</code>, импорт не нужен</td><td><code>Shift.Add</code></td></tr>
+              <tr><td><code>[]domain.Order</code></td><td><code>import "example.com/otchet-kafe/internal/domain"</code></td><td><code>LoadOrders</code>, <code>RevenueByWaiter</code></td></tr>
+              <tr><td><code>[]WaiterRevenue</code></td><td>объявлен в том же пакете <code>services</code></td><td>результат <code>RevenueByWaiter</code></td></tr>
+              <tr><td><code>day time.Time</code></td><td><code>import "time"</code></td><td><code>NewShift</code>, поле <code>Shift.Day</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Путь к файлу в проекте передаётся строкой <code>string</code>, отдельного типа пути, как <code>Path</code> в Python, для этого не заводят. Когда тип параметра — структура, редактору доступны её поля: после <code>order.</code> в автодополнении появятся <code>Waiter</code> и <code>Kopeks</code>. Словарь с такими же ключами под тип <code>domain.Order</code> не подходит: <code>map[string]string{"waiter": "Петрова Анна"}</code> — это словарь, полей <code>.Waiter</code> и <code>.Kopeks</code> у него нет.</p>
+        <div class="margin-note margin-note--steel">
+          <b>На полях: неиспользуемый импорт — ошибка</b>
+          <p>Если пакет импортирован, но ни одно его имя в файле не используется, Go файл не соберёт: <code>"time" imported and not used</code>. В Python лишний импорт просто лежит в файле. Поэтому, удаляя последнее упоминание типа <code>time.Time</code>, удаляют и импорт; в VS Code с расширением Go это делается само при сохранении.</p>
+        </div>
+
+        <h2 id="g4"><span class="sec">§4</span>Значение или ничего: указатели, nil и ok</h2>
+        <p>Часто функция возвращает значение, а если его нет — ничего. Например, поиск заказа по имени официанта: заказ найден или не найден. В Python такой результат записывают <code>Order | None</code>. В Go значения <code>None</code> для структуры нет: у переменной типа <code>Order</code> всегда есть значение, в худшем случае нулевое — пустое имя и сумма <code>0</code>. Поэтому «ничего» в Go записывают одним из трёх способов.</p>
+        <p><b>Способ 1. Второй результат <code>bool</code>.</b> Функция возвращает значение и признак, найдено ли оно. Так устроено чтение из словаря: <code>value, ok := totals[name]</code>.</p>
+        <figure class="code">
+          <figcaption><span>пример</span><span>результат и признак ok</span></figcaption>
+<pre><span class="k">func</span> <span class="f">findOrder</span>(orders []domain.Order, waiter <span class="k">string</span>) (domain.Order, <span class="k">bool</span>) {
+	<span class="k">for</span> _, order := <span class="k">range</span> orders {
+		<span class="k">if</span> order.Waiter == waiter {
+			<span class="k">return</span> order, <span class="k">true</span>
+		}
+	}
+	<span class="k">return</span> domain.Order{}, <span class="k">false</span>
+}
+
+order, ok := findOrder(orders, <span class="s">"Петрова Анна"</span>)
+<span class="k">if</span> ok {
+	fmt.Println(order.Kopeks)
+}</pre>
+        </figure>
+        <p><b>Способ 2. Указатель.</b> <span class="term">Указатель</span> — значение, которое хранит адрес другого значения в памяти. Тип «указатель на заказ» записывается <code>*domain.Order</code>, адрес переменной берут знаком <code>&amp;</code>: <code>&amp;order</code>. У указателя, который никуда не указывает, значение <code>nil</code> — это и есть «ничего».</p>
+        <figure class="code">
+          <figcaption><span>пример</span><span>указатель или nil</span></figcaption>
+<pre><span class="k">func</span> <span class="f">findOrderPtr</span>(orders []domain.Order, waiter <span class="k">string</span>) *domain.Order {
+	<span class="k">for</span> i := <span class="k">range</span> orders {
+		<span class="k">if</span> orders[i].Waiter == waiter {
+			<span class="k">return</span> &amp;orders[i]
+		}
+	}
+	<span class="k">return</span> <span class="k">nil</span>
+}
+
+found := findOrderPtr(orders, <span class="s">"Петрова Анна"</span>)
+<span class="k">if</span> found != <span class="k">nil</span> {
+	fmt.Println(found.Kopeks)
+}</pre>
+        </figure>
+        <p>Перед обращением к полю указатель сравнивают с <code>nil</code>, как в Python результат сравнивают с <code>None</code>. Если этого не сделать, компилятор не возразит: обращение <code>found.Kopeks</code> при <code>found == nil</code> остановит программу при работе. Этот случай разобран в главе 4.4. Указатели нужны и для другого — чтобы функция или метод меняли исходный объект, а не копию. Поэтому методы <code>Shift</code> из главы 4.1 объявлены с получателем <code>*Shift</code>, а <code>NewShift</code> возвращает <code>*Shift</code>.</p>
+        <p><b>Способ 3. Ошибка.</b> Если отсутствие значения — сбой, о котором вызывающий код должен знать, возвращают значение и <code>error</code>, как <code>LoadOrders</code>: при ошибке значение не используют.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Запись результата</th><th>Когда выбирают</th><th>Как проверяют</th></tr></thead>
+            <tbody>
+              <tr><td><code>(domain.Order, bool)</code></td><td>значения может не быть, и это обычный случай</td><td><code>if ok</code></td></tr>
+              <tr><td><code>*domain.Order</code></td><td>то же, плюс вызывающий код должен менять найденный объект</td><td><code>if found != nil</code></td></tr>
+              <tr><td><code>(domain.Order, error)</code></td><td>отсутствие значения — сбой с причиной</td><td><code>if err != nil</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Необязательных параметров в Go нет. Если аргумент можно не задавать, вызывающий код передаёт нулевое значение (<code>0</code>, <code>""</code>), и функция договаривается считать его «не задано», как <code>top = 0</code> в <code>RevenueByWaiter</code>. Договорённость записывают в комментарии документации — это разобрано во второй части темы.</p>
+
+        <h2 id="g5"><span class="sec">§5</span>Несколько возможных типов: интерфейсы</h2>
+        <p>В Python объединение <code>int | str</code> разрешает передать значение любого из перечисленных типов. В Go объединений в подписи обычной функции нет. Его место занимает <span class="term">интерфейс</span> — тип, который задан не перечнем вариантов, а набором методов. Под интерфейс подходит значение любого типа, у которого эти методы есть.</p>
+        <figure class="code">
+          <figcaption><span>пример</span><span>интерфейс с одним методом</span></figcaption>
+<pre><span class="k">type</span> <span class="f">Priced</span> <span class="k">interface</span> {
+	TotalKopeks() <span class="k">int</span>
+}
+
+<span class="k">func</span> <span class="f">printTotal</span>(item Priced) {
+	fmt.Println(utils.FormatKopeks(item.TotalKopeks()))
+}
+
+printTotal(shift)   <span class="c">// подходит: у *domain.Shift есть метод TotalKopeks() int</span>
+printTotal(<span class="n">125</span>)     <span class="c">// не подходит: у int методов нет</span></pre>
+        </figure>
+        <p>Интерфейс <code>Priced</code> читается так: «любое значение, у которого есть метод <code>TotalKopeks</code> без параметров, возвращающий <code>int</code>». Смена <code>*domain.Shift</code> под него подходит, хотя нигде не объявлено, что она реализует <code>Priced</code>: достаточно, чтобы метод был. Внутри функции доступны только методы интерфейса: поле <code>item.Day</code> не прочитать, потому что у произвольного <code>Priced</code> такого поля может не быть.</p>
+        <p>Самый частый интерфейс в Go — <code>error</code>: под него подходит любой тип с методом <code>Error() string</code>. Поэтому <code>LoadOrders</code> может вернуть и ошибку открытия файла, и ошибку <code>strconv.Atoi</code>, и <code>ErrNoOrders</code> — у всех есть этот метод.</p>
+        <p>Когда значения действительно приходят в разном виде, например сумма числом или строкой, параметр делают типом <code>any</code>, а внутри выясняют, какой вариант пришёл. Этот приём разобран в §8.</p>
+
+        <h2 id="g6"><span class="sec">§6</span>Функции и перебор</h2>
+        <p>Функция в Go — тоже значение, и у неё есть тип. Его записывают словом <code>func</code> с типами параметров и результата, без имён: <code>func(domain.Order) int</code> — «функция, которая принимает заказ и возвращает целое число». Так описывают, например, ключ сортировки.</p>
+        <figure class="code">
+          <figcaption><span>пример</span><span>функция как аргумент</span></figcaption>
+<pre><span class="k">func</span> <span class="f">sortOrders</span>(orders []domain.Order, key <span class="k">func</span>(domain.Order) <span class="k">int</span>) {
+	slices.SortFunc(orders, <span class="k">func</span>(a, b domain.Order) <span class="k">int</span> {
+		<span class="k">return</span> key(a) - key(b)
+	})
+}
+
+<span class="k">func</span> <span class="f">bySum</span>(order domain.Order) <span class="k">int</span> {
+	<span class="k">return</span> order.Kopeks
+}
+
+sortOrders(orders, bySum)              <span class="c">// подходит: func(domain.Order) int</span>
+sortOrders(orders, utils.NormalizeName) <span class="c">// не подходит: func(string) string</span></pre>
+        </figure>
+        <p>Подпись <code>bySum</code> совпадает с записью: один параметр типа <code>domain.Order</code>, результат — <code>int</code>. У <code>utils.NormalizeName</code> и параметр, и результат — строки. Внутри <code>sortOrders</code> тоже передаётся функция — безымянная: <code>func(a, b domain.Order) int { … }</code>. Её тип <code>func(domain.Order, domain.Order) int</code> требует <code>slices.SortFunc</code>: функция сравнения возвращает отрицательное число, нуль или положительное.</p>
+        <p>Перебор по одному значению — аналог генератора Python — в Go записывают типом <code>iter.Seq</code> или <code>iter.Seq2</code> из пакета <code>iter</code>:</p>
+        <figure class="code">
+          <figcaption><span>internal/services/importer.go</span><span>последовательность пар</span></figcaption>
+<pre><span class="k">import</span> <span class="s">"iter"</span>
+
+<span class="k">func</span> <span class="f">ReadRows</span>(path <span class="k">string</span>) iter.Seq2[<span class="k">map</span>[<span class="k">string</span>]<span class="k">string</span>, <span class="k">error</span>] {
+	...
+}
+
+<span class="k">for</span> row, err := <span class="k">range</span> services.ReadRows(<span class="s">"data/smena.csv"</span>) {
+	...
+}</pre>
+        </figure>
+        <p><code>iter.Seq2[map[string]string, error]</code> читается так: «последовательность пар, в каждой паре словарь "строка — строка" и ошибка». Перебирают её циклом <code>for … range</code>, значения приходят по одному, и весь файл в память не загружается. Квадратные скобки после <code>Seq2</code> — параметры типа: в них указано, что лежит в последовательности, как в <code>Iterator[dict[str, str]]</code> у Python.</p>
+
+        <h2 id="g7"><span class="sec">§7</span>Именованные типы и псевдонимы</h2>
+        <p>Составному или часто повторяющемуся типу можно дать имя. В Go для этого две записи, и они ведут себя по-разному:</p>
+        <figure class="code">
+          <figcaption><span>пример</span><span>новый тип и псевдоним</span></figcaption>
+<pre><span class="k">type</span> <span class="f">Kopeks</span> <span class="k">int</span>                  <span class="c">// новый тип на основе int</span>
+<span class="k">type</span> <span class="f">Revenue</span> = <span class="k">map</span>[<span class="k">string</span>]<span class="k">int</span>    <span class="c">// псевдоним: другое имя того же типа</span>
+
+<span class="k">func</span> <span class="f">total</span>(revenue Revenue) Kopeks {
+	sum := Kopeks(<span class="n">0</span>)
+	<span class="k">for</span> _, kopeks := <span class="k">range</span> revenue {
+		sum += Kopeks(kopeks)
+	}
+	<span class="k">return</span> sum
+}</pre>
+        </figure>
+        <p><b>Запись без знака равенства</b> — <code>type Kopeks int</code> — создаёт <span class="term">новый тип</span>. Он хранит целое число, но для компилятора это другой тип, чем <code>int</code>: сложить <code>Kopeks</code> и <code>int</code> без преобразования нельзя. Поэтому в <code>total</code> каждое значение словаря переводится вызовом <code>Kopeks(kopeks)</code>. Так защищаются от смешивания единиц: если завести ещё и <code>type Rubles int</code>, сложить копейки с рублями по ошибке не получится. У нового типа можно объявить свои методы.</p>
+        <p><b>Запись со знаком равенства</b> — <code>type Revenue = map[string]int</code> — <span class="term">псевдоним</span>. <code>Revenue</code> и <code>map[string]int</code> — один и тот же тип под двумя именами, они взаимозаменяемы. Псевдоним меняет только чтение кода, как <code>type Kopeks = int</code> в Python.</p>
+        <p>Чаще в коде на Go встречается первая запись. Структуры тоже объявляются ею: <code>type Order struct { … }</code> — новый тип на основе структуры.</p>
+
+        <h2 id="g8"><span class="sec">§8</span>Тип any</h2>
+        <p><code>any</code> — интерфейс без методов. Под него подходит значение любого типа: число, строка, структура. Старая запись того же типа — <code>interface{}</code>; она встречается в старом коде и в сообщениях компилятора.</p>
+        <p>В отличие от <code>Any</code> в Python, со значением типа <code>any</code> почти ничего сделать нельзя: у него нет ни полей, ни методов, его нельзя сложить с числом. Чтобы работать с ним, сначала выясняют, что внутри. Это делают <span class="term">утверждением типа</span> — записью <code>value.(int)</code> — или переключателем <code>switch v := value.(type)</code>.</p>
+        <figure class="code">
+          <figcaption><span>пример</span><span>сумма пришла числом или строкой</span></figcaption>
+<pre><span class="k">func</span> <span class="f">toKopeks</span>(value <span class="k">any</span>) (<span class="k">int</span>, <span class="k">error</span>) {
+	<span class="k">switch</span> v := value.(<span class="k">type</span>) {
+	<span class="k">case</span> <span class="k">int</span>:
+		<span class="k">return</span> v, <span class="k">nil</span>                 <span class="c">// здесь v — int</span>
+	<span class="k">case</span> <span class="k">string</span>:
+		<span class="k">return</span> strconv.Atoi(v)        <span class="c">// здесь v — string</span>
+	<span class="k">default</span>:
+		<span class="k">return</span> <span class="n">0</span>, fmt.Errorf(<span class="s">"неизвестный тип суммы: %T"</span>, v)
+	}
+}</pre>
+        </figure>
+        <p>Внутри каждой ветки <code>case</code> переменная <code>v</code> получает тип этой ветки, и компилятор снова проверяет код по нему. Опасна короткая запись <code>value.(int)</code> без проверки: если внутри строка, программа при работе остановится с сообщением <code>interface conversion: interface {} is string, not int</code>. Компилятор такую ошибку заранее не находит, потому что тип значения внутри <code>any</code> известен только при работе. Безопасная форма — с признаком: <code>n, ok := value.(int)</code>; при несовпадении <code>ok</code> будет <code>false</code>, а <code>n</code> — нулём.</p>
+        <p>Поэтому <code>any</code> ставят только там, где тип действительно неизвестен заранее, например при разборе произвольного JSON. В работах курса <code>any</code> не используется.</p>
+
+        <h2 id="g9"><span class="sec">§9</span>Переменные и нулевые значения</h2>
+        <p>Локальной переменной тип обычно не пишут: его выводит компилятор из значения в записи <code>:=</code>. <code>count := 0</code> — это <code>int</code>, <code>names := []string{"Иванов Пётр"}</code> — <code>[]string</code>. Тип пишут явно в объявлении <code>var</code>, когда значения пока нет или когда нужен не тот тип, что выводится: <code>var share float64 = 1</code> вместо <code>int</code>.</p>
+        <p>Переменная, объявленная через <code>var</code> без значения, получает нулевое значение своего типа:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Тип</th><th>Нулевое значение</th><th>Что с ним можно делать</th></tr></thead>
+            <tbody>
+              <tr><td><code>int</code>, <code>float64</code></td><td><code>0</code></td><td>всё, что с числом</td></tr>
+              <tr><td><code>string</code></td><td><code>""</code></td><td>всё, что со строкой</td></tr>
+              <tr><td><code>bool</code></td><td><code>false</code></td><td>всё</td></tr>
+              <tr><td><code>[]T</code></td><td><code>nil</code> — пустой срез</td><td>читать длину, перебирать, добавлять через <code>append</code></td></tr>
+              <tr><td><code>map[K]V</code></td><td><code>nil</code> — пустой словарь</td><td>читать; <b>записывать нельзя</b></td></tr>
+              <tr><td><code>*T</code>, <code>error</code>, <code>any</code></td><td><code>nil</code></td><td>сравнивать с <code>nil</code></td></tr>
+              <tr><td>структура</td><td>все поля нулевые</td><td>всё; <code>domain.Order{}</code> — заказ с пустым именем и суммой 0</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Строка про словарь — частая ловушка. После <code>var totals map[string]int</code> чтение <code>totals["Иванов Пётр"]</code> вернёт <code>0</code>, а запись <code>totals["Иванов Пётр"] = 100</code> остановит программу при работе с сообщением <code>assignment to entry in nil map</code>. Поэтому в <code>RevenueByWaiter</code> словарь создаётся сразу непустым значением: <code>totals := map[string]int{}</code>. Срез такой ловушки не имеет: в <code>LoadOrders</code> запись <code>var orders []domain.Order</code> безопасна, потому что <code>append</code> работает и с нулевым срезом.</p>
+        <p>У полей структуры тип пишется всегда, как у параметров функции: <code>Waiter string</code>, <code>Kopeks int</code>. Выводить его не из чего — в объявлении структуры значений нет.</p>
+
+        <h2 id="g10"><span class="sec">§10</span>Проверьте себя</h2>
+        <details>
+          <summary>Как записать «словарь, где ключ — имя официанта, значение — сумма в копейках»?</summary>
+          <p><code>map[string]int</code>. В квадратных скобках тип ключа, сразу за ними — тип значения.</p>
+        </details>
+        <details>
+          <summary>Как записать «словарь, где ключ — фамилия, значение — список оценок»?</summary>
+          <p><code>map[string][]int</code>. Значение само составное: срез целых чисел.</p>
+        </details>
+        <details>
+          <summary>Чем <code>[2]int</code> отличается от <code>[]int</code>?</summary>
+          <p>Первое — массив ровно из двух целых чисел, длина входит в тип. Второе — срез любой длины, к нему можно добавлять элементы через <code>append</code>.</p>
+        </details>
+        <details>
+          <summary>Чему равно <code>7 / 2</code> в Go и как получить <code>3.5</code>?</summary>
+          <p><code>3</code>: деление двух целых даёт целое, дробная часть отбрасывается. Для <code>3.5</code> одно из чисел переводят в дробное: <code>float64(7) / 2</code>.</p>
+        </details>
+        <details>
+          <summary>Функция возвращает <code>*domain.Order</code>. Что сделать перед обращением к <code>found.Kopeks</code>?</summary>
+          <p>Сравнить указатель с <code>nil</code>: <code>if found != nil</code>. Если заказ не найден, указатель пустой, и обращение к полю остановит программу.</p>
+        </details>
+        <details>
+          <summary>Что означает <code>func(domain.Order) int</code>?</summary>
+          <p>Тип функции, которая принимает один аргумент типа <code>domain.Order</code> и возвращает целое число.</p>
+        </details>
+        <details>
+          <summary>Чем <code>type Kopeks int</code> отличается от <code>type Kopeks = int</code>?</summary>
+          <p>Первое создаёт новый тип: сложить <code>Kopeks</code> с <code>int</code> без преобразования нельзя. Второе — псевдоним: <code>Kopeks</code> и <code>int</code> один и тот же тип под двумя именами.</p>
+        </details>
+        <details>
+          <summary>Почему после <code>var totals map[string]int</code> нельзя сразу записать <code>totals["x"] = 1</code>?</summary>
+          <p>Нулевое значение словаря — <code>nil</code>, в него нельзя записывать: программа остановится с сообщением <code>assignment to entry in nil map</code>. Словарь создают значением: <code>totals := map[string]int{}</code> или <code>make(map[string]int)</code>.</p>
+        </details>
+
+        <h2 id="g11"><span class="sec">§11</span>Шпаргалка по главе</h2>
+        <div class="cheat">
+          <div>
+            <b>Простые</b>
+            <code>int  float64  string  bool</code>
+            <code>rune  byte  error</code>
+            <code>float64(n) — перевод</code>
+          </div>
+          <div>
+            <b>Коллекции</b>
+            <code>[]int — срез</code>
+            <code>map[string]int — словарь</code>
+            <code>[2]int — массив</code>
+          </div>
+          <div>
+            <b>Структуры и пакеты</b>
+            <code>type Order struct { … }</code>
+            <code>[]domain.Order  time.Time</code>
+          </div>
+          <div>
+            <b>Значение или ничего</b>
+            <code>(Order, bool) → if ok</code>
+            <code>*Order → if p != nil</code>
+            <code>(Order, error) → if err != nil</code>
+          </div>
+          <div>
+            <b>Функции и перебор</b>
+            <code>func(domain.Order) int</code>
+            <code>iter.Seq2[K, V]</code>
+            <code>interface { Метод() int }</code>
+          </div>
+          <div>
+            <b>Прочее</b>
+            <code>type Kopeks int — новый тип</code>
+            <code>type R = map[string]int — псевдоним</code>
+            <code>any + switch v := x.(type)</code>
+          </div>
+        </div>
+
+        <h3>Итог главы</h3>
+        <p>Простые типы записываются своими именами: <code>int</code>, <code>float64</code>, <code>string</code>, <code>bool</code>; числа разных типов не смешиваются, и деление целых даёт целое. Срез <code>[]T</code> — основная коллекция, словарь — <code>map[K]V</code>, кортежей и множеств отдельными типами нет. Структуры своего и чужих пакетов пишутся с именем пакета. «Значение или ничего» записывают вторым результатом <code>bool</code>, указателем с <code>nil</code> или результатом с ошибкой. Интерфейс задаёт тип набором методов, тип функции — словом <code>func</code>, перебор — <code>iter.Seq2</code>. <code>type Kopeks int</code> создаёт новый тип, <code>type R = …</code> — псевдоним. <code>any</code> принимает всё, но работать с ним можно только после утверждения типа. У нулевого словаря нельзя записывать ключи. В главе 4.3 разобрано, как компилятор и редактор сверяют код с этими записями, в главе 4.4 — что они отвечают на ошибку в каждом из типов.</p>
+
+        <div class="sources">
+          <b>Откуда взяты факты</b>
+          <ol>
+            <li>Типы, нулевые значения, указатели, интерфейсы, утверждение типа и объявления типов — <a href="https://go.dev/ref/spec#Types">The Go Programming Language Specification</a>, разделы Types, The zero value, Type assertions, Type declarations.</li>
+            <li>Срезы и словари — <a href="https://go.dev/blog/slices-intro">Go Slices: usage and internals</a>, <a href="https://go.dev/blog/maps">Go maps in action</a>.</li>
+            <li>Перебор функциями-итераторами — <a href="https://pkg.go.dev/iter">документация пакета iter</a>.</li>
+            <li>Сообщения <code>assignment to entry in nil map</code> и <code>interface conversion</code> получены запуском на Go <code>1.27</code>.</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="01-annotacii-tipov.html">← 4.1 Тип в подписи функции</a><a href="03-proverka-tipov.html">4.3 Проверка типов →</a></div>
+        </div>
 
         <div class="colophon">
           <span>Глава 4.2 · Типы в аннотациях · МДК.01.01</span>
