@@ -24,6 +24,14 @@ FIGURE = re.compile(r'<figure class="code( code--out)?">\s*<figcaption><span>(.*
 COMMANDS = ("go run ./proba", "go build ./proba", "go vet ./proba")
 
 
+# В выводе паники адреса памяти меняются от запуска к запуску: pc=0x…, +0x…
+ADDRESS = re.compile(r"0x[0-9a-f]+")
+
+
+def same(a: str, b: str) -> bool:
+    return ADDRESS.sub("0x…", a) == ADDRESS.sub("0x…", b)
+
+
 def text(fragment: str) -> str:
     return html.unescape(re.sub(r"<[^>]+>", "", fragment))
 
@@ -56,7 +64,7 @@ def main() -> None:
             (proba / "main.go").write_text(code.rstrip() + "\n", encoding="utf-8")
             run = subprocess.run(command.split(), cwd=project, capture_output=True, text=True)
             got = (run.stdout + run.stderr).rstrip()
-            if got != shown.rstrip():
+            if not same(got, shown.rstrip()):
                 bad += 1
                 first = next((s for s in code.splitlines() if s.startswith("func ") or "(" in s), code[:60])
                 print(f"✗ {chapter}: {first[:70]}")

@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body data-title-py="4.4 Ошибки типов: примеры с разбором · Аннотации типов и документация" data-title-go="4.4 Ошибки типов · Типы и документация в Go">
   <div class="book">
     <div class="book__body">
       <div class="spine"><span>Тема 04 · Аннотации типов и документация кода</span></div>
@@ -21,6 +21,7 @@
           <p class="running__folio">Глава 4.4</p>
         </div>
 
+        <div data-lang="py">
         <header class="chapter-head">
           <span class="chapter-num">4.4</span>
           <h1>Ошибки типов:<br>примеры с разбором</h1>
@@ -675,6 +676,743 @@ Found 2 errors in 1 file (checked 1 source file)</pre>
         </div>
 
         <div class="pager"><a href="03-proverka-tipov.html">← 4.3 Проверка типов</a><a href="05-praktika-annotacii.html">4.5 Практика: аннотации в проекте →</a></div>
+        </div>
+
+        <div data-lang="go">
+        <header class="chapter-head">
+          <span class="chapter-num">4.4</span>
+          <h1>Ошибки типов:<br>примеры с разбором</h1>
+          <p class="lead">В главе 4.2 показано, как записать тип, в главе 4.3 — как увидеть ошибку в редакторе и в терминале. В этой главе то и другое сведено вместе: восемнадцать файлов <code>proba/main.go</code>, в каждом есть верные и неверные строки. Под каждым файлом — настоящий ответ <code>go run ./proba</code> и разбор: что означает сообщение, почему строка отклонена и как её исправить. Отдельно показаны ошибки, которые компилятор пропускает и которые останавливают программу при работе. Примеры идут в том же порядке, что типы в главе 4.2.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Разбор ошибок</dd></div>
+          <div><dt>Уровень</dt><dd>Начальный</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 4.2 и 4.3</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Прочитать сообщение компилятора и исправить строку</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#g1">Как работать с примерами</a></li>
+            <li><a href="#g2">Простые типы: передано не то значение</a></li>
+            <li><a href="#g3">Результат: пропущенный return и функция без результата</a></li>
+            <li><a href="#g4">Срезы: не тот элемент</a></li>
+            <li><a href="#g5">Словари: не тот ключ, не то значение</a></li>
+            <li><a href="#g6">Несколько результатов: не то число, не тот порядок</a></li>
+            <li><a href="#g7">Структуры: опечатка в поле, словарь вместо структуры</a></li>
+            <li><a href="#g8">Значение или ничего: nil там, где его быть не может</a></li>
+            <li><a href="#g9">Интерфейсы: нет метода</a></li>
+            <li><a href="#g10">Функции-аргументы: не та функция</a></li>
+            <li><a href="#g11">Новый тип: копейки и рубли</a></li>
+            <li><a href="#g12">any: ошибка, которую компилятор пропускает</a></li>
+            <li><a href="#g13">Переменные: лишние и нулевые</a></li>
+            <li><a href="#g14">Все сообщения главы</a></li>
+            <li><a href="#g15">Проверьте себя</a></li>
+            <li><a href="#g16">Шпаргалка по главе</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="g1"><span class="sec">§1</span>Как работать с примерами</h2>
+        <p>Каждый пример главы — содержимое файла <code>proba/main.go</code> во втором архиве проекта, том же, что в главе 4.3. Под файлом — ответ команды <code>go run ./proba</code>, полученный запуском. Номера строк в ответе считаются от первой строки файла, поэтому файл нужно копировать целиком, вместе с <code>package</code> и импортами.</p>
+        <p>Порядок работы с каждым примером одинаковый:</p>
+        <ol class="steps">
+          <li>Замените содержимое <code>proba/main.go</code> кодом примера и сохраните файл.</li>
+          <li>Посмотрите, какие строки подчеркнул gopls, и наведите указатель на подчёркивание.</li>
+          <li>Выполните в терминале <code>go run ./proba</code> и сверьте ответ с книгой.</li>
+          <li>Исправьте ошибки по разбору под примером и запустите снова: программа должна собраться и напечатать результат.</li>
+        </ol>
+        <p>Команда <code>go run</code> сначала собирает программу. Если сборка не удалась, она печатает ошибки компилятора — строки вида <code>proba/main.go:15:33: …</code> под заголовком <code># example.com/otchet-kafe/proba</code> — и ничего не запускает. Если сборка прошла, программа выполняется, и в ответе её вывод. Так в одном ответе видны оба рода ошибок: те, что находит компилятор, и те, что случаются при работе.</p>
+        <p>В начале каждого раздела стоит ссылка на параграф главы 4.2, где объяснена запись типа. Здесь запись заново не объясняется: раздел начинается сразу с файла. gopls показывает в редакторе те же сообщения, что и компилятор, с тем же текстом.</p>
+
+        <h2 id="g2"><span class="sec">§2</span>Простые типы: передано не то значение</h2>
+        <p>Запись простых типов — глава 4.2, §1. Самая частая ошибка с ними — значение не того типа в вызове. В примере функция <code>isBig</code> и вызовы функций проекта: один верный и три неверных.</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>простые типы</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> (
+	<span class="s">"fmt"</span>
+
+	<span class="s">"example.com/otchet-kafe/internal/utils"</span>
+)
+
+<span class="k">func</span> <span class="f">isBig</span>(kopeks, limit <span class="k">int</span>) <span class="k">bool</span> {
+	<span class="k">return</span> kopeks &gt;= limit
+}
+
+<span class="k">func</span> <span class="f">main</span>() {
+	fmt.Println(utils.FormatKopeks(<span class="n">125000</span>))
+	fmt.Println(utils.FormatKopeks(<span class="s">"1250"</span>))
+	fmt.Println(utils.NormalizeName(<span class="n">42</span>))
+	fmt.Println(isBig(<span class="n">150000</span>, <span class="s">"сто тысяч"</span>))
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre># example.com/otchet-kafe/proba
+proba/main.go:15:33: cannot use "1250" (untyped string constant) as int value in argument to utils.FormatKopeks
+proba/main.go:16:34: cannot use 42 (untyped int constant) as string value in argument to utils.NormalizeName
+proba/main.go:17:28: cannot use "сто тысяч" (untyped string constant) as int value in argument to isBig</pre>
+        </figure>
+        <p>Разбор по строкам:</p>
+        <ul>
+          <li><b>Строка 14</b>, <code>FormatKopeks(125000)</code> — ошибки нет: передано целое число, как в подписи <code>kopeks int</code>.</li>
+          <li><b>Строка 15</b> — сумма передана строкой <code>"1250"</code>. Так бывает, когда значение прочитано из файла и не переведено в число. Исправление — передать число: <code>FormatKopeks(1250)</code>, а если значение пришло строкой — сначала перевести его: <code>kopeks, err := strconv.Atoi(value)</code>.</li>
+          <li><b>Строка 16</b> — в <code>NormalizeName</code> передано число вместо имени.</li>
+          <li><b>Строка 17</b> — порог передан словами. Сообщение называет функцию <code>isBig</code>, но не номер аргумента: место показывают строка и столбец — <code>17:28</code> указывает ровно на <code>"сто тысяч"</code>.</li>
+        </ul>
+        <p>Слова <code>untyped string constant</code> в сообщениях означают «строка, записанная прямо в коде». У такой константы ещё нет окончательного типа, и компилятор пробует перевести её в тип параметра. Число <code>42</code> в строку не переводится, строка в число — тоже, отсюда ошибка.</p>
+        <p>С дробными числами правило то же, и оно отличается от Python: там, где ждут <code>float64</code>, целое передать можно только константой, записанной в коде. Переменная типа <code>int</code> не подойдёт.</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>int и float64</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> <span class="s">"fmt"</span>
+
+<span class="k">func</span> <span class="f">averageCheck</span>(total <span class="k">float64</span>, count <span class="k">int</span>) <span class="k">float64</span> {
+	<span class="k">return</span> total / <span class="k">float64</span>(count)
+}
+
+<span class="k">func</span> <span class="f">main</span>() {
+	fmt.Println(averageCheck(<span class="n">4937</span>, <span class="n">5</span>))
+	fmt.Println(averageCheck(<span class="n">4937.5</span>, <span class="n">5.0</span>))
+	sum := <span class="n">4937</span>
+	checks := <span class="n">5</span>
+	fmt.Println(averageCheck(sum, checks))
+	fmt.Println(averageCheck(<span class="n">4937.5</span>, <span class="n">5.5</span>))
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre># example.com/otchet-kafe/proba
+proba/main.go:14:27: cannot use sum (variable of type int) as float64 value in argument to averageCheck
+proba/main.go:15:35: cannot use 5.5 (untyped float constant) as int value in argument to averageCheck (truncated)</pre>
+        </figure>
+        <p>Строки 10 и 11 собираются: константа <code>4937</code> переводится в <code>float64</code> без потерь, а <code>5.0</code> — в <code>int</code>, потому что дробной части у неё нет. В строке 14 переданы переменные. У <code>sum</code> уже есть тип <code>int</code>, и компилятор не переводит его в <code>float64</code> сам: <code>variable of type int</code>. Исправление — явный перевод: <code>averageCheck(float64(sum), checks)</code>. В строке 15 <code>5.5</code> нельзя сделать целым без потери — <code>(truncated)</code>.</p>
+        <p>Та же строгость действует в арифметике: значения разных типов нельзя складывать и умножать.</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>числа разных типов в выражении</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> <span class="s">"fmt"</span>
+
+<span class="k">func</span> <span class="f">main</span>() {
+	sum := <span class="n">4937</span>
+	checks := <span class="n">5</span>
+	share := <span class="n">0.15</span>
+	fmt.Println(sum / checks)
+	fmt.Println(sum * share)
+	fmt.Println(<span class="k">float64</span>(sum) * share)
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre># example.com/otchet-kafe/proba
+proba/main.go:10:14: invalid operation: sum * share (mismatched types int and float64)</pre>
+        </figure>
+        <p>Строка 9 собирается: <code>int</code> делится на <code>int</code>. Если бы программа запустилась, она напечатала бы <code>987</code> — целое деление отбрасывает дробную часть. Строка 10 — <code>mismatched types int and float64</code>, «несовпадающие типы»: целое умножается на дробное. Строка 11 — исправленный вариант: целое явно переведено в <code>float64</code>. Сообщения с <code>mismatched types</code> начинаются словами <code>invalid operation</code> — «недопустимая операция», и называют саму операцию: <code>sum * share</code>.</p>
+
+        <h2 id="g3"><span class="sec">§3</span>Результат: пропущенный return и функция без результата</h2>
+        <p>Запись результата — глава 4.1, §3. С результатом компилятор следит за двумя ошибками: функция обещает значение, но возвращает его не во всех случаях, и результат функции без результата пытаются использовать.</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>пропущенный return и результат PrintReport</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> <span class="s">"example.com/otchet-kafe/internal/ui"</span>
+
+<span class="k">func</span> <span class="f">label</span>(kopeks <span class="k">int</span>) <span class="k">string</span> {
+	<span class="k">if</span> kopeks &gt; <span class="n">0</span> {
+		<span class="k">return</span> <span class="s">"есть выручка"</span>
+	}
+}
+
+<span class="k">func</span> <span class="f">main</span>() {
+	result := ui.PrintReport([]<span class="k">string</span>{<span class="s">"Смена"</span>})
+	_ = result
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre># example.com/otchet-kafe/proba
+proba/main.go:9:1: missing return
+proba/main.go:12:12: ui.PrintReport([]string{…}) (no value) used as value</pre>
+        </figure>
+        <ul>
+          <li><b>Строка 9</b> — <code>missing return</code>, «нет инструкции return». Функция обещает строку, но если <code>kopeks</code> не больше нуля, условие не выполнится, и вернуть будет нечего. Место ошибки — закрывающая скобка функции: здесь выполнение дошло бы до конца без <code>return</code>. Исправление — вернуть строку и во втором случае: добавить перед скобкой <code>return "выручки нет"</code>. В Python функция в этом случае тихо вернула бы <code>None</code>; в Go такое невозможно.</li>
+          <li><b>Строка 12</b> — результат <code>PrintReport</code> сохраняется в переменную, но у функции нет результата: <code>(no value) used as value</code>, «отсутствующее значение использовано как значение». Исправление — вызвать функцию без присваивания: <code>ui.PrintReport([]string{"Смена"})</code>.</li>
+        </ul>
+
+        <h2 id="g4"><span class="sec">§4</span>Срезы: не тот элемент</h2>
+        <p>Запись срезов — глава 4.2, §2. Тип среза проверяет не только объявление, но и всё, что со срезом делают потом: добавление элементов, чтение элемента в переменную.</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>срезы</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> <span class="s">"example.com/otchet-kafe/internal/domain"</span>
+
+<span class="k">func</span> <span class="f">main</span>() {
+	grades := []<span class="k">int</span>{<span class="n">5</span>, <span class="n">4</span>, <span class="n">5</span>}
+	names := []<span class="k">string</span>{<span class="s">"Иванов Пётр"</span>, <span class="s">"Петрова Анна"</span>}
+	<span class="k">var</span> orders []domain.Order
+	groups := [][]<span class="k">int</span>{{<span class="n">5</span>, <span class="n">4</span>}, {<span class="n">3</span>, <span class="n">5</span>, <span class="n">5</span>}}
+	_ = groups
+
+	grades = append(grades, <span class="s">"5"</span>)
+	names = append(names, <span class="k">nil</span>)
+	orders = append(orders, <span class="k">map</span>[<span class="k">string</span>]<span class="k">any</span>{<span class="s">"waiter"</span>: <span class="s">"Сидоров Илья"</span>, <span class="s">"kopeks"</span>: <span class="n">77200</span>})
+	<span class="k">var</span> first <span class="k">string</span> = grades[<span class="n">0</span>]
+	_ = first
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre># example.com/otchet-kafe/proba
+proba/main.go:12:26: cannot use "5" (untyped string constant) as int value in argument to append
+proba/main.go:13:24: cannot use nil as string value in argument to append
+proba/main.go:14:26: cannot use map[string]any{…} (value of type map[string]any) as domain.Order value in argument to append
+proba/main.go:15:21: cannot use grades[0] (variable of type int) as string value in variable declaration</pre>
+        </figure>
+        <ul>
+          <li><b>Строки 6–9</b> — четыре верных объявления, ошибок нет. Строка 10 нужна, чтобы <code>groups</code> считалась использованной.</li>
+          <li><b>Строка 12</b> — в срез оценок добавлена строка <code>"5"</code>. Сообщение <code>in argument to append</code> — «в аргументе функции append»: компилятор подставил тип элементов <code>int</code> в <code>append</code> и сверил с ним аргумент.</li>
+          <li><b>Строка 13</b> — в срез имён добавлен <code>nil</code>. У строки нулевое значение — пустая строка <code>""</code>, а <code>nil</code> строкой быть не может. Если в данных бывают пропуски, их хранят пустой строкой или заводят срез указателей <code>[]*string</code>.</li>
+          <li><b>Строка 14</b> — вместо структуры <code>Order</code> добавлен словарь с теми же ключами. Для компилятора это разные типы: у словаря нет полей <code>.Waiter</code> и <code>.Kopeks</code>. Исправление — создать заказ: <code>order, err := domain.NewOrder("Сидоров Илья", 77200)</code> и добавить его.</li>
+          <li><b>Строка 15</b> — элемент среза <code>[]int</code> — целое число, а переменная объявлена строкой: <code>in variable declaration</code>, «в объявлении переменной».</li>
+        </ul>
+
+        <h2 id="g5"><span class="sec">§5</span>Словари: не тот ключ, не то значение</h2>
+        <p>Запись словарей — глава 4.2, §2. У словаря проверяются и ключи, и значения. В примере три словаря и четыре неверные записи в них.</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>словари</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">func</span> <span class="f">main</span>() {
+	revenue := <span class="k">map</span>[<span class="k">string</span>]<span class="k">int</span>{<span class="s">"Иванов Пётр"</span>: <span class="n">168500</span>}
+	row := <span class="k">map</span>[<span class="k">string</span>]<span class="k">string</span>{<span class="s">"waiter"</span>: <span class="s">"Сидоров Илья"</span>, <span class="s">"kopeks"</span>: <span class="s">"77200"</span>}
+	journal := <span class="k">map</span>[<span class="k">string</span>][]<span class="k">int</span>{<span class="s">"Иванова"</span>: {<span class="n">5</span>, <span class="n">4</span>}, <span class="s">"Петров"</span>: {<span class="n">3</span>}}
+
+	revenue[<span class="s">"Петрова Анна"</span>] = <span class="s">"2480,50"</span>
+	revenue[<span class="n">1</span>] = <span class="n">100</span>
+	journal[<span class="s">"Сидоров"</span>] = <span class="n">5</span>
+	<span class="k">var</span> kopeks <span class="k">int</span> = row[<span class="s">"kopeks"</span>]
+	_ = kopeks
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre># example.com/otchet-kafe/proba
+proba/main.go:8:39: cannot use "2480,50" (untyped string constant) as int value in assignment
+proba/main.go:9:10: cannot use 1 (untyped int constant) as string value in map index
+proba/main.go:10:30: cannot use 5 (untyped int constant) as []int value in assignment
+proba/main.go:11:19: cannot use row["kopeks"] (map index expression of type string) as int value in variable declaration</pre>
+        </figure>
+        <ul>
+          <li><b>Строка 8</b> — значение выручки записано строкой с запятой, как его печатают в отчёте. В словаре хранятся копейки целым числом: <code>revenue["Петрова Анна"] = 248050</code>.</li>
+          <li><b>Строка 9</b> — ключ не того типа: <code>in map index</code>, «в индексе словаря». Всё, что стоит в квадратных скобках после словаря, сверяется с типом ключей.</li>
+          <li><b>Строка 10</b> — в журнал оценок вместо среза записано одно число. Нужно <code>journal["Сидоров"] = []int{5}</code>.</li>
+          <li><b>Строка 11</b> — в строке CSV все значения — строки, и <code>row["kopeks"]</code> — тоже строка: <code>map index expression of type string</code>. Чтобы получить число, его преобразуют: <code>kopeks, err := strconv.Atoi(row["kopeks"])</code>. Так сделано в <code>LoadOrders</code>.</li>
+        </ul>
+        <p>Множество в Go — словарь <code>map[string]bool</code>, поэтому ошибки с ним те же: ключ не того типа отклоняется сообщением <code>in map index</code>.</p>
+
+        <h2 id="g6"><span class="sec">§6</span>Несколько результатов: не то число, не тот порядок</h2>
+        <p>Несколько результатов — глава 4.1, §3. Компилятор требует принять их все: столько переменных, сколько значений возвращает функция.</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>число переменных и результатов</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> (
+	<span class="s">"fmt"</span>
+
+	<span class="s">"example.com/otchet-kafe/internal/services"</span>
+)
+
+<span class="k">func</span> <span class="f">main</span>() {
+	low, high := services.GradeBounds([]<span class="k">int</span>{<span class="n">5</span>, <span class="n">3</span>, <span class="n">4</span>})
+	fmt.Println(low, high)
+	average := services.CalculateAverage([]<span class="k">int</span>{<span class="n">5</span>, <span class="n">4</span>})
+	fmt.Println(average)
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre># example.com/otchet-kafe/proba
+proba/main.go:10:15: assignment mismatch: 2 variables but services.GradeBounds returns 3 values
+proba/main.go:12:13: assignment mismatch: 1 variable but services.CalculateAverage returns 2 values</pre>
+        </figure>
+        <p>Сообщение <code>assignment mismatch: 2 variables but services.GradeBounds returns 3 values</code> читается как «несовпадение при присваивании: две переменные, а функция возвращает три значения». Третье значение — ошибка, и её нельзя молча потерять. Исправление — принять все результаты: <code>low, high, err := …</code>, а если какой-то не нужен, поставить на его место <code>_</code>. Во второй строке забыт результат-ошибка у <code>CalculateAverage</code>.</p>
+        <p>Число результатов компилятор проверяет, а их порядок — только по типам. У <code>GradeBounds</code> минимум и максимум одного типа <code>int</code>, и если перепутать их местами, программа соберётся:</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>минимум и максимум перепутаны</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> (
+	<span class="s">"fmt"</span>
+
+	<span class="s">"example.com/otchet-kafe/internal/services"</span>
+)
+
+<span class="k">func</span> <span class="f">main</span>() {
+	high, low, err := services.GradeBounds([]<span class="k">int</span>{<span class="n">5</span>, <span class="n">3</span>, <span class="n">4</span>})
+	<span class="k">if</span> err != <span class="k">nil</span> {
+		<span class="k">return</span>
+	}
+	fmt.Println(<span class="s">"минимум:"</span>, low, <span class="s">"максимум:"</span>, high)
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre>минимум: 5 максимум: 3</pre>
+        </figure>
+        <p>Ошибок сборки нет, а в отчёте минимум больше максимума. Компилятор не может знать, что первое значение — минимум: оба <code>int</code>. В Python у кортежа <code>tuple[str, int]</code> перестановку находила проверка, потому что типы мест различались; для <code>tuple[int, int]</code> не находила бы и она. Защита здесь — имена результатов в подписи <code>(low, high int, err error)</code>, которые видны в подсказке редактора, и фраза о порядке в комментарии документации.</p>
+
+        <h2 id="g7"><span class="sec">§7</span>Структуры: опечатка в поле, словарь вместо структуры</h2>
+        <p>Запись структур — глава 4.2, §3. Когда тип значения — структура, компилятор знает её поля и находит опечатки в именах.</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>структура Order</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> (
+	<span class="s">"fmt"</span>
+
+	<span class="s">"example.com/otchet-kafe/internal/domain"</span>
+	<span class="s">"example.com/otchet-kafe/internal/services"</span>
+)
+
+<span class="k">func</span> <span class="f">main</span>() {
+	order, err := domain.NewOrder(<span class="s">"Иванов Пётр"</span>, <span class="n">125000</span>)
+	<span class="k">if</span> err != <span class="k">nil</span> {
+		<span class="k">return</span>
+	}
+	fmt.Println(order.Kopek)
+	fmt.Println(order.Waiter.Kopeks)
+	broken := domain.Order{Name: <span class="s">"Сидоров Илья"</span>, Kopeks: <span class="n">77200</span>}
+	services.SortOrdersInPlace([]<span class="k">map</span>[<span class="k">string</span>]<span class="k">int</span>{{<span class="s">"kopeks"</span>: <span class="n">100</span>}})
+	_ = broken
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre># example.com/otchet-kafe/proba
+proba/main.go:15:20: order.Kopek undefined (type domain.Order has no field or method Kopek)
+proba/main.go:16:27: order.Waiter.Kopeks undefined (type string has no field or method Kopeks)
+proba/main.go:17:25: unknown field Name in struct literal of type domain.Order
+proba/main.go:18:29: cannot use []map[string]int{…} (value of type []map[string]int) as []domain.Order value in argument to services.SortOrdersInPlace</pre>
+        </figure>
+        <ul>
+          <li><b>Строка 15</b> — <code>order.Kopek undefined (type domain.Order has no field or method Kopek)</code>: у заказа нет поля <code>Kopek</code>, есть <code>Kopeks</code>. В Python без аннотаций такая опечатка обнаружилась бы только при запуске. Сообщение называет тип, в котором искалось поле, — по нему видно, что компилятор правильно понял, что за значение слева от точки.</li>
+          <li><b>Строка 16</b> — поле <code>Waiter</code> есть, но это строка, и поля <code>Kopeks</code> у строки нет: <code>type string has no field or method Kopeks</code>.</li>
+          <li><b>Строка 17</b> — <code>unknown field Name in struct literal</code>: при создании структуры указано поле, которого в ней нет. Поле имени называется <code>Waiter</code>.</li>
+          <li><b>Строка 18</b> — вместо среза заказов передан срез словарей с теми же ключами. Типы разные, и функция его не примет.</li>
+        </ul>
+
+        <h2 id="g8"><span class="sec">§8</span>Значение или ничего: nil там, где его быть не может</h2>
+        <p>Три способа записать «значение или ничего» — глава 4.2, §4. Первая ошибка — попытка вернуть <code>nil</code> вместо структуры, по привычке к <code>return None</code> из Python.</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>nil вместо структуры</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> <span class="s">"example.com/otchet-kafe/internal/domain"</span>
+
+<span class="k">func</span> <span class="f">findOrder</span>(orders []domain.Order, waiter <span class="k">string</span>) domain.Order {
+	<span class="k">for</span> _, order := <span class="k">range</span> orders {
+		<span class="k">if</span> order.Waiter == waiter {
+			<span class="k">return</span> order
+		}
+	}
+	<span class="k">return</span> <span class="k">nil</span>
+}
+
+<span class="k">func</span> <span class="f">main</span>() {
+	_ = findOrder(<span class="k">nil</span>, <span class="s">"Петрова Анна"</span>)
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre># example.com/otchet-kafe/proba
+proba/main.go:11:9: cannot use nil as domain.Order value in return statement</pre>
+        </figure>
+        <p><code>cannot use nil as domain.Order value in return statement</code>: у структуры нет значения <code>nil</code>. Исправление зависит от выбранного способа: вернуть пустую структуру и признак — <code>return domain.Order{}, false</code> с подписью <code>(domain.Order, bool)</code> — или сделать результат указателем <code>*domain.Order</code>, у которого <code>nil</code> есть.</p>
+        <p>С указателем компилятор такую ошибку уже не найдёт, и появляется другая — обращение к полю через пустой указатель. Она собирается и проявляется только при работе:</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>поле через пустой указатель</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> (
+	<span class="s">"fmt"</span>
+
+	<span class="s">"example.com/otchet-kafe/internal/domain"</span>
+)
+
+<span class="k">func</span> <span class="f">findOrderPtr</span>(orders []domain.Order, waiter <span class="k">string</span>) *domain.Order {
+	<span class="k">for</span> i := <span class="k">range</span> orders {
+		<span class="k">if</span> orders[i].Waiter == waiter {
+			<span class="k">return</span> &amp;orders[i]
+		}
+	}
+	<span class="k">return</span> <span class="k">nil</span>
+}
+
+<span class="k">func</span> <span class="f">main</span>() {
+	first, _ := domain.NewOrder(<span class="s">"Иванов Пётр"</span>, <span class="n">100</span>)
+	orders := []domain.Order{first}
+	found := findOrderPtr(orders, <span class="s">"Петрова Анна"</span>)
+	fmt.Println(<span class="s">"ищем Петрову Анну"</span>)
+	fmt.Println(found.Kopeks)
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre>ищем Петрову Анну
+panic: runtime error: invalid memory address or nil pointer dereference
+[signal SIGSEGV: segmentation violation code=0x2 addr=0x10 pc=0x104ab5764]
+
+goroutine 1 [running]:
+main.main()
+	/private/tmp/student-go/otchet-kafe-go-start/proba/main.go:23 +0x134
+exit status 2</pre>
+        </figure>
+        <p>Первая строка вывода показывает, что программа собралась и запустилась. На строке 23 она остановилась: <code>panic</code> — аварийная остановка, <code>invalid memory address or nil pointer dereference</code> — «обращение по пустому указателю». Ниже — <span class="term">трассировка</span>: где именно случилась паника, <code>main.go:23</code>. Путь к файлу в трассировке у вас будет свой, а числа вида <code>0x…</code> меняются от запуска к запуску. <code>exit status 2</code> — код завершения программы.</p>
+        <p>Исправление — проверить указатель перед обращением: <code>if found != nil { fmt.Println(found.Kopeks) }</code>. В Python проверка mypy требовала такое условие для <code>Order | None</code>; компилятор Go для указателя его не требует, поэтому проверку пишут по привычке, а находят пропущенную — тесты.</p>
+
+        <h2 id="g9"><span class="sec">§9</span>Интерфейсы: нет метода</h2>
+        <p>Интерфейсы — глава 4.2, §5. Значение подходит под интерфейс, если у него есть все методы интерфейса. Компилятор это проверяет и называет пропущенный метод.</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>смена и интерфейс Priced</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> (
+	<span class="s">"fmt"</span>
+	<span class="s">"time"</span>
+
+	<span class="s">"example.com/otchet-kafe/internal/domain"</span>
+)
+
+<span class="k">type</span> Priced <span class="k">interface</span> {
+	TotalKopeks() <span class="k">int</span>
+}
+
+<span class="k">func</span> <span class="f">printTotal</span>(item Priced) {
+	fmt.Println(item.TotalKopeks())
+}
+
+<span class="k">func</span> <span class="f">main</span>() {
+	shift := domain.NewShift(time.Now())
+	printTotal(shift)
+	printTotal(*shift)
+	printTotal(<span class="n">125</span>)
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre># example.com/otchet-kafe/proba
+proba/main.go:21:13: cannot use *shift (variable of struct type domain.Shift) as Priced value in argument to printTotal: domain.Shift does not implement Priced (method TotalKopeks has pointer receiver)
+proba/main.go:22:13: cannot use 125 (constant of type int) as Priced value in argument to printTotal: int does not implement Priced (missing method TotalKopeks)</pre>
+        </figure>
+        <ul>
+          <li><b>Строка 20</b> — ошибки нет: <code>shift</code> — указатель <code>*domain.Shift</code>, у него метод <code>TotalKopeks</code> есть.</li>
+          <li><b>Строка 21</b> — передана сама смена, без указателя: <code>*shift</code> разыменовывает указатель. Сообщение длинное, главное в конце: <code>method TotalKopeks has pointer receiver</code>, «у метода получатель-указатель». Метод объявлен как <code>func (s *Shift) TotalKopeks()</code>, и есть он только у <code>*Shift</code>, а у <code>Shift</code> — нет. Исправление — передавать указатель, как в строке 20.</li>
+          <li><b>Строка 22</b> — у числа методов нет: <code>missing method TotalKopeks</code>.</li>
+        </ul>
+        <p>Сообщения об интерфейсах состоят из двух частей через двоеточие: сначала общее «нельзя использовать как <code>Priced</code>», затем причина — какого метода не хватает или почему он не подходит.</p>
+
+        <h2 id="g10"><span class="sec">§10</span>Функции-аргументы: не та функция</h2>
+        <p>Тип функции — глава 4.2, §6. Параметр <code>fix</code> записан как <code>func(string) string</code> — «функция, которая принимает строку и возвращает строку». В него по очереди передают три функции.</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>функция как аргумент</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> (
+	<span class="s">"fmt"</span>
+	<span class="s">"strings"</span>
+	<span class="s">"unicode/utf8"</span>
+
+	<span class="s">"example.com/otchet-kafe/internal/utils"</span>
+)
+
+<span class="k">func</span> <span class="f">fixNames</span>(names []<span class="k">string</span>, fix <span class="k">func</span>(<span class="k">string</span>) <span class="k">string</span>) []<span class="k">string</span> {
+	fixed := make([]<span class="k">string</span>, <span class="n">0</span>, len(names))
+	<span class="k">for</span> _, name := <span class="k">range</span> names {
+		fixed = append(fixed, fix(name))
+	}
+	<span class="k">return</span> fixed
+}
+
+<span class="k">func</span> <span class="f">main</span>() {
+	names := []<span class="k">string</span>{<span class="s">"иванов пётр"</span>}
+	fmt.Println(fixNames(names, utils.NormalizeName))
+	fmt.Println(fixNames(names, strings.ToUpper))
+	fmt.Println(fixNames(names, utf8.RuneCountInString))
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre># example.com/otchet-kafe/proba
+proba/main.go:23:30: cannot use utf8.RuneCountInString (value of type func(s string) (n int)) as func(string) string value in argument to fixNames</pre>
+        </figure>
+        <p>Строки 21 и 22 собираются: <code>NormalizeName</code> и <code>strings.ToUpper</code> принимают строку и возвращают строку. В строке 23 передана <code>utf8.RuneCountInString</code> — она принимает строку, но возвращает число. Сообщение показывает её полный тип <code>func(s string) (n int)</code> рядом с ожидаемым <code>func(string) string</code>: имена параметров для совпадения типов не важны, важны типы и их порядок.</p>
+
+        <h2 id="g11"><span class="sec">§11</span>Новый тип: копейки и рубли</h2>
+        <p>Новый тип и псевдоним — глава 4.2, §7. Пример показывает, чем они отличаются для компилятора.</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>Kopeks, Rubles и Revenue</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> <span class="s">"fmt"</span>
+
+<span class="k">type</span> Kopeks <span class="k">int</span>
+<span class="k">type</span> Rubles <span class="k">int</span>
+<span class="k">type</span> Revenue = <span class="k">map</span>[<span class="k">string</span>]<span class="k">int</span>
+
+<span class="k">func</span> <span class="f">total</span>(revenue Revenue) Kopeks {
+	sum := Kopeks(<span class="n">0</span>)
+	<span class="k">for</span> _, kopeks := <span class="k">range</span> revenue {
+		sum += Kopeks(kopeks)
+	}
+	<span class="k">return</span> sum
+}
+
+<span class="k">func</span> <span class="f">main</span>() {
+	fmt.Println(total(<span class="k">map</span>[<span class="k">string</span>]<span class="k">int</span>{<span class="s">"Иванов Пётр"</span>: <span class="n">100</span>}))
+	<span class="k">var</span> price Kopeks = <span class="n">125000</span>
+	<span class="k">var</span> tip Rubles = <span class="n">50</span>
+	count := <span class="n">3</span>
+	fmt.Println(price + tip)
+	fmt.Println(price * count)
+	fmt.Println(price * <span class="n">3</span>)
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre># example.com/otchet-kafe/proba
+proba/main.go:22:14: invalid operation: price + tip (mismatched types Kopeks and Rubles)
+proba/main.go:23:14: invalid operation: price * count (mismatched types Kopeks and int)</pre>
+        </figure>
+        <ul>
+          <li><b>Строка 18</b> собирается: <code>Revenue</code> — псевдоним, и <code>map[string]int</code> под него подходит без преобразования.</li>
+          <li><b>Строка 22</b> — <code>mismatched types Kopeks and Rubles</code>: оба типа хранят целое число, но это разные типы, и сложить копейки с рублями нельзя. Ради этого новые типы и заводят. В Python псевдоним <code>Kopeks = int</code> такую ошибку не находил.</li>
+          <li><b>Строка 23</b> — то же с обычным <code>int</code>: переменная <code>count</code> имеет тип <code>int</code>, и умножить на неё <code>Kopeks</code> без перевода нельзя. Исправление — <code>price * Kopeks(count)</code>.</li>
+          <li><b>Строка 24</b> собирается: <code>3</code> — константа без типа, и компилятор переводит её в <code>Kopeks</code> сам.</li>
+        </ul>
+
+        <h2 id="g12"><span class="sec">§12</span>any: ошибка, которую компилятор пропускает</h2>
+        <p>Тип <code>any</code> — глава 4.2, §8. В отличие от <code>Any</code> в Python, со значением <code>any</code> компилятор не разрешает ничего, кроме передачи дальше:</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>арифметика с any</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> <span class="s">"fmt"</span>
+
+<span class="k">func</span> <span class="f">parse</span>(value <span class="k">any</span>) <span class="k">int</span> {
+	<span class="k">return</span> value + <span class="n">1</span>
+}
+
+<span class="k">func</span> <span class="f">main</span>() {
+	fmt.Println(parse(<span class="n">125</span>))
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre># example.com/otchet-kafe/proba
+proba/main.go:6:9: invalid operation: value + 1 (mismatched types any and untyped int)</pre>
+        </figure>
+        <p><code>mismatched types any and untyped int</code>: к значению неизвестного типа нельзя прибавить число. Чтобы работать со значением, сначала нужно утверждение типа. Короткая форма <code>value.(int)</code> компилятор устраивает, но переносит проверку на время работы:</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>утверждение типа без проверки</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> <span class="s">"fmt"</span>
+
+<span class="k">func</span> <span class="f">parse</span>(value <span class="k">any</span>) <span class="k">int</span> {
+	<span class="k">return</span> value.(<span class="k">int</span>) + <span class="n">1</span>
+}
+
+<span class="k">func</span> <span class="f">main</span>() {
+	fmt.Println(parse(<span class="n">125</span>))
+	fmt.Println(parse(<span class="s">"125"</span>))
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre>126
+panic: interface conversion: interface {} is string, not int
+
+goroutine 1 [running]:
+main.parse(...)
+	/private/tmp/student-go/otchet-kafe-go-start/proba/main.go:6
+main.main()
+	/private/tmp/student-go/otchet-kafe-go-start/proba/main.go:11 +0x70
+exit status 2</pre>
+        </figure>
+        <p>Первый вызов напечатал <code>126</code>: внутри <code>any</code> было число. Второй остановил программу: <code>interface conversion: interface {} is string, not int</code> — «внутри строка, а не число». Строка <code>main.parse(...)</code> в трассировке без адреса: компилятор встроил маленькую функцию в место вызова. Компилятор эту ошибку пропустил: какой тип окажется внутри <code>any</code>, становится известно только при работе. Исправление — форма с признаком <code>n, ok := value.(int)</code> или переключатель <code>switch v := value.(type)</code>, как в главе 4.2, а лучше — настоящий тип параметра вместо <code>any</code>.</p>
+
+        <h2 id="g13"><span class="sec">§13</span>Переменные: лишние и нулевые</h2>
+        <p>Объявления переменных — глава 4.2, §9. Компилятор Go строже Python к лишнему коду: неиспользованные переменные и импорты — ошибки сборки.</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>лишний импорт, лишняя переменная, повторное :=</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> (
+	<span class="s">"fmt"</span>
+	<span class="s">"strings"</span>
+)
+
+<span class="k">func</span> <span class="f">main</span>() {
+	total := <span class="n">0</span>
+	heading := <span class="s">"Смена"</span>
+	total := <span class="n">125000</span>
+	fmt.Println(total)
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre># example.com/otchet-kafe/proba
+proba/main.go:5:2: "strings" imported and not used
+proba/main.go:10:2: declared and not used: heading
+proba/main.go:11:8: no new variables on left side of :=</pre>
+        </figure>
+        <ul>
+          <li><b>Строка 5</b> — <code>"strings" imported and not used</code>: пакет импортирован, но ни одно его имя не используется. В VS Code с расширением Go лишние импорты удаляются сами при сохранении файла.</li>
+          <li><b>Строка 10</b> — <code>declared and not used: heading</code>: переменная объявлена и ни разу не прочитана. Обычно это след незаконченной правки: значение вычислили и забыли использовать.</li>
+          <li><b>Строка 11</b> — <code>no new variables on left side of :=</code>. Запись <code>:=</code> объявляет новую переменную, а <code>total</code> уже объявлена в строке 9. Чтобы изменить значение, пишут обычное присваивание: <code>total = 125000</code>.</li>
+        </ul>
+        <p>Последний пример — переменная-словарь без значения. Он собирается, и ошибка видна только при работе:</p>
+        <figure class="code">
+          <figcaption><span>proba/main.go</span><span>запись в нулевой словарь</span></figcaption>
+<pre><span class="k">package</span> main
+
+<span class="k">import</span> <span class="s">"fmt"</span>
+
+<span class="k">func</span> <span class="f">main</span>() {
+	<span class="k">var</span> totals <span class="k">map</span>[<span class="k">string</span>]<span class="k">int</span>
+	fmt.Println(totals[<span class="s">"Иванов Пётр"</span>], len(totals))
+	totals[<span class="s">"Иванов Пётр"</span>] = <span class="n">125000</span>
+	fmt.Println(totals)
+}</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
+<pre>0 0
+panic: assignment to entry in nil map
+
+goroutine 1 [running]:
+main.main()
+	/private/tmp/student-go/otchet-kafe-go-start/proba/main.go:8 +0xa4
+exit status 2</pre>
+        </figure>
+        <p>Чтение из нулевого словаря работает: строка 7 напечатала <code>0 0</code> — значения нет, длина ноль. Запись в строке 8 остановила программу: <code>assignment to entry in nil map</code>. Объявление <code>var totals map[string]int</code> создаёт переменную, но не словарь. Исправление — создать словарь сразу: <code>totals := map[string]int{}</code>, как в <code>RevenueByWaiter</code>.</p>
+
+        <h2 id="g14"><span class="sec">§14</span>Все сообщения главы</h2>
+        <p>В восемнадцати примерах встретились сообщения компилятора одиннадцати видов и три вида остановки при работе. В таблице они собраны вместе; вид ошибки в скобках — так его подписывает gopls в панели Problems.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Начало сообщения</th><th>Вид в gopls</th><th>Что произошло</th><th>Где разобрано</th></tr></thead>
+            <tbody>
+              <tr><td><code>cannot use X (…) as T value in argument to F</code></td><td><code>IncompatibleAssign</code></td><td>в вызов передано значение не того типа</td><td>§2, §4, §7, §9, §10</td></tr>
+              <tr><td><code>cannot use X (…) as T value in assignment / variable declaration / map index</code></td><td><code>IncompatibleAssign</code></td><td>значение не того типа при присваивании, в объявлении, в ключе словаря</td><td>§4, §5</td></tr>
+              <tr><td><code>cannot use nil as T value in return statement</code></td><td><code>IncompatibleAssign</code></td><td><code>nil</code> вместо структуры</td><td>§8</td></tr>
+              <tr><td><code>… (truncated)</code></td><td><code>TruncatedFloat</code></td><td>дробная константа там, где ждут целое</td><td>§2</td></tr>
+              <tr><td><code>invalid operation: … (mismatched types A and B)</code></td><td><code>MismatchedTypes</code></td><td>операция над значениями разных типов</td><td>§2, §11, §12</td></tr>
+              <tr><td><code>missing return</code></td><td><code>MissingReturn</code></td><td>функция обещает значение, но возвращает его не во всех случаях</td><td>§3</td></tr>
+              <tr><td><code>(no value) used as value</code></td><td><code>TooManyValues</code></td><td>используется результат функции без результата</td><td>§3</td></tr>
+              <tr><td><code>assignment mismatch: N variables but F returns M values</code></td><td><code>WrongAssignCount</code></td><td>принято не столько результатов, сколько возвращает функция</td><td>§6</td></tr>
+              <tr><td><code>X.Y undefined (type T has no field or method Y)</code></td><td><code>MissingFieldOrMethod</code></td><td>у значения нет такого поля или метода</td><td>§7</td></tr>
+              <tr><td><code>unknown field Y in struct literal</code></td><td><code>MissingLitField</code></td><td>при создании структуры указано несуществующее поле</td><td>§7</td></tr>
+              <tr><td><code>T does not implement I (missing method M)</code></td><td><code>InvalidIfaceAssign</code></td><td>у значения нет метода интерфейса или получатель не тот</td><td>§9</td></tr>
+              <tr><td><code>"pkg" imported and not used</code>, <code>declared and not used: x</code></td><td><code>UnusedImport</code>, <code>UnusedVar</code></td><td>лишний импорт или переменная</td><td>§13</td></tr>
+              <tr><td><code>no new variables on left side of :=</code></td><td><code>NoNewVar</code></td><td><code>:=</code> для уже объявленной переменной</td><td>§13</td></tr>
+              <tr><td><code>panic: … nil pointer dereference</code></td><td>— (при работе)</td><td>поле через пустой указатель</td><td>§8</td></tr>
+              <tr><td><code>panic: interface conversion</code></td><td>— (при работе)</td><td>утверждение типа не совпало с содержимым <code>any</code></td><td>§12</td></tr>
+              <tr><td><code>panic: assignment to entry in nil map</code></td><td>— (при работе)</td><td>запись в нулевой словарь</td><td>§13</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Строки с <code>panic</code> — не ошибки компилятора: программа собралась и остановилась при работе. Их находят тесты, а не сборка.</p>
+
+        <h2 id="g15"><span class="sec">§15</span>Проверьте себя</h2>
+        <details>
+          <summary>Компилятор ответил <code>cannot use "5" (untyped string constant) as int value in argument to append</code>. Что произошло?</summary>
+          <p>В срез <code>[]int</code> через <code>append</code> добавляют строку. Нужно добавить целое число.</p>
+        </details>
+        <details>
+          <summary>Почему <code>averageCheck(4937, 5)</code> собирается при <code>total float64</code>, а <code>averageCheck(sum, checks)</code> с переменными <code>int</code> — нет?</summary>
+          <p><code>4937</code> — константа без типа, компилятор переводит её в <code>float64</code> сам. У переменной <code>sum</code> тип уже есть — <code>int</code>, и его переводят явно: <code>float64(sum)</code>.</p>
+        </details>
+        <details>
+          <summary>Что означает <code>missing return</code> и почему место ошибки — закрывающая скобка функции?</summary>
+          <p>Функция обещает результат, но в одной из веток <code>return</code> нет. Выполнение в этой ветке дошло бы до закрывающей скобки, не вернув значения, — туда компилятор и указывает.</p>
+        </details>
+        <details>
+          <summary>Перепутанные <code>high, low, err := GradeBounds(…)</code> собираются. Почему компилятор не нашёл ошибку?</summary>
+          <p>Оба значения типа <code>int</code>, а компилятор сверяет только типы. Что первое значение — минимум, он не знает. Защита — имена результатов в подписи и комментарий документации.</p>
+        </details>
+        <details>
+          <summary>Почему <code>*shift</code> не подходит под интерфейс с методом <code>TotalKopeks</code>, а <code>shift</code> подходит?</summary>
+          <p>Метод объявлен с получателем-указателем <code>(s *Shift)</code> и есть только у <code>*Shift</code>. <code>*shift</code> — значение типа <code>Shift</code>, у него этого метода нет.</p>
+        </details>
+        <details>
+          <summary>Почему <code>price + tip</code> при <code>Kopeks</code> и <code>Rubles</code> — ошибка, хотя оба хранят целое число?</summary>
+          <p><code>type Kopeks int</code> и <code>type Rubles int</code> создают два разных новых типа. Операции между разными типами запрещены без явного перевода, и копейки с рублями случайно не сложить.</p>
+        </details>
+        <details>
+          <summary>Какие из ошибок главы компилятор не находит?</summary>
+          <p>Обращение через пустой указатель, неверное утверждение типа у <code>any</code>, запись в нулевой словарь и перепутанный порядок значений одного типа. Первые три останавливают программу при работе с <code>panic</code>, четвёртая даёт неверный результат без остановки.</p>
+        </details>
+
+        <h2 id="g16"><span class="sec">§16</span>Шпаргалка по главе</h2>
+        <div class="cheat">
+          <div>
+            <b>Не тот тип</b>
+            <code>cannot use X as T value in argument to F</code>
+            <code>… in assignment / map index</code>
+          </div>
+          <div>
+            <b>Разные типы в выражении</b>
+            <code>mismatched types int and float64</code>
+            <code>float64(n) — исправление</code>
+          </div>
+          <div>
+            <b>Результаты</b>
+            <code>missing return</code>
+            <code>(no value) used as value</code>
+            <code>assignment mismatch</code>
+          </div>
+          <div>
+            <b>Структуры и интерфейсы</b>
+            <code>has no field or method</code>
+            <code>unknown field … in struct literal</code>
+            <code>does not implement (missing method)</code>
+          </div>
+          <div>
+            <b>Лишнее</b>
+            <code>imported and not used</code>
+            <code>declared and not used</code>
+            <code>no new variables on left side of :=</code>
+          </div>
+          <div>
+            <b>Только при работе</b>
+            <code>nil pointer dereference</code>
+            <code>interface conversion</code>
+            <code>assignment to entry in nil map</code>
+          </div>
+        </div>
+
+        <h3>Итог главы</h3>
+        <p>Почти все ошибки в примерах — «передан не тот тип»: компилятор называет значение, его тип и тип, который ожидался, а слова после <code>in</code> указывают место — аргумент, присваивание, ключ словаря, <code>return</code>. Числа разных типов не смешиваются ни в вызове, ни в выражении; константы без типа компилятор переводит сам, переменные — нет. Проверяются число результатов, поля структур, методы интерфейсов и типы функций-аргументов. Новый тип не смешивается даже с типом, на котором основан. Неиспользованные переменные и импорты — ошибки сборки. Пропускает компилятор то, что зависит от данных при работе: пустой указатель, содержимое <code>any</code>, нулевой словарь, порядок значений одного типа. В главе 4.5 те же сообщения появятся в целом проекте: двенадцать ошибок в архиве, который не собирается.</p>
+
+        <div class="sources">
+          <b>Откуда взяты факты</b>
+          <ol>
+            <li>Правила присваиваемости и констант без типа — <a href="https://go.dev/ref/spec#Assignability">спецификация Go, Assignability</a> и <a href="https://go.dev/ref/spec#Constants">Constants</a>.</li>
+            <li>Наборы методов и получатели-указатели — <a href="https://go.dev/ref/spec#Method_sets">спецификация Go, Method sets</a>.</li>
+            <li>Виды ошибок, которые показывает gopls, — <a href="https://pkg.go.dev/golang.org/x/tools/internal/typesinternal#ErrorCode">коды ошибок проверки типов</a>.</li>
+            <li>Все выводы получены запуском примеров на втором архиве проекта, Go <code>1.27</code>; сверка книги с запуском — <code>shots/verify_go.py</code>.</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="03-proverka-tipov.html">← 4.3 Проверка типов</a><a href="05-praktika-annotacii.html">4.5 Практика: проект с ошибками типов →</a></div>
+        </div>
 
         <div class="colophon">
           <span>Глава 4.4 · Ошибки типов · МДК.01.01</span>
