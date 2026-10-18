@@ -840,7 +840,7 @@ proba/main.go:9:1: missing return
 proba/main.go:12:12: ui.PrintReport([]string{…}) (no value) used as value</pre>
         </figure>
         <ul>
-          <li><b>Строка 9</b> — <code>missing return</code>, «нет инструкции return». Функция обещает строку, но если <code>kopeks</code> не больше нуля, условие не выполнится, и вернуть будет нечего. Место ошибки — закрывающая скобка функции: здесь выполнение дошло бы до конца без <code>return</code>. Исправление — вернуть строку и во втором случае: добавить перед скобкой <code>return "выручки нет"</code>. В Python функция в этом случае тихо вернула бы <code>None</code>; в Go такое невозможно.</li>
+          <li><b>Строка 9</b> — <code>missing return</code>, «нет инструкции return». Функция обещает строку, но если <code>kopeks</code> не больше нуля, условие не выполнится, и вернуть будет нечего. Место ошибки — закрывающая скобка функции: здесь выполнение дошло бы до конца без <code>return</code>. Исправление — вернуть строку и во втором случае: добавить перед скобкой <code>return "выручки нет"</code>. В Python функция в этом случае вернула бы <code>None</code> без всякого сообщения; Go такой код не собирает.</li>
           <li><b>Строка 12</b> — результат <code>PrintReport</code> сохраняется в переменную, но у функции нет результата: <code>(no value) used as value</code>, «отсутствующее значение использовано как значение». Исправление — вызвать функцию без присваивания: <code>ui.PrintReport([]string{"Смена"})</code>.</li>
         </ul>
 
@@ -941,7 +941,7 @@ proba/main.go:11:19: cannot use row["kopeks"] (map index expression of type stri
 proba/main.go:10:15: assignment mismatch: 2 variables but services.GradeBounds returns 3 values
 proba/main.go:12:13: assignment mismatch: 1 variable but services.CalculateAverage returns 2 values</pre>
         </figure>
-        <p>Сообщение <code>assignment mismatch: 2 variables but services.GradeBounds returns 3 values</code> читается как «несовпадение при присваивании: две переменные, а функция возвращает три значения». Третье значение — ошибка, и её нельзя молча потерять. Исправление — принять все результаты: <code>low, high, err := …</code>, а если какой-то не нужен, поставить на его место <code>_</code>. Во второй строке забыт результат-ошибка у <code>CalculateAverage</code>.</p>
+        <p>Сообщение <code>assignment mismatch: 2 variables but services.GradeBounds returns 3 values</code> читается как «несовпадение при присваивании: две переменные, а функция возвращает три значения». Третье значение — ошибка, и компилятор требует её принять. Исправление — принять все результаты: <code>low, high, err := …</code>, а если какой-то не нужен, поставить на его место <code>_</code>. Во второй строке забыт результат-ошибка у <code>CalculateAverage</code>.</p>
         <p>Число результатов компилятор проверяет, а их порядок — только по типам. У <code>GradeBounds</code> минимум и максимум одного типа <code>int</code>, и если перепутать их местами, программа соберётся:</p>
         <figure class="code">
           <figcaption><span>proba/main.go</span><span>минимум и максимум перепутаны</span></figcaption>
@@ -965,7 +965,7 @@ proba/main.go:12:13: assignment mismatch: 1 variable but services.CalculateAvera
           <figcaption><span>Терминал</span><span>go run ./proba</span></figcaption>
 <pre>минимум: 5 максимум: 3</pre>
         </figure>
-        <p>Ошибок сборки нет, а в отчёте минимум больше максимума. Компилятор не может знать, что первое значение — минимум: оба <code>int</code>. В Python у кортежа <code>tuple[str, int]</code> перестановку находила проверка, потому что типы мест различались; для <code>tuple[int, int]</code> не находила бы и она. Защита здесь — имена результатов в подписи <code>(low, high int, err error)</code>, которые видны в подсказке редактора, и фраза о порядке в комментарии документации.</p>
+        <p>Ошибок сборки нет, а в отчёте минимум больше максимума. Компилятор не может знать, что первое значение — минимум: оба <code>int</code>. В Python у кортежа <code>tuple[str, int]</code> перестановку находила проверка, потому что типы мест различались; для <code>tuple[int, int]</code> не находила бы и она. От такой ошибки помогают имена результатов в подписи <code>(low, high int, err error)</code>, которые видны в подсказке редактора, и фраза о порядке в комментарии документации.</p>
 
         <h2 id="g7"><span class="sec">§7</span>Структуры: опечатка в поле, словарь вместо структуры</h2>
         <p>Запись структур — глава 4.2, §3. Когда тип значения — структура, компилятор знает её поля и находит опечатки в именах.</p>
@@ -1034,7 +1034,7 @@ proba/main.go:18:29: cannot use []map[string]int{…} (value of type []map[strin
 proba/main.go:11:9: cannot use nil as domain.Order value in return statement</pre>
         </figure>
         <p><code>cannot use nil as domain.Order value in return statement</code>: у структуры нет значения <code>nil</code>. Исправление зависит от выбранного способа: вернуть пустую структуру и признак — <code>return domain.Order{}, false</code> с подписью <code>(domain.Order, bool)</code> — или сделать результат указателем <code>*domain.Order</code>, у которого <code>nil</code> есть.</p>
-        <p>С указателем компилятор такую ошибку уже не найдёт, и появляется другая — обращение к полю через пустой указатель. Она собирается и проявляется только при работе:</p>
+        <p>Если сделать результат указателем, эта ошибка уйдёт, но станет возможной другая — обращение к полю через пустой указатель. Такой код собирается, и ошибка проявляется только при работе:</p>
         <figure class="code">
           <figcaption><span>proba/main.go</span><span>поле через пустой указатель</span></figcaption>
 <pre><span class="k">package</span> main
@@ -1074,7 +1074,7 @@ main.main()
 exit status 2</pre>
         </figure>
         <p>Первая строка вывода показывает, что программа собралась и запустилась. На строке 23 она остановилась: <code>panic</code> — аварийная остановка, <code>invalid memory address or nil pointer dereference</code> — «обращение по пустому указателю». Ниже — <span class="term">трассировка</span>: где случилась паника, <code>main.go:23</code>. Путь к файлу в трассировке у вас будет свой, а числа вида <code>0x…</code> меняются от запуска к запуску. <code>exit status 2</code> — код завершения программы.</p>
-        <p>Исправление — проверить указатель перед обращением: <code>if found != nil { fmt.Println(found.Kopeks) }</code>. В Python проверка mypy требовала такое условие для <code>Order | None</code>; компилятор Go для указателя его не требует, поэтому проверку пишут по привычке, а находят пропущенную — тесты.</p>
+        <p>Исправление — проверить указатель перед обращением: <code>if found != nil { fmt.Println(found.Kopeks) }</code>. В Python проверка mypy требовала такое условие для <code>Order | None</code>; компилятор Go для указателя его не требует, поэтому проверку пишут сами, а пропущенную находят тесты.</p>
 
         <h2 id="g9"><span class="sec">§9</span>Интерфейсы: нет метода</h2>
         <p>Интерфейсы — глава 4.2, §5. Значение подходит под интерфейс, если у него есть все методы интерфейса. Компилятор это проверяет и называет пропущенный метод.</p>
@@ -1112,7 +1112,7 @@ proba/main.go:22:13: cannot use 125 (constant of type int) as Priced value in ar
         </figure>
         <ul>
           <li><b>Строка 20</b> — ошибки нет: <code>shift</code> — указатель <code>*domain.Shift</code>, у него метод <code>TotalKopeks</code> есть.</li>
-          <li><b>Строка 21</b> — передана сама смена, без указателя: <code>*shift</code> разыменовывает указатель. Сообщение длинное, главное в конце: <code>method TotalKopeks has pointer receiver</code>, «у метода получатель-указатель». Метод объявлен как <code>func (s *Shift) TotalKopeks()</code>, и есть он только у <code>*Shift</code>, а у <code>Shift</code> — нет. Исправление — передавать указатель, как в строке 20.</li>
+          <li><b>Строка 21</b> — передана сама смена, без указателя: <code>*shift</code> разыменовывает указатель. Сообщение длинное, причина — в его конце: <code>method TotalKopeks has pointer receiver</code>, «у метода получатель-указатель». Метод объявлен как <code>func (s *Shift) TotalKopeks()</code>, и есть он только у <code>*Shift</code>, а у <code>Shift</code> — нет. Исправление — передавать указатель, как в строке 20.</li>
           <li><b>Строка 22</b> — у числа методов нет: <code>missing method TotalKopeks</code>.</li>
         </ul>
         <p>Сообщения об интерфейсах состоят из двух частей через двоеточие: сначала общее «нельзя использовать как <code>Priced</code>», затем причина — какого метода не хватает или почему он не подходит.</p>
@@ -1191,7 +1191,7 @@ proba/main.go:23:14: invalid operation: price * count (mismatched types Kopeks a
         </figure>
         <ul>
           <li><b>Строка 18</b> собирается: <code>Revenue</code> — псевдоним, и <code>map[string]int</code> под него подходит без преобразования.</li>
-          <li><b>Строка 22</b> — <code>mismatched types Kopeks and Rubles</code>: оба типа хранят целое число, но это разные типы, и сложить копейки с рублями нельзя. Ради этого новые типы и заводят. В Python псевдоним <code>Kopeks = int</code> такую ошибку не находил.</li>
+          <li><b>Строка 22</b> — <code>mismatched types Kopeks and Rubles</code>: оба типа хранят целое число, но это разные типы, и сложить копейки с рублями нельзя. Так новый тип защищает от смешивания единиц. В Python псевдоним <code>Kopeks = int</code> такую ошибку не находил.</li>
           <li><b>Строка 23</b> — то же с обычным <code>int</code>: переменная <code>count</code> имеет тип <code>int</code>, и умножить на неё <code>Kopeks</code> без перевода нельзя. Исправление — <code>price * Kopeks(count)</code>.</li>
           <li><b>Строка 24</b> собирается: <code>3</code> — константа без типа, и компилятор переводит её в <code>Kopeks</code> сам.</li>
         </ul>
@@ -1328,7 +1328,7 @@ exit status 2</pre>
             </tbody>
           </table>
         </div>
-        <p>Строки с <code>panic</code> — не ошибки компилятора: программа собралась и остановилась при работе. Их находят тесты, а не сборка.</p>
+        <p>Строки с <code>panic</code> — не ошибки компилятора: программа собралась и остановилась при работе. Их находят тесты.</p>
 
         <h2 id="g15"><span class="sec">§15</span>Проверьте себя</h2>
         <details>
@@ -1345,7 +1345,7 @@ exit status 2</pre>
         </details>
         <details>
           <summary>Перепутанные <code>high, low, err := GradeBounds(…)</code> собираются. Почему компилятор не нашёл ошибку?</summary>
-          <p>Оба значения типа <code>int</code>, а компилятор сверяет только типы. Что первое значение — минимум, он не знает. Защита — имена результатов в подписи и комментарий документации.</p>
+          <p>Оба значения типа <code>int</code>, а компилятор сверяет только типы. Что первое значение — минимум, он не знает. Помогают имена результатов в подписи и комментарий документации.</p>
         </details>
         <details>
           <summary>Почему <code>*shift</code> не подходит под интерфейс с методом <code>TotalKopeks</code>, а <code>shift</code> подходит?</summary>
@@ -1353,7 +1353,7 @@ exit status 2</pre>
         </details>
         <details>
           <summary>Почему <code>price + tip</code> при <code>Kopeks</code> и <code>Rubles</code> — ошибка, хотя оба хранят целое число?</summary>
-          <p><code>type Kopeks int</code> и <code>type Rubles int</code> создают два разных новых типа. Операции между разными типами запрещены без явного перевода, и копейки с рублями случайно не сложить.</p>
+          <p><code>type Kopeks int</code> и <code>type Rubles int</code> создают два разных новых типа. Операции между разными типами запрещены без явного перевода, поэтому копейки с рублями по ошибке не сложить.</p>
         </details>
         <details>
           <summary>Какие из ошибок главы компилятор не находит?</summary>

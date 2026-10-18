@@ -417,7 +417,7 @@ parse(<span class="s">"125"</span>)</pre>
           </table>
         </div>
         <p>У целых и дробных чисел в Go есть варианты по размеру: <code>int8</code>, <code>int32</code>, <code>int64</code>, <code>uint</code>, <code>float32</code>. В прикладном коде обычно пишут <code>int</code> и <code>float64</code>; остальные нужны, когда размер числа задан извне — форматом файла или протоколом.</p>
-        <p>В отличие от Python, числа разных типов в Go не смешиваются. Сложить <code>int</code> и <code>float64</code> нельзя, даже если оба значения — числа: одно из них сначала явно переводят в тип другого. Отсюда и поведение деления. Деление двух <code>int</code> даёт <code>int</code>, дробная часть отбрасывается: <code>7 / 2</code> равно <code>3</code>. Чтобы получить <code>3.5</code>, делят <code>float64(7) / 2</code>. Поэтому в <code>CalculateAverage</code> сумма переводится в <code>float64</code> до деления.</p>
+        <p>В отличие от Python, числа разных типов в Go не смешиваются. Сложить <code>int</code> и <code>float64</code> нельзя, даже если оба значения — числа: одно из них сначала явно переводят в тип другого. То же правило определяет деление: деление двух <code>int</code> даёт <code>int</code>, дробная часть отбрасывается: <code>7 / 2</code> равно <code>3</code>. Чтобы получить <code>3.5</code>, делят <code>float64(7) / 2</code>. Поэтому в <code>CalculateAverage</code> сумма переводится в <code>float64</code> до деления.</p>
         <figure class="code">
           <figcaption><span>пример</span><span>подписи с простыми типами</span></figcaption>
 <pre><span class="k">func</span> <span class="f">isBig</span>(kopeks, limit <span class="k">int</span>) <span class="k">bool</span> {
@@ -473,7 +473,7 @@ parse(<span class="s">"125"</span>)</pre>
             </tbody>
           </table>
         </div>
-        <p>Вторая строка таблицы показывает отличие от Python. Срез <code>[]float64</code> не передаётся туда, где ждут <code>[]int</code>, даже если в нём одни целые числа: тип среза определяется записью, а не содержимым.</p>
+        <p>Вторая строка таблицы показывает отличие от Python. Срез <code>[]float64</code> не передаётся туда, где ждут <code>[]int</code>, даже если в нём одни целые числа: компилятор сравнивает тип среза, записанный в коде, и какие числа лежат внутри, не важно.</p>
 
         <h2 id="g3"><span class="sec">§3</span>Структуры и типы других пакетов</h2>
         <p><span class="term">Структура</span> — тип из нескольких именованных полей, у каждого свой тип. Её объявляют словами <code>type … struct</code>, и после объявления имя структуры пишется в подписи так же, как <code>int</code>. Типы стандартной библиотеки записываются с именем пакета: <code>time.Time</code> из пакета <code>time</code>. Типы своего модуля из другого пакета — тоже с именем пакета: <code>domain.Order</code>. Пакет при этом нужно импортировать.</p>
@@ -510,11 +510,11 @@ parse(<span class="s">"125"</span>)</pre>
         <p>Путь к файлу в проекте передаётся строкой <code>string</code>, отдельного типа пути, как <code>Path</code> в Python, для этого не заводят. Когда тип параметра — структура, редактору доступны её поля: после <code>order.</code> в автодополнении появятся <code>Waiter</code> и <code>Kopeks</code>. Словарь с такими же ключами под тип <code>domain.Order</code> не подходит: <code>map[string]string{"waiter": "Петрова Анна"}</code> — это словарь, полей <code>.Waiter</code> и <code>.Kopeks</code> у него нет.</p>
         <div class="margin-note margin-note--steel">
           <b>На полях: неиспользуемый импорт — ошибка</b>
-          <p>Если пакет импортирован, но ни одно его имя в файле не используется, Go файл не соберёт: <code>"time" imported and not used</code>. В Python лишний импорт просто лежит в файле. Поэтому, удаляя последнее упоминание типа <code>time.Time</code>, удаляют и импорт; в VS Code с расширением Go это делается само при сохранении.</p>
+          <p>Если пакет импортирован, но ни одно его имя в файле не используется, Go файл не соберёт: <code>"time" imported and not used</code>. В Python лишний импорт запуску не мешает. Поэтому, удаляя последнее упоминание типа <code>time.Time</code>, удаляют и импорт; в VS Code с расширением Go это делается само при сохранении.</p>
         </div>
 
         <h2 id="g4"><span class="sec">§4</span>Значение или ничего: указатели, nil и ok</h2>
-        <p>Часто функция возвращает значение, а если его нет — ничего. Например, поиск заказа по имени официанта: заказ найден или не найден. В Python такой результат записывают <code>Order | None</code>. В Go значения <code>None</code> для структуры нет: у переменной типа <code>Order</code> всегда есть значение, в худшем случае нулевое — пустое имя и сумма <code>0</code>. Поэтому «ничего» в Go записывают одним из трёх способов.</p>
+        <p>Нередко результата может не оказаться. Например, при поиске заказа по имени официанта заказ может быть не найден. В Python такой результат записывают <code>Order | None</code>. В Go значения <code>None</code> для структуры нет: у переменной типа <code>Order</code> всегда есть значение, в худшем случае нулевое — пустое имя и сумма <code>0</code>. Поэтому «ничего» в Go записывают одним из трёх способов.</p>
         <p><b>Способ 1. Второй результат <code>bool</code>.</b> Функция возвращает значение и признак, найдено ли оно. Так устроено чтение из словаря: <code>value, ok := totals[name]</code>.</p>
         <figure class="code">
           <figcaption><span>пример</span><span>результат и признак ok</span></figcaption>
@@ -532,7 +532,7 @@ order, ok := findOrder(orders, <span class="s">"Петрова Анна"</span>)
 	fmt.Println(order.Kopeks)
 }</pre>
         </figure>
-        <p><b>Способ 2. Указатель.</b> <span class="term">Указатель</span> — значение, которое хранит адрес другого значения в памяти. Тип «указатель на заказ» записывается <code>*domain.Order</code>, адрес переменной берут знаком <code>&amp;</code>: <code>&amp;order</code>. У указателя, который никуда не указывает, значение <code>nil</code> — это и есть «ничего».</p>
+        <p><b>Способ 2. Указатель.</b> <span class="term">Указатель</span> — значение, которое хранит адрес другого значения в памяти. Тип «указатель на заказ» записывается <code>*domain.Order</code>, адрес переменной берут знаком <code>&amp;</code>: <code>&amp;order</code>. У указателя, который никуда не указывает, значение <code>nil</code>: им и записывают «ничего».</p>
         <figure class="code">
           <figcaption><span>пример</span><span>указатель или nil</span></figcaption>
 <pre><span class="k">func</span> <span class="f">findOrderPtr</span>(orders []domain.Order, waiter <span class="k">string</span>) *domain.Order {
@@ -564,7 +564,7 @@ found := findOrderPtr(orders, <span class="s">"Петрова Анна"</span>)
         <p>Необязательных параметров в Go нет. Если аргумент можно не задавать, вызывающий код передаёт нулевое значение (<code>0</code>, <code>""</code>), и функция договаривается считать его «не задано», как <code>top = 0</code> в <code>RevenueByWaiter</code>. Договорённость записывают в комментарии документации — это разобрано во второй части темы.</p>
 
         <h2 id="g5"><span class="sec">§5</span>Несколько возможных типов: интерфейсы</h2>
-        <p>В Python объединение <code>int | str</code> разрешает передать значение любого из перечисленных типов. В Go объединений в подписи обычной функции нет. Его место занимает <span class="term">интерфейс</span> — тип, который задан не перечнем вариантов, а набором методов. Под интерфейс подходит значение любого типа, у которого эти методы есть.</p>
+        <p>В Python объединение <code>int | str</code> разрешает передать значение любого из перечисленных типов. В Go объединений в подписи обычной функции нет. Его место занимает <span class="term">интерфейс</span> — тип, заданный набором методов. Под интерфейс подходит значение любого типа, у которого эти методы есть.</p>
         <figure class="code">
           <figcaption><span>пример</span><span>интерфейс с одним методом</span></figcaption>
 <pre><span class="k">type</span> <span class="f">Priced</span> <span class="k">interface</span> {
@@ -670,8 +670,8 @@ sortOrders(orders, utils.NormalizeName) <span class="c">// не подходит
             </tbody>
           </table>
         </div>
-        <p>Строка про словарь — частая ловушка. После <code>var totals map[string]int</code> чтение <code>totals["Иванов Пётр"]</code> вернёт <code>0</code>, а запись <code>totals["Иванов Пётр"] = 100</code> остановит программу при работе с сообщением <code>assignment to entry in nil map</code>. Поэтому в <code>RevenueByWaiter</code> словарь создаётся сразу непустым значением: <code>totals := map[string]int{}</code>. Срез такой ловушки не имеет: в <code>LoadOrders</code> запись <code>var orders []domain.Order</code> безопасна, потому что <code>append</code> работает и с нулевым срезом.</p>
-        <p>У полей структуры тип пишется всегда, как у параметров функции: <code>Waiter string</code>, <code>Kopeks int</code>. Выводить его не из чего — в объявлении структуры значений нет.</p>
+        <p>На строку про словарь стоит обратить внимание. После <code>var totals map[string]int</code> чтение <code>totals["Иванов Пётр"]</code> вернёт <code>0</code>, а запись <code>totals["Иванов Пётр"] = 100</code> остановит программу при работе с сообщением <code>assignment to entry in nil map</code>. Поэтому в <code>RevenueByWaiter</code> словарь создаётся сразу непустым значением: <code>totals := map[string]int{}</code>. Со срезом так не происходит: в <code>LoadOrders</code> запись <code>var orders []domain.Order</code> безопасна, потому что <code>append</code> работает и с нулевым срезом.</p>
+        <p>У полей структуры тип пишется всегда, как у параметров функции: <code>Waiter string</code>, <code>Kopeks int</code>. Вывести его не из чего: значений в объявлении структуры нет.</p>
 
         <h2 id="g10"><span class="sec">§10</span>Проверьте себя</h2>
         <details>
