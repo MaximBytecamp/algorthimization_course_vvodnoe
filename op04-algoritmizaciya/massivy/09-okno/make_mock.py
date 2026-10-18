@@ -1,4 +1,4 @@
-"""Собирает главу 9.11 «Мок-интервью» из описаний задач ниже.
+"""Собирает главу 9.6 «Мок-интервью» из описаний задач ниже.
 
 Код этапов и проверки взят из ../08-dva-ukazatelya/make_mock.py, задачи и текст страницы — свои.
 Перед записью страницы скрипт проверяет запуском:
@@ -50,7 +50,7 @@ def _ok_raises(call):
 
 TASKS = [
   dict(
-    id='sums', fn='window_sums', title='Сумма каждого окна', lc='скользящая сумма', lc_url='', chapter='9.3', form='fixed',
+    id='sums', fn='window_sums', title='Сумма каждого окна', lc='скользящая сумма', lc_url='', chapter='9.2', form='fixed',
     heads=('nums, k', 'Ответ'),
     say='Дан список посещений сайта по часам и число <code>k</code>. Верните сумму посещений для каждых <code>k</code> часов подряд.',
     retell='«Нужен новый список: на месте <code>s</code> — сумма <code>nums[s:s + k]</code>, всего <code>n − k + 1</code> сумм».',
@@ -119,7 +119,7 @@ def test_bad_k():
        ('Нужно хранить все элементы окна в отдельном списке', False, 'Для суммы и среднего хватает одной переменной total. Хранить элементы окна нужно для максимума, это занятие 25.')]),
   ),
   dict(
-    id='best', fn='best_window', title='Лучший отрезок длины k', lc='задача 1 КТП', lc_url='', chapter='9.4', form='fixed',
+    id='best', fn='best_window', title='Лучший отрезок длины k', lc='задача 1 КТП', lc_url='', chapter='9.2', form='fixed',
     heads=('nums, k', 'Ответ'),
     say='Дан список посещений по часам и число <code>k</code>. Найдите <code>k</code> часов подряд, за которые посетителей было больше всего.',
     retell='«Нужно найти окно длины <code>k</code> с наибольшей суммой и вернуть его начало и сумму».',
@@ -189,7 +189,7 @@ def test_bad_k():
        ('Ничего: функция и так возвращает самое правое', False, 'При строгом знаке <code>&gt;</code> равная сумма лучшее окно не заменяет — возвращается самое левое.')]),
   ),
   dict(
-    id='events', fn='max_events', title='События во временном окне', lc='задача 2 КТП', lc_url='', chapter='9.5', form='time',
+    id='events', fn='max_events', title='События во временном окне', lc='задача 2 КТП', lc_url='', chapter='9.3', form='time',
     heads=('times, w', 'Ответ'),
     say='Даны моменты запросов к серверу в секундах. Найдите наибольшее число запросов за любой промежуток длиной <code>w</code> секунд.',
     retell='«Моменты отсортированы. Нужно найти промежуток <code>[s, s + w)</code>, в который попадает больше всего событий, и вернуть их число».',
@@ -259,7 +259,7 @@ def test_bad_w():
        ('Ничего: на тестах из примера ответ тот же', False, 'На примере ответ совпадает, но на <code>[0, 5]</code> с w = 5 закрытое окно даёт 2, а открытое — 1.')]),
   ),
   dict(
-    id='vowels', fn='max_vowels', title='Гласные в окне', lc='LeetCode 1456', lc_url='https://leetcode.com/problems/maximum-number-of-vowels-in-a-substring-of-given-length/', chapter='9.4, §8', form='fixed',
+    id='vowels', fn='max_vowels', title='Гласные в окне', lc='LeetCode 1456', lc_url='https://leetcode.com/problems/maximum-number-of-vowels-in-a-substring-of-given-length/', chapter='9.2', form='fixed',
     heads=('s, k', 'Ответ'), as_str=True,
     say='Дана строка и число <code>k</code>. Верните наибольшее число гласных в подстроке длины <code>k</code>.',
     retell='«Нужно пройти все подстроки длины <code>k</code> и найти ту, где больше всего букв a, e, i, o, u. Вернуть число».',
@@ -324,7 +324,7 @@ def test_best_in_middle():
        ('Сдвиг окна здесь уже не подходит, нужен перебор', False, 'Сдвиг остаётся тем же, добавляется только запоминание индекса.')]),
   ),
   dict(
-    id='avg', fn='find_max_average', title='Наибольшее среднее', lc='LeetCode 643', lc_url='https://leetcode.com/problems/maximum-average-subarray-i/', chapter='9.4, §7', form='fixed',
+    id='avg', fn='find_max_average', title='Наибольшее среднее', lc='LeetCode 643', lc_url='https://leetcode.com/problems/maximum-average-subarray-i/', chapter='9.2', form='fixed',
     heads=('nums, k', 'Ответ'),
     say='Дан список чисел и число <code>k</code>. Найдите непрерывный отрезок длины <code>k</code> с наибольшим средним и верните это среднее.',
     retell='«Среднее — сумма, делённая на k, а k одно для всех окон. Значит, нужно окно с наибольшей суммой, и в конце разделить её на k».',
@@ -391,7 +391,7 @@ def test_best_at_end():
        ('Так ответ получается точнее до 10⁻⁵', False, 'Точность здесь ни при чём: дело в том, что порядок окон по среднему и по сумме один и тот же.')]),
   ),
   dict(
-    id='radius', fn='k_radius_averages', title='Среднее вокруг элемента', lc='LeetCode 2090', lc_url='https://leetcode.com/problems/k-radius-subarray-averages/', chapter='9.2, 9.3', form='fixed',
+    id='radius', fn='k_radius_averages', title='Среднее вокруг элемента', lc='LeetCode 2090', lc_url='https://leetcode.com/problems/k-radius-subarray-averages/', chapter='9.2', form='fixed',
     heads=('nums, k', 'Ответ'),
     say='Для каждого индекса <code>i</code> найдите среднее элементов с <code>i − k</code> по <code>i + k</code>, целочисленным делением. Если слева или справа меньше <code>k</code> элементов, запишите −1.',
     retell='«Окно — <code>2k + 1</code> элементов с центром в <code>i</code>. Для центров, у которых полного окна нет, ответ −1. Ответ — список длины n».',
@@ -461,7 +461,7 @@ def test_k_zero_two():
        ('7: по длине окна', False, 'Длина окна 7, но −1 зависит от числа центров без полного окна: их 9 − 3 = 6.')]),
   ),
   dict(
-    id='cards', fn='max_card_points', title='Карты с краёв ряда', lc='LeetCode 1423', lc_url='https://leetcode.com/problems/maximum-points-you-can-obtain-from-cards/', chapter='9.8', form='fixed',
+    id='cards', fn='max_card_points', title='Карты с краёв ряда', lc='LeetCode 1423', lc_url='https://leetcode.com/problems/maximum-points-you-can-obtain-from-cards/', chapter='только в тренажёре', form='fixed',
     heads=('cards, k', 'Ответ'),
     say='Карты лежат в ряд, на каждой — число очков. За ход берётся карта с левого или правого края. Нужно взять ровно <code>k</code> карт с наибольшей суммой очков и вернуть эту сумму.',
     retell='«Взятые карты — начало ряда длины <code>left</code> и конец длины <code>k − left</code>. Нужна наибольшая сумма таких карт».',
@@ -598,7 +598,7 @@ def test_input_not_changed():
 
 
 def chap(t):
-    """Подпись главы: «глава 9.4» или текст, если задача разобрана только в тренажёре."""
+    """Подпись главы: «глава 9.2» или текст, если задача разобрана только в тренажёре."""
     return f'глава {t["chapter"]}' if t['chapter'][0].isdigit() else t['chapter']
 
 
@@ -796,7 +796,7 @@ PAGE = '''<!doctype html>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#F1F2EC">
-  <title>9.11 Мок-интервью по задачам модуля · Алгоритмы на массивах</title>
+  <title>9.6 Мок-интервью по задачам модуля · Алгоритмы на массивах</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -812,19 +812,19 @@ PAGE = '''<!doctype html>
       <main class="leaf">
         <div class="running">
           <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 9 · скользящее окно</p>
-          <p class="running__folio">Глава 9.11</p>
+          <p class="running__folio">Глава 9.6</p>
         </div>
 
         <header class="chapter-head">
-          <span class="chapter-num">9.11</span>
+          <span class="chapter-num">9.6</span>
           <h1>Мок-интервью<br>по задачам модуля</h1>
-          <p class="lead">В этой главе восемь задач на окно в формате алгоритмической секции. Каждая проходит те же этапы, что в главе 9.8: условие, уточнения, примеры, перебор и идея, сложность, код, проверка. Этапы открываются по одному, рядом идёт секундомер с планом на 25 минут. Код пишется и проверяется прямо на странице. Тренажёр устроен так же, как в главе 8.13.</p>
+          <p class="lead">В этой главе восемь задач на окно в формате алгоритмической секции. Каждая проходит этапы алгоритмической секции по шаблону interview canvas: условие, уточнения, примеры, перебор и идея, сложность, код, проверка. Этапы открываются по одному, рядом идёт секундомер с планом на 25 минут. Код пишется и проверяется прямо на странице. Тренажёр устроен так же, как в главе 8.13.</p>
         </header>
 
         <dl class="passport">
           <div><dt>Категория</dt><dd>Тренажёр</dd></div>
           <div><dt>Уровень</dt><dd>Средний</dd></div>
-          <div><dt>Опирается на</dt><dd>Главы 9.2–9.8</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 9.1–9.4</dd></div>
           <div><dt>Зачем это знать</dt><dd>Решать задачи на окно в темпе собеседования</dd></div>
         </dl>
 
@@ -845,7 +845,7 @@ PAGE = '''<!doctype html>
         <p>Задачи дополнительного набора <code>extra.py</code> и задача домашнего задания в тренажёр не входят: их решения здесь были бы подсказкой.</p>
 
         <h2 id="s2"><span class="sec">§2</span>Задачи тренажёра</h2>
-        <p>В таблице — восемь задач и глава, где задача разобрана подробно. Задача о разнице оценок разобрана только здесь: в ней перед окном нужна сортировка. Техника в таблице не указана: её выбор — один из вопросов этапа «Перебор и идея».</p>
+        <p>В таблице — восемь задач и глава, где задача разобрана подробно. Задачи о картах с краёв ряда и о разнице оценок разобраны только здесь: в первой окно в условии не названо, во второй перед окном нужна сортировка. Техника в таблице не указана: её выбор — один из вопросов этапа «Перебор и идея».</p>
         <div class="table-scroll">
           <table>
             <thead><tr><th>№</th><th>Задача</th><th>Источник</th><th>Глава</th></tr></thead>
@@ -874,7 +874,7 @@ TASKS
         </div>
         <p>Задачи, на которых не получилось хотя бы одно из этого, стоит пройти ещё раз через день, по главе из таблицы §2.</p>
 
-        <div class="pager"><a href="10-praktika-i-dz.html">← 9.10 Практика, шпаргалка и ДЗ</a><a href="../10-okno-peremennoe/01-gde-sprashivayut.html">10.1 Окно переменного размера на собеседованиях и в работе →</a></div>
+        <div class="pager"><a href="05-praktika-i-dz.html">← 9.5 Практика и ДЗ</a><a href="../10-okno-peremennoe/01-uznat-okno.html">Модуль 10 →</a></div>
         <div class="colophon">
           <span>Модуль 9 · Скользящее окно · ОП.04 · 3 курс</span>
           <span class="author-line">Автор: Макаров Максим Николаевич</span>
@@ -894,7 +894,7 @@ if __name__ == '__main__':
     traces = json.loads(src[src.index('window.TRACES = ') + 16:src.rstrip().rindex(';')])
     verify(traces)
     page = PAGE.replace('MAP', map_table()).replace('BOARD', board()).replace('TASKS', ''.join(task_html(n, t) for n, t in enumerate(TASKS)))
-    out = sys.argv[1] if len(sys.argv) > 1 else '11-mok-intervyu.html'
+    out = sys.argv[1] if len(sys.argv) > 1 else '06-mok-intervyu.html'
     open(out, 'w', encoding='utf-8').write(page)
     print('записано', out)
 

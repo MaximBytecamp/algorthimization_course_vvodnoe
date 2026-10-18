@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>9.4 Границы и ошибки · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 9 · Скользящее окно · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 9 · скользящее окно</p>
+          <p class="running__folio">Глава 9.4</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">9.4</span>
+          <h1>Границы<br>и ошибки</h1>
+          <p class="lead">Контроль занятия по КТП: «Оценка O(n), тесты k=0/1/n и неверного k. Git review на корректность обновления окна». В этой главе — что функция делает на граничных k, почему на неверный k отвечают исключением, сводка ошибок модуля по симптомам и что проверяют на review.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Граничные значения k</a></li>
+            <li><a href="#s2">Сводка ошибок по симптомам</a></li>
+            <li><a href="#s3">Исправьте функцию</a></li>
+            <li><a href="#s4">Review обновления окна</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Граничные значения k</h2>
+        <p>При <code>k = 1</code> окно — один элемент, и сдвигов больше всего. При <code>k = n</code> окно одно, и цикл не выполняется ни разу. Эти два значения проверяют, что код верен и при максимальном числе сдвигов, и без них. Значения <code>k = 0</code>, отрицательное <code>k</code> и <code>k &gt; n</code>, а также пустой список — неверный вход: окна такой длины нет.</p>
+        <p>На неверный вход функция бросает <code>ValueError</code>. Без проверки она вернула бы правдоподобный ответ для окна, которого нет, и ошибка ушла бы дальше по программе. Ниже — версии без проверки и с ошибками на единицу.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>best_window с одной изменённой строкой</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>без проверки, k = 0</button>
+            <button>без проверки, k &gt; n</button>
+            <button>k &gt;= len(nums)</button>
+            <button>k = n · верная версия</button>
+          </div>
+          <div class="demo__pane">
+            <p>Вход — <code>[1, 2]</code>, <code>k = 0</code>. Верный ответ — <code>ValueError</code>.</p>
+            <div class="tracer tracer--bug" data-trace="var_no_check_k0" data-zone="window" data-title="Без проверки, k = 0"></div>
+            <p class="demo__verdict"><b>(0, 0)</b>Срез <code>nums[:0]</code> пустой, его сумма 0, и на каждом шаге прибавляется и вычитается один и тот же элемент. Ответ выглядит обычным.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Вход — <code>[1, 2]</code>, <code>k = 3</code>. Верный ответ — <code>ValueError</code>.</p>
+            <div class="tracer tracer--bug" data-trace="var_no_check_big" data-zone="window" data-title="Без проверки, k = 3"></div>
+            <p class="demo__verdict"><b>(0, 3)</b>Срез за границей списка ошибки не даёт: <code>nums[:3]</code> возвращает весь список. Функция возвращает сумму «окна длины 3» в списке из двух элементов.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Проверка <code>k &gt;= len(nums)</code>. Вход — <code>[4, 1, 2]</code>, <code>k = 3</code>: окно одно, верный ответ <code>(0, 7)</code>.</p>
+            <div class="tracer tracer--bug" data-trace="var_check_ge" data-zone="window" data-title="k &gt;= len(nums)"></div>
+            <p class="demo__verdict"><b>ValueError</b>Ошибка на единицу в проверке: функция отказывается работать на допустимом <code>k = n</code>.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Верная версия на <code>[4, 1, 2]</code>, <code>k = 3</code>.</p>
+            <div class="tracer" data-trace="fix_k_is_n" data-zone="window" data-title="k = n"></div>
+            <p class="demo__verdict"><b>(0, 7)</b>Цикл <code>range(3, 3)</code> пуст: сдвигов нет, окно одно.</p>
+          </div>
+        </div>
+
+        <h2 id="s2"><span class="sec">§2</span>Сводка ошибок по симптомам</h2>
+        <p>Когда тест падает, первым видно неверный ответ. По симптому в таблице находят строку кода и вход, на котором ошибку видно.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Симптом</th><th>Где искать</th><th>Вход, который её показывает</th></tr></thead>
+            <tbody>
+              <tr><td>При равных суммах возвращено окно правее</td><td><code>&gt;=</code> вместо <code>&gt;</code></td><td><code>[5, 1, 5, 1]</code>, k = 2 — глава 9.2</td></tr>
+              <tr><td>Лучшая сумма 0, хотя такого окна нет</td><td><code>best = 0</code></td><td>Все суммы отрицательные — глава 9.2</td></tr>
+              <tr><td>Первая сумма верная, дальше неверные</td><td>Ушедший элемент <code>nums[r − k + 1]</code> вместо <code>nums[r − k]</code></td><td>Любой список длиннее k</td></tr>
+              <tr><td>Начало лучшего окна на единицу левее</td><td><code>start = r − k</code> вместо <code>r − k + 1</code></td><td>Лучшее окно не первое</td></tr>
+              <tr><td>Ответ на неверный k вместо исключения</td><td>Нет проверки <code>k &lt; 1 or k &gt; len(nums)</code></td><td>k = 0, k &gt; n, пустой список — §1</td></tr>
+              <tr><td>В окне по времени на одно событие больше</td><td><code>&gt; w</code> вместо <code>&gt;= w</code></td><td><code>[0, 5]</code>, w = 5 — глава 9.3</td></tr>
+              <tr><td>В окне по времени на одно событие меньше</td><td><code>r − l</code> вместо <code>r − l + 1</code></td><td>Любой непустой список — глава 9.3</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Почти все ошибки связаны с границей — индексом, знаком сравнения, началом цикла — или с начальным значением. Поэтому входы k = 1, k = n, равные суммы, отрицательные числа и событие на границе находят почти все ошибки таблицы, а обычный пример — только часть.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Исправьте функцию</h2>
+        <p>В окне ниже <code>best_window</code> с двумя ошибками: нет проверки <code>k</code>, и цикл начинается с <code>k + 1</code>. Сначала запустите тесты и посмотрите, какие падают.</p>
+        <div class="sandbox" data-title="Исправьте best_window" data-call="print(best_window([12, 15, 9, 20, 18, 7, 25], 3))">
+<script type="text/plain" class="sandbox__start">
+def best_window(nums, k):
+    total = sum(nums[:k])
+    best, start = total, 0
+    for r in range(k + 1, len(nums)):
+        total += nums[r] - nums[r - k]
+        if total > best:
+            best, start = total, r - k + 1
+    return (start, best)
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """посещения по часам, k = 3"""
+    r = best_window([12, 15, 9, 20, 18, 7, 25], 3)
+    assert r == (4, 50), f"ожидалось (4, 50), получено {r!r}"
+
+def test_k_is_one():
+    """k = 1: ответ — наибольший элемент"""
+    r = best_window([3, -2, 7], 1)
+    assert r == (2, 7), f"ожидалось (2, 7), получено {r!r}"
+
+def test_k_is_n():
+    """k = n: одно окно — весь список"""
+    r = best_window([4, 1, 2], 3)
+    assert r == (0, 7), f"ожидалось (0, 7), получено {r!r}"
+
+def test_k_zero():
+    """k = 0 — ValueError"""
+    try:
+        r = best_window([1, 2], 0)
+    except ValueError:
+        return
+    assert False, f"ожидалась ValueError, функция вернула {r!r}"
+
+def test_k_negative():
+    """k = -1 — ValueError"""
+    try:
+        r = best_window([1, 2], -1)
+    except ValueError:
+        return
+    assert False, f"ожидалась ValueError, функция вернула {r!r}"
+
+def test_k_over_n():
+    """k = 3 при длине 2 — ValueError"""
+    try:
+        r = best_window([1, 2], 3)
+    except ValueError:
+        return
+    assert False, f"ожидалась ValueError, функция вернула {r!r}"
+
+def test_empty():
+    """пустой список — ValueError"""
+    try:
+        r = best_window([], 1)
+    except ValueError:
+        return
+    assert False, f"ожидалась ValueError, функция вернула {r!r}"
+</script>
+</div>
+
+        <h2 id="s4"><span class="sec">§4</span>Review обновления окна</h2>
+        <p>По КТП решение сдаётся Pull Request, и проверяющий читает код окна по строкам. Ниже — что он проверяет. Этот же порядок годится для объяснения решения интервьюеру.</p>
+        <ol class="steps">
+          <li><b>Вход проверен до работы с окнами.</b> Неверный k даёт <code>ValueError</code>, граница <code>k = n</code> пропускается.</li>
+          <li><b>Первое окно посчитано целиком и учтено в ответе.</b> Цикл начинается с <code>range(k, len(nums))</code>.</li>
+          <li><b>Ушедший элемент — <code>nums[r − k]</code>.</b> Сдвиг выполняется до сравнения с лучшим.</li>
+          <li><b>Знак сравнения совпадает с условием.</b> <code>&gt;</code> — самое левое из равных окон.</li>
+          <li><b>Есть тесты k = 1, k = n и неверного k.</b> И тест, который сравнивает ответ с перебором срезов.</li>
+        </ol>
+
+        <div class="pager"><a href="03-sobytiya-v-okne.html">← 9.3 События во временном окне</a><a href="05-praktika-i-dz.html">9.5 Практика и ДЗ →</a></div>
+        <div class="colophon">
+          <span>Модуль 9 · Скользящее окно · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>

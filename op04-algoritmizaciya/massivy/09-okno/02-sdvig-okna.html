@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>9.2 Сдвиг окна: лучший отрезок длины k · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 9 · Скользящее окно · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 9 · скользящее окно</p>
+          <p class="running__folio">Глава 9.2</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">9.2</span>
+          <h1>Сдвиг окна:<br>лучший отрезок длины k</h1>
+          <p class="lead">В этой главе решается первая задача КТП — найти отрезок длины k с наибольшей суммой. Сначала сдвиг окна руками, затем код с пошаговым прогоном, сравнение со срезами по времени и две ошибки, о которых предупреждали вопросы главы 9.1.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Сдвиг вручную</a></li>
+            <li><a href="#s2">Код и пошаговый прогон</a></li>
+            <li><a href="#s3">Сколько стоят срезы</a></li>
+            <li><a href="#s4">Две ошибки в сравнении</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Сдвиг вручную</h2>
+        <p>Соседние окна отличаются двумя элементами. При сдвиге слева уходит <code>nums[r − k]</code>, справа приходит <code>nums[r]</code>, где <code>r</code> — индекс пришедшего элемента. Поэтому новая сумма получается из старой одним вычитанием и одним сложением. Сделайте сдвиги сами: щёлкните ячейку, которая уходит, затем ту, что входит, и введите новую сумму.</p>
+        <div class="slidehand" data-a="[12,15,9,20,18,7,25]" data-k="3"></div>
+        <p>Чтобы найти лучшее окно, после каждого сдвига сумму сравнивают с лучшей из уже пройденных. Список всех сумм хранить не нужно: достаточно двух переменных — <code>best</code>, лучшая сумма, и <code>start</code>, начало этого окна.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Код и пошаговый прогон</h2>
+        <p>Напишите функцию сами. Тесты — примеры из главы 9.1 и сравнение с суммами срезов на двухстах случайных списках.</p>
+        <div class="sandbox" data-title="Напишите best_window сами" data-call="print(best_window([12, 15, 9, 20, 18, 7, 25], 3))">
+<script type="text/plain" class="sandbox__start">
+def best_window(nums, k):
+    if k < 1 or k > len(nums):
+        raise ValueError("k должно быть от 1 до len(nums)")
+    total = sum(nums[:k])
+    best, start = total, 0
+    # Сдвигайте окно, как в window_sums. Если новая сумма
+    # больше лучшей, запомните её и начало окна.
+    return (start, best)
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """посещения по часам, k = 3: лучшее окно — последнее"""
+    r = best_window([12, 15, 9, 20, 18, 7, 25], 3)
+    assert r == (4, 50), f"ожидалось (4, 50), получено {r!r}"
+
+def test_ties_leftmost():
+    """все окна дают 6 — возвращается самое левое"""
+    r = best_window([5, 1, 5, 1], 2)
+    assert r == (0, 6), f"ожидалось (0, 6), получено {r!r}"
+
+def test_all_negative():
+    """все суммы отрицательные"""
+    r = best_window([-5, -2, -8, -1], 2)
+    assert r == (0, -7), f"ожидалось (0, -7), получено {r!r}"
+
+def test_k_is_one():
+    """k = 1: ответ — наибольший элемент"""
+    r = best_window([3, -2, 7], 1)
+    assert r == (2, 7), f"ожидалось (2, 7), получено {r!r}"
+
+def test_k_is_n():
+    """k = n: одно окно — весь список"""
+    r = best_window([4, 1, 2], 3)
+    assert r == (0, 7), f"ожидалось (0, 7), получено {r!r}"
+
+def test_bad_k():
+    """k = 0, k < 0, k > n и пустой список — ValueError"""
+    for nums, k in (([1, 2], 0), ([1, 2], -1), ([1, 2], 3), ([], 1)):
+        try:
+            best_window(nums, k)
+        except ValueError:
+            continue
+        assert False, f"best_window({nums}, {k}): ожидалась ValueError"
+
+def test_input_not_changed():
+    """список после вызова тот же"""
+    nums = [5, 1, 4, 2]
+    best_window(nums, 2)
+    assert nums == [5, 1, 4, 2], f"список стал {nums!r}"
+
+def test_matches_slices():
+    """200 случайных списков: ответ совпадает с перебором срезов"""
+    import random
+    rnd = random.Random(10)
+    for _ in range(200):
+        nums = [rnd.randint(-20, 20) for _ in range(rnd.randint(1, 12))]
+        k = rnd.randint(1, len(nums))
+        sums = [sum(nums[s:s + k]) for s in range(len(nums) - k + 1)]
+        want = (sums.index(max(sums)), max(sums))
+        got = best_window(nums, k)
+        assert got == want, f"nums = {nums}, k = {k}: ожидалось {want}, получено {got}"
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(1)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">best_window</span>(nums, k):
+    <span class="k">if</span> k &lt; <span class="n">1</span> <span class="k">or</span> k &gt; <span class="k">len</span>(nums):
+        <span class="k">raise</span> ValueError(<span class="s">"k должно быть от 1 до len(nums)"</span>)
+    total = <span class="k">sum</span>(nums[:k])
+    best, start = total, <span class="n">0</span>
+    <span class="k">for</span> r <span class="k">in</span> <span class="k">range</span>(k, <span class="k">len</span>(nums)):
+        total += nums[r] - nums[r - k]
+        <span class="k">if</span> total &gt; best:
+            best, start = total, r - k + <span class="n">1</span>
+    <span class="k">return</span> (start, best)</pre>
+        </figure>
+        <p>Первое окно складывается целиком, это единственное окно, которое считается с нуля. Оно же пока лучшее. Цикл начинается с <code>r = k</code> — индекса первого пришедшего элемента. Окно, которое заканчивается на <code>r</code>, начинается с <code>r − k + 1</code>. В прогоне на списке посещений <code>best</code> и <code>start</code> меняются на шагах 7, 11 и 18 и остаются прежними на шаге 14, когда сумма 45 оказалась меньше лучшей 47.</p>
+        <div class="tracer" data-trace="best_roll" data-zone="window" data-title="Лучший отрезок длины 3"></div>
+
+        <h2 id="s3"><span class="sec">§3</span>Сколько стоят срезы</h2>
+        <p>Решение срезами — <code>sum(nums[s:s + k])</code> для каждого начала — верное, но каждое окно читает k элементов: время O(n·k). Сдвиг стоит O(n) при любом k. Замер на ноутбуке автора, n = 100&nbsp;000:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>k</th><th>Срезы, мс</th><th>Сдвиг, мс</th></tr></thead>
+            <tbody>
+              <tr><td>10</td><td>14,1</td><td>4,4</td></tr>
+              <tr><td>1&nbsp;000</td><td>389,0</td><td>4,5</td></tr>
+              <tr><td>10&nbsp;000</td><td>4&nbsp;173,8</td><td>4,1</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Время сдвига не зависит от k: каждый сдвиг — две операции, сколько бы элементов ни было в окне. У срезов время растёт вместе с k. Скрипт замера <code>bench.py</code> есть в стартовом наборе, глава 9.5.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Две ошибки в сравнении</h2>
+        <p>Обе детали правила — «строго больше» и «начать с первого окна» — следуют из ответов интервьюера. На каждой вкладке ошибочная версия и верная запущены на одном входе.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>best_window с одной изменённой строкой</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>&gt;= вместо &gt;</button>
+            <button>best = 0</button>
+          </div>
+          <div class="demo__pane">
+            <p>Вход — <code>[5, 1, 5, 1]</code>, k = 2: все три окна дают сумму 6. Верный ответ — самое левое окно, <code>(0, 6)</code>.</p>
+            <span class="run-label">ошибочная версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_ge" data-zone="window" data-title="if total &gt;= best"></div>
+            <p class="demo__verdict"><b>(2, 6)</b>На шагах 6 и 10 сумма равна лучшей, и при <code>&gt;=</code> лучшим каждый раз становится окно правее.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_ge" data-zone="window" data-title="if total &gt; best"></div>
+            <p class="demo__verdict"><b>(0, 6)</b>Равная сумма не больше лучшей, и лучшим остаётся первое окно.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Вход — <code>[-5, -2, -8, -1]</code>, k = 2: суммы окон −7, −10, −9.</p>
+            <span class="run-label">ошибочная версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_zero_start" data-zone="window" data-title="best = 0"></div>
+            <p class="demo__verdict"><b>(0, 0)</b>На шаге 3 <code>best</code> получает 0. Ни одна сумма не больше нуля, и функция возвращает сумму, которой нет ни у одного окна.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_zero_start" data-zone="window" data-title="best = сумма первого окна"></div>
+            <p class="demo__verdict"><b>(0, −7)</b>Лучшая сумма начинается с суммы первого окна.</p>
+          </div>
+        </div>
+        <p>Та же функция решает LeetCode 643: окно с наибольшим средним — это окно с наибольшей суммой, и делится на k только ответ. А в LeetCode 1456 состояние окна — счётчик гласных: пришедшая гласная прибавляет 1, ушедшая вычитает 1.</p>
+
+        <div class="pager"><a href="01-uznat-okno.html">← 9.1 Как узнать задачу</a><a href="03-sobytiya-v-okne.html">9.3 События во временном окне →</a></div>
+        <div class="colophon">
+          <span>Модуль 9 · Скользящее окно · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>
