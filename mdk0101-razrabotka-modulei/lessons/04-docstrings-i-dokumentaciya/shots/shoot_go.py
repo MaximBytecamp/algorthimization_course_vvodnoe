@@ -310,6 +310,55 @@ async def st_final(e: Editor) -> None:
     await e.palette("View: Toggle Maximized Panel", 1.0)
 
 
+
+LINT_SETTINGS = """{
+  "go.lintTool": "revive",
+  "go.lintOnSave": "package"
+}
+"""
+
+
+async def st_revive(e: Editor) -> None:
+    """4.10 §5: замечания revive в панели Problems после сохранения файла."""
+    (project() / ".vscode").mkdir(exist_ok=True)
+    (project() / ".vscode" / "settings.json").write_text(LINT_SETTINGS, encoding="utf-8")
+    await reset(e)
+    await open_file(e, ".vscode/settings.json", 2.0)
+    await park(e)
+    await e.shot(f"{RAW}/go-settings-json.png")
+    await open_file(e, "formatter.go", 8.0)
+    await e.key("Meta+S", 8.0)
+    await e.palette("View: Focus Problems (Errors, Warnings, Infos)", 2.5)
+    await park(e)
+    await e.shot(f"{RAW}/go-revive-problems.png")
+
+
+async def st_commentcomplete(e: Editor) -> None:
+    """4.10 §1: подсказка имени при наборе комментария над функцией."""
+    await reset(e)
+    await open_file(e, "formatter.go", 8.0)
+    line, _ = line_of("internal/utils/formatter.go", "func FormatKopeks(")
+    await goto(e, line)
+    await e.key("Home", 0.2)
+    await e.paste("\n", 0.4)
+    await e.key("ArrowUp", 0.3)
+    await e.type("// Format", 2.0)
+    await e.key("Ctrl+Space", 3.0)
+    await e.shot(f"{RAW}/go-comment-complete.png")
+    await e.key("Escape", 0.3)
+    await e.palette("File: Revert File", 1.5)
+
+
+
+async def st_checks(e: Editor) -> None:
+    """4.11 §3: законченная работа на паре — vet, revive, тесты."""
+    await reset(e)
+    await open_file(e, "main.go", 5.0)
+    await terminal(e, "go vet ./... && go run github.com/mgechev/revive@latest -set_exit_status ./... && go test ./...", 30.0)
+    await park(e)
+    await e.shot(f"{RAW}/go-checks.png")
+
+
 STAGES = {name[3:]: fn for name, fn in globals().items() if name.startswith("st_")}
 
 

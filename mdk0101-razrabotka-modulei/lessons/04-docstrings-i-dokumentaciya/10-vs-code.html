@@ -20,7 +20,7 @@
     } catch (e) {}
   </script>
 </head>
-<body>
+<body data-title-py="4.10 VS Code: генератор и проверка · Аннотации типов и документация" data-title-go="4.10 VS Code и revive · Типы и документация в Go">
   <div class="book">
     <div class="book__body">
       <div class="spine"><span>Тема 04 · Аннотации типов и документация кода</span></div>
@@ -31,6 +31,7 @@
           <p class="running__folio">Глава 4.10</p>
         </div>
 
+        <div data-lang="py">
         <header class="chapter-head">
           <span class="chapter-num">4.10</span>
           <h1>VS Code:<br>генератор и проверка</h1>
@@ -565,6 +566,315 @@ question mark, or exclamation point</pre>
         </div>
 
         <div class="pager"><a href="09-razbor-sluchaev.html">← 4.9 Разбор случаев: двенадцать функций</a><a href="11-praktika-i-dz.html">4.11 Практика и домашнее задание →</a></div>
+        </div>
+
+        <div data-lang="go">
+        <header class="chapter-head">
+          <span class="chapter-num">4.10</span>
+          <h1>VS Code:<br>подсказки и проверка revive</h1>
+          <p class="lead">В этой главе редактор начинает помогать с комментариями документации. Разобрано, что расширение Go делает само — подсказку, имя в начале комментария, выравнивание при сохранении, — и как добавить свою заготовку сниппетом. Во второй половине — программная проверка: <code>revive</code> находит экспортируемые имена без комментариев и комментарии не той формы, в терминале, в редакторе и в проверках запроса на слияние.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Рабочее место</dd></div>
+          <div><dt>Уровень</dt><dd>Начальный</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 4.7 и 4.8, тема 02</dd></div>
+          <div><dt>Зачем это знать</dt><dd>Не искать пропущенные комментарии глазами</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#g1">Что редактор делает сам</a></li>
+            <li><a href="#g2">Генератора нет, и почему</a></li>
+            <li><a href="#g3">Сниппет комментария</a></li>
+            <li><a href="#g4">Проверка комментариев программой</a></li>
+            <li><a href="#g5">revive в редакторе</a></li>
+            <li><a href="#g6">Замечания, которые чаще срабатывают</a></li>
+            <li><a href="#g7">Где лежат настройки</a></li>
+            <li><a href="#g8">Проверка в запросе на слияние</a></li>
+            <li><a href="#g9">Мини-практика: десять минут</a></li>
+            <li><a href="#g10">Частые вопросы</a></li>
+            <li><a href="#g11">Проверьте себя</a></li>
+            <li><a href="#g12">Шпаргалка по главе</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="g1"><span class="sec">§1</span>Что редактор делает сам</h2>
+        <p>Расширение Go с языковым сервером gopls ставится одним пакетом и без настроек выполняет четыре задачи из этой темы:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Возможность</th><th>Как пользоваться</th></tr></thead>
+            <tbody>
+              <tr><td>Подсказка с комментарием документации при наведении на имя</td><td>Указатель на имя, либо <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>K</kbd>, затем <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>I</kbd></td></tr>
+              <tr><td>Подсказка при наборе аргументов вызова</td><td>Открывается сама после открывающей скобки; вызвать заново — <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>Shift</kbd> + <kbd>Пробел</kbd></td></tr>
+              <tr><td>Имя в начале комментария</td><td>Набор начала имени после <code>//</code> над объявлением, затем <kbd>Ctrl</kbd> + <kbd>Пробел</kbd></td></tr>
+              <tr><td>Выравнивание разметки комментария</td><td>Само, при сохранении файла: <code>gofmt</code> из главы 4.8</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Третья строка таблицы — то, что нужно в начале каждого комментария. Наберите над функцией <code>//</code>, пробел и первые буквы её имени — gopls предложит имя из кода:</p>
+        <figure class="shot">
+          <img src="img/vscode-go-comment-complete.png" alt="VS Code: над func FormatKopeks набрано // Format, в списке подсказок FormatKopeks(kopeks int) string">
+          <figcaption>Второй архив, <code>internal/utils/formatter.go</code>. В строке 9 набрано <code>// Format</code>, и в списке подсказок — <code>FormatKopeks(kopeks int) string</code>, функция, объявленная строкой ниже. Слева — подпись выбранного пункта. <kbd>Enter</kbd> вставит имя, и останется дописать действие: «FormatKopeks переводит сумму…».</figcaption>
+        </figure>
+        <p>Подсказка избавляет от опечатки в имени. Опечатка здесь не безобидна: комментарий, который начинается не с имени объявления, <code>revive</code> отметит замечанием, разобранным в §6.</p>
+
+        <h2 id="g2"><span class="sec">§2</span>Генератора нет, и почему</h2>
+        <p>В ветке Python для VS Code ставят расширение autoDocstring: оно читает подпись функции и вставляет заготовку с разделами <code>Args:</code>, <code>Returns:</code> и именами параметров. Для Go такой заготовки нет, и она не нужна. В комментарии Go нет разделов, которые можно было бы заполнить из подписи: параметры и ошибки описывают обычными предложениями (глава 4.7, §5). Заготовка свелась бы к имени функции — а его gopls подсказывает, как показано в §1.</p>
+        <p>Отсюда другой порядок работы. В Python генератор расставляет разметку, а человек заполняет поля. В Go человек сразу пишет текст, а программа проверяет, что комментарий есть и начинается с имени. Эта проверка — вторая половина главы.</p>
+
+        <h2 id="g3"><span class="sec">§3</span>Сниппет комментария</h2>
+        <p>Если хочется, чтобы редактор напоминал о строении подробного комментария, его записывают сниппетом. <span class="term">Сниппет</span> — шаблон текста, который вставляется по короткому слову и клавише <kbd>Tab</kbd>. Сниппеты проекта лежат в файле с расширением <code>.code-snippets</code> в папке <code>.vscode</code>:</p>
+        <figure class="code">
+          <figcaption><span>.vscode/go.code-snippets</span><span>сниппет по слову docf</span></figcaption>
+<pre>{
+  <span class="s">"Комментарий документации функции"</span>: {
+    <span class="s">"scope"</span>: <span class="s">"go"</span>,
+    <span class="s">"prefix"</span>: <span class="s">"docf"</span>,
+    <span class="s">"body"</span>: [
+      <span class="s">"// ${1:Имя} ${2:действие одним предложением}."</span>,
+      <span class="s">"//"</span>,
+      <span class="s">"// ${3:Ограничения параметров. Когда возвращается ошибка: [ErrX].}"</span>
+    ],
+    <span class="s">"description"</span>: <span class="s">"Первое предложение с имени, пустая строка, подробности"</span>
+  }
+}</pre>
+        </figure>
+        <p>Наберите над функцией <code>docf</code> и нажмите <kbd>Tab</kbd> — вставятся три строки, курсор встанет в первое поле, переход между полями тоже по <kbd>Tab</kbd>. Ключ <code>scope</code> ограничивает сниппет файлами Go. Имя функции сниппет не подставляет: он вставляет заранее записанный текст, одинаковый для любой функции. В первое поле имя набирают с подсказкой gopls из §1.</p>
+
+        <h2 id="g4"><span class="sec">§4</span>Проверка комментариев программой</h2>
+        <p>Подсказки помогают написать комментарий, но не показывают, где его нет. Это находит проверка кода. Компилятор и <code>go vet</code> комментарии не проверяют. В курсе используется <span class="term">revive</span> — программа проверки стиля кода на Go. Одно из её правил, <code>exported</code>, требует комментарий у каждого экспортируемого имени и проверяет, что он начинается с этого имени. Второе, <code>package-comments</code>, требует комментарий пакета.</p>
+        <p>Запустить revive без установки можно так же, как pkgsite и staticcheck:</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>запуск revive на втором архиве</span></figcaption>
+<pre>$ go run github.com/mgechev/revive@latest ./...</pre>
+        </figure>
+        <p>На втором архиве, где комментариев нет, revive печатает двадцать семь строк. Порядок строк от запуска к запуску может меняться: пакеты проверяются параллельно. Ниже вывод, отсортированный командой <code>sort</code>; первые пять строк и последняя:</p>
+        <figure class="code code--out">
+          <figcaption><span>Терминал</span><span>go run github.com/mgechev/revive@latest ./... | sort</span></figcaption>
+<pre>internal/domain/order.go:11:6: exported type Order should have comment or be unexported
+internal/domain/order.go:16:1: exported function NewOrder should have comment or be unexported
+internal/domain/order.go:1:1: should have a package comment
+internal/domain/order.go:9:5: exported var ErrNegativeKopeks should have comment or be unexported
+internal/domain/shift.go:10:1: exported function NewShift should have comment or be unexported
+…
+main.go:1:1: should have a package comment</pre>
+        </figure>
+        <p>Строка устроена так же, как у компилятора: файл, строка, столбец и сообщение. <code>exported type Order should have comment or be unexported</code> — «у экспортируемого типа <code>Order</code> должен быть комментарий, или его нужно сделать неэкспортируемым». Второй вариант — переименовать в <code>order</code> со строчной буквы — подходит, только если имя действительно не нужно другим пакетам. В проекте нужны все, поэтому исправление одно — комментарий. Двадцать семь строк — это двадцать два экспортируемых имени и пять пакетов, включая <code>main</code>: столько комментариев предстоит написать.</p>
+        <p>По умолчанию revive завершается с кодом 0, даже если нашёл замечания. Для проверок, которые должны «падать» при замечаниях, добавляют флаг <code>-set_exit_status</code>: с ним revive завершается с кодом 1, и <code>go run</code> добавляет в конец вывода строку <code>exit status 1</code>.</p>
+
+        <h2 id="g5"><span class="sec">§5</span>revive в редакторе</h2>
+        <p>Чтобы замечания появлялись в редакторе, расширению Go указывают, какой программой проверять код и когда. Это две строки в настройках проекта:</p>
+        <figure class="code">
+          <figcaption><span>.vscode/settings.json</span><span>настройки проекта</span></figcaption>
+<pre>{
+  <span class="s">"go.lintTool"</span>: <span class="s">"revive"</span>,
+  <span class="s">"go.lintOnSave"</span>: <span class="s">"package"</span>
+}</pre>
+        </figure>
+        <figure class="shot">
+          <img src="img/vscode-go-settings-json.png" alt="Файл .vscode/settings.json в редакторе: go.lintTool revive, go.lintOnSave package">
+          <figcaption>Тот же файл в редакторе. <code>go.lintTool</code> — программа проверки стиля, <code>go.lintOnSave</code> — что проверять при сохранении: <code>file</code> — только файл, <code>package</code> — весь его пакет, <code>workspace</code> — весь проект, <code>off</code> — не проверять.</figcaption>
+        </figure>
+        <p>Программа <code>revive</code> для этого должна быть установлена: расширение вызывает её как команду. Если её нет, расширение сообщит об этом уведомлением с кнопкой установки. Установить вручную — <code>go install github.com/mgechev/revive@latest</code>: программа появится в папке <code>bin</code> внутри <code>go env GOPATH</code>.</p>
+        <p>Откройте <code>internal/utils/formatter.go</code> и сохраните его (<kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>S</kbd>). Через несколько секунд в панели Problems появятся замечания по всему пакету <code>utils</code>:</p>
+        <figure class="shot">
+          <img src="img/vscode-go-revive-problems.png" alt="Панель Problems: пять предупреждений go-revive в clock.go, formatter.go и text.go пакета internal/utils">
+          <figcaption>Пять предупреждений с источником <code>go-revive</code>: у <code>clock.go</code> — нет комментария пакета и нет комментария у <code>TodayLabel</code>, у <code>formatter.go</code> — у двух функций, у <code>text.go</code> — у <code>NormalizeName</code>. Неэкспортируемая <code>squashSpaces</code> в списке не появилась. Замечания жёлтые: это предупреждения, сборке они не мешают.</figcaption>
+        </figure>
+        <p>Проверка запускается при сохранении, а не при наборе, как gopls. Поэтому после того как комментарий написан, файл сохраняют, и замечание пропадает.</p>
+
+        <h2 id="g6"><span class="sec">§6</span>Замечания, которые чаще срабатывают</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Сообщение revive</th><th>Что не так</th><th>Как исправить</th></tr></thead>
+            <tbody>
+              <tr><td><code>should have a package comment</code></td><td>Ни в одном файле пакета нет комментария над <code>package</code></td><td>Добавить <code>// Package имя …</code> в один файл пакета</td></tr>
+              <tr><td><code>package comment should be of the form "Package utils ..."</code></td><td>Комментарий пакета есть, но начинается не со слов <code>Package имя</code></td><td>Начать со слов <code>Package utils</code></td></tr>
+              <tr><td><code>exported function X should have comment or be unexported</code></td><td>У экспортируемой функции нет комментария</td><td>Добавить комментарий вплотную над <code>func</code></td></tr>
+              <tr><td><code>exported method T.M should have comment or be unexported</code></td><td>То же у метода</td><td>Комментарий над методом</td></tr>
+              <tr><td><code>exported type X should have comment or be unexported</code></td><td>То же у типа</td><td>Комментарий над <code>type</code></td></tr>
+              <tr><td><code>exported var X should have comment or be unexported</code></td><td>То же у переменной, обычно ошибки <code>ErrX</code></td><td>Комментарий: когда её возвращают</td></tr>
+              <tr><td><code>comment on exported function X should be of the form "X ..."</code></td><td>Комментарий есть, но начинается не с имени: <code>// Возвращает…</code></td><td>Начать с имени: <code>// X возвращает…</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Сообщения о форме проверены на опыте: в <code>clock.go</code> комментарий пакета <code>// Пакет utils форматирует строки.</code> дал <code>package comment should be of the form "Package utils ..."</code>, комментарий <code>// Возвращает текущую дату.</code> над <code>TodayLabel</code> — <code>comment on exported function TodayLabel should be of the form "TodayLabel ..."</code>. Комментарий типа вида <code>// Kopeks — сумма.</code> замечаний не дал: первым словом стоит имя.</p>
+        <p>Правило сравнивает только первое слово с именем объявления. Верность описания по смыслу оно не проверяет: комментарий <code>// FormatKopeks делает всё.</code> пройдёт проверку.</p>
+        <div class="margin-note margin-note--steel">
+          <b>На полях: те же правила в staticcheck</b>
+          <p>У staticcheck из главы 4.3 есть похожие правила: <code>ST1000</code> — нет комментария пакета, <code>ST1020</code>, <code>ST1021</code>, <code>ST1022</code> — комментарий функции, типа или переменной не начинается с имени. По умолчанию они выключены и включаются флагом <code>-checks</code>. Требования «комментарий обязателен у каждого экспортируемого имени» в staticcheck нет, поэтому в курсе используется revive.</p>
+        </div>
+
+        <h2 id="g7"><span class="sec">§7</span>Где лежат настройки</h2>
+        <p>У VS Code два уровня настроек. Настройки проекта лежат в папке <code>.vscode</code> рядом с кодом и действуют на всех, кто откроет этот репозиторий. Настройки пользователя действуют на все проекты этого компьютера и в репозиторий не попадают.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Уровень</th><th>Файл</th><th>Когда применять</th></tr></thead>
+            <tbody>
+              <tr><td>Проект</td><td><code>.vscode/settings.json</code> в корне репозитория</td><td>Программа проверки и момент запуска — общие для команды</td></tr>
+              <tr>
+                <td>Пользователь</td>
+                <td>
+                  <code data-os="win">%APPDATA%\Code\User\settings.json</code>
+                  <code data-os="mac">~/Library/Application Support/Code/User/settings.json</code>
+                  <code data-os="linux">~/.config/Code/User/settings.json</code>
+                </td>
+                <td>Личные привычки: тема, шрифт, сочетания клавиш</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Оба файла открываются через палитру команд: <b>Preferences: Open Workspace Settings (JSON)</b> для проекта и <b>Preferences: Open User Settings (JSON)</b> для пользователя. Папку <code>.vscode</code> держат в репозитории: файл настроек проекта — часть договорённостей команды.</p>
+
+        <h2 id="g8"><span class="sec">§8</span>Проверка в запросе на слияние</h2>
+        <div class="flowline" data-play>
+          <p class="flowline__head">Путь пропущенного комментария</p>
+          <div class="flowline__track">
+            <div class="flowline__step">
+              <b>1 · Код</b>
+              <span>Функция дописана, комментарий забыт.</span>
+              <em>программа собирается</em>
+            </div>
+            <div class="flowline__step">
+              <b>2 · Редактор</b>
+              <span>После сохранения revive пишет предупреждение в панель Problems.</span>
+              <em>видно сразу</em>
+            </div>
+            <div class="flowline__step">
+              <b>3 · Терминал</b>
+              <span><code>revive ./...</code> печатает файл, строку и имя без комментария.</span>
+              <em>перед коммитом</em>
+            </div>
+            <div class="flowline__step">
+              <b>4 · Запрос на слияние</b>
+              <span>Та же команда с <code>-set_exit_status</code> выполняется на стороне репозитория и отмечает проверку непройденной.</span>
+              <em>до разбора работы</em>
+            </div>
+          </div>
+          <p class="flowline__foot">Шаги <code>2</code>–<code>4</code> выполняет одна и та же программа с настройками по умолчанию, поэтому редактор и проверка репозитория показывают одинаковые замечания.</p>
+        </div>
+        <p>В проверках запроса на слияние шаг revive стоит следом за сборкой и <code>go vet</code>:</p>
+        <figure class="code">
+          <figcaption><span>.github/workflows/checks.yml</span><span>шаги проверки</span></figcaption>
+<pre>      - name: Сборка
+        run: go build ./...
+      - name: Проверка vet
+        run: go vet ./...
+      - name: Комментарии документации
+        run: go run github.com/mgechev/revive@latest -set_exit_status ./...
+      - name: Тесты
+        run: go test ./...</pre>
+        </figure>
+        <p>После этого отсутствие комментария у экспортируемой функции попадает в замечания к запросу на слияние так же, как ошибка сборки. Подробно устройство таких проверок разбирается в разделе про CI; здесь важен состав: типы проверяет компилятор, подозрительные места — <code>go vet</code>, комментарии — revive, поведение — тесты.</p>
+
+        <h2 id="g9"><span class="sec">§9</span>Мини-практика: десять минут</h2>
+        <ol class="steps">
+          <li>Во втором архиве создайте файл <code>.vscode/settings.json</code> с двумя строками из §5. Если расширение предложит установить revive, согласитесь.</li>
+          <li>Откройте <code>internal/utils/formatter.go</code>, сохраните его и посмотрите замечания в панели Problems.</li>
+          <li>Напишите комментарий над <code>FormatKopeks</code>, начиная с имени, которое подскажет gopls после <code>// Form</code>. Сохраните файл: одно замечание должно пропасть.</li>
+          <li>Создайте сниппет из §3 и вставьте им комментарий над <code>FormatTitle</code>.</li>
+          <li>Добавьте файл <code>internal/utils/doc.go</code> с комментарием пакета. Сохраните — пропадёт замечание <code>should have a package comment</code>.</li>
+          <li>Начните комментарий <code>TodayLabel</code> со слова «Возвращает» и сохраните: появится <code>should be of the form "TodayLabel ..."</code>. Исправьте.</li>
+          <li>Выполните в терминале <code>go run github.com/mgechev/revive@latest ./internal/utils</code> и добейтесь пустого вывода.</li>
+        </ol>
+
+        <h2 id="g10"><span class="sec">§10</span>Частые вопросы</h2>
+        <div class="myths">
+          <div class="myth">
+            <div class="myth__no"><b>Обычно думают</b>Если revive молчит, документация в порядке.</div>
+            <div class="myth__yes"><b>На самом деле</b>revive проверяет, что комментарий есть и начинается с имени. Верность описания по смыслу и соответствие поведению функции он не проверяет: это делает человек на разборе запроса на слияние.</div>
+          </div>
+          <div class="myth">
+            <div class="myth__no"><b>Обычно думают</b>Замечание revive можно убрать, переименовав функцию со строчной буквы.</div>
+            <div class="myth__yes"><b>На самом деле</b>Переименование убирает имя из интерфейса пакета, и все вызовы из других пакетов перестанут собираться. Так поступают только с именами, которые и не должны быть экспортированы.</div>
+          </div>
+          <div class="myth">
+            <div class="myth__no"><b>Обычно думают</b>Настройки редактора у каждого свои, в репозиторий их класть не нужно.</div>
+            <div class="myth__yes"><b>На самом деле</b>Программа проверки и момент её запуска — договорённость команды, и хранится она в <code>.vscode/settings.json</code> внутри репозитория. Личные настройки остаются в настройках пользователя.</div>
+          </div>
+        </div>
+
+        <h2 id="g11"><span class="sec">§11</span>Проверьте себя</h2>
+        <details>
+          <summary>Почему для Go нет генератора заготовок комментариев, как autoDocstring для Python?</summary>
+          <p>В комментарии Go нет разделов, которые можно заполнить из подписи: параметры и ошибки описывают предложениями. Заготовка свелась бы к имени функции, а его gopls подсказывает при наборе после <code>//</code>.</p>
+        </details>
+        <details>
+          <summary>Какие две строки в <code>.vscode/settings.json</code> включают revive в редакторе?</summary>
+          <p><code>"go.lintTool": "revive"</code> — какой программой проверять, и <code>"go.lintOnSave": "package"</code> — проверять весь пакет при сохранении файла.</p>
+        </details>
+        <details>
+          <summary>Что означает <code>exported function NormalizeName should have comment or be unexported</code>?</summary>
+          <p>У экспортируемой функции <code>NormalizeName</code> нет комментария документации. Исправление — добавить комментарий вплотную над <code>func</code>, начиная с имени.</p>
+        </details>
+        <details>
+          <summary>Комментарий есть, а revive пишет <code>should be of the form "TodayLabel ..."</code>. Что не так?</summary>
+          <p>Комментарий начинается не с имени функции. Первым словом должно стоять <code>TodayLabel</code>.</p>
+        </details>
+        <details>
+          <summary>Зачем в проверках запроса на слияние флаг <code>-set_exit_status</code>?</summary>
+          <p>Без него revive завершается с кодом 0 даже при замечаниях, и проверка считается пройденной. С флагом код завершения — 1, и шаг отмечается непройденным.</p>
+        </details>
+        <details>
+          <summary>Почему неэкспортируемая <code>squashSpaces</code> не попала в замечания?</summary>
+          <p>Правило <code>exported</code> проверяет только имена с заглавной буквы — те, что видны из других пакетов. Для служебных имён комментарий по правилу курса необязателен.</p>
+        </details>
+
+        <h2 id="g12"><span class="sec">§12</span>Шпаргалка по главе</h2>
+        <div class="cheat">
+          <div>
+            <b>Редактор сам</b>
+            <code>подсказка: Cmd/Ctrl+K, Cmd/Ctrl+I</code>
+            <code>// Form + Ctrl+Пробел — имя</code>
+            <code>gofmt при сохранении</code>
+          </div>
+          <div>
+            <b>Сниппет</b>
+            <code>.vscode/go.code-snippets</code>
+            <code>prefix docf + Tab</code>
+          </div>
+          <div>
+            <b>revive в терминале</b>
+            <code>go run github.com/mgechev/revive@latest ./...</code>
+            <code>-set_exit_status — для CI</code>
+          </div>
+          <div>
+            <b>revive в редакторе</b>
+            <code>"go.lintTool": "revive"</code>
+            <code>"go.lintOnSave": "package"</code>
+          </div>
+          <div>
+            <b>Частые замечания</b>
+            <code>should have a package comment</code>
+            <code>should have comment or be unexported</code>
+            <code>should be of the form "X ..."</code>
+          </div>
+          <div>
+            <b>Проверки репозитория</b>
+            <code>go build ./... · go vet ./...</code>
+            <code>revive -set_exit_status ./...</code>
+            <code>go test ./...</code>
+          </div>
+        </div>
+
+        <h3>Итог главы</h3>
+        <p>Расширение Go без настроек показывает комментарий документации в подсказке, подсказывает имя объявления в начале комментария и выравнивает разметку при сохранении. Генератора заготовок, как autoDocstring в Python, для Go нет: разделов в комментарии нет, и текст пишут сразу; строение подробного комментария можно держать сниппетом. Пропущенные комментарии и комментарии, которые начинаются не с имени, находит revive — в терминале, в редакторе при сохранении после двух строк в <code>.vscode/settings.json</code> и в проверках запроса на слияние с флагом <code>-set_exit_status</code>. Верность описания по смыслу проверяет человек. В следующей главе всё это применяется к своему проекту: практика на паре и домашнее задание.</p>
+
+        <div class="sources">
+          <b>Откуда взяты факты</b>
+          <ol>
+            <li>Правила <code>exported</code> и <code>package-comments</code>, флаг <code>-set_exit_status</code> — <a href="https://github.com/mgechev/revive">revive</a>, <a href="https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md">описание правил</a>.</li>
+            <li>Параметры <code>go.lintTool</code> и <code>go.lintOnSave</code> — <a href="https://github.com/golang/vscode-go/wiki/settings">настройки расширения Go</a>.</li>
+            <li>Правила ST1000, ST1020–ST1022 — <a href="https://staticcheck.dev/docs/checks/">staticcheck.dev, Checks</a>.</li>
+            <li>Синтаксис сниппетов — <a href="https://code.visualstudio.com/docs/editing/userdefinedsnippets">документация VS Code, Snippets</a>.</li>
+            <li>Выводы revive <code>1.17</code> получены на втором архиве; кадры сняты в VS Code <code>1.138</code> с расширением Go <code>0.56</code>.</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="09-razbor-sluchaev.html">← 4.9 Разбор случаев</a><a href="11-praktika-i-dz.html">4.11 Практика и домашнее задание →</a></div>
+        </div>
 
         <div class="colophon">
           <span>Глава 4.10 · VS Code: генератор и проверка · МДК.01.01</span>
