@@ -280,3 +280,45 @@ Retina (2480 × 1560) лежат в `shots/raw/` и в репозиторий н
 из разметки пары «`proba.py` → вывод `mypy proba.py` / `python proba.py`»,
 запускает их на втором архиве и сравнивает построчно. На 01.10.2026 — 22
 примера, расхождений 0.
+
+## Ветка Go (16–18.10.2026)
+
+Переключатель **Python / Go** стоит в шапке каждой страницы рядом с выбором
+системы. Ключ localStorage — `modules-book-lang`, общий с темой 02: выбранный
+там язык открывается и здесь. В главе тело Python обёрнуто в
+`<div data-lang="py">`, рядом `<div data-lang="go">` со своей версией главы;
+id в ветке Go — `g1`, `g2`…; заголовок вкладки для каждой ветки — в
+`data-title-py` и `data-title-go` у `body`. Скрывает чужую ветку CSS
+(`styles.css`, раздел 11а).
+
+| Глава | Python | Go |
+| --- | --- | --- |
+| 4.1 | аннотация, `__annotations__`, Python не проверяет | тип в подписи обязателен, компилятор не собирает, gopls |
+| 4.2 | `list[int]`, `Order \| None`, `Callable`, `Any` | срезы и словари, указатели и `nil`, интерфейсы, `type Kopeks int`, `any` |
+| 4.3 | Pylance по шагам, четыре режима, mypy | gopls по шагам, лестница `go build` → `go vet` → staticcheck, 3 ошибки в терминале против 12 в Problems |
+| 4.4 | 20 примеров `proba.py` с mypy | 18 примеров `proba/main.go` с `go run`, в том числе паники при работе |
+| 4.5 | 17 функций без аннотаций, отсчёт mypy | архив с 12 ошибками, отсчёт `go build` 3 → 2 → 6 → 1 → 0, Quick Fix |
+| 4.6–4.8 | докстринг, PEP 257, четыре формата, doctest | комментарий документации, Go Doc Comments, разметка, `Example` с `// Output:`, pkgsite |
+| 4.9 | двенадцать случаев | **нет**: по решению автора отложена, в ветке Go показывается Python-версия |
+| 4.10 | autoDocstring, Ruff | имя в комментарии от gopls, сниппет, revive в терминале и в редакторе |
+| 4.11 | пара и ДЗ на Python | пара и ДЗ на Go, `materials/homework-go.md` |
+
+Проект Go — `materials/src-go/` (эталон: комментарии, `doc.go` у `utils`,
+`example_test.go`). `materials/build_go.py` собирает три архива:
+`otchet-kafe-go-oshibki.zip` (12 ошибок из списка `ERRORS`),
+`otchet-kafe-go-start.zip` (без комментариев документации: снимаются строки
+`//` с начала строки и комментарии полей, комментарии в телах остаются;
+revive — 27 замечаний) и `otchet-kafe-go-dokumentirovan.zip`. Папка
+`materials/build-go/` в `.gitignore`.
+
+Сверка: `python3 shots/verify_go.py` вынимает пары «`proba/main.go` →
+`go run ./proba` / `go vet ./proba`» из всех глав и сравнивает с запуском на
+втором архиве; адреса памяти в выводе паник не сравниваются. На 18.10.2026 —
+25 примеров, расхождений 0. `go build ./proba` для сверки не годится:
+исполняемый файл `proba` конфликтует с папкой.
+
+Кадры ветки Go — `shots/shoot_go.py` (профиль `/private/tmp/vsc-go` с
+расширением golang.go, тот же `cdp.py`) и `shots/crop_go.py`, файлы
+`img/vscode-go-*.png`; страницы pkgsite `img/pkgsite-*.png` сняты headless
+Chrome. Ловушка: `Ctrl+G` в VS Code считает табуляцию за четыре столбца,
+а компилятор — за один.
