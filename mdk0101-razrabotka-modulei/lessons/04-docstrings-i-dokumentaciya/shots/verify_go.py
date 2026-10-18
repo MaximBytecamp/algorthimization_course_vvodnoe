@@ -64,6 +64,9 @@ def main() -> None:
             (proba / "main.go").write_text(code.rstrip() + "\n", encoding="utf-8")
             run = subprocess.run(command.split(), cwd=project, capture_output=True, text=True)
             got = (run.stdout + run.stderr).rstrip()
+            if command.startswith("go vet"):
+                # Анализаторы vet работают параллельно, порядок строк меняется.
+                got = "\n".join(sorted(got.splitlines(), key=lambda line: [int(n) if n.isdigit() else n for n in re.split(r"(\d+)", line)]))
             if not same(got, shown.rstrip()):
                 bad += 1
                 first = next((s for s in code.splitlines() if s.startswith("func ") or "(" in s), code[:60])
