@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>8.3 Указатели в одну сторону · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 8 · Два указателя · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 8 · два указателя</p>
+          <p class="running__folio">Глава 8.3</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">8.3</span>
+          <h1>Указатели<br>в одну сторону</h1>
+          <p class="lead">Вторая форма приёма: оба указателя идут слева направо, один читает элементы, второй отмечает, куда записать следующий нужный. Так список меняют на месте, без второго списка. В главе две задачи КТП — удаление повторов и сжатие последовательности — и перенос нулей в конец.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Чтение и запись в одном списке</a></li>
+            <li><a href="#s2">Удаление повторов</a></li>
+            <li><a href="#s3">Сжатие последовательности</a></li>
+            <li><a href="#s4">Перенос нулей в конец</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Чтение и запись в одном списке</h2>
+        <p>Когда из списка нужно убрать часть элементов, проще всего собрать новый список из нужных. Но условие часто требует изменить список на месте, без дополнительной памяти. Тогда список делят на две части. Слева от указателя записи <code>w</code> — готовый результат. Указатель чтения <code>r</code> идёт впереди и проверяет каждый элемент. Нужный элемент копируется в позицию <code>w</code>, и <code>w</code> сдвигается.</p>
+        <p>Запись никогда не обгоняет чтение: <code>w</code> растёт только вместе с <code>r</code> и не больше чем на столько же. Поэтому запись затирает только элементы, которые уже прочитаны. Оба указателя монотонны, и время O(n).</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Удаление повторов</h2>
+        <p>Задача 2 КТП, LeetCode 26: список отсортирован, повторы нужно удалить на месте и вернуть число различных значений. В отсортированном списке повторы стоят рядом, поэтому элемент нужен, если он отличается от последнего записанного, <code>ids[w − 1]</code>.</p>
+        <div class="sandbox" data-title="Напишите dedup_sorted сами" data-call="ids = [101, 101, 102, 105]; print(dedup_sorted(ids), ids)">
+<script type="text/plain" class="sandbox__start">
+def dedup_sorted(ids):
+    if not ids:
+        return 0
+    w = 1
+    # r читает ids[1], ids[2], ...: новое значение
+    # записывается в ids[w], повтор пропускается.
+    del ids[w:]
+    return w
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """[101, 101, 102, 105, 105, 105, 110] → 4 значения"""
+    ids = [101, 101, 102, 105, 105, 105, 110]
+    r = dedup_sorted(ids)
+    assert (r, ids) == (4, [101, 102, 105, 110]), f"получено {r!r}, список {ids!r}"
+
+def test_empty():
+    """пустой список"""
+    ids = []
+    assert dedup_sorted(ids) == 0 and ids == []
+
+def test_all_equal():
+    """все значения одинаковые"""
+    ids = [5, 5, 5, 5]
+    r = dedup_sorted(ids)
+    assert (r, ids) == (1, [5]), f"получено {r!r}, список {ids!r}"
+
+def test_no_duplicates():
+    """повторов нет, список не меняется"""
+    ids = [1, 2, 3, 4]
+    r = dedup_sorted(ids)
+    assert (r, ids) == (4, [1, 2, 3, 4]), f"получено {r!r}, список {ids!r}"
+
+def test_duplicates_at_the_end():
+    """повторы в самом конце"""
+    ids = [1, 2, 3, 3, 3]
+    r = dedup_sorted(ids)
+    assert (r, ids) == (3, [1, 2, 3]), f"получено {r!r}, список {ids!r}"
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(1)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">dedup_sorted</span>(ids):
+    <span class="k">if</span> <span class="k">not</span> ids:
+        <span class="k">return</span> <span class="n">0</span>
+    w = <span class="n">1</span>
+    <span class="k">for</span> r <span class="k">in</span> <span class="k">range</span>(<span class="n">1</span>, <span class="k">len</span>(ids)):
+        <span class="k">if</span> ids[r] != ids[w - <span class="n">1</span>]:
+            ids[w] = ids[r]
+            w += <span class="n">1</span>
+    <span class="k">del</span> ids[w:]
+    <span class="k">return</span> w</pre>
+        </figure>
+        <p>Первый элемент всегда остаётся, поэтому <code>w</code> начинается с 1, а чтение — со второго элемента. Пустой список проверяется отдельно: в нём нет первого элемента. Зелёная зона в прогоне — готовый результат, штриховка — пропущенные повторы.</p>
+        <div class="tracer" data-trace="dedup" data-zone="rw" data-title="Удаление повторов"></div>
+
+        <h2 id="s3"><span class="sec">§3</span>Сжатие последовательности</h2>
+        <p>Задача 3 КТП, LeetCode 443: серию одинаковых символов подряд заменить символом и длиной серии, серия длины 1 записывается одним символом. Например, <code>['a', 'a', 'b', 'c', 'c', 'c']</code> превращается в <code>['a', '2', 'b', 'c', '3']</code>. Здесь три указателя: <code>start</code> — начало текущей серии, <code>r</code> читает до конца серии, <code>w</code> пишет. Длина серии записывается по цифрам: серия из 12 символов даёт два элемента, <code>'1'</code> и <code>'2'</code>.</p>
+        <div class="sandbox" data-title="Напишите compress сами" data-call="c = list(&quot;aaabcc&quot;); print(compress(c), c)">
+<script type="text/plain" class="sandbox__start">
+def compress(chars):
+    w = 0
+    r = 0
+    n = len(chars)
+    while r < n:
+        start = r
+        # 1) сдвиньте r до конца серии
+        # 2) запишите символ серии в chars[w]
+        # 3) если серия длиннее 1, допишите её длину по цифрам
+        r += 1   # эту строку замените своим кодом
+    del chars[w:]
+    return w
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """aabccc → a2bc3"""
+    chars = list("aabccc")
+    r = compress(chars)
+    assert (r, chars) == (5, ["a", "2", "b", "c", "3"]), f"получено {r!r}, список {chars!r}"
+
+def test_single_letters():
+    """одиночные символы остаются как есть"""
+    chars = list("abc")
+    r = compress(chars)
+    assert (r, chars) == (3, ["a", "b", "c"]), f"получено {r!r}, список {chars!r}"
+
+def test_empty():
+    """пустой список"""
+    chars = []
+    assert compress(chars) == 0 and chars == []
+
+def test_long_run():
+    """серия из 12 символов: длина пишется двумя цифрами"""
+    chars = ["x"] * 12
+    r = compress(chars)
+    assert (r, chars) == (3, ["x", "1", "2"]), f"получено {r!r}, список {chars!r}"
+
+def test_same_letter_two_runs():
+    """aabaa — две разные серии a"""
+    chars = list("aabaa")
+    r = compress(chars)
+    assert (r, chars) == (5, ["a", "2", "b", "a", "2"]), f"получено {r!r}, список {chars!r}"
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(1)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">compress</span>(chars):
+    w = <span class="n">0</span>
+    r = <span class="n">0</span>
+    n = <span class="k">len</span>(chars)
+    <span class="k">while</span> r &lt; n:
+        start = r
+        <span class="k">while</span> r &lt; n <span class="k">and</span> chars[r] == chars[start]:
+            r += <span class="n">1</span>
+        chars[w] = chars[start]
+        w += <span class="n">1</span>
+        count = r - start
+        <span class="k">if</span> count &gt; <span class="n">1</span>:
+            <span class="k">for</span> d <span class="k">in</span> <span class="k">str</span>(count):
+                chars[w] = d
+                w += <span class="n">1</span>
+    <span class="k">del</span> chars[w:]
+    <span class="k">return</span> w</pre>
+        </figure>
+        <p>В условии внутреннего цикла порядок важен: сначала <code>r &lt; n</code>, затем <code>chars[r]</code>. Если поменять их местами, на последней серии <code>r</code> выходит за конец списка, и чтение <code>chars[r]</code> заканчивается исключением <code>IndexError</code> — это разобрано в главе 8.4.</p>
+        <div class="tracer" data-trace="compress" data-zone="compress" data-title="Сжатие последовательности"></div>
+
+        <h2 id="s4"><span class="sec">§4</span>Перенос нулей в конец</h2>
+        <p>Расширение занятия, LeetCode 283: нули перенести в конец, порядок остальных чисел сохранить. Схема та же, только ненулевое число меняется местами с <code>nums[w]</code> вместо копирования. Так нули, которые стояли на месте записи, переезжают вправо, и в конце списка оказываются все нули.</p>
+        <div class="sandbox" data-title="Напишите move_zeros сами" data-call="a = [0, 4, 0, 7]; move_zeros(a); print(a)">
+<script type="text/plain" class="sandbox__start">
+def move_zeros(nums):
+    w = 0
+    # r читает все позиции; ненулевое число
+    # меняется местами с nums[w], и w сдвигается.
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """[0, 4, 0, 0, 7, 2] → [4, 7, 2, 0, 0, 0]"""
+    nums = [0, 4, 0, 0, 7, 2]
+    move_zeros(nums)
+    assert nums == [4, 7, 2, 0, 0, 0], f"получено {nums!r}"
+
+def test_no_zeros():
+    """нулей нет, порядок тот же"""
+    nums = [3, 1, 2]
+    move_zeros(nums)
+    assert nums == [3, 1, 2], f"получено {nums!r}"
+
+def test_all_zeros():
+    """одни нули"""
+    nums = [0, 0, 0]
+    move_zeros(nums)
+    assert nums == [0, 0, 0], f"получено {nums!r}"
+
+def test_returns_none():
+    """функция меняет список на месте и возвращает None"""
+    nums = [0, 1]
+    r = move_zeros(nums)
+    assert r is None and nums == [1, 0], f"вернула {r!r}, список {nums!r}"
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(1)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">move_zeros</span>(nums):
+    w = <span class="n">0</span>
+    <span class="k">for</span> r <span class="k">in</span> <span class="k">range</span>(<span class="k">len</span>(nums)):
+        <span class="k">if</span> nums[r] != <span class="n">0</span>:
+            nums[w], nums[r] = nums[r], nums[w]
+            w += <span class="n">1</span></pre>
+        </figure>
+        <div class="tracer" data-trace="zeros" data-zone="rw" data-title="Перенос нулей"></div>
+
+        <div class="pager"><a href="02-para-s-summoy.html">← 8.2 Пара с заданной суммой</a><a href="04-granicy-i-oshibki.html">8.4 Границы и ошибки →</a></div>
+        <div class="colophon">
+          <span>Модуль 8 · Два указателя · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>

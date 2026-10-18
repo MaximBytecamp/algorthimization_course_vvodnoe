@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>8.4 Границы и ошибки · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 8 · Два указателя · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 8 · два указателя</p>
+          <p class="running__folio">Глава 8.4</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">8.4</span>
+          <h1>Границы<br>и ошибки</h1>
+          <p class="lead">Контроль занятия по КТП: «На review объяснить монотонность указателей, границы применимости и возможное влияние сортировки на итоговую сложность». В этой главе — ошибки, которые чаще всего делают в коде указателей, каждая рядом с верной версией, сводка ошибок по симптомам и что проверяют на review.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Ошибки в паре с суммой</a></li>
+            <li><a href="#s2">Ошибки в указателях чтения и записи</a></li>
+            <li><a href="#s3">Сводка ошибок по симптомам</a></li>
+            <li><a href="#s4">Что проверяют на review</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Ошибки в паре с суммой</h2>
+        <p>В коде <code>pair_sum</code> три места, где одна изменённая строка ломает ответ: начальное значение <code>j</code>, условие цикла и место проверки суммы. На каждой вкладке — ошибочная версия на входе, где ошибка видна.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>pair_sum с одной изменённой строкой</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>j = len(prices)</button>
+            <button>while i &lt;= j</button>
+            <button>проверка после сдвига</button>
+          </div>
+          <div class="demo__pane">
+            <div class="tracer tracer--bug" data-trace="var_j_len" data-zone="between" data-title="j = len(prices)"></div>
+            <p class="demo__verdict"><b>IndexError</b>Индексы списка из шести цен — от 0 до 5, а <code>j = 6</code>. Обращение <code>prices[6]</code> прерывает функцию до первого сравнения с целью.</p>
+          </div>
+          <div class="demo__pane">
+            <div class="tracer tracer--bug" data-trace="bug_same_item" data-zone="between" data-title="while i &lt;= j"></div>
+            <p class="demo__verdict"><b>(1, 1)</b>Вход — <code>[100, 250, 600]</code> с целью 500, верный ответ <code>None</code>. Указатели сходятся на цене 250, условие <code>1 &lt;= 1</code> истинно, и цена складывается сама с собой: 250 + 250 = 500.</p>
+          </div>
+          <div class="demo__pane">
+            <div class="tracer tracer--bug" data-trace="var_check_late" data-zone="between" data-title="Проверка после сдвига"></div>
+            <p class="demo__verdict"><b>(2, 2)</b>Сумма 700 + 900 = 1600 посчитана для нужной пары, но сначала выполняется ветка сдвига: <code>j</code> уменьшается с 3 до 2. Функция возвращает уже сдвинутые индексы — один товар дважды.</p>
+          </div>
+        </div>
+        <p>Верная версия — прогон в главе 8.2, §2.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Ошибки в указателях чтения и записи</h2>
+        <p>В задачах главы 8.3 ошибки сидят на границах: пустой вход и последний элемент. Обе пары версий запущены на одном входе.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>Граница входа</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>dedup без if not ids</button>
+            <button>compress: порядок условий</button>
+          </div>
+          <div class="demo__pane">
+            <span class="run-label">ошибочная версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_dedup_no_check" data-zone="rw" data-title="Без if not ids"></div>
+            <p class="demo__verdict"><b>1</b>Начальное значение <code>w = 1</code> означает, что первый элемент уже оставлен. В пустом списке его нет, цикл не выполняется, и функция возвращает 1.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_dedup_empty" data-zone="rw" data-title="С if not ids"></div>
+            <p class="demo__verdict"><b>0</b>Пустой список даёт 0.</p>
+          </div>
+          <div class="demo__pane">
+            <span class="run-label">ошибочная версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_compress_and_order" data-zone="compress" data-title="Сначала chars[r]"></div>
+            <p class="demo__verdict"><b>IndexError</b>Вход — <code>list("aab")</code>. Когда <code>r</code> становится равным 3, первым вычисляется <code>chars[3]</code>, такого элемента нет.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_compress_aab" data-zone="compress" data-title="Сначала r &lt; n"></div>
+            <p class="demo__verdict"><b>3</b>Оператор <code>and</code> не вычисляет правую часть, если левая ложна, поэтому <code>chars[r]</code> за концом списка не читается.</p>
+          </div>
+        </div>
+
+        <h2 id="s3"><span class="sec">§3</span>Сводка ошибок по симптомам</h2>
+        <p>По симптому в первом столбце находят строку кода и вход, на котором ошибку видно.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Симптом</th><th>Где искать</th><th>Вход, который её показывает</th></tr></thead>
+            <tbody>
+              <tr><td>Ответ — пара вида <code>(k, k)</code></td><td>Условие цикла <code>&lt;=</code> вместо <code>&lt;</code></td><td>Один элемент, цена которого — половина цели</td></tr>
+              <tr><td><code>None</code>, хотя пара есть</td><td>Перепутаны ветки сдвига или вход не отсортирован</td><td>Те же цены в другом порядке</td></tr>
+              <tr><td><code>IndexError</code> в начале</td><td><code>j = len(prices)</code></td><td>Любой непустой список</td></tr>
+              <tr><td>Пустой список даёт 1</td><td>Нет проверки <code>if not ids</code></td><td>Пустой список</td></tr>
+              <tr><td><code>IndexError</code> на последней серии</td><td>Порядок условий в <code>while r &lt; n and …</code></td><td>Список, который кончается серией</td></tr>
+              <tr><td>Значения повторились, нулей меньше</td><td>Запись вместо обмена в <code>move_zeros</code></td><td>Ноль перед ненулевым числом</td></tr>
+              <tr><td>В списке элемент из двух символов</td><td>Длина серии записана одной строкой <code>str(count)</code></td><td>Серия из десяти и более символов</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s4"><span class="sec">§4</span>Что проверяют на review</h2>
+        <p>По КТП решение сдаётся Pull Request, и проверяющий спрашивает о трёх вещах. Этот же порядок годится для объяснения решения интервьюеру.</p>
+        <ol class="steps">
+          <li><b>Монотонность указателей.</b> Каждый указатель двигается только в одну сторону, за шаг сдвигается хотя бы один — поэтому шагов не больше n, время O(n).</li>
+          <li><b>Границы применимости.</b> Указатели навстречу требуют отсортированного входа: в доказательстве используется, что правая цена участка самая большая. Указатели в одну сторону требуют, чтобы запись не обгоняла чтение.</li>
+          <li><b>Влияние сортировки.</b> Если вход не отсортирован, сортировка стоит O(n log n), и итоговая сложность — O(n log n). Альтернатива — словарь: O(n) по времени, но O(n) по памяти.</li>
+        </ol>
+
+        <div class="pager"><a href="03-v-odnu-storonu.html">← 8.3 Указатели в одну сторону</a><a href="05-praktika-i-dz.html">8.5 Практика и ДЗ →</a></div>
+        <div class="colophon">
+          <span>Модуль 8 · Два указателя · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>8.2 Указатели навстречу: пара с заданной суммой · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 8 · Два указателя · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 8 · два указателя</p>
+          <p class="running__folio">Глава 8.2</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">8.2</span>
+          <h1>Указатели навстречу:<br>пара с заданной суммой</h1>
+          <p class="lead">В этой главе решается первая задача КТП — найти в отсортированном списке два элемента с заданной суммой. Сначала правило сдвига и поиск руками, затем код с пошаговым прогоном, доказательство, что пара не теряется, и замер против перебора.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Правило сдвига</a></li>
+            <li><a href="#s2">Код и пошаговый прогон</a></li>
+            <li><a href="#s3">Почему пара не теряется</a></li>
+            <li><a href="#s4">Замер против перебора</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Правило сдвига</h2>
+        <p>Перебор не пользуется тем, что цены отсортированы. А по порядку сразу видно, какие пары проверять бесполезно. Поставим <code>i</code> на самую дешёвую цену, <code>j</code> — на самую дорогую и посмотрим на их сумму.</p>
+        <ol class="steps">
+          <li><b>Сумма равна цели.</b> Пара найдена, вернуть <code>(i, j)</code>.</li>
+          <li><b>Сумма меньше цели.</b> Правая цена уже самая большая из оставшихся, поэтому увеличить сумму может только более дорогая левая. Сдвинуть <code>i</code> вправо.</li>
+          <li><b>Сумма больше цели.</b> Левая цена уже самая маленькая, поэтому уменьшить сумму может только более дешёвая правая. Сдвинуть <code>j</code> влево.</li>
+          <li><b>Указатели встретились.</b> Пар не осталось, ответ <code>None</code>. Поиск идёт, пока <code>i &lt; j</code>: один товар дважды брать нельзя.</li>
+        </ol>
+        <p>Пройдите алгоритм сами. Ход, который противоречит правилу, не выполняется, и появляется объяснение, какую пару он бы потерял. Два примера из пяти без ответа: там закончить нужно кнопкой «Пары нет».</p>
+        <div class="hunt" data-sets='[{"a":[300,450,700,900,1200,1500],"t":1600},{"a":[120,340,510,680,800,950,1100],"t":1290},{"a":[200,350,500,650,900],"t":1300},{"a":[5,15,25,40,55,70,90,110,140],"t":125},{"a":[100,250,600],"t":500}]'></div>
+
+        <h2 id="s2"><span class="sec">§2</span>Код и пошаговый прогон</h2>
+        <p>Напишите функцию сами. Тесты проверяют пример, отсутствие пары, пустой список, один товар дважды, одинаковые цены у разных товаров и отрицательные числа.</p>
+        <div class="sandbox" data-title="Напишите pair_sum сами" data-call="print(pair_sum([300, 450, 700, 900, 1200, 1500], 1600))">
+<script type="text/plain" class="sandbox__start">
+def pair_sum(prices, target):
+    i, j = 0, len(prices) - 1
+    # Пока i < j: сложите prices[i] и prices[j],
+    # сравните с target и сдвиньте один указатель.
+    return None
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """каталог из шести цен, цель 1600"""
+    r = pair_sum([300, 450, 700, 900, 1200, 1500], 1600)
+    assert r == (2, 3), f"ожидалось (2, 3), получено {r!r}"
+
+def test_not_found():
+    """пары нет — нужен None"""
+    r = pair_sum([300, 450, 700, 900], 100)
+    assert r is None, f"ожидалось None, получено {r!r}"
+
+def test_empty():
+    """пустой список"""
+    r = pair_sum([], 500)
+    assert r is None, f"ожидалось None, получено {r!r}"
+
+def test_single_item():
+    """один товар не складывается сам с собой"""
+    r = pair_sum([250], 500)
+    assert r is None, f"ожидалось None, получено {r!r}"
+
+def test_equal_prices():
+    """одинаковые цены у разных товаров"""
+    r = pair_sum([250, 250], 500)
+    assert r == (0, 1), f"ожидалось (0, 1), получено {r!r}"
+
+def test_same_item_twice():
+    """(1, 1) — один товар дважды, так нельзя"""
+    r = pair_sum([100, 250, 600], 500)
+    assert r is None, f"ожидалось None, получено {r!r}"
+
+def test_negative():
+    """отрицательные числа"""
+    r = pair_sum([-7, -3, 0, 2, 9], -1)
+    assert r == (1, 3), f"ожидалось (1, 3), получено {r!r}"
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(1)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">pair_sum</span>(prices, target):
+    i, j = <span class="n">0</span>, <span class="k">len</span>(prices) - <span class="n">1</span>
+    <span class="k">while</span> i &lt; j:
+        s = prices[i] + prices[j]
+        <span class="k">if</span> s == target:
+            <span class="k">return</span> (i, j)
+        <span class="k">if</span> s &lt; target:
+            i += <span class="n">1</span>
+        <span class="k">else</span>:
+            j -= <span class="n">1</span>
+    <span class="k">return</span> <span class="k">None</span></pre>
+        </figure>
+        <p>Прогон на двух входах: в первом пара есть, во втором нет. Бледные ячейки — цены, которые уже исключены.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>pair_sum на двух входах</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>Пара есть</button>
+            <button>Пары нет</button>
+          </div>
+          <div class="demo__pane">
+            <div class="tracer" data-trace="pair_found" data-zone="between" data-title="Указатели навстречу"></div>
+          </div>
+          <div class="demo__pane">
+            <div class="tracer" data-trace="pair_missing" data-zone="between" data-title="Указатели навстречу"></div>
+          </div>
+        </div>
+
+        <h2 id="s3"><span class="sec">§3</span>Почему пара не теряется</h2>
+        <p>Доказательство держится на одном утверждении, которое верно перед каждой проверкой условия цикла. Такое утверждение называют инвариантом: если в списке есть пара с суммой <code>target</code>, хотя бы одна такая пара лежит на участке с индекса <code>i</code> по индекс <code>j</code>.</p>
+        <p>До цикла участок — весь список, и утверждение верно. Пусть сумма меньше цели. Цена <code>prices[i]</code> с любой ценой участка даёт не больше этой суммы, потому что <code>prices[j]</code> — самая большая цена участка. Значит, пары с <code>prices[i]</code> нет, и после <code>i += 1</code> нужная пара осталась внутри. Для суммы больше цели рассуждение то же, только с <code>j</code>. Когда <code>i ≥ j</code>, в участке не больше одного элемента, пары в нём нет — и по инварианту её нет во всём списке.</p>
+        <p>Сортировка нужна ровно в одном месте рассуждения: «<code>prices[j]</code> — самая большая цена участка». В неотсортированном списке это неверно, и указатели могут пропустить пару.</p>
+        <p>Отсюда и время. Каждый указатель двигается только в одну сторону, это называют монотонностью. За шаг сдвигается хотя бы один, а встретиться они могут не позже чем через n − 1 шаг. Время O(n).</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Замер против перебора</h2>
+        <p>Контроль занятия по КТП: «Сопоставить O(n²) и O(n) с экспериментом». Замер на ноутбуке автора, пары в списке нет — худший случай для обоих способов:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>n</th><th>Перебор, мс</th><th>Указатели, мс</th></tr></thead>
+            <tbody>
+              <tr><td>4&nbsp;000</td><td>170,1</td><td>0,13</td></tr>
+              <tr><td>8&nbsp;000</td><td>751,5</td><td>0,28</td></tr>
+              <tr><td>16&nbsp;000</td><td>2&nbsp;785,6</td><td>0,55</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>При удвоении n время перебора растёт примерно в 4 раза, время указателей — в 2. Если цены не отсортированы, у задачи два решения. Можно отсортировать копию за O(n log n) и пустить указатели. Можно пройти список один раз со словарём уже просмотренных цен: O(n) по времени и памяти. Скрипт <code>bench.py</code> в стартовом наборе меряет все четыре способа, глава 8.5.</p>
+
+        <div class="pager"><a href="01-uznat-zadachu.html">← 8.1 Как узнать задачу</a><a href="03-v-odnu-storonu.html">8.3 Указатели в одну сторону →</a></div>
+        <div class="colophon">
+          <span>Модуль 8 · Два указателя · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>
