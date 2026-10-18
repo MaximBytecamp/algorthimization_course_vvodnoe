@@ -76,4 +76,3 @@ export function dims(extra) {
   ];
 }
 
-export const UTM_PROPS = ['UTM Source', 'UTM Medium', 'UTM Campaign', 'UTM Content', 'Application Created At'];
