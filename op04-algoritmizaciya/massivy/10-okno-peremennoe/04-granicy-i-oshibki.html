@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>10.4 Границы и ошибки · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 10 · Окно переменного размера · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 10 · окно переменного размера</p>
+          <p class="running__folio">Глава 10.4</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">10.4</span>
+          <h1>Границы<br>и ошибки</h1>
+          <p class="lead">Контроль занятия по КТП: «Кандидат объясняет условие while и состояние окна. Проверяются дубликаты и пустая строка». В этой главе — граничные входы обеих функций и три ошибки, которые видны только на них, сводка ошибок модуля по симптомам и схема объяснения решения интервьюеру.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Граничные входы</a></li>
+            <li><a href="#s2">Сводка ошибок по симптомам</a></li>
+            <li><a href="#s3">Исправьте функции</a></li>
+            <li><a href="#s4">Как объяснить условие while и состояние окна</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Граничные входы</h2>
+        <p>Граничный вход — вход на краю допустимого: пустой список или строка, один элемент, порог, которого сумма не достигает, сумма точно на пороге, строка из одинаковых символов. На таких входах цикл выполняется ноль раз или один раз. Поэтому ответ на них зависит от начального значения и от проверки входа — от строк, которые на обычном примере ни на что не влияют.</p>
+        <p>Для двух случаев «ответа нет» договорённости разные. Если подходящего отрезка в списке нет, это обычные данные, и функция возвращает 0: настоящая длина не меньше 1, путаницы нет. Если порог меньше 1, ошибка в коде, который вызвал функцию, и о ней сообщают исключением <code>ValueError</code>. Ниже три версии, в которых одна строка записана иначе, — каждая рядом с верной на том же входе.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>Функции с одной изменённой строкой</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>без проверки s</button>
+            <button>best = len(nums)</button>
+            <button>best = 1</button>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>shortest_window</code> нет проверки порога. Вход — <code>[1, 2]</code>, <code>s = 0</code>.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="var_no_check" data-zone="events" data-title="без проверки s, s = 0"></div>
+            <p class="demo__verdict"><b>IndexError</b>При пороге 0 подходит и пустое окно: его сумма 0 не меньше 0. На шаге 12 окно уже пустое, а цикл продолжается, и на шаге 25 индекс <code>l</code> выходит за конец списка.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_no_check" data-zone="events" data-title="с проверкой s"></div>
+            <p class="demo__verdict"><b>ValueError</b>Проверка в первой строке останавливает функцию и называет неверный аргумент.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Начальное значение ответа — длина списка. Вход — <code>[1, 1, 1, 1]</code>, <code>s = 5</code>: отрезка нет.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="var_best_n" data-zone="events" data-title="best = len(nums)"></div>
+            <p class="demo__verdict"><b>4</b>Цикл <code>while</code> не выполняется ни разу, и функция сообщает, что подходит весь список. На входе, где весь список действительно подходит, эта версия отвечает верно. Поэтому нужен отдельный тест на случай «отрезка нет».</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_best_n" data-zone="events" data-title="best = 0"></div>
+            <p class="demo__verdict"><b>0</b>Отрезка нет.</p>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>longest_unique</code> начальное значение ответа — 1. Вход — пустая строка.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="var_best_one" data-zone="events" data-title="best = 1"></div>
+            <p class="demo__verdict"><b>1</b>Цикл не выполняется, и функция возвращает начальное значение. На любой непустой строке эта версия верна — поэтому контроль КТП называет пустую строку отдельно.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_best_one" data-zone="events" data-title="best = 0"></div>
+            <p class="demo__verdict"><b>0</b>В пустой строке нет символов, длина ответа 0.</p>
+          </div>
+        </div>
+
+        <h2 id="s2"><span class="sec">§2</span>Сводка ошибок по симптомам</h2>
+        <p>Когда тест падает, первым видно неверный ответ или исключение. По симптому в таблице находят строку кода, которую нужно проверить, и вход, на котором ошибку видно. В последнем столбце — где ошибка запущена по шагам вместе с верной версией.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Симптом</th><th>Где искать</th><th>Вход, который её показывает</th><th>Прогон</th></tr></thead>
+            <tbody>
+              <tr><td>Самый короткий отрезок короче верного</td><td>Запись длины после цикла <code>while</code></td><td>Любой вход с подходящим отрезком</td><td><a href="02-rasshirenie-i-szhatie.html#s4">10.2, §4</a></td></tr>
+              <tr><td>Самый короткий отрезок длиннее верного</td><td>Строгий знак: <code>while total &gt; s</code></td><td>Сумма лучшего отрезка точно равна порогу</td><td><a href="02-rasshirenie-i-szhatie.html#s4">10.2, §4</a></td></tr>
+              <tr><td>В подстроке-ответе есть повтор</td><td><code>if</code> вместо <code>while</code> в сжатии</td><td><code>'abba'</code></td><td><a href="03-chastotnaya-karta.html#s4">10.3, §4</a></td></tr>
+              <tr><td>Окно сжимается до пустого, <code>IndexError</code></td><td>Нет <code>del</code> для ключа со счётчиком 0, условие считает ключи</td><td><code>[1, 2, 3, 2, 2]</code></td><td><a href="03-chastotnaya-karta.html#s5">10.3, §5</a></td></tr>
+              <tr><td><code>IndexError</code> при пороге 0</td><td>Нет проверки <code>s &lt; 1</code></td><td><code>[1, 2]</code>, порог 0</td><td><a href="#s1">10.4, §1</a></td></tr>
+              <tr><td>Длина всего списка там, где отрезка нет</td><td>Начальное значение <code>best = len(nums)</code></td><td>Сумма списка меньше порога</td><td><a href="#s1">10.4, §1</a></td></tr>
+              <tr><td>1 на пустой строке</td><td>Начальное значение <code>best = 1</code></td><td>Пустая строка</td><td><a href="#s1">10.4, §1</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Все ошибки таблицы сидят в четырёх местах кода: условие цикла <code>while</code>, место записи ответа относительно цикла, обновление состояния при сжатии и начальное значение ответа. Пример из условия задачи находит только часть из них. Остальные находят граничные входы из §1 и пример с суммой точно на пороге.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Исправьте функции</h2>
+        <p>В окне ниже обе функции занятия, в каждой по две ошибки. В <code>shortest_window</code> нет проверки порога, и ответ начинается с длины списка. В <code>longest_unique</code> ответ начинается с 1, а символ приводится к нижнему регистру, хотя по контракту регистр различается. Сначала запустите тесты и посмотрите, какие падают.</p>
+        <div class="sandbox" data-title="Исправьте shortest_window и longest_unique" data-call="print(shortest_window([1, 1, 1, 1], 5), longest_unique(&quot;&quot;), longest_unique(&quot;aA&quot;))">
+<script type="text/plain" class="sandbox__start">
+def shortest_window(nums, s):
+    best = len(nums)
+    total = 0
+    l = 0
+    for r in range(len(nums)):
+        total += nums[r]
+        while total >= s:
+            length = r - l + 1
+            if length < best:
+                best = length
+            total -= nums[l]
+            l += 1
+    return best
+
+
+def longest_unique(text):
+    count = {}
+    best = 1
+    l = 0
+    for r in range(len(text)):
+        ch = text[r].lower()
+        count[ch] = count.get(ch, 0) + 1
+        while count[ch] > 1:
+            count[text[l]] -= 1
+            l += 1
+        best = max(best, r - l + 1)
+    return best
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_shortest_example():
+    """заказы по часам, s = 30"""
+    r = shortest_window([5, 8, 3, 12, 20, 6, 22, 9], 30)
+    assert r == 2, f"ожидалось 2, получено {r!r}"
+
+def test_shortest_no_window():
+    """сумма всего списка меньше s — ответ 0"""
+    r = shortest_window([1, 1, 1, 1], 5)
+    assert r == 0, f"ожидалось 0, получено {r!r}"
+
+def test_shortest_bad_s():
+    """s = 0 и s < 0 — ValueError"""
+    for s in (0, -1):
+        try:
+            r = shortest_window([1, 2], s)
+        except ValueError:
+            continue
+        except Exception as e:
+            assert False, f"s = {s}: ожидалась ValueError, получено {type(e).__name__}"
+        assert False, f"s = {s}: ожидалась ValueError, функция вернула {r!r}"
+
+def test_unique_example():
+    """'abcabcbb' — ответ 3"""
+    r = longest_unique("abcabcbb")
+    assert r == 3, f"ожидалось 3, получено {r!r}"
+
+def test_unique_empty():
+    """пустая строка — ответ 0"""
+    r = longest_unique("")
+    assert r == 0, f"ожидалось 0, получено {r!r}"
+
+def test_unique_case():
+    """'aA' и 'Aa' — регистр различается"""
+    for text in ("aA", "Aa"):
+        try:
+            r = longest_unique(text)
+        except KeyError as e:
+            assert False, f"{text!r}: исключение KeyError: {e}"
+        assert r == 2, f"{text!r}: ожидалось 2, получено {r!r}"
+</script>
+</div>
+
+        <h2 id="s4"><span class="sec">§4</span>Как объяснить условие while и состояние окна</h2>
+        <p>На собеседовании контроль КТП звучит как вопросы «что хранится в этой переменной между итерациями?» и «почему здесь <code>while</code> с таким условием?». Ответ строится из трёх частей, одинаковых для всех задач модуля.</p>
+        <ol class="steps">
+          <li><b>Состояние окна.</b> Назвать переменную и то, что она хранит для окна с <code>l</code> по <code>r</code>. Например: «<code>total</code> — сумма окна», «<code>count</code> — для каждого символа окна, сколько раз он в нём есть». Сказать, как она меняется при сдвиге каждой границы.</li>
+          <li><b>Условие цикла.</b> Вывести его из задачи. Для самого короткого отрезка окно сжимают, пока оно подходит. Для самого длинного — пока оно недопустимо. Цикл нужен потому, что одного сжатия может не хватить: на <code>'abba'</code> версия с <code>if</code> ошибается.</li>
+          <li><b>Инвариант и время.</b> Сказать, что верно после цикла, и откуда O(n): <code>l</code> только растёт и не обгоняет <code>r</code>, сдвигов не больше 2n.</li>
+        </ol>
+        <div class="speech">
+          <div class="speech__item">
+            <p class="speech__said">«Состояние окна — частотная карта: для каждого символа окна, сколько раз он в нём есть. Повтор может появиться только у пришедшего символа, поэтому сжимаю, пока count[ch] больше 1, и длину записываю после цикла».</p>
+            <p class="speech__note"><b>Что показывает</b>Состояние окна и условие while, выведенное из задачи.</p>
+          </div>
+          <div class="speech__item">
+            <p class="speech__said">«While внутри for, но l только растёт и не обгоняет r. Всего сдвигов не больше 2n — время O(n), память O(m) по числу разных символов. Пустая строка даёт 0 без отдельной проверки».</p>
+            <p class="speech__note"><b>Что показывает</b>Оценку сложности и граничные входы.</p>
+          </div>
+        </div>
+
+        <div class="pager"><a href="03-chastotnaya-karta.html">← 10.3 Частотная карта</a><a href="05-praktika-i-dz.html">10.5 Практика и ДЗ →</a></div>
+        <div class="colophon">
+          <span>Модуль 10 · Окно переменного размера · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>

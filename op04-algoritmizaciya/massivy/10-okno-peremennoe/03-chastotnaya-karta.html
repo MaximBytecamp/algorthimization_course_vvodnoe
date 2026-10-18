@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>10.3 Частотная карта: подстрока без повторов · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 10 · Окно переменного размера · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 10 · окно переменного размера</p>
+          <p class="running__folio">Глава 10.3</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">10.3</span>
+          <h1>Частотная карта:<br>подстрока без повторов</h1>
+          <p class="lead">В этой главе вторая задача КТП — самая длинная подстрока без повторяющихся символов. Схема прохода та же, что в главе 10.2, меняются две вещи. Состояние окна — словарь вместо суммы. Ищется самый длинный отрезок, поэтому окно сжимают, пока оно недопустимо, а длину записывают после цикла. В конце — та же схема в задаче о двух корзинах.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Частотная карта как состояние окна</a></li>
+            <li><a href="#s2">Самый длинный отрезок: когда сжимать и когда записывать</a></li>
+            <li><a href="#s3">Код и пошаговый прогон</a></li>
+            <li><a href="#s4">Зачем здесь цикл while</a></li>
+            <li><a href="#s5">Та же схема: две корзины</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Частотная карта как состояние окна</h2>
+        <p>Задача: дана строка, нужно вернуть длину самой длинной подстроки, в которой все символы разные. Для <code>'abcabcbb'</code> ответ 3 — подстрока <code>'abc'</code>. По одному числу, как сумма в главе 10.2, проверить «нет повторов» нельзя: нужно знать, сколько раз каждый символ встречается в окне.</p>
+        <p>Для этого служит <b>частотная карта</b> — словарь, в котором ключ — символ окна, а значение — сколько раз он в окне встречается. Для окна <code>'abca'</code> карта равна <code>{'a': 2, 'b': 1, 'c': 1}</code>. Сравнение из жизни: кладовщик ведёт карточку учёта, где для каждого товара записано, сколько штук лежит на полке. Привезли коробку — число увеличилось на 1, забрали — уменьшилось. Полку он при этом не пересчитывает. Так и здесь: при расширении счётчик пришедшего символа увеличивается на 1, при сжатии счётчик ушедшего уменьшается, и каждая операция стоит O(1).</p>
+        <details class="pyhint"><summary>Python в этой строке: <code>count[ch] = count.get(ch, 0) + 1</code></summary><div><p>Обращение к ключу, которого в словаре нет, заканчивается исключением <code>KeyError</code>. Метод <code>get(ключ, 0)</code> в этом случае возвращает 0, поэтому строка работает и для символа, который встретился впервые.</p><pre>&gt;&gt;&gt; count = {}
+&gt;&gt;&gt; count.get("a", 0)
+0
+&gt;&gt;&gt; count["a"] = count.get("a", 0) + 1
+&gt;&gt;&gt; count["a"] = count.get("a", 0) + 1
+&gt;&gt;&gt; count["b"] = count.get("b", 0) + 1
+&gt;&gt;&gt; count
+{'a': 2, 'b': 1}</pre></div></details>
+        <p>Проверять все счётчики на каждом шаге не нужно. До расширения в окне не было повторов. Расширение меняет один счётчик — пришедшего символа <code>ch</code>. Значит, нарушить условие может только он, и проверка сводится к одному сравнению: <code>count[ch] &gt; 1</code>.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Самый длинный отрезок: когда сжимать и когда записывать</h2>
+        <p>В главе 10.2 искали самый короткий отрезок. Подходящее окно там сжимали, чтобы проверить окно короче, и длину записывали перед каждым сжатием. Здесь ищется самый длинный отрезок, и роли меняются: расширение может сделать окно недопустимым — появился повтор, — а сжатие возвращает его в допустимое состояние. Поэтому окно сжимают, пока оно недопустимо, а длину записывают после цикла: только там окно без повторов.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th></th><th>Самый короткий, глава 10.2</th><th>Самый длинный, эта глава</th></tr></thead>
+            <tbody>
+              <tr><td><b>Условие цикла while</b></td><td>Пока окно подходит: <code>total &gt;= s</code></td><td>Пока окно недопустимо: <code>count[ch] &gt; 1</code></td></tr>
+              <tr><td><b>Где записывается длина</b></td><td>Внутри цикла, перед сжатием</td><td>После цикла</td></tr>
+              <tr><td><b>Сравнение</b></td><td>Меньше лучшей</td><td>Больше лучшей: <code>max</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Сделайте проход сами на строке <code>'pwwkew'</code>. Под лентой показана частотная карта окна.</p>
+        <div class="vwinhand" data-a='["p","w","w","k","e","w"]' data-goal="uniq"></div>
+        <p>После прихода второй <code>w</code> одного сжатия не хватает: сначала уходит <code>p</code>, и повтор остаётся. Окно становится допустимым только после ухода первой <code>w</code>. Ответ — 3, подстрока <code>'wke'</code>.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Код и пошаговый прогон</h2>
+        <p>Напишите функцию сами. Тесты проверяют повторы и пустую строку — это контроль занятия по КТП — и сравнивают ответ с перебором.</p>
+        <div class="sandbox" data-title="Напишите longest_unique сами" data-call="print(longest_unique(&quot;abcabcbb&quot;))">
+<script type="text/plain" class="sandbox__start">
+def longest_unique(text):
+    count = {}
+    best = 0
+    l = 0
+    # Расширьте окно, сожмите его, пока пришедший символ повторяется,
+    # и после цикла сравните длину с best.
+    return best
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """'abcabcbb' — 3"""
+    r = longest_unique("abcabcbb")
+    assert r == 3, f"ожидалось 3, получено {r!r}"
+
+def test_all_same():
+    """все символы одинаковые"""
+    r = longest_unique("bbbbb")
+    assert r == 1, f"ожидалось 1, получено {r!r}"
+
+def test_adjacent_repeat():
+    """'pwwkew' — 3"""
+    r = longest_unique("pwwkew")
+    assert r == 3, f"ожидалось 3, получено {r!r}"
+
+def test_abba():
+    """'abba' — 2: повтор символа, который уже вышел из окна"""
+    r = longest_unique("abba")
+    assert r == 2, f"ожидалось 2, получено {r!r}"
+
+def test_case():
+    """регистр различается"""
+    r = longest_unique("aA")
+    assert r == 2, f"ожидалось 2, получено {r!r}"
+
+def test_empty():
+    """пустая строка — 0"""
+    r = longest_unique("")
+    assert r == 0, f"ожидалось 0, получено {r!r}"
+
+def test_matches_brute():
+    """200 случайных строк: ответ совпадает с перебором"""
+    import random
+    rnd = random.Random(105)
+    for _ in range(200):
+        text = "".join(rnd.choice("abcA ") for _ in range(rnd.randint(0, 12)))
+        want = max([r - l for l in range(len(text) + 1) for r in range(l, len(text) + 1) if len(set(text[l:r])) == r - l])
+        got = longest_unique(text)
+        assert got == want, f"text = {text!r}: ожидалось {want}, получено {got}"
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(m), m — число разных символов</span></figcaption>
+<pre><span class="k">def</span> <span class="f">longest_unique</span>(text):
+    count = {}
+    best = <span class="n">0</span>
+    l = <span class="n">0</span>
+    <span class="k">for</span> r <span class="k">in</span> <span class="k">range</span>(<span class="k">len</span>(text)):
+        ch = text[r]
+        count[ch] = count.get(ch, <span class="n">0</span>) + <span class="n">1</span>
+        <span class="k">while</span> count[ch] &gt; <span class="n">1</span>:
+            count[text[l]] -= <span class="n">1</span>
+            l += <span class="n">1</span>
+        best = <span class="k">max</span>(best, r - l + <span class="n">1</span>)
+    <span class="k">return</span> best</pre>
+        </figure>
+        <p>При сжатии уменьшается счётчик символа на левой границе, <code>text[l]</code>: из окна уходит символ, который стоит слева, даже если повторяется другой. Прогон на <code>'abcabcbb'</code>, частотная карта видна в строке <code>count</code> таблицы переменных. На шагах 46–52 пришла <code>b</code>, а первой в окне стоит <code>a</code>: цикл выполняется дважды — сначала уходит <code>a</code>, затем <code>b</code>.</p>
+        <div class="tracer" data-trace="unique" data-zone="events" data-title="Самая длинная подстрока без повторов"></div>
+        <p>Для пустой строки цикл не выполняется, и функция возвращает начальное значение 0 — отдельной проверки не нужно.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Зачем здесь цикл while</h2>
+        <p>Контроль КТП требует, чтобы кандидат объяснял условие <code>while</code>. Самый короткий ответ — показать вход, на котором <code>if</code> ошибается. Обе версии запущены на <code>'abba'</code>, верный ответ 2.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>longest_unique('abba')</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>if вместо while</button>
+            <button>Верная версия</button>
+          </div>
+          <div class="demo__pane">
+            <div class="tracer tracer--bug" data-trace="bug_if" data-zone="events" data-title="if count[ch] &gt; 1"></div>
+            <p class="demo__verdict"><b>3</b>На шаге 17 в окне <code>'abb'</code> две буквы <code>b</code>. Единственное сжатие убирает <code>a</code>, повтор остаётся, и на шаге 25 записывается длина 3 окна <code>'bba'</code>.</p>
+          </div>
+          <div class="demo__pane">
+            <div class="tracer" data-trace="fix_if" data-zone="events" data-title="while count[ch] &gt; 1"></div>
+            <p class="demo__verdict"><b>2</b>Условие проверяется на шагах 17 и 20: после ухода <code>a</code> счётчик <code>b</code> всё ещё 2, и цикл убирает первую <code>b</code>.</p>
+          </div>
+        </div>
+        <p>Перед повторяющимся символом в окне могут стоять другие, и их нужно убрать по одному. Сколько раз — заранее неизвестно, поэтому нужен цикл.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Та же схема: две корзины</h2>
+        <p>В задаче LeetCode 904 сборщик идёт вдоль ряда деревьев с двумя корзинами, в каждой — фрукты одного вида, и срывает по фрукту с каждого дерева подряд. Нужно найти наибольшее число фруктов. После пересказа это самый длинный отрезок, в котором не больше двух разных чисел. Схема та же, меняется условие цикла: число разных видов — это число ключей карты, <code>len(count) &gt; 2</code>.</p>
+        <p>Отсюда одно отличие от <code>longest_unique</code>. Раз условие считает ключи, ключ ушедшего вида нужно удалять, когда его счётчик стал 0. Иначе <code>len(count)</code> учитывает виды, которых в окне уже нет. Ниже обе версии на <code>[1, 2, 3, 2, 2]</code>, верный ответ 4.</p>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(1): в карте не больше трёх ключей</span></figcaption>
+<pre><span class="k">def</span> <span class="f">total_fruit</span>(fruits):
+    count = {}
+    best = <span class="n">0</span>
+    l = <span class="n">0</span>
+    <span class="k">for</span> r <span class="k">in</span> <span class="k">range</span>(<span class="k">len</span>(fruits)):
+        f = fruits[r]
+        count[f] = count.get(f, <span class="n">0</span>) + <span class="n">1</span>
+        <span class="k">while</span> <span class="k">len</span>(count) &gt; <span class="n">2</span>:
+            count[fruits[l]] -= <span class="n">1</span>
+            <span class="k">if</span> count[fruits[l]] == <span class="n">0</span>:
+                <span class="k">del</span> count[fruits[l]]
+            l += <span class="n">1</span>
+        best = <span class="k">max</span>(best, r - l + <span class="n">1</span>)
+    <span class="k">return</span> best</pre>
+        </figure>
+        <span class="run-label">без удаления ключа</span>
+        <div class="tracer tracer--bug" data-trace="bug_no_del" data-zone="events" data-title="без del count[...]"></div>
+        <p class="demo__verdict"><b>IndexError</b>На шаге 20 в окне <code>[2, 3]</code> два вида, а в карте три ключа: ключ вида 1 остался со счётчиком 0. Цикл сжимает окно до пустого, и на шаге 33 индекс выходит за конец списка.</p>
+        <span class="run-label run-label--fix">с удалением ключа</span>
+        <div class="tracer" data-trace="fruit" data-zone="events" data-title="с удалением ключа"></div>
+        <p class="demo__verdict"><b>4</b>На шаге 20 ключ вида 1 удалён, и окно <code>[2, 3]</code> допустимо. Дальше окно только расширяется.</p>
+
+        <div class="pager"><a href="02-rasshirenie-i-szhatie.html">← 10.2 Расширение и сжатие</a><a href="04-granicy-i-oshibki.html">10.4 Границы и ошибки →</a></div>
+        <div class="colophon">
+          <span>Модуль 10 · Окно переменного размера · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>

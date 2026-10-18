@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>10.2 Расширение и сжатие: минимальный отрезок · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 10 · Окно переменного размера · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 10 · окно переменного размера</p>
+          <p class="running__folio">Глава 10.2</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">10.2</span>
+          <h1>Расширение и сжатие:<br>минимальный отрезок</h1>
+          <p class="lead">В этой главе механизм окна переменного размера разобран на первой задаче КТП — самом коротком отрезке с суммой не меньше S. Сначала идея прохода, затем проход руками, код с пошаговым прогоном, объяснение, почему проход стоит O(n), и две ошибки, которые чаще всего делают в этом коде.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Идея: расширить, пока мало, сжать, пока хватает</a></li>
+            <li><a href="#s2">Код и пошаговый прогон</a></li>
+            <li><a href="#s3">Почему проход стоит O(n)</a></li>
+            <li><a href="#s4">Две ошибки в цикле</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Идея: расширить, пока мало, сжать, пока хватает</h2>
+        <p>Перебор проверяет каждый отрезок и считает его сумму заново. Окно делает иначе: оно помнит сумму текущего отрезка и меняет её на один элемент за шаг. Сравнение из жизни: в копилку опускают монеты, пока не наберётся нужная сумма. Когда набралось, из копилки достают монеты, положенные раньше всех, пока суммы ещё хватает, и каждый раз записывают, сколько монет осталось. Наименьшее записанное число — ответ.</p>
+        <p>В коде копилка — окно, элементы с индекса <code>l</code> по индекс <code>r</code>, а сумма монет — <code>total</code>. Добавить элемент справа называется <b>расширением</b>: <code>total += nums[r]</code>. Убрать элемент слева — <b>сжатием</b>: <code>total -= nums[l]</code>, затем <code>l += 1</code>. Требование задачи «сумма не меньше s» называется <b>условием допустимости</b>; окно, для которого оно выполнено, дальше называется подходящим.</p>
+        <ol class="steps">
+          <li><b>Расширение.</b> Правая граница сдвигается на один элемент, он добавляется в сумму.</li>
+          <li><b>Запись и сжатие.</b> Пока окно подходит, его длина <code>r − l + 1</code> сравнивается с лучшей, затем левый элемент убирается из суммы.</li>
+          <li><b>Ответ.</b> Когда правая граница прошла весь список, лучшая длина — ответ; если подходящего окна не было, ответ 0.</li>
+        </ol>
+        <p>Сделайте проход сами на списке заказов из главы 10.1. На каждом шаге выберите, какую границу сдвинуть. Неверный ход не выполняется, вместо него появляется объяснение.</p>
+        <div class="vwinhand" data-a="[5,8,3,12,20,6,22,9]" data-limit="30" data-goal="min"></div>
+        <p>После первых пяти расширений сумма равна 48, и окно сжимается четыре раза подряд. Перед каждым сжатием записывается длина: 5, 4, 3, 2. Ответ — 2.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Код и пошаговый прогон</h2>
+        <p>Правило из §1 записывается функцией. Сжатие стоит в цикле <code>while</code>, потому что после одного расширения окно может подходить и после нескольких сжатий подряд, как в проходе выше. Длина записывается внутри цикла: после цикла суммы уже не хватает, и окно не подходит. Напишите функцию сами — тесты проверяют её на примерах из главы 10.1 и сравнивают с перебором на двухстах случайных списках.</p>
+        <div class="sandbox" data-title="Напишите shortest_window сами" data-call="print(shortest_window([5, 8, 3, 12, 20, 6, 22, 9], 30))">
+<script type="text/plain" class="sandbox__start">
+def shortest_window(nums, s):
+    if s < 1:
+        raise ValueError("s должно быть не меньше 1")
+    best = 0
+    total = 0
+    l = 0
+    # Расширьте окно. Пока total >= s, сравнивайте длину с best и сжимайте окно.
+    return best
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """заказы по часам, s = 30"""
+    r = shortest_window([5, 8, 3, 12, 20, 6, 22, 9], 30)
+    assert r == 2, f"ожидалось 2, получено {r!r}"
+
+def test_exact_sum():
+    """сумма лучшего отрезка равна s точно"""
+    r = shortest_window([2, 3, 1, 2, 4, 3], 7)
+    assert r == 2, f"ожидалось 2, получено {r!r}"
+
+def test_one_element():
+    """достаточно одного элемента"""
+    r = shortest_window([4, 40, 1], 30)
+    assert r == 1, f"ожидалось 1, получено {r!r}"
+
+def test_no_window():
+    """отрезка нет — 0"""
+    r = shortest_window([1, 1, 1, 1], 5)
+    assert r == 0, f"ожидалось 0, получено {r!r}"
+
+def test_bad_s():
+    """s = 0 — ValueError"""
+    try:
+        shortest_window([1, 2], 0)
+    except ValueError:
+        return
+    assert False, "ожидалась ValueError"
+
+def test_matches_brute():
+    """200 случайных списков: ответ совпадает с перебором"""
+    import random
+    rnd = random.Random(104)
+    for _ in range(200):
+        nums = [rnd.randint(0, 9) for _ in range(rnd.randint(0, 12))]
+        s = rnd.randint(1, 25)
+        lens = [r - l for l in range(len(nums)) for r in range(l + 1, len(nums) + 1) if sum(nums[l:r]) >= s]
+        want = min(lens) if lens else 0
+        got = shortest_window(nums, s)
+        assert got == want, f"nums = {nums}, s = {s}: ожидалось {want}, получено {got}"
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(1)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">shortest_window</span>(nums, s):
+    <span class="k">if</span> s &lt; <span class="n">1</span>:
+        <span class="k">raise</span> ValueError(<span class="s">"s должно быть не меньше 1"</span>)
+    best = <span class="n">0</span>
+    total = <span class="n">0</span>
+    l = <span class="n">0</span>
+    <span class="k">for</span> r <span class="k">in</span> <span class="k">range</span>(<span class="k">len</span>(nums)):
+        total += nums[r]
+        <span class="k">while</span> total &gt;= s:
+            length = r - l + <span class="n">1</span>
+            <span class="k">if</span> best == <span class="n">0</span> <span class="k">or</span> length &lt; best:
+                best = length
+            total -= nums[l]
+            l += <span class="n">1</span>
+    <span class="k">return</span> best</pre>
+        </figure>
+        <p>Число 0 в <code>best</code> означает «подходящего окна ещё не было»: настоящая длина не меньше 1. Поэтому первая найденная длина записывается без сравнения — условие <code>best == 0</code>. Прогон ниже — на примере из условия LeetCode 209: <code>[2, 3, 1, 2, 4, 3]</code>, порог 7. На шагах 44–47 сумма окна <code>[4, 3]</code> равна порогу точно, и в <code>best</code> попадает ответ 2.</p>
+        <div class="tracer" data-trace="shortest" data-zone="events" data-title="Самый короткий отрезок с суммой не меньше 7"></div>
+        <p>То, что верно после каждого шага, называют инвариантом. Здесь он такой: <code>total</code> всегда равна сумме окна с <code>l</code> по <code>r</code>, а после цикла <code>while</code> эта сумма меньше <code>s</code>. Это ответ на контрольный вопрос КТП: «Какой инвариант остаётся истинным после каждого перемещения границы?»</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Почему проход стоит O(n)</h2>
+        <p>Цикл <code>while</code> стоит внутри цикла <code>for</code>, но время не O(n²). Оценку «цикл в цикле — n²» дают, когда внутренний цикл на каждом повторе внешнего начинается заново. Здесь <code>l</code> между повторами не сбрасывается и только растёт. Правая граница сдвигается n раз, левая — не больше n раз за весь проход. Всего сдвигов не больше <code>2·n</code>.</p>
+        <p>Почему левой границе не нужно возвращаться назад: если она ушла с позиции <code>l</code>, окно с этим началом уже было подходящим, и его длина записана. Любой отрезок с тем же началом и более правым концом длиннее, поэтому ответом быть не может. Здесь используется то, что числа неотрицательные, — об этом §3 главы 10.1.</p>
+        <p>Разница с перебором растёт вместе с длиной списка. Замер на ноутбуке автора, список без подходящего отрезка — худший случай для перебора:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>n</th><th>Перебор, мс</th><th>Окно, мс</th></tr></thead>
+            <tbody>
+              <tr><td>2&nbsp;000</td><td>44,7</td><td>0,04</td></tr>
+              <tr><td>4&nbsp;000</td><td>174,3</td><td>0,08</td></tr>
+              <tr><td>8&nbsp;000</td><td>678,7</td><td>0,17</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>При удвоении n время перебора растёт в 4 раза, время окна — в 2. Скрипт замера <code>bench.py</code> лежит в стартовом наборе, глава 10.5.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Две ошибки в цикле</h2>
+        <p>Обе ошибки меняют одну деталь цикла, и Python выполняет код без исключений. Обе версии запущены на том же примере, что и прогон выше. Верный ответ — 2.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>shortest_window([2, 3, 1, 2, 4, 3], 7)</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>Запись после цикла</button>
+            <button>Строгий знак &gt;</button>
+          </div>
+          <div class="demo__pane">
+            <p>Строки записи длины стоят после цикла <code>while</code>.</p>
+            <div class="tracer tracer--bug" data-trace="bug_after_while" data-zone="events" data-title="запись после while"></div>
+            <p class="demo__verdict"><b>1</b>После цикла сумма окна меньше порога. На шагах 8–9 записывается длина 1 окна <code>[2]</code> с суммой 2, а подходящие окна сжимаются без записи.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Условие цикла: <code>while total &gt; s</code>.</p>
+            <div class="tracer tracer--bug" data-trace="bug_gt" data-zone="events" data-title="while total &gt; s"></div>
+            <p class="demo__verdict"><b>3</b>На шаге 44 сумма окна <code>[4, 3]</code> равна 7, условие <code>7 &gt; 7</code> ложно, и длина 2 не записывается. Интервьюер в главе 10.1 ответил, что сумма ровно s подходит.</p>
+          </div>
+        </div>
+        <p>На списке заказов из главы 10.1 версия со строгим знаком отвечает верно: сумма лучшего отрезка там 32, строго больше порога. Поэтому в тестах нужен пример с суммой точно на пороге.</p>
+
+        <div class="pager"><a href="01-uznat-okno.html">← 10.1 Как узнать задачу</a><a href="03-chastotnaya-karta.html">10.3 Частотная карта →</a></div>
+        <div class="colophon">
+          <span>Модуль 10 · Окно переменного размера · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>
