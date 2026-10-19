@@ -16,6 +16,7 @@
 | ОП.03, сайт для практики | `op03-informacionnye-tehnologii/ga4-analytics-lab/` | `MaximBytecamp/ga4-analytics-lab` |
 | ОП.04 Алгоритмизация | `op04-algoritmizaciya/starter-pack/` | `MaximBytecamp/algo-portfolio-template` |
 | ОП.05 Операционные системы | `op05-operacionnye-sistemy-i-sredy/os-starter/` | `MaximBytecamp/os-environments-template` |
+| ДУП.02 Введение в Python | `dup02-vvedenie-v-python/python-starter/` (собирается скриптом, см. ниже) | `MaximBytecamp/python-start-template` |
 | МДК.01.01 Разработка модулей | `mdk0101-razrabotka-modulei/backend-starter/` | `MaximBytecamp/backend-starter-template` |
 | МДК.04.01 Базы данных | `mdk0401-razrabotka-i-zashchita-baz-dannyh/data-platform-starter/` (вторая копия — `~/data-platform-template`) | `MaximBytecamp/data-platform-template` |
 | Стандартизация | `standartizaciya-sertifikaciya-i-dokumentovedenie/api-standard-template/` | `MaximBytecamp/api-standard-template` |
@@ -45,6 +46,13 @@
 | `.github/pull_request_template.md` | шаблон описания запроса на слияние |
 
 Образец полного состава — `funnel-starter` (ОП.03).
+
+ДУП.02 устроен по-другому: вместо `lesson_NN/` — папки по видам работ `dz/`,
+`praktiki/`, `kontrolnye/`, `zadachnik/glava-N-N/` и конспекты глав справочника
+в `lectures/`. Работы загружаются в `main` без веток и Pull Request (через сайт
+GitHub или Sync Changes в VS Code). Шаблон собирается скриптом
+`~/python-tests-private/python-starter/build.py`: конспекты — `lectures_data.py`,
+списки задач читаются со страниц задачника, разборы главы 1.1 — из `m1.py`.
 
 ## После каждого занятия
 
