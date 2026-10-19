@@ -359,6 +359,83 @@ async def st_checks(e: Editor) -> None:
     await e.shot(f"{RAW}/go-checks.png")
 
 
+
+SNIPPET = """{
+  "Комментарий документации функции": {
+    "scope": "go",
+    "prefix": "docf",
+    "body": [
+      "// ${1:Имя} ${2:действие одним предложением}.",
+      "//",
+      "// ${3:Ограничения параметров. Когда возвращается ошибка: [ErrX].}"
+    ],
+    "description": "Первое предложение с имени, пустая строка, подробности"
+  }
+}
+"""
+
+
+async def st_revive_terminal(e: Editor) -> None:
+    """4.10: revive в терминале на втором архиве."""
+    await reset(e)
+    await open_file(e, "main.go", 4.0)
+    await terminal(e, "revive ./... | sort | head -12", 15.0)
+    await e.palette("View: Toggle Maximized Panel", 1.5)
+    await park(e)
+    await e.shot(f"{RAW}/go-revive-terminal.png")
+    await e.palette("View: Toggle Maximized Panel", 1.0)
+
+
+async def st_snippet(e: Editor) -> None:
+    """4.10: сниппет docf — подсказка и вставленная заготовка."""
+    (project() / ".vscode").mkdir(exist_ok=True)
+    (project() / ".vscode" / "go.code-snippets").write_text(SNIPPET, encoding="utf-8")
+    await reset(e)
+    await open_file(e, "formatter.go", 8.0)
+    line, _ = line_of("internal/utils/formatter.go", "func FormatTitle(")
+    await goto(e, line)
+    await e.key("Home", 0.2)
+    await e.paste("\n", 0.4)
+    await e.key("ArrowUp", 0.3)
+    await e.type("docf", 2.5)
+    await e.shot(f"{RAW}/go-snippet-list.png")
+    await e.key("Enter", 1.5)
+    await e.shot(f"{RAW}/go-snippet-inserted.png")
+    await e.key("Escape", 0.3)
+    await e.palette("File: Revert File", 1.5)
+
+
+async def st_revive_fixed(e: Editor) -> None:
+    """4.10: после комментария у FormatKopeks замечание пропадает."""
+    (project() / ".vscode").mkdir(exist_ok=True)
+    (project() / ".vscode" / "settings.json").write_text(LINT_SETTINGS, encoding="utf-8")
+    await reset(e)
+    await open_file(e, "formatter.go", 8.0)
+    line, _ = line_of("internal/utils/formatter.go", "func FormatKopeks(")
+    await goto(e, line)
+    await e.key("Home", 0.2)
+    await e.paste("\n", 0.4)
+    await e.key("ArrowUp", 0.3)
+    await e.paste("// FormatKopeks переводит сумму в копейках в строку вида «1 250,00 ₽».", 0.6)
+    await e.key("Meta+S", 8.0)
+    await e.palette("View: Focus Problems (Errors, Warnings, Infos)", 2.5)
+    await park(e)
+    await e.shot(f"{RAW}/go-revive-fixed.png")
+    await e.palette("File: Revert File", 1.5)
+    await e.key("Meta+S", 1.0)
+
+
+async def st_docall(e: Editor) -> None:
+    """4.11: go doc -all на третьем архиве."""
+    await reset(e)
+    await open_file(e, "main.go", 4.0)
+    await terminal(e, "go doc -all ./internal/services | head -40", 10.0)
+    await e.palette("View: Toggle Maximized Panel", 1.5)
+    await park(e)
+    await e.shot(f"{RAW}/go-doc-all.png")
+    await e.palette("View: Toggle Maximized Panel", 1.0)
+
+
 STAGES = {name[3:]: fn for name, fn in globals().items() if name.startswith("st_")}
 
 
