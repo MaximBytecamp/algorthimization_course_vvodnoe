@@ -88,7 +88,7 @@ def homework():
             '<li>Напишите <code>postmortem.md</code> из четырёх разделов: симптом, причина, действия, профилактика.</li></ul>'
             '<h3>Порядок сдачи</h3><ul class="hw-rules">'
             '<li><b>Файлы</b><span>папка <code>lesson_06</code> в своём репозитории по шаблону <a href="https://github.com/MaximBytecamp/os-environments-template">os-environments-template</a>: <code>report.md</code>, снимки в <code>screenshots/</code>, <code>postmortem.md</code> практической работы, <code>incident.md</code> со своим инцидентом.</span></li>'
-            '<li><b>Ветка и PR</b><span>ветка <code>hw-06</code>, Pull Request в свою <code>main</code>.</span></li>'
+            '<li><b>Коммит</b><span>прямо в <code>main</code> своего репозитория, отдельная ветка не нужна.</span></li>'
             '<li><b>Срок</b><span>до начала следующего занятия.</span></li>'
             '<li><b>Критерии</b><span>практическая работа — 10 баллов по критериям выше; домашнее задание принимается, если симптом измерен до и после, виновник найден командами и postmortem содержит все четыре раздела.</span></li>'
             '<li><b>ИИ</b><span>нейросеть можно попросить причесать формулировки и оформить таблицы в <code>.md</code> — <mark>я сам так делаю всегда, поэтому и вам запрещать не буду</mark>. Команды и вывод — только из вашей виртуальной машины.</span></li></ul>'
@@ -174,7 +174,7 @@ practice = (f'# Практическая работа № 5 · диагност�
             '## Postmortem\n\nЧетыре раздела в ~/diag-lab/postmortem.md: симптом, причина, действия, профилактика.\n\n'
             '## Оценка · 10 баллов\n\n' + ''.join(f'- {p} — {t}\n' for p, t in CRITERIA)
             + '\n## Домашнее задание\n\nСвой инцидент на виртуальной машине: симптом до и во время, поиск виновника, исправление, повторное измерение; /usr/bin/time -f "%e s, %M KB" для любой программы; postmortem в incident.md.\n'
-            'Сдача: папка lesson_06 в своём репозитории по шаблону https://github.com/MaximBytecamp/os-environments-template, ветка hw-06, Pull Request в main, до начала следующего занятия.\n')
+            'Сдача: папка lesson_06 в своём репозитории по шаблону https://github.com/MaximBytecamp/os-environments-template, коммит в main без отдельной ветки, до начала следующего занятия.\n')
 (B / 'materials/practice.md').write_text(practice)
 
 with zipfile.ZipFile(B / 'materials/diag-lab.zip', 'w', zipfile.ZIP_DEFLATED) as z:

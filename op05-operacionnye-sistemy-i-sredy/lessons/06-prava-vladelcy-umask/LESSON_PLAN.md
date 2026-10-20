@@ -29,7 +29,7 @@
 
 Скрипт perms-lab-check.sh — 14 пунктов, запуск через sudo. Отчёт report.md с 9 снимками.
 10 баллов по пяти критериям. Домашнее задание — таблица прав своего проекта permissions.md.
-Сдача — папка lesson_04 шаблона os-environments-template, ветка hw-04.
+Сдача — папка lesson_04 шаблона os-environments-template, коммит в main без отдельной ветки.
 
 ## Сборка
 

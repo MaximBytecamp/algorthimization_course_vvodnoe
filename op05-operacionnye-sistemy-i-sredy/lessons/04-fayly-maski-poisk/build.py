@@ -89,7 +89,7 @@ def homework():
             '<p>В шпаргалку обязательно входят <code>cp</code>, <code>mv</code>, <code>rm</code>, <code>find</code> с <code>-delete</code>, <code>locate</code>, <code>man -k</code> и одна маска со скобками <code>[ ]</code>. Каждый безопасный пример выполните в своём каталоге <code>~/files-lab</code>: в шпаргалке только проверенные команды.</p>'
             '<h3>Порядок сдачи</h3><ul class="hw-rules">'
             '<li><b>Файлы</b><span>папка <code>lesson_02</code> в своём репозитории по шаблону <a href="https://github.com/MaximBytecamp/os-environments-template">os-environments-template</a>: <code>report.md</code>, 10 снимков в <code>screenshots/</code>, <code>journal.md</code>, <code>answers.txt</code>, <code>cheatsheet.md</code>.</span></li>'
-            '<li><b>Ветка и PR</b><span>ветка <code>hw-02</code>, Pull Request в свою <code>main</code>.</span></li>'
+            '<li><b>Коммит</b><span>прямо в <code>main</code> своего репозитория, отдельная ветка не нужна.</span></li>'
             '<li><b>Срок</b><span>до начала следующего занятия.</span></li>'
             '<li><b>Критерии</b><span>практическая работа — 10 баллов по критериям выше; шпаргалка принимается, если в ней 15 команд и все четыре графы заполнены.</span></li>'
             '<li><b>ИИ</b><span>нейросеть можно попросить причесать формулировки и оформить таблицу в <code>.md</code> — <mark>я сам так делаю всегда, поэтому и вам запрещать не буду</mark>. Команды и результаты — только из вашего терминала.</span></li></ul>'
@@ -176,7 +176,7 @@ practice = (f'# Практическая работа № 3 · {TITLE}\n\nВсе
             '## Оценка · 10 баллов\n\n' + ''.join(f'- {p} — {t}\n' for p, t in CRITERIA)
             + '\n2 — результат получен и объяснён, 1 — результат без объяснения, 0 — нет результата.\n\n'
             '## Домашнее задание\n\nШпаргалка cheatsheet.md: 15 команд занятия; графы — команда, назначение, безопасный пример, опасный вариант и чем он опасен.\n'
-            'Сдача: папка lesson_02 в своём репозитории по шаблону https://github.com/MaximBytecamp/os-environments-template, ветка hw-02, Pull Request в main, до начала следующего занятия.\n')
+            'Сдача: папка lesson_02 в своём репозитории по шаблону https://github.com/MaximBytecamp/os-environments-template, коммит в main без отдельной ветки, до начала следующего занятия.\n')
 (B / 'materials/practice.md').write_text(practice)
 
 with zipfile.ZipFile(B / 'materials/files-lab.zip', 'w', zipfile.ZIP_DEFLATED) as z:

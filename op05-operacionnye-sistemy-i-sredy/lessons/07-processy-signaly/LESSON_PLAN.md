@@ -29,7 +29,7 @@
 
 Скрипт procs-lab-check.sh — 11 пунктов, без sudo. Отчёт report.md с 9 снимками и states.md.
 10 баллов по пяти критериям. Домашнее задание — graceful.sh с trap, опыты TERM и KILL, цепочка pstree -s -p $$.
-Сдача — папка lesson_05 шаблона os-environments-template, ветка hw-05.
+Сдача — папка lesson_05 шаблона os-environments-template, коммит в main без отдельной ветки.
 
 ## Особенность набора
 

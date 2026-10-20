@@ -40,4 +40,4 @@
 ## Домашнее задание
 
 Составьте таблицу каталогов для службы backup-agent: программа, настройки, журнал, список копий, номер процесса.
-Сдача: папка lesson_01 в своём репозитории по шаблону https://github.com/MaximBytecamp/os-environments-template, ветка hw-01, Pull Request в main, до начала следующего занятия.
+Сдача: папка lesson_01 в своём репозитории по шаблону https://github.com/MaximBytecamp/os-environments-template, коммит в main без отдельной ветки, до начала следующего занятия.

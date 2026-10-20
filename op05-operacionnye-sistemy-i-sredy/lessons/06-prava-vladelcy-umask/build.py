@@ -86,7 +86,7 @@ def homework():
             '<li>Где в проекте нужен sticky-бит или запись ACL, и почему без неё нельзя обойтись. Если нигде — объясните, почему.</li></ul>'
             '<h3>Порядок сдачи</h3><ul class="hw-rules">'
             '<li><b>Файлы</b><span>папка <code>lesson_04</code> в своём репозитории по шаблону <a href="https://github.com/MaximBytecamp/os-environments-template">os-environments-template</a>: <code>report.md</code>, снимки в <code>screenshots/</code>, <code>permissions.md</code>.</span></li>'
-            '<li><b>Ветка и PR</b><span>ветка <code>hw-04</code>, Pull Request в свою <code>main</code>.</span></li>'
+            '<li><b>Коммит</b><span>прямо в <code>main</code> своего репозитория, отдельная ветка не нужна.</span></li>'
             '<li><b>Срок</b><span>до начала следующего занятия.</span></li>'
             '<li><b>Критерии</b><span>практическая работа — 10 баллов по критериям выше; таблица прав принимается, если для всех шести объектов права записаны двумя способами и объяснены.</span></li>'
             '<li><b>ИИ</b><span>нейросеть можно попросить причесать формулировки и оформить таблицы в <code>.md</code> — <mark>я сам так делаю всегда, поэтому и вам запрещать не буду</mark>. Команды и вывод — только из вашей виртуальной машины.</span></li></ul>'
@@ -173,7 +173,7 @@ practice = (f'# Практическая работа · каталог прое
             '## Оценка · 10 баллов\n\n' + ''.join(f'- {p} — {t}\n' for p, t in CRITERIA)
             + '\n## Уборка\n\n```bash\nsudo rm -r /srv/shop /srv/shared   # после проверки содержимого\nfor u in alex bella chris; do sudo userdel -r $u; done\nsudo groupdel shop-dev\n```\n\n'
             '## Домашнее задание\n\nТаблица прав своего проекта permissions.md: шесть объектов, права буквами и числом, umask команды, где нужен sticky-бит или ACL.\n'
-            'Сдача: папка lesson_04 в своём репозитории по шаблону https://github.com/MaximBytecamp/os-environments-template, ветка hw-04, Pull Request в main, до начала следующего занятия.\n')
+            'Сдача: папка lesson_04 в своём репозитории по шаблону https://github.com/MaximBytecamp/os-environments-template, коммит в main без отдельной ветки, до начала следующего занятия.\n')
 (B / 'materials/practice.md').write_text(practice)
 
 with zipfile.ZipFile(B / 'materials/perms-lab.zip', 'w', zipfile.ZIP_DEFLATED) as z:

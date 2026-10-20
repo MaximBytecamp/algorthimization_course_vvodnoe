@@ -85,7 +85,7 @@ def homework():
             '<li>Выведите цепочку процессов от PID 1 до своей оболочки командой <code>pstree -s -p $$</code> и подпишите каждое звено: что это за программа.</li></ul>'
             '<h3>Порядок сдачи</h3><ul class="hw-rules">'
             '<li><b>Файлы</b><span>папка <code>lesson_05</code> в своём репозитории по шаблону <a href="https://github.com/MaximBytecamp/os-environments-template">os-environments-template</a>: <code>report.md</code>, снимки в <code>screenshots/</code>, <code>states.md</code>, <code>graceful.sh</code>, <code>processes.md</code>.</span></li>'
-            '<li><b>Ветка и PR</b><span>ветка <code>hw-05</code>, Pull Request в свою <code>main</code>.</span></li>'
+            '<li><b>Коммит</b><span>прямо в <code>main</code> своего репозитория, отдельная ветка не нужна.</span></li>'
             '<li><b>Срок</b><span>до начала следующего занятия.</span></li>'
             '<li><b>Критерии</b><span>практическая работа — 10 баллов по критериям выше; домашнее задание принимается, если скрипт удаляет файл на TERM и оба запуска показаны снимками с кодами завершения.</span></li>'
             '<li><b>ИИ</b><span>нейросеть можно попросить причесать формулировки и оформить таблицы в <code>.md</code> — <mark>я сам так делаю всегда, поэтому и вам запрещать не буду</mark>. Команды и вывод — только из вашей виртуальной машины.</span></li></ul>'
@@ -170,7 +170,7 @@ practice = (f'# Практическая работа · диспетчер пр
             + '\nПроверка: `bash ~/Downloads/procs-lab-check.sh`\n\n'
             '## Оценка · 10 баллов\n\n' + ''.join(f'- {p} — {t}\n' for p, t in CRITERIA)
             + '\n## Домашнее задание\n\nСкрипт graceful.sh: на TERM удаляет свой временный файл и выходит с кодом 0; опыты с TERM и KILL с кодами завершения; цепочка pstree -s -p $$ с подписями в processes.md.\n'
-            'Сдача: папка lesson_05 в своём репозитории по шаблону https://github.com/MaximBytecamp/os-environments-template, ветка hw-05, Pull Request в main, до начала следующего занятия.\n')
+            'Сдача: папка lesson_05 в своём репозитории по шаблону https://github.com/MaximBytecamp/os-environments-template, коммит в main без отдельной ветки, до начала следующего занятия.\n')
 (B / 'materials/practice.md').write_text(practice)
 
 with zipfile.ZipFile(B / 'materials/procs-lab.zip', 'w', zipfile.ZIP_DEFLATED) as z:

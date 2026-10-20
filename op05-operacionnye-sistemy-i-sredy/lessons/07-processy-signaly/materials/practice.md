@@ -27,4 +27,4 @@
 ## Домашнее задание
 
 Скрипт graceful.sh: на TERM удаляет свой временный файл и выходит с кодом 0; опыты с TERM и KILL с кодами завершения; цепочка pstree -s -p $$ с подписями в processes.md.
-Сдача: папка lesson_05 в своём репозитории по шаблону https://github.com/MaximBytecamp/os-environments-template, ветка hw-05, Pull Request в main, до начала следующего занятия.
+Сдача: папка lesson_05 в своём репозитории по шаблону https://github.com/MaximBytecamp/os-environments-template, коммит в main без отдельной ветки, до начала следующего занятия.

@@ -41,4 +41,4 @@ cd ~/files-lab/inbox
 ## Домашнее задание
 
 Шпаргалка cheatsheet.md: 15 команд занятия; графы — команда, назначение, безопасный пример, опасный вариант и чем он опасен.
-Сдача: папка lesson_02 в своём репозитории по шаблону https://github.com/MaximBytecamp/os-environments-template, ветка hw-02, Pull Request в main, до начала следующего занятия.
+Сдача: папка lesson_02 в своём репозитории по шаблону https://github.com/MaximBytecamp/os-environments-template, коммит в main без отдельной ветки, до начала следующего занятия.

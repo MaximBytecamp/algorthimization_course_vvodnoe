@@ -36,4 +36,4 @@ sudo groupdel shop-dev
 ## Домашнее задание
 
 Таблица прав своего проекта permissions.md: шесть объектов, права буквами и числом, umask команды, где нужен sticky-бит или ACL.
-Сдача: папка lesson_04 в своём репозитории по шаблону https://github.com/MaximBytecamp/os-environments-template, ветка hw-04, Pull Request в main, до начала следующего занятия.
+Сдача: папка lesson_04 в своём репозитории по шаблону https://github.com/MaximBytecamp/os-environments-template, коммит в main без отдельной ветки, до начала следующего занятия.

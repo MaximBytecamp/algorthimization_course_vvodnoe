@@ -31,4 +31,4 @@
 ## Домашнее задание
 
 Свой инцидент на виртуальной машине: симптом до и во время, поиск виновника, исправление, повторное измерение; /usr/bin/time -f "%e s, %M KB" для любой программы; postmortem в incident.md.
-Сдача: папка lesson_06 в своём репозитории по шаблону https://github.com/MaximBytecamp/os-environments-template, ветка hw-06, Pull Request в main, до начала следующего занятия.
+Сдача: папка lesson_06 в своём репозитории по шаблону https://github.com/MaximBytecamp/os-environments-template, коммит в main без отдельной ветки, до начала следующего занятия.
