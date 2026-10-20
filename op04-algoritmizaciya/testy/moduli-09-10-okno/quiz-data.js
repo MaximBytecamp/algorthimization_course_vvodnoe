@@ -103,8 +103,9 @@ const QUIZ = {
    "id": "q05",
    "topic": "9.4 · граничные значения k",
    "type": "multi",
-   "text": "Первая строка функции <code>best_window(nums, k)</code> проверяет вход: <code>if k &lt; 1 or k &gt; len(nums): raise ValueError(...)</code>.",
+   "text": "Ниже функция <code>best_window(nums, k)</code> из главы 9.2. Первые две строки тела проверяют вход.",
    "task": "Отметьте все вызовы, которые закончатся исключением <code>ValueError</code>.",
+   "code": "def best_window(nums, k):\n    if k < 1 or k > len(nums):\n        raise ValueError(\"k должно быть от 1 до len(nums)\")\n    total = sum(nums[:k])\n    best, start = total, 0\n    for r in range(k, len(nums)):\n        total += nums[r] - nums[r - k]\n        if total > best:\n            best, start = total, r - k + 1\n    return (start, best)",
    "options": [
     "<code>best_window([4, 1], 2)</code>",
     "<code>best_window([4, 1], 0)</code>",
@@ -134,8 +135,9 @@ const QUIZ = {
    "id": "q08",
    "topic": "9.2–10.3 · время работы",
    "type": "sort",
-   "text": "n — длина списка или строки. Функции max_events, shortest_window и longest_unique — из глав модулей 9 и 10.",
+   "text": "n — длина списка или строки. Ниже код трёх функций из глав модулей 9 и 10: max_events, shortest_window и longest_unique. Остальные способы описаны в карточках.",
    "task": "Разложите способы по времени работы.",
+   "code": "def max_events(times, w):\n    if w <= 0:\n        raise ValueError(\"w должно быть больше 0\")\n    best = 0\n    l = 0\n    for r in range(len(times)):\n        while times[r] - times[l] >= w:\n            l += 1\n        best = max(best, r - l + 1)\n    return best\n\n\ndef shortest_window(nums, s):\n    if s < 1:\n        raise ValueError(\"s должно быть не меньше 1\")\n    best = 0\n    total = 0\n    l = 0\n    for r in range(len(nums)):\n        total += nums[r]\n        while total >= s:\n            length = r - l + 1\n            if best == 0 or length < best:\n                best = length\n            total -= nums[l]\n            l += 1\n    return best\n\n\ndef longest_unique(text):\n    count = {}\n    best = 0\n    l = 0\n    for r in range(len(text)):\n        ch = text[r]\n        count[ch] = count.get(ch, 0) + 1\n        while count[ch] > 1:\n            count[text[l]] -= 1\n            l += 1\n        best = max(best, r - l + 1)\n    return best",
    "items": [
     "Суммы всех окон срезами при k = n / 2",
     "Суммы всех окон сдвигом при любом k",
@@ -156,6 +158,7 @@ const QUIZ = {
    "type": "single",
    "text": "Функция <code>shortest_window(nums, s)</code> ищет самый короткий отрезок с суммой не меньше s. По контракту числа в списке неотрицательные.",
    "task": "Выберите, почему на списке с отрицательными числами эта функция может вернуть неверный ответ.",
+   "code": "def shortest_window(nums, s):\n    if s < 1:\n        raise ValueError(\"s должно быть не меньше 1\")\n    best = 0\n    total = 0\n    l = 0\n    for r in range(len(nums)):\n        total += nums[r]\n        while total >= s:\n            length = r - l + 1\n            if best == 0 or length < best:\n                best = length\n            total -= nums[l]\n            l += 1\n    return best",
    "options": [
     "Сжатие останавливается, хотя уход ещё одного элемента снова увеличил бы сумму",
     "Сумма отрицательных чисел в переменной total переполняется на длинных списках",
@@ -267,6 +270,7 @@ const QUIZ = {
    "type": "sort",
    "text": "В <code>shortest_window</code> ищется самый короткий отрезок с суммой не меньше s, в <code>longest_unique</code> — самая длинная подстрока без повторов. Проход в обеих функциях одинаковый, отличаются условие цикла while, место записи длины и сравнение с лучшей.",
    "task": "Разложите утверждения по функциям, к которым они относятся.",
+   "code": "def shortest_window(nums, s):\n    if s < 1:\n        raise ValueError(\"s должно быть не меньше 1\")\n    best = 0\n    total = 0\n    l = 0\n    for r in range(len(nums)):\n        total += nums[r]\n        while total >= s:\n            length = r - l + 1\n            if best == 0 or length < best:\n                best = length\n            total -= nums[l]\n            l += 1\n    return best\n\n\ndef longest_unique(text):\n    count = {}\n    best = 0\n    l = 0\n    for r in range(len(text)):\n        ch = text[r]\n        count[ch] = count.get(ch, 0) + 1\n        while count[ch] > 1:\n            count[text[l]] -= 1\n            l += 1\n        best = max(best, r - l + 1)\n    return best",
    "items": [
     "Окно сжимают, пока оно подходит",
     "Окно сжимают, пока оно недопустимо",
@@ -286,6 +290,7 @@ const QUIZ = {
    "type": "number",
    "text": "Функцию <code>shortest_window</code> вызвали на списке из 50 чисел. В ней цикл while стоит внутри цикла for. Правая граница сдвигается на каждом шаге for, левая — строкой <code>l += 1</code>.",
    "task": "Введите наибольшее возможное число сдвигов обеих границ вместе за один вызов.",
+   "code": "def shortest_window(nums, s):\n    if s < 1:\n        raise ValueError(\"s должно быть не меньше 1\")\n    best = 0\n    total = 0\n    l = 0\n    for r in range(len(nums)):\n        total += nums[r]\n        while total >= s:\n            length = r - l + 1\n            if best == 0 or length < best:\n                best = length\n            total -= nums[l]\n            l += 1\n    return best",
    "unit": "сдвигов"
   },
   {
@@ -294,6 +299,7 @@ const QUIZ = {
    "type": "single",
    "text": "Инвариант — утверждение, которое остаётся верным после каждого шага алгоритма. В <code>shortest_window</code> окно — элементы с индекса l по индекс r.",
    "task": "Выберите утверждение, которое верно каждый раз, когда завершился цикл while.",
+   "code": "def shortest_window(nums, s):\n    if s < 1:\n        raise ValueError(\"s должно быть не меньше 1\")\n    best = 0\n    total = 0\n    l = 0\n    for r in range(len(nums)):\n        total += nums[r]\n        while total >= s:\n            length = r - l + 1\n            if best == 0 or length < best:\n                best = length\n            total -= nums[l]\n            l += 1\n    return best",
    "options": [
     "total равна сумме окна с l по r, и эта сумма меньше s",
     "total равна сумме окна с l по r, и эта сумма не меньше s",
@@ -305,8 +311,9 @@ const QUIZ = {
    "id": "q21",
    "topic": "10.4 · граничные входы",
    "type": "sort",
-   "text": "Функции <code>shortest_window</code> и <code>longest_unique</code> написаны по контракту модуля 10:<ul><li>порог s меньше 1 — исключение ValueError;</li><li>подходящего отрезка нет — ответ 0;</li><li>пустая строка — ответ 0.</li></ul>",
+   "text": "Ниже функции <code>shortest_window</code> и <code>longest_unique</code>, написанные по контракту модуля 10:<ul><li>порог s меньше 1 — исключение ValueError;</li><li>подходящего отрезка нет — ответ 0;</li><li>пустая строка — ответ 0.</li></ul>",
    "task": "Разложите вызовы по результату.",
+   "code": "def shortest_window(nums, s):\n    if s < 1:\n        raise ValueError(\"s должно быть не меньше 1\")\n    best = 0\n    total = 0\n    l = 0\n    for r in range(len(nums)):\n        total += nums[r]\n        while total >= s:\n            length = r - l + 1\n            if best == 0 or length < best:\n                best = length\n            total -= nums[l]\n            l += 1\n    return best\n\n\ndef longest_unique(text):\n    count = {}\n    best = 0\n    l = 0\n    for r in range(len(text)):\n        ch = text[r]\n        count[ch] = count.get(ch, 0) + 1\n        while count[ch] > 1:\n            count[text[l]] -= 1\n            l += 1\n        best = max(best, r - l + 1)\n    return best",
    "items": [
     "shortest_window([1, 2], 0)",
     "shortest_window([], 5)",
@@ -334,8 +341,9 @@ const QUIZ = {
    "id": "q23",
    "topic": "10.4 · тесты к ошибке",
    "type": "multi",
-   "text": "В <code>shortest_window</code> вместо <code>while total &gt;= s:</code> записано <code>while total &gt; s:</code>. Остальные строки верные. Ниже тесты к функции, в каждом записан верный ответ.",
+   "text": "В этой версии <code>shortest_window</code> вместо <code>while total &gt;= s:</code> записано <code>while total &gt; s:</code>, остальные строки верные. В вариантах ответа — тесты к функции, в каждом записан верный ответ.",
    "task": "Отметьте все тесты, которые упадут на этой версии.",
+   "code": "def shortest_window(nums, s):\n    if s < 1:\n        raise ValueError(\"s должно быть не меньше 1\")\n    best = 0\n    total = 0\n    l = 0\n    for r in range(len(nums)):\n        total += nums[r]\n        while total > s:\n            length = r - l + 1\n            if best == 0 or length < best:\n                best = length\n            total -= nums[l]\n            l += 1\n    return best",
    "options": [
     "<code>assert shortest_window([2, 3, 1, 2, 4, 3], 7) == 2</code>",
     "<code>assert shortest_window([1, 1, 1], 5) == 0</code>",
@@ -359,6 +367,7 @@ const QUIZ = {
    "type": "single",
    "text": "На собеседовании по <code>longest_unique</code> интервьюер спрашивает: почему после прихода символа ch проверяется только <code>count[ch] &gt; 1</code>, а счётчики остальных символов окна не проверяются?",
    "task": "Выберите ответ, который объясняет это верно.",
+   "code": "def longest_unique(text):\n    count = {}\n    best = 0\n    l = 0\n    for r in range(len(text)):\n        ch = text[r]\n        count[ch] = count.get(ch, 0) + 1\n        while count[ch] > 1:\n            count[text[l]] -= 1\n            l += 1\n        best = max(best, r - l + 1)\n    return best",
    "options": [
     "До прихода ch повторов в окне не было, и меняется только счётчик ch",
     "Словарь count хранит счётчик только последнего пришедшего символа",
