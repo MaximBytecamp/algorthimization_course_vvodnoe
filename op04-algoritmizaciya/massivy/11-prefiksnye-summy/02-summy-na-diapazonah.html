@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>11.2 Префиксная сумма: сервис сумм на диапазонах · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 11 · Префиксные суммы · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 11 · префиксные суммы</p>
+          <p class="running__folio">Глава 11.2</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">11.2</span>
+          <h1>Префиксная сумма:<br>сервис сумм на диапазонах</h1>
+          <p class="lead">В этой главе префиксные суммы разобраны на первой задаче КТП — сервисе, который отвечает на много запросов суммы. Сначала идея и подсчёт руками, затем код с пошаговым прогоном, оценка O(n + q), две ошибки в индексах и короткий обзор двумерного случая.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Идея: показания счётчика</a></li>
+            <li><a href="#s2">Почему ячеек n + 1</a></li>
+            <li><a href="#s3">Код и пошаговый прогон</a></li>
+            <li><a href="#s4">Почему время O(n + q)</a></li>
+            <li><a href="#s5">Две ошибки в индексах</a></li>
+            <li><a href="#s6">Двумерный случай: обзор</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Идея: показания счётчика</h2>
+        <p>Счётчик воды в квартире не хранит расход по дням. Он показывает одно число — сколько воды прошло с момента установки. Чтобы узнать расход за неделю, из показания в конце недели вычитают показание в её начале.</p>
+        <p>Список <code>prefix</code> — такой счётчик для списка чисел. В ячейке <code>prefix[i]</code> лежит сумма первых i чисел: <code>nums[0]</code>, …, <code>nums[i − 1]</code>. Сумма участка <code>[l, r)</code> — показание в r минус показание в l:</p>
+        <figure class="code">
+          <figcaption><span>почему вычитание даёт сумму участка</span><span>запрос [l, r)</span></figcaption>
+<pre>prefix[r] = nums[0] + … + nums[l − 1] + nums[l] + … + nums[r − 1]
+prefix[l] = nums[0] + … + nums[l − 1]
+
+prefix[r] − prefix[l] =                 nums[l] + … + nums[r − 1]</pre>
+        </figure>
+        <p>Числа левее участка входят в обе суммы и при вычитании сокращаются. Каждая ячейка <code>prefix</code> получается из предыдущей одним сложением: <code>prefix[i + 1] = prefix[i] + nums[i]</code>.</p>
+        <p>Посчитайте <code>prefix</code> для журнала склада из главы 11.1, затем ответьте на три запроса. Для ответа щёлкните две ячейки <code>prefix</code>: сначала ту, из которой вычитают, затем ту, которую вычитают.</p>
+        <div class="prefhand" data-a="[5,-2,7,-4,3,6,-1,2]" data-q="[[2,5],[0,3],[4,8]]"></div>
+        <p>На подготовку ушло 8 сложений, на каждый запрос — одно вычитание. Перебор на эти три запроса сложил бы 3 + 3 + 4 = 10 чисел.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Почему ячеек n + 1</h2>
+        <p>У списка из n чисел n + 1 префикс: сумма нуля чисел, одного, двух, …, всех n. Ячейка <code>prefix[0] = 0</code> нужна для участков, которые начинаются с первого дня. Запрос <code>(0, 3)</code> считается по той же формуле: <code>prefix[3] − prefix[0] = 10 − 0</code>. Без этой ячейки начало списка пришлось бы обрабатывать отдельным условием, а пропуск такого условия в Python не вызывает ошибку. Это видно в §5.</p>
+        <p>Полуинтервал <code>[l, r)</code> выбран по той же причине, что в <code>range</code> и срезах Python. Длина участка равна <code>r − l</code>, пустой участок записывается как <code>l = r</code>, а два соседних участка <code>[a, b)</code> и <code>[b, c)</code> вместе дают <code>[a, c)</code> без пропусков и наложений.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Код и пошаговый прогон</h2>
+        <p>Функция состоит из двух циклов. Первый один раз строит <code>prefix</code>. Второй идёт по запросам: проверяет границы и записывает разность двух ячеек. Напишите функцию сами — тесты проверяют её на примере из главы 11.1, на неверных запросах и сравнивают с перебором на двухстах случайных списках.</p>
+        <div class="sandbox" data-title="Напишите range_sums сами" data-call="print(range_sums([5, -2, 7, -4, 3, 6, -1, 2], [(2, 5), (0, 8), (3, 3)]))">
+<script type="text/plain" class="sandbox__start">
+def range_sums(nums, queries):
+    prefix = [0] * (len(nums) + 1)
+    # Заполните prefix: prefix[i + 1] = prefix[i] + nums[i].
+    answers = []
+    for l, r in queries:
+        # Проверьте границы запроса и добавьте в answers сумму nums[l:r].
+        pass
+    return answers
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """журнал склада, три запроса"""
+    r = range_sums([5, -2, 7, -4, 3, 6, -1, 2], [(2, 5), (0, 8), (3, 3)])
+    assert r == [6, 16, 0], f"ожидалось [6, 16, 0], получено {r!r}"
+
+def test_from_start():
+    """запрос с начала списка"""
+    r = range_sums([5, -2, 7, -4, 3, 6, -1, 2], [(0, 3)])
+    assert r == [10], f"ожидалось [10], получено {r!r}"
+
+def test_empty_list():
+    """пустой список, пустой запрос"""
+    r = range_sums([], [(0, 0)])
+    assert r == [0], f"ожидалось [0], получено {r!r}"
+
+def test_bad_queries():
+    """l > r, l < 0, r > len(nums) — ValueError"""
+    for q in [(3, 2), (-1, 2), (0, 9)]:
+        try:
+            range_sums([5, -2, 7, -4, 3, 6, -1, 2], [q])
+        except ValueError:
+            continue
+        assert False, f"запрос {q}: ожидалась ValueError"
+
+def test_matches_brute():
+    """200 случайных списков: ответы совпадают с перебором"""
+    import random
+    rnd = random.Random(112)
+    for _ in range(200):
+        nums = [rnd.randint(-9, 9) for _ in range(rnd.randint(0, 12))]
+        qs = []
+        for _ in range(rnd.randint(0, 6)):
+            l = rnd.randint(0, len(nums))
+            qs.append((l, rnd.randint(l, len(nums))))
+        want = [sum(nums[l:r]) for l, r in qs]
+        got = range_sums(nums, qs)
+        assert got == want, f"nums = {nums}, queries = {qs}: ожидалось {want}, получено {got}"
+</script>
+</div>
+        <details class="pyhint"><summary>Python в этой строке: <code>for l, r in queries:</code></summary><div><p>Каждый запрос — пара чисел. Если перед <code>in</code> записать две переменные через запятую, Python на каждом шаге раскладывает пару по ним: первое число попадает в <code>l</code>, второе — в <code>r</code>.</p><pre>&gt;&gt;&gt; queries = [(2, 5), (0, 8)]
+&gt;&gt;&gt; for l, r in queries:
+...     print(l, r)
+...
+2 5
+0 8</pre></div></details>
+        <details class="pyhint"><summary>Python в этой строке: <code>if not 0 &lt;= l &lt;= r &lt;= len(nums):</code></summary><div><p>Сравнения можно записывать цепочкой. Запись <code>0 &lt;= l &lt;= r &lt;= len(nums)</code> означает «<code>0 &lt;= l</code>, и <code>l &lt;= r</code>, и <code>r &lt;= len(nums)</code>». <code>not</code> переворачивает результат: условие истинно, когда хотя бы одно сравнение нарушено.</p><pre>&gt;&gt;&gt; nums = [5, -2, 7]
+&gt;&gt;&gt; l, r = 1, 3
+&gt;&gt;&gt; 0 &lt;= l &lt;= r &lt;= len(nums)
+True
+&gt;&gt;&gt; l, r = 3, 1
+&gt;&gt;&gt; 0 &lt;= l &lt;= r &lt;= len(nums)
+False</pre></div></details>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n + q) · память O(n)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">range_sums</span>(nums, queries):
+    prefix = [<span class="n">0</span>] * (<span class="k">len</span>(nums) + <span class="n">1</span>)
+    <span class="k">for</span> i <span class="k">in</span> <span class="k">range</span>(<span class="k">len</span>(nums)):
+        prefix[i + <span class="n">1</span>] = prefix[i] + nums[i]
+    answers = []
+    <span class="k">for</span> l, r <span class="k">in</span> queries:
+        <span class="k">if</span> <span class="k">not</span> <span class="n">0</span> &lt;= l &lt;= r &lt;= <span class="k">len</span>(nums):
+            <span class="k">raise</span> ValueError(<span class="s">"нужно 0 &lt;= l &lt;= r &lt;= len(nums)"</span>)
+        answers.append(prefix[r] - prefix[l])
+    <span class="k">return</span> answers</pre>
+        </figure>
+        <p>Прогон ниже — на журнале склада с тремя запросами: участок <code>(2, 5)</code>, весь журнал <code>(0, 8)</code> и пустой участок <code>(3, 3)</code>. На ленте показан список <code>prefix</code>. На шагах 2–17 он заполняется слева направо, на шагах 21–28 подсвечены две ячейки, которые вычитаются для текущего запроса.</p>
+        <div class="tracer" data-trace="range" data-zone="prefix" data-title="Сервис сумм на диапазонах"></div>
+        <p>То, что верно после каждого шага, называют инвариантом. При подготовке он такой: после шага с индексом i в <code>prefix[i + 1]</code> лежит сумма первых i + 1 чисел. Когда цикл закончен, это верно для всех ячеек, и формула из §1 работает для любого запроса.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Почему время O(n + q)</h2>
+        <p>Подготовка — n сложений. Каждый запрос — одна проверка границ и одно вычитание, на q запросов это O(q). Всего O(n + q). Память — O(n) на список <code>prefix</code>. Перебор на каждый запрос складывает до n чисел, всего O(n·q).</p>
+        <p>Замер на ноутбуке автора: n чисел и столько же запросов, каждый запрос — весь список. Это худший случай для перебора.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>n = q</th><th>Перебор, мс</th><th>Префиксы, мс</th></tr></thead>
+            <tbody>
+              <tr><td>1&nbsp;000</td><td>18,6</td><td>0,06</td></tr>
+              <tr><td>2&nbsp;000</td><td>81,5</td><td>0,12</td></tr>
+              <tr><td>4&nbsp;000</td><td>311,4</td><td>0,28</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Когда n и q удваиваются, время перебора растёт примерно в 4 раза, время префиксов — примерно в 2. Скрипт замера будет в стартовом наборе, глава 11.5.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Две ошибки в индексах</h2>
+        <p>Обе ошибки меняют одну строку, и на первом запросе прогона ни одна не вызывает исключения. Обе версии запущены на журнале склада с запросами <code>(2, 5)</code> и <code>(0, 3)</code>. Верный ответ — <code>[6, 10]</code>.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>range_sums(журнал, [(2, 5), (0, 3)])</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>Без нулевой ячейки</button>
+            <button>Правый конец включён</button>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>prefix</code> n ячеек, <code>prefix[i]</code> — сумма чисел с 0 по i включительно. Ответ — <code>prefix[r - 1] - prefix[l - 1]</code>.</p>
+            <div class="tracer tracer--bug" data-trace="bug_no_zero" data-zone="prefix" data-title="без prefix[0] = 0"></div>
+            <p class="demo__verdict"><b>[6, -6]</b>На запрос <code>(2, 5)</code> ответ верный. На шаге 24 при l = 0 индекс <code>l − 1</code> равен −1, а <code>prefix[-1]</code> в Python — последняя ячейка, сумма всего журнала. Исключения нет, ответ неверный.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Ответ — <code>prefix[r + 1] - prefix[l]</code>, как будто день r входит в запрос.</p>
+            <div class="tracer tracer--bug" data-trace="bug_r_incl" data-zone="prefix" data-title="prefix[r + 1] − prefix[l]"></div>
+            <p class="demo__verdict"><b>[12, 6]</b>В каждый ответ попадает лишнее число <code>nums[r]</code>. На запросе <code>(0, 8)</code> эта версия упала бы с <code>IndexError</code>: ячейки <code>prefix[9]</code> нет.</p>
+          </div>
+        </div>
+        <p>Первая ошибка видна только на запросе с начала списка, поэтому в тестах нужен запрос с <code>l = 0</code>. Вторая ошибка — несогласованная индексация. В LeetCode 303 правый конец запроса включён, и там <code>prefix[right + 1] - prefix[left]</code> — верная формула. Поэтому в §4 главы 11.1 первым делом выясняли, входит ли день r в запрос.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Двумерный случай: обзор</h2>
+        <p>Та же идея работает для таблицы. В <code>p[i][j]</code> лежит сумма прямоугольника из первых i строк и первых j столбцов. Сумма прямоугольника со строками <code>[r1, r2)</code> и столбцами <code>[c1, c2)</code> получается из четырёх ячеек: из большого прямоугольника вычитают полосу сверху и полосу слева. Угол <code>p[r1][c1]</code> при этом вычтен дважды, его прибавляют обратно.</p>
+        <figure class="code">
+          <figcaption><span>двумерные префиксные суммы</span><span>подготовка O(строк · столбцов) · запрос O(1)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">build_prefix_2d</span>(grid):
+    rows, cols = <span class="k">len</span>(grid), <span class="k">len</span>(grid[<span class="n">0</span>]) <span class="k">if</span> grid <span class="k">else</span> <span class="n">0</span>
+    p = [[<span class="n">0</span>] * (cols + <span class="n">1</span>) <span class="k">for</span> _ <span class="k">in</span> <span class="k">range</span>(rows + <span class="n">1</span>)]
+    <span class="k">for</span> i <span class="k">in</span> <span class="k">range</span>(rows):
+        <span class="k">for</span> j <span class="k">in</span> <span class="k">range</span>(cols):
+            p[i + <span class="n">1</span>][j + <span class="n">1</span>] = p[i][j + <span class="n">1</span>] + p[i + <span class="n">1</span>][j] - p[i][j] + grid[i][j]
+    <span class="k">return</span> p
+
+
+<span class="k">def</span> <span class="f">rect_sum</span>(p, r1, c1, r2, c2):
+    <span class="k">return</span> p[r2][c2] - p[r1][c2] - p[r2][c1] + p[r1][c1]</pre>
+        </figure>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; grid = [[3, 0, 1, 4], [5, 6, 3, 2], [1, 2, 0, 1]]
+&gt;&gt;&gt; p = build_prefix_2d(grid)
+&gt;&gt;&gt; p
+[[0, 0, 0, 0, 0], [0, 3, 3, 4, 8], [0, 8, 14, 18, 24], [0, 9, 17, 21, 28]]
+&gt;&gt;&gt; rect_sum(p, 1, 1, 3, 3)
+11</pre>
+        </figure>
+        <p>Прямоугольник со строками 1–2 и столбцами 1–2 — числа 6, 3, 2 и 0, их сумма 11. Так решается задача LeetCode 304. В КТП двумерный случай дан обзором, задач на него в модуле нет.</p>
+
+        <div class="pager"><a href="01-uznat-zadachu.html">← 11.1 Как узнать задачу</a><a href="../index.html">К оглавлению книги →</a></div>
+        <div class="colophon">
+          <span>Модуль 11 · Префиксные суммы · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>

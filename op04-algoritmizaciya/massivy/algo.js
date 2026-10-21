@@ -36,7 +36,8 @@
      between — вне [i, j] бледно; rw — [0, w) готово, [w, r) мусор;
      compress — то же, что rw, но граница чтения — start;
      window — окно длины k модуля 9 (см. ниже);
-     events — события во временном окне: левее l бледно, с l по r — окно. */
+     events — события во временном окне: левее l бледно, с l по r — окно;
+     prefix — список prefix модуля 11 (см. ниже). */
   document.querySelectorAll('.tracer[data-trace]').forEach(root => {
     const t = (window.TRACES || {})[root.dataset.trace];
     if (!t) { root.innerHTML = '<p style="padding:14px">Прогон не загружен.</p>'; return; }
@@ -119,6 +120,12 @@
             const rr = num(f, 'r'), ll = num(f, 'l');
             if (ll !== null && k < ll) return 'is-out';
             if (ll !== null && rr !== null && k >= ll && k <= rr) return 'is-win';
+          }
+          if (zone === 'prefix') {
+            // Префиксы модуля 11: при ответе на запрос подсвечены prefix[l] и prefix[r].
+            // При подготовке записанная ячейка видна по вспышке.
+            const ll = num(f, 'l'), rr = num(f, 'r');
+            if (ll !== null && rr !== null) return (k === ll || k === rr) ? 'is-hot' : '';
           }
           if (zone === 'window') {
             // Окно модуля 9: при r — окно после сдвига [r − len + 1, r], ушедший r − len;
@@ -1013,6 +1020,195 @@
       if (b.dataset.act === 'shrink') shrink();
       if (b.dataset.act === 'reset') reset();
     });
+    reset();
+  });
+
+  /* ── 9е. Запросы на диапазоне ─────────────────────────────────── */
+  /* data-a — список целых чисел, data-l и data-r — первый запрос.
+     Запрос — полуинтервал [l, r), сумма nums[l:r]. Под списком — prefix
+     из n + 1 ячейки. Каждое изменение границы — новый запрос: счётчики
+     показывают, сколько сложений сделал бы перебор и сколько вычитаний
+     нужно префиксам. Кнопка серии добавляет 100 случайных запросов. */
+  const minus = x => String(x).replace('-', '−');
+  const signed = xs => xs.length ? xs.map((x, k) => k === 0 ? minus(x) : x < 0 ? `− ${-x}` : `+ ${x}`).join(' ') : '0';
+  const plural = (c, one, few, many) => c % 10 === 1 && c % 100 !== 11 ? one : c % 10 >= 2 && c % 10 <= 4 && (c % 100 < 12 || c % 100 > 14) ? few : many;
+  const prefixOf = a => a.reduce((p, x) => (p.push(p[p.length - 1] + x), p), [0]);
+
+  document.querySelectorAll('.prefix').forEach(root => {
+    const a = json(root, 'a') || [];
+    const n = a.length, pre = prefixOf(a);
+    let l0 = Math.max(0, Number(root.dataset.l) || 0), r0 = Math.min(n, Number(root.dataset.r) || n);
+    let l, r, q, adds, subs, seed;
+    root.classList.add('widget');
+    root.innerHTML = `
+      <div class="widget__head"><b>${esc(root.dataset.title || 'Сумма на диапазоне')}</b><span>запрос — полуинтервал [l, r)</span></div>
+      <div class="widget__body">
+        <div class="btnrow slide__kbar">
+          <span>l</span><button class="btn" data-act="lminus" aria-label="сдвинуть l влево">−</button><b class="slide__k" data-v="l"></b><button class="btn" data-act="lplus" aria-label="сдвинуть l вправо">+</button>
+          <span style="margin-left:14px">r</span><button class="btn" data-act="rminus" aria-label="сдвинуть r влево">−</button><b class="slide__k" data-v="r"></b><button class="btn" data-act="rplus" aria-label="сдвинуть r вправо">+</button>
+        </div>
+        <span class="tracer__label">список nums</span>
+        <div class="cells" data-row="a"></div>
+        <span class="tracer__label">prefix: в prefix[i] сумма первых i чисел</span>
+        <div class="cells" data-row="p"></div>
+        <p class="slide__sum" aria-live="polite"></p>
+        <div class="btnrow">
+          <button class="btn btn--main" data-act="series">+ 100 случайных запросов</button>
+          <button class="btn" data-act="reset">↻ сначала</button>
+        </div>
+        <div class="hunt__stats prefix__stats"></div>
+        <div class="legend"><span><i class="l-win"></i>диапазон nums[l:r]</span><span><i class="l-hot"></i>prefix[l] и prefix[r]</span></div>
+      </div>`;
+    const rowA = root.querySelector('[data-row="a"]'), rowP = root.querySelector('[data-row="p"]');
+    const say = root.querySelector('.slide__sum'), stats = root.querySelector('.prefix__stats');
+    const count = () => { q++; adds += r - l; subs++; };
+    function reset() { l = l0; r = r0; q = 0; adds = 0; subs = 0; seed = 7; count(); draw(); }
+    function draw() {
+      const tagsA = {}, tailA = [];
+      const put = (p, v) => { if (v < n) (tagsA[v] = tagsA[v] || []).push(p); else tailA.push(p); };
+      put('l', l); put('r', r);
+      drawCells(rowA, a, { tags: tagsA, tailTags: tailA, cls: k => (k >= l && k < r) ? 'is-win' : '' });
+      const tagsP = {}; (tagsP[l] = tagsP[l] || []).push('l'); (tagsP[r] = tagsP[r] || []).push('r');
+      drawCells(rowP, pre, { tags: tagsP, cls: k => (k === l || k === r) ? 'is-hot' : '' });
+      root.querySelector('[data-v="l"]').textContent = `l = ${l}`;
+      root.querySelector('[data-v="r"]').textContent = `r = ${r}`;
+      root.querySelector('[data-act="lminus"]').disabled = l === 0;
+      root.querySelector('[data-act="lplus"]').disabled = l === r;
+      root.querySelector('[data-act="rminus"]').disabled = r === l;
+      root.querySelector('[data-act="rplus"]').disabled = r === n;
+      const part = a.slice(l, r), s = pre[r] - pre[l];
+      say.innerHTML = l === r
+        ? `Диапазон nums[${l}:${r}] пустой, его сумма 0. Перебору складывать нечего, по префиксам: prefix[${r}] − prefix[${l}] = ${minus(pre[r])} − ${minus(pre[l])} = <b>0</b>.`
+        : `Сумма nums[${l}:${r}]. Перебор: ${signed(part)} = ${minus(s)}, сложений ${r - l}. По префиксам: prefix[${r}] − prefix[${l}] = ${minus(pre[r])} − ${pre[l] < 0 ? `(${minus(pre[l])})` : pre[l]} = <b>${minus(s)}</b>, одно вычитание.`;
+      stats.innerHTML = `<span>запросов: ${fmt(q)}</span><span>перебор: ${fmt(adds)} ${plural(adds, 'сложение', 'сложения', 'сложений')}</span><span>префиксы: ${n} ${plural(n, 'сложение', 'сложения', 'сложений')} на подготовку + ${fmt(subs)} ${plural(subs, 'вычитание', 'вычитания', 'вычитаний')}</span>`;
+    }
+    root.addEventListener('click', e => {
+      const b = e.target.closest('[data-act]'); if (!b) return;
+      const act = b.dataset.act;
+      if (act === 'reset') return reset();
+      if (act === 'series') {
+        let last = '';
+        for (let t = 0; t < 100; t++) {
+          seed = (seed * 1103515245 + 12345) % 2147483648;
+          const x = seed % (n + 1);
+          seed = (seed * 1103515245 + 12345) % 2147483648;
+          const y = seed % (n + 1);
+          l = Math.min(x, y); r = Math.max(x, y); count();
+        }
+        draw();
+        say.innerHTML += ' Последний из ста запросов показан на ленте.';
+        return;
+      }
+      if (act === 'lminus' && l > 0) l--;
+      if (act === 'lplus' && l < r) l++;
+      if (act === 'rminus' && r > l) r--;
+      if (act === 'rplus' && r < n) r++;
+      count(); draw();
+    });
+    reset();
+  });
+
+  /* ── 9ж. Префиксы вручную ─────────────────────────────────────── */
+  /* data-a — список целых чисел, data-q — запросы [[l, r], ...].
+     Сначала студент вводит prefix[1..n] по одной ячейке, затем на каждый
+     запрос щёлкает уменьшаемое prefix[r] и вычитаемое prefix[l]. Неверный
+     ответ не принимается, вместо него — объяснение. */
+  document.querySelectorAll('.prefhand').forEach(root => {
+    const a = json(root, 'a') || [];
+    const qs = json(root, 'q') || [];
+    const n = a.length, pre = prefixOf(a);
+    let k, phase, qi, picked, errors;
+    root.classList.add('widget');
+    root.innerHTML = `
+      <div class="widget__head"><b>Префиксы вручную</b><span>сначала prefix, потом запросы</span></div>
+      <div class="widget__body">
+        <span class="tracer__label">список nums</span>
+        <div class="cells" data-row="a"></div>
+        <span class="tracer__label">prefix</span>
+        <div class="cells" data-row="p"></div>
+        <p class="rwg__now"></p>
+        <div class="btnrow slidehand__sum" hidden>
+          <label><span class="prefhand__what"></span> <input type="number" inputmode="numeric"></label>
+          <button class="btn btn--main" data-act="check">Проверить</button>
+        </div>
+        <p class="hunt__msg" aria-live="polite"></p>
+        <div class="btnrow"><span style="flex:1"></span><button class="btn" data-act="reset">↻ заново</button></div>
+        <div class="legend"><span><i class="l-win"></i>диапазон запроса</span><span><i class="l-hot"></i>выбранная ячейка prefix</span></div>
+      </div>`;
+    const rowA = root.querySelector('[data-row="a"]'), rowP = root.querySelector('[data-row="p"]');
+    const now = root.querySelector('.rwg__now'), msg = root.querySelector('.hunt__msg');
+    const box = root.querySelector('.slidehand__sum'), input = box.querySelector('input'), what = root.querySelector('.prefhand__what');
+    const say = (t, kind = '') => { msg.className = 'hunt__msg' + (kind ? ' is-' + kind : ''); msg.innerHTML = t; };
+    function reset() {
+      k = 1; phase = 'fill'; qi = 0; picked = []; errors = 0;
+      say('prefix[0] = 0: сумма нуля чисел. Каждая следующая ячейка — предыдущая плюс очередное число списка. Введите prefix[1].');
+      draw();
+      input.value = '';
+    }
+    function draw() {
+      const [ql, qr] = phase === 'fill' ? [-1, -1] : (qs[qi] || [-1, -1]);
+      drawCells(rowA, a, { cls: i => phase === 'fill' ? (i === k - 1 ? 'is-hot' : '') : (i >= ql && i < qr ? 'is-win' : '') });
+      drawCells(rowP, pre, { cls: i => phase === 'fill' ? (i === k ? 'is-hot' : '') : (picked.includes(i) ? 'is-hot' : '') });
+      [...rowP.children].forEach((c, i) => {
+        if (phase === 'fill' && i >= k) c.querySelector('.cell__val').textContent = i === k ? '?' : '';
+        if (phase === 'query') { c.classList.add('is-pick'); c.dataset.i = i; }
+      });
+      box.hidden = phase !== 'fill';
+      what.textContent = `prefix[${k}] =`;
+      if (phase === 'fill') now.innerHTML = `prefix[${k}] = prefix[${k - 1}] + nums[${k - 1}]. Сколько это?`;
+      else if (phase === 'query') now.innerHTML = `Запрос ${qi + 1} из ${qs.length}: сумма nums[${ql}:${qr}]. ` + (picked.length === 0 ? 'Щёлкните ячейку prefix, <b>из которой</b> вычитают.' : `Уменьшаемое — prefix[${qr}] = ${minus(pre[qr])}. Щёлкните ячейку, <b>которую</b> вычитают.`);
+      else now.innerHTML = '';
+    }
+    function check() {
+      const want = pre[k], got = Number(input.value);
+      if (input.value.trim() === '' || got !== want) {
+        errors++;
+        return say(`Не сходится. prefix[${k}] — сумма ${k === 1 ? 'первого числа' : `первых ${k} чисел`}: к prefix[${k - 1}] = ${minus(pre[k - 1])} прибавьте nums[${k - 1}] = ${minus(a[k - 1])}.`, 'no');
+      }
+      input.value = '';
+      if (k === n) {
+        phase = qs.length ? 'query' : 'done';
+        say(`Верно: prefix[${n}] = ${minus(want)}, сумма всего списка. Подготовка закончена: ${n} сложений. Теперь ответьте на запросы.`);
+      } else { k++; say(`Верно: ${minus(want)}. Введите prefix[${k}].`); setTimeout(() => input.focus(), 0); }
+      draw();
+    }
+    rowP.addEventListener('click', e => {
+      const c = e.target.closest('.cell'); if (!c || phase !== 'query' || c.dataset.i === undefined) return;
+      const i = Number(c.dataset.i), [ql, qr] = qs[qi];
+      if (picked.length === 2) return;
+      if (picked.length === 0) {
+        if (i === qr) { picked = [i]; say(`Верно: prefix[${qr}] — сумма всех чисел до конца диапазона, nums[0:${qr}].`); }
+        else {
+          errors++;
+          say(i === ql ? `prefix[${ql}] — сумма чисел до начала диапазона. Её вычитают. Уменьшаемое — сумма до конца диапазона.`
+            : i === qr - 1 ? `prefix[${qr - 1}] — сумма nums[0:${qr - 1}]. В ней нет nums[${qr - 1}] — последнего числа диапазона.`
+            : `prefix[${i}] — сумма nums[0:${i}]. Диапазон кончается перед индексом ${qr}, значит, нужна сумма первых ${qr} чисел.`, 'no');
+        }
+      } else {
+        if (i === ql) {
+          picked.push(i);
+          const s = pre[qr] - pre[ql];
+          say(`Верно: prefix[${qr}] − prefix[${ql}] = ${minus(pre[qr])} − ${pre[ql] < 0 ? `(${minus(pre[ql])})` : pre[ql]} = <b>${minus(s)}</b>. Проверка сложением: ${signed(a.slice(ql, qr))} = ${minus(s)}.`, 'ok');
+          setTimeout(() => {
+            qi++; picked = [];
+            if (qi === qs.length) { phase = 'done'; say(`Готово: ${qs.length} ${qs.length === 1 ? 'запрос' : 'запроса'}, на каждый — одно вычитание. Ошибок: ${errors}.`, 'ok'); }
+            draw();
+          }, 1400);
+        } else {
+          errors++;
+          say(i === ql - 1 ? `prefix[${ql - 1}] не содержит nums[${ql - 1}]. После вычитания это число останется в ответе, а оно левее диапазона.`
+            : i === ql + 1 ? `prefix[${ql + 1}] содержит nums[${ql}] — первое число диапазона. Вычитание уберёт его из ответа.`
+            : `Вычитают сумму чисел левее диапазона: nums[0:${ql}], это prefix[${ql}].`, 'no');
+        }
+      }
+      draw();
+    });
+    root.addEventListener('click', e => {
+      const b = e.target.closest('[data-act]'); if (!b) return;
+      if (b.dataset.act === 'check') check();
+      if (b.dataset.act === 'reset') reset();
+    });
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); check(); } });
     reset();
   });
 

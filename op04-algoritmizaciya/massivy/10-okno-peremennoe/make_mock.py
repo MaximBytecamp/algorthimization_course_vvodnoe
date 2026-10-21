@@ -890,7 +890,7 @@ TASKS
         </div>
         <p>Задачи, на которых не получилось хотя бы одно из этого, стоит пройти ещё раз через день, по главе из таблицы §2.</p>
 
-        <div class="pager"><a href="05-praktika-i-dz.html">← 10.5 Практика и ДЗ</a><a href="../index.html">К оглавлению →</a></div>
+        <div class="pager"><a href="05-praktika-i-dz.html">← 10.5 Практика и ДЗ</a><a href="../11-prefiksnye-summy/01-uznat-zadachu.html">Модуль 11 →</a></div>
         <div class="colophon">
           <span>Модуль 10 · Окно переменного размера · ОП.04 · 3 курс</span>
           <span class="author-line">Автор: Макаров Максим Николаевич</span>
