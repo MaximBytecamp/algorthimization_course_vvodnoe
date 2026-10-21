@@ -103,6 +103,70 @@ for _k in ('var_no_check', 'var_start_one', 'var_no_zero_key', 'var_order'):
     assert SOURCES[_k] not in (SOURCES['range_sums'], SOURCES['pivot_index'], SOURCES['count_k_sums']), _k
 
 
+# Глава 11.6, тренажёр. Ключ прогона совпадает с именем функции.
+SOURCES['product_except_self'] = '''
+def product_except_self(nums):
+    n = len(nums)
+    answer = [1] * n
+    left = 1
+    for i in range(n):
+        answer[i] = left
+        left *= nums[i]
+    right = 1
+    for i in range(n - 1, -1, -1):
+        answer[i] *= right
+        right *= nums[i]
+    return answer
+'''
+
+SOURCES['ways_to_split'] = '''
+def ways_to_split(nums):
+    total = sum(nums)
+    left = 0
+    count = 0
+    for i in range(len(nums) - 1):
+        left += nums[i]
+        if left >= total - left:
+            count += 1
+    return count
+'''
+
+SOURCES['xor_queries'] = '''
+def xor_queries(arr, queries):
+    prefix = [0] * (len(arr) + 1)
+    for i in range(len(arr)):
+        prefix[i + 1] = prefix[i] ^ arr[i]
+    answers = []
+    for l, r in queries:
+        answers.append(prefix[r + 1] ^ prefix[l])
+    return answers
+'''
+
+SOURCES['left_right_diff'] = '''
+def left_right_diff(nums):
+    total = sum(nums)
+    left = 0
+    answer = []
+    for i in range(len(nums)):
+        right = total - left - nums[i]
+        answer.append(abs(left - right))
+        left += nums[i]
+    return answer
+'''
+
+SOURCES['nice_subarrays'] = '''
+def nice_subarrays(nums, k):
+    seen = {0: 1}
+    odd = 0
+    count = 0
+    for r in range(len(nums)):
+        odd += nums[r] % 2
+        count += seen.get(odd - k, 0)
+        seen[odd] = seen.get(odd, 0) + 1
+    return count
+'''
+
+
 def seg(nums, l, r):
     """Срез nums[l:r] со значениями."""
     part = nums[l:r]
@@ -322,8 +386,140 @@ PIVOT_KEYS = {'pivot_index', 'bug_right', 'bug_early', 'var_start_one'}
 KSUM_KEYS = {'count_k_sums', 'var_no_zero_key', 'var_order'}
 
 
+def mock_caption(line, fr, nxt, key, a):
+    """Подписи к новым задачам тренажёра 11.6."""
+    g = fr['raw'].get
+    ev = fr['ev']
+    if ev == 'return':
+        return f"Функция закончила работу и вернула {fr['ret']}."
+    nums = g('nums')
+    if key == 'product_except_self':
+        ans = g('answer')
+        if line == 'n = len(nums)':
+            return f"n = {len(nums)}."
+        if line == 'answer = [1] * n':
+            return "answer — ответ. Первый проход запишет в answer[i] произведение чисел левее i."
+        if line == 'left = 1':
+            return "left — произведение чисел левее текущего индекса. Левее индекса 0 чисел нет, поэтому 1."
+        if line == 'for i in range(n):':
+            if nxt is not None and nxt['ln'] == fr['ln'] + 1:
+                return f"i = {nxt['raw']['i']}: проход слева направо."
+            return f"Первый проход закончен: answer = {ans} — произведения слева."
+        if line == 'answer[i] = left':
+            return f"answer[{g('i')}] = {g('left')}: произведение чисел левее индекса {g('i')}."
+        if line == 'left *= nums[i]':
+            i = g('i')
+            return f"nums[{i}] = {nums[i]} уходит влево: left = {g('left')} · {nums[i]} = {g('left') * nums[i]}."
+        if line == 'right = 1':
+            return "right — произведение чисел правее текущего индекса. Второй проход идёт справа налево."
+        if line == 'for i in range(n - 1, -1, -1):':
+            if nxt is not None and nxt['ln'] == fr['ln'] + 1:
+                return f"i = {nxt['raw']['i']}: проход справа налево."
+            return f"Второй проход закончен: answer = {ans}."
+        if line == 'answer[i] *= right':
+            i = g('i')
+            return f"answer[{i}] = {ans[i]} · {g('right')} = {ans[i] * g('right')}: произведение слева умножено на произведение справа."
+        if line == 'right *= nums[i]':
+            i = g('i')
+            return f"nums[{i}] = {nums[i]} уходит вправо: right = {g('right')} · {nums[i]} = {g('right') * nums[i]}."
+        if line == 'return answer':
+            return f"Ответ: {ans}."
+    if key in ('ways_to_split', 'left_right_diff'):
+        if line == 'total = sum(nums)':
+            return f"total — сумма всего списка: {sum(nums)}."
+        if line == 'left = 0':
+            return "left — сумма левой части. Пока она пустая."
+        if line == 'count = 0':
+            return "count — сколько разбиений уже подошло."
+        if line == 'answer = []':
+            return "answer — список ответов для каждого индекса."
+        if line in ('for i in range(len(nums) - 1):', 'for i in range(len(nums)):'):
+            if nxt is not None and nxt['ln'] == fr['ln'] + 1:
+                i = nxt['raw']['i']
+                if key == 'ways_to_split':
+                    return f"i = {i}: разрез после nums[{i}]. Правая часть не должна быть пустой, поэтому последний индекс не берётся."
+                return f"i = {i}: считаются суммы слева и справа от nums[{i}] = {nums[i]}."
+            return "Все индексы пройдены."
+        if line == 'left += nums[i]':
+            i = g('i')
+            return f"nums[{i}] = {nums[i]} уходит в левую часть: left = {add(g('left'), nums[i])}."
+        if line == 'if left >= total - left:':
+            l, t = g('left'), g('total')
+            ok = l >= t - l
+            return f"Слева {l}, справа {t} − {minus(l)} = {t - l}.".replace('− −', '+ ') + (" Левая часть не меньше — разбиение подходит." if ok else " Левая часть меньше — не подходит.")
+        if line == 'count += 1':
+            return f"count = {g('count')} + 1 = {g('count') + 1}."
+        if line == 'right = total - left - nums[i]':
+            i, l, t = g('i'), g('left'), g('total')
+            return f"right = {t} − {minus(l)} − {minus(nums[i])} = {t - l - nums[i]}.".replace('− −', '+ ')
+        if line == 'answer.append(abs(left - right))':
+            l, r = g('left'), g('right')
+            return f"|left − right| = |{l} − {r}| = {abs(l - r)}."
+        if line in ('return count', 'return answer'):
+            return f"Ответ: {g('count') if line == 'return count' else g('answer')}."
+    if key == 'xor_queries':
+        arr, pre = g('arr'), g('prefix')
+        if line == 'prefix = [0] * (len(arr) + 1)':
+            return "prefix[i] — XOR первых i чисел. XOR нуля чисел — 0."
+        if line == 'for i in range(len(arr)):':
+            if nxt is not None and nxt['ln'] == fr['ln'] + 1:
+                return f"i = {nxt['raw']['i']}."
+            return f"prefix готов: {pre}."
+        if line == 'prefix[i + 1] = prefix[i] ^ arr[i]':
+            i = g('i')
+            return f"prefix[{i + 1}] = {pre[i]} ^ {arr[i]} = {pre[i] ^ arr[i]}."
+        if line == 'answers = []':
+            return "answers — ответы на запросы."
+        if line == 'for l, r in queries:':
+            if nxt is not None and nxt['ln'] == fr['ln'] + 1:
+                l, r = nxt['raw']['l'], nxt['raw']['r']
+                return f"Запрос [{l}, {r}]: оба конца включительно, это arr[{l}:{r + 1}] = {arr[l:r + 1]}."
+            return "Запросов больше нет."
+        if line == 'answers.append(prefix[r + 1] ^ prefix[l])':
+            l, r = g('l'), g('r')
+            head = f"prefix[{r + 1}] ^ prefix[{l}] = {pre[r + 1]} ^ {pre[l]} = {pre[r + 1] ^ pre[l]}."
+            if not g('answers'):
+                head += " XOR одинаковых чисел даёт 0, поэтому числа левее l сокращаются, как при вычитании сумм."
+            return head
+        if line == 'return answers':
+            return f"Ответы: {g('answers')}."
+    if key == 'nice_subarrays':
+        k = g('k')
+        if line == 'seen = {0: 1}':
+            return "seen — сколько раз встречалось каждое число нечётных среди префиксов. {0: 1} — префикс из нуля чисел."
+        if line == 'odd = 0':
+            return "odd — сколько нечётных чисел от начала списка до текущего включительно. Это префиксная сумма списка, где нечётное — 1, чётное — 0."
+        if line == 'count = 0':
+            return f"count — сколько найдено отрезков ровно с {k} нечётными."
+        if line == 'for r in range(len(nums)):':
+            if nxt is not None and nxt['ln'] == fr['ln'] + 1:
+                r = nxt['raw']['r']
+                return f"r = {r}: ищутся отрезки с концом на nums[{r}] = {nums[r]}."
+            return "Все концы пройдены."
+        if line == 'odd += nums[r] % 2':
+            x = nums[g('r')]
+            return f"nums[{g('r')}] = {x} {'нечётное' if x % 2 else 'чётное'}: odd = {g('odd')} + {x % 2} = {g('odd') + x % 2}."
+        if line == 'count += seen.get(odd - k, 0)':
+            o, seen, c = g('odd'), g('seen'), g('count')
+            f = seen.get(o - k, 0)
+            if o - k < 0:
+                return f"Нечётных от начала пока {o}, это меньше k = {k}: отрезков с концом {g('r')} нет."
+            return f"Нужен префикс с {o} − {k} = {o - k} нечётными. Он встречался {f} {'раз' if f in (0, 1) or f >= 5 else 'раза'}: count = {c} + {f} = {c + f}."
+        if line == 'seen[odd] = seen.get(odd, 0) + 1':
+            o = g('odd')
+            return f"seen[{o}] = {g('seen').get(o, 0) + 1}."
+        if line == 'return count':
+            return f"Отрезков ровно с {k} нечётными: {g('count')}."
+    return f"Выполняется строка {fr['ln']}."
+
+
+MOCK_KEYS = {'product_except_self', 'ways_to_split', 'xor_queries', 'left_right_diff', 'nice_subarrays'}
+
+
 def caption(line, fr, nxt, is_bug, key=''):
     nums = fr['raw'].get('nums')
+    if key in MOCK_KEYS:
+        return mock_caption(line, fr, nxt, key, nums)
     if key in PIVOT_KEYS:
         return pivot_caption(line, fr, nxt, key, nums)
     if key in KSUM_KEYS:
@@ -354,6 +550,12 @@ TRACES = {
     'var_no_zero_key': ('var_no_zero_key', 'count_k_sums', ([1, -1, 2, 1, -2, 3], 2), 'nums', ['r']),
     'var_order': ('var_order', 'count_k_sums', ([3, -3], 0), 'nums', ['r']),
     'fix_order': ('count_k_sums', 'count_k_sums', ([3, -3], 0), 'nums', ['r']),
+    # Глава 11.6.
+    'product_except_self': ('product_except_self', 'product_except_self', ([1, 2, 3, 4],), 'answer', ['i']),
+    'ways_to_split': ('ways_to_split', 'ways_to_split', ([10, 4, -8, 7],), 'nums', ['i']),
+    'xor_queries': ('xor_queries', 'xor_queries', ([1, 3, 4, 8], [[0, 1], [1, 2], [0, 3], [3, 3]]), 'prefix', ['l']),
+    'left_right_diff': ('left_right_diff', 'left_right_diff', ([10, 4, 8, 3],), 'nums', ['i']),
+    'nice_subarrays': ('nice_subarrays', 'nice_subarrays', ([1, 1, 2, 1, 1], 3), 'nums', ['r']),
 }
 
 if __name__ == '__main__':

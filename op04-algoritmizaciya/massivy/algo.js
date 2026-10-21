@@ -38,6 +38,7 @@
      window — окно длины k модуля 9 (см. ниже);
      events — события во временном окне: левее l бледно, с l по r — окно;
      prefix — список prefix модуля 11 (см. ниже);
+     prefix1 — то же для запроса [l, r] с включённым концом: prefix[l] и prefix[r + 1];
      balance — левее i, сам i и правее i для равновесного индекса. */
   document.querySelectorAll('.tracer[data-trace]').forEach(root => {
     const t = (window.TRACES || {})[root.dataset.trace];
@@ -127,6 +128,11 @@
             // При подготовке записанная ячейка видна по вспышке.
             const ll = num(f, 'l'), rr = num(f, 'r');
             if (ll !== null && rr !== null) return (k === ll || k === rr) ? 'is-hot' : '';
+          }
+          if (zone === 'prefix1') {
+            // Запрос с включённым правым концом: подсвечены prefix[l] и prefix[r + 1].
+            const ll = num(f, 'l'), rr = num(f, 'r');
+            if (ll !== null && rr !== null) return (k === ll || k === rr + 1) ? 'is-hot' : '';
           }
           if (zone === 'balance') {
             // Равновесный индекс модуля 11: левее i — сумма left, i — текущий, правее — right.
