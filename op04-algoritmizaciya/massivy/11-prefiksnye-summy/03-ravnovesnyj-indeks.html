@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>11.3 Префикс и суффикс: равновесный индекс · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 11 · Префиксные суммы · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 11 · префиксные суммы</p>
+          <p class="running__folio">Глава 11.3</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">11.3</span>
+          <h1>Префикс и суффикс:<br>равновесный индекс</h1>
+          <p class="lead">Вторая задача КТП — равновесный индекс: позиция, где сумма чисел слева равна сумме чисел справа. Сумма слева — префикс, сумма справа — суффикс. В главе обе суммы получают за один проход без лишних списков, разбирают две ошибки и в конце применяют префиксы к отрезкам с заданной суммой, где окно из модуля 10 ошибается.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Задача и перебор</a></li>
+            <li><a href="#s2">Сумма справа из суммы всего списка</a></li>
+            <li><a href="#s3">Код и пошаговый прогон</a></li>
+            <li><a href="#s4">Две ошибки в порядке действий</a></li>
+            <li><a href="#s5">Префиксы и суффиксы списками</a></li>
+            <li><a href="#s6">Отрезки с суммой k: префикс и словарь</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Задача и перебор</h2>
+        <p>Условие LeetCode 724: дан список целых чисел, нужно найти индекс i, для которого сумма чисел левее i равна сумме чисел правее i. Само <code>nums[i]</code> не входит ни в одну из сумм. Если таких индексов несколько, вернуть самый левый, если нет ни одного — вернуть −1. Задача стоит в разделе Prefix Sum плана LeetCode 75.</p>
+        <p>Пример из условия: <code>[1, 7, 3, 6, 5, 6]</code>. Для индекса 3 слева <code>1 + 7 + 3 = 11</code>, справа <code>5 + 6 = 11</code>. Ответ — 3. Два крайних случая: левее индекса 0 чисел нет, и сумма слева там равна 0, поэтому для <code>[2, 1, -1]</code> ответ 0. Для <code>[1, 2, 3]</code> ответ −1.</p>
+        <p>Перебор для каждого индекса считает обе суммы заново: <code>sum(nums[:i]) == sum(nums[i + 1:])</code>. Это n сложений на индекс и O(n²) на весь список. Суммы соседних индексов отличаются на одно-два числа, и пересчитывать их целиком не нужно.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Сумма справа из суммы всего списка</h2>
+        <p>Сумму всего списка <code>total</code> считают один раз, до прохода. Сумму слева <code>left</code> накапливают по ходу, как префиксную сумму в главе 11.2. Сумма справа — всё, что осталось: из <code>total</code> убирают левую часть и само <code>nums[i]</code>.</p>
+        <figure class="code">
+          <figcaption><span>три части списка</span><span>для индекса i</span></figcaption>
+<pre>total = (nums[0] + … + nums[i − 1]) + nums[i] + (nums[i + 1] + … + nums[n − 1])
+              left                             right
+
+right = total − left − nums[i]</pre>
+        </figure>
+        <p>Сумма справа — суффиксная сумма: сумма от позиции до конца списка. Хранить суффиксы отдельным списком не нужно, они получаются вычитанием. Пройдите пример сами: на каждом индексе введите сумму справа.</p>
+        <div class="balance" data-a="[1,7,3,6,5,6]"></div>
+        <p>Если суммы не равны, <code>nums[i]</code> переходит в левую часть: <code>left += nums[i]</code>, и проверяется следующий индекс. Порядок важен: сначала сравнение, потом сдвиг. В §4 видно, что будет при другом порядке.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Код и пошаговый прогон</h2>
+        <p>Напишите функцию сами. Тесты проверяют пример из условия, крайние случаи из §1, пустой список и сравнивают ответ с перебором на двухстах случайных списках с отрицательными числами.</p>
+        <div class="sandbox" data-title="Напишите pivot_index сами" data-call="print(pivot_index([1, 7, 3, 6, 5, 6]))">
+<script type="text/plain" class="sandbox__start">
+def pivot_index(nums):
+    """Самый левый i, где сумма nums[:i] равна сумме nums[i + 1:]; нет — -1."""
+    total = sum(nums)
+    left = 0
+    # Для каждого i посчитайте right, сравните с left, затем сдвиньте left.
+    return -1
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """[1, 7, 3, 6, 5, 6] — индекс 3"""
+    r = pivot_index([1, 7, 3, 6, 5, 6])
+    assert r == 3, f"ожидалось 3, получено {r!r}"
+
+def test_first_index():
+    """слева от индекса 0 сумма 0"""
+    r = pivot_index([2, 1, -1])
+    assert r == 0, f"ожидалось 0, получено {r!r}"
+
+def test_none():
+    """равновесного индекса нет"""
+    r = pivot_index([1, 2, 3])
+    assert r == -1, f"ожидалось -1, получено {r!r}"
+
+def test_empty():
+    """пустой список"""
+    r = pivot_index([])
+    assert r == -1, f"ожидалось -1, получено {r!r}"
+
+def test_matches_brute():
+    """200 случайных списков: ответ совпадает с перебором"""
+    import random
+    rnd = random.Random(113)
+    for _ in range(200):
+        nums = [rnd.randint(-5, 5) for _ in range(rnd.randint(0, 10))]
+        want = next((i for i in range(len(nums)) if sum(nums[:i]) == sum(nums[i + 1:])), -1)
+        got = pivot_index(nums)
+        assert got == want, f"nums = {nums}: ожидалось {want}, получено {got}"
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(1)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">pivot_index</span>(nums):
+    total = <span class="k">sum</span>(nums)
+    left = <span class="n">0</span>
+    <span class="k">for</span> i <span class="k">in</span> <span class="k">range</span>(<span class="k">len</span>(nums)):
+        right = total - left - nums[i]
+        <span class="k">if</span> left == right:
+            <span class="k">return</span> i
+        left += nums[i]
+    <span class="k">return</span> <span class="n">-1</span></pre>
+        </figure>
+        <p>В прогоне зелёным отмечены числа левее i — они в <code>left</code>, синим — правее i, они в <code>right</code>. На шаге 17 суммы равны: 11 и 11.</p>
+        <div class="tracer" data-trace="pivot" data-zone="balance" data-title="Равновесный индекс"></div>
+        <p>Инвариант цикла: перед сравнением в <code>left</code> лежит сумма <code>nums[:i]</code>, а в <code>right</code> — сумма <code>nums[i + 1:]</code>. Время O(n): один проход для <code>total</code> и один для поиска. Память O(1): кроме трёх чисел, ничего не хранится.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Две ошибки в порядке действий</h2>
+        <p>Обе версии запущены на примере из условия. Исключений нет, обе возвращают −1 вместо 3.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>pivot_index([1, 7, 3, 6, 5, 6])</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>right без nums[i]</button>
+            <button>left до сравнения</button>
+          </div>
+          <div class="demo__pane">
+            <p>Сумма справа: <code>right = total - left</code>.</p>
+            <div class="tracer tracer--bug" data-trace="bug_right" data-zone="balance" data-title="right = total − left"></div>
+            <p class="demo__verdict"><b>−1</b>В <code>right</code> осталось само <code>nums[i]</code>. На шаге 17 для индекса 3 сравниваются 11 и 17 — разница ровно <code>nums[3] = 6</code>.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Строка <code>left += nums[i]</code> стоит перед вычислением <code>right</code>.</p>
+            <div class="tracer tracer--bug" data-trace="bug_early" data-zone="balance" data-title="left += nums[i] до сравнения"></div>
+            <p class="demo__verdict"><b>−1</b><code>nums[i]</code> попало в левую сумму раньше сравнения. На шаге 18 для индекса 3 сравниваются 17 и 11.</p>
+          </div>
+        </div>
+        <p>Вторая версия на некоторых списках находит «равновесие», которого нет. Для <code>[1, 2, 3]</code> она возвращает 1: сравнивает <code>1 + 2</code> и <code>3</code>, хотя слева от индекса 1 стоит только 1. Поэтому в тестах нужен и пример, где ответ −1.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Префиксы и суффиксы списками</h2>
+        <p>Ту же задачу можно решить двумя списками: <code>prefix</code> из главы 11.2 и <code>suffix</code>, где <code>suffix[i]</code> — сумма <code>nums[i:]</code>. Суффиксы заполняют справа налево. Индекс i равновесный, если <code>prefix[i] == suffix[i + 1]</code>.</p>
+        <figure class="code">
+          <figcaption><span>вариант со списками</span><span>время O(n) · память O(n)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">pivot_index_lists</span>(nums):
+    n = <span class="k">len</span>(nums)
+    prefix = [<span class="n">0</span>] * (n + <span class="n">1</span>)
+    <span class="k">for</span> i <span class="k">in</span> <span class="k">range</span>(n):
+        prefix[i + <span class="n">1</span>] = prefix[i] + nums[i]
+    suffix = [<span class="n">0</span>] * (n + <span class="n">1</span>)
+    <span class="k">for</span> i <span class="k">in</span> <span class="k">range</span>(n - <span class="n">1</span>, <span class="n">-1</span>, <span class="n">-1</span>):
+        suffix[i] = suffix[i + <span class="n">1</span>] + nums[i]
+    <span class="k">for</span> i <span class="k">in</span> <span class="k">range</span>(n):
+        <span class="k">if</span> prefix[i] == suffix[i + <span class="n">1</span>]:
+            <span class="k">return</span> i
+    <span class="k">return</span> <span class="n">-1</span></pre>
+        </figure>
+        <details class="pyhint"><summary>Python в этой строке: <code>range(n - 1, -1, -1)</code></summary><div><p>Третий аргумент <code>range</code> — шаг. При шаге −1 счёт идёт вниз от первого числа до второго, второе не входит. Чтобы дойти до индекса 0, вторым числом пишут −1.</p><pre>&gt;&gt;&gt; n = 4
+&gt;&gt;&gt; list(range(n - 1, -1, -1))
+[3, 2, 1, 0]</pre></div></details>
+        <p>Для этой задачи вариант со списками тратит лишнюю память O(n). Он нужен, когда для каждой позиции требуется величина слева и справа одновременно и вычитанием её не получить. Пример — LeetCode 238 из Top Interview 150: для каждой позиции произведение всех остальных чисел, деление запрещено. Произведение слева и произведение справа собирают двумя проходами, второй идёт справа налево.</p>
+        <figure class="code">
+          <figcaption><span>LeetCode 238</span><span>время O(n)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">product_except_self</span>(nums):
+    n = <span class="k">len</span>(nums)
+    answer = [<span class="n">1</span>] * n
+    left = <span class="n">1</span>
+    <span class="k">for</span> i <span class="k">in</span> <span class="k">range</span>(n):
+        answer[i] = left
+        left *= nums[i]
+    right = <span class="n">1</span>
+    <span class="k">for</span> i <span class="k">in</span> <span class="k">range</span>(n - <span class="n">1</span>, <span class="n">-1</span>, <span class="n">-1</span>):
+        answer[i] *= right
+        right *= nums[i]
+    <span class="k">return</span> answer</pre>
+        </figure>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; product_except_self([1, 2, 3, 4])
+[24, 12, 8, 6]</pre>
+        </figure>
+        <p>После первого прохода в <code>answer[i]</code> лежит произведение чисел левее i — префикс. Второй проход домножает его на произведение чисел правее i — суффикс.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Отрезки с суммой k: префикс и словарь</h2>
+        <p>В главе 10.1 окно отказало на отрицательных числах. Задача LeetCode 560: сколько отрезков подряд имеют сумму ровно k, числа любого знака. Возьмём <code>[1, -1, 2, 1, -2, 3]</code> и k = 2. Таких отрезков четыре: <code>[1, -1, 2]</code>, <code>[2]</code>, <code>[-1, 2, 1]</code>, <code>[1, -2, 3]</code>. Окно из модуля 10, которое сжимается, пока сумма больше k, находит три. Отрезок <code>[2]</code> оно пропускает: у конца r = 2 два подходящих отрезка, а окно на каждый конец даёт не больше одного.</p>
+        <p>Префиксные суммы решают задачу формулой из главы 11.2. Сумма отрезка <code>nums[l:r]</code> равна <code>prefix[r] − prefix[l]</code>. Она равна k, когда <code>prefix[l] = prefix[r] − k</code>. Значит, для каждого конца нужно знать, сколько раз раньше встречалась префиксная сумма <code>prefix[r] − k</code>. Это число хранит словарь.</p>
+        <figure class="code">
+          <figcaption><span>LeetCode 560</span><span>время O(n) · память O(n)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">count_k_sums</span>(nums, k):
+    seen = {<span class="n">0</span>: <span class="n">1</span>}
+    prefix = <span class="n">0</span>
+    count = <span class="n">0</span>
+    <span class="k">for</span> r <span class="k">in</span> <span class="k">range</span>(<span class="k">len</span>(nums)):
+        prefix += nums[r]
+        count += seen.get(prefix - k, <span class="n">0</span>)
+        seen[prefix] = seen.get(prefix, <span class="n">0</span>) + <span class="n">1</span>
+    <span class="k">return</span> count</pre>
+        </figure>
+        <p>Метод <code>get</code> разобран в главе 10.3: он возвращает 0 для ключа, которого в словаре нет. Запись <code>{0: 1}</code> — префикс из нуля чисел, тот же <code>prefix[0] = 0</code>, что в главе 11.2. На шаге 14 прогона она даёт отрезок <code>[1, -1, 2]</code>, который начинается с первого числа.</p>
+        <div class="tracer" data-trace="ksum" data-title="Отрезки с суммой 2"></div>
+        <p>Перебор всех отрезков стоит O(n²). Словарь даёт O(n) по времени и O(n) по памяти: каждый конец обрабатывается одним обращением к словарю и одной записью. Границы и ошибки этой функции разобраны в главе 11.4.</p>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>LeetCode 724, 238, 560 — условия и метки проверены по данным сайта 21.10.2026; задача 724 — раздел Prefix Sum плана LeetCode 75, задача 238 — план Top Interview 150</li>
+            <li>КТП ОП.04, занятие 11</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="02-summy-na-diapazonah.html">← 11.2 Сервис сумм на диапазонах</a><a href="04-granicy-i-oshibki.html">11.4 Границы и ошибки →</a></div>
+        <div class="colophon">
+          <span>Модуль 11 · Префиксные суммы · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>

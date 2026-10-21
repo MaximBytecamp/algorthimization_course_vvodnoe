@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>11.4 Границы и ошибки · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 11 · Префиксные суммы · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 11 · префиксные суммы</p>
+          <p class="running__folio">Глава 11.4</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">11.4</span>
+          <h1>Границы<br>и ошибки</h1>
+          <p class="lead">Контроль занятия по КТП: «Сначала brute force, затем O(n+q). Проверка на границах диапазона и согласование индексации». В этой главе — граничные входы трёх функций модуля и ошибки, которые видны только на них, сводка ошибок по симптомам и схема объяснения решения интервьюеру.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Граничные входы</a></li>
+            <li><a href="#s2">Сводка ошибок по симптомам</a></li>
+            <li><a href="#s3">Исправьте функции</a></li>
+            <li><a href="#s4">Как объяснить решение</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Граничные входы</h2>
+        <p>У префиксных сумм граничные входы связаны с краями списка: запрос с первого дня, запрос за пределами журнала, равновесный индекс 0, отрезок, который начинается с первого числа, и сумма k = 0. На обычном примере эти места не проверяются, и ошибка в них проходит незамеченной. Ниже четыре версии, в которых одна строка записана иначе. Каждая запущена рядом с верной на том же входе.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>Функции с одной изменённой строкой</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>без проверки границ</button>
+            <button>цикл с индекса 1</button>
+            <button>seen = {}</button>
+            <button>запись до подсчёта</button>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>range_sums</code> нет проверки запроса. Вход — журнал склада и запрос <code>(-1, 2)</code>.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="var_no_check" data-zone="prefix" data-title="без проверки границ"></div>
+            <p class="demo__verdict"><b>[-13]</b>Дня −1 нет, но Python читает <code>prefix[-1]</code> с конца списка. На шаге 21 из суммы двух первых дней вычитается сумма всего журнала. Исключения нет, и неверный запрос выглядит как обычный ответ.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_no_check" data-zone="prefix" data-title="с проверкой границ"></div>
+            <p class="demo__verdict"><b>ValueError</b>Проверка останавливает функцию и сообщает, что запрос неверный.</p>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>pivot_index</code> цикл начинается с 1. Вход — <code>[2, 1, -1]</code>, ответ 0.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="var_start_one" data-zone="balance" data-title="range(1, len(nums))"></div>
+            <p class="demo__verdict"><b>−1</b>Индекс 0 не проверяется, а <code>nums[0] = 2</code> не попадает в <code>left</code>. Дальше обе суммы считаются неверно.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_start_one" data-zone="balance" data-title="range(len(nums))"></div>
+            <p class="demo__verdict"><b>0</b>Левее индекса 0 сумма 0, правее <code>1 + (−1) = 0</code>.</p>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>count_k_sums</code> словарь начинается пустым. Вход из главы 11.3: <code>[1, -1, 2, 1, -2, 3]</code>, k = 2, ответ 4.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="var_no_zero_key" data-title="seen = {}"></div>
+            <p class="demo__verdict"><b>3</b>На шаге 14 не посчитан отрезок <code>[1, -1, 2]</code>: он начинается с первого числа, и для него нужен префикс из нуля чисел. Это та же нулевая ячейка, что <code>prefix[0]</code> в главе 11.2.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="ksum" data-title="seen = {0: 1}"></div>
+            <p class="demo__verdict"><b>4</b>На шаге 14 найдены оба отрезка с концом 2.</p>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>count_k_sums</code> текущая префиксная сумма записывается в словарь до подсчёта. Вход — <code>[3, -3]</code>, k = 0, ответ 1.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="var_order" data-title="запись до подсчёта"></div>
+            <p class="demo__verdict"><b>3</b>При k = 0 нужна та же префиксная сумма, которую только что записали. Так считается пустой отрезок, по одному на каждый конец. При k ≠ 0 эта версия отвечает верно: на примере из 11.3 она даёт 4. Поэтому в тестах нужен случай k = 0.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_order" data-title="подсчёт до записи"></div>
+            <p class="demo__verdict"><b>1</b>Единственный отрезок с суммой 0 — весь список <code>[3, -3]</code>.</p>
+          </div>
+        </div>
+
+        <h2 id="s2"><span class="sec">§2</span>Сводка ошибок по симптомам</h2>
+        <p>Когда тест падает, первым видно неверный ответ или исключение. По симптому в таблице находят строку кода, которую нужно проверить, и вход, на котором ошибку видно. В последнем столбце — где ошибка запущена по шагам.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Симптом</th><th>Где искать</th><th>Вход, который её показывает</th><th>Прогон</th></tr></thead>
+            <tbody>
+              <tr><td>Неверная сумма у запросов с <code>l = 0</code></td><td>Нет ячейки <code>prefix[0] = 0</code>, формула с <code>l − 1</code></td><td>Запрос с первого дня</td><td><a href="02-summy-na-diapazonah.html#s5">11.2, §5</a></td></tr>
+              <tr><td>В ответ попало лишнее число, <code>IndexError</code> при <code>r = n</code></td><td><code>prefix[r + 1]</code> при полуинтервале</td><td>Любой запрос; весь журнал</td><td><a href="02-summy-na-diapazonah.html#s5">11.2, §5</a></td></tr>
+              <tr><td>Ответ на неверный запрос без исключения</td><td>Нет проверки <code>0 &lt;= l &lt;= r &lt;= len(nums)</code></td><td><code>l = -1</code></td><td><a href="#s1">11.4, §1</a></td></tr>
+              <tr><td>Равновесный индекс не найден</td><td><code>right</code> без <code>nums[i]</code> или <code>left</code> до сравнения</td><td>Пример из условия 724</td><td><a href="03-ravnovesnyj-indeks.html#s4">11.3, §4</a></td></tr>
+              <tr><td>−1 там, где ответ 0</td><td>Цикл с индекса 1</td><td><code>[2, 1, -1]</code></td><td><a href="#s1">11.4, §1</a></td></tr>
+              <tr><td>Отрезков меньше верного</td><td>Нет записи <code>{0: 1}</code></td><td>Отрезок с суммой k с первого числа</td><td><a href="#s1">11.4, §1</a></td></tr>
+              <tr><td>Отрезков больше верного при k = 0</td><td>Запись в словарь до подсчёта</td><td><code>[3, -3]</code>, k = 0</td><td><a href="#s1">11.4, §1</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Почти все ошибки таблицы — про согласование индексов: что лежит в ячейке <code>prefix[i]</code>, входит ли правый конец, с какого индекса начинается цикл, есть ли префикс из нуля чисел. Пример из условия находит только те ошибки, которые портят любой ответ: <code>prefix[r + 1]</code> и порядок действий в <code>pivot_index</code>. Остальные находят запрос с первого дня, неверный запрос, индекс 0 и k = 0.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Исправьте функции</h2>
+        <p>В окне ниже две функции модуля, в каждой по две ошибки. В <code>range_sums</code> нет проверки запроса, а ответ считается так, как будто правый конец входит в запрос. В <code>count_k_sums</code> словарь начинается пустым, а запись в словарь стоит перед подсчётом. Сначала запустите тесты и посмотрите, какие падают.</p>
+        <div class="sandbox" data-title="Исправьте range_sums и count_k_sums" data-call="print(range_sums([5, -2, 7, -4, 3, 6, -1, 2], [(0, 3)]), count_k_sums([1, -1, 2, 1, -2, 3], 2), count_k_sums([3, -3], 0))">
+<script type="text/plain" class="sandbox__start">
+def range_sums(nums, queries):
+    prefix = [0] * (len(nums) + 1)
+    for i in range(len(nums)):
+        prefix[i + 1] = prefix[i] + nums[i]
+    answers = []
+    for l, r in queries:
+        answers.append(prefix[r + 1] - prefix[l])
+    return answers
+
+
+def count_k_sums(nums, k):
+    seen = {}
+    prefix = 0
+    count = 0
+    for r in range(len(nums)):
+        prefix += nums[r]
+        seen[prefix] = seen.get(prefix, 0) + 1
+        count += seen.get(prefix - k, 0)
+    return count
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_range_example():
+    """журнал склада, запросы (2, 5), (0, 3), (0, 8)"""
+    r = range_sums([5, -2, 7, -4, 3, 6, -1, 2], [(2, 5), (0, 3), (0, 8)])
+    assert r == [6, 10, 16], f"ожидалось [6, 10, 16], получено {r!r}"
+
+def test_range_bad_query():
+    """l = -1 и l > r — ValueError"""
+    for q in [(-1, 2), (3, 2)]:
+        try:
+            range_sums([5, -2, 7, -4, 3, 6, -1, 2], [q])
+        except ValueError:
+            continue
+        assert False, f"запрос {q}: ожидалась ValueError"
+
+def test_ksum_example():
+    """пример из главы 11.3, k = 2"""
+    r = count_k_sums([1, -1, 2, 1, -2, 3], 2)
+    assert r == 4, f"ожидалось 4, получено {r!r}"
+
+def test_ksum_zero():
+    """k = 0, пустые отрезки не считаются"""
+    r = count_k_sums([3, -3], 0)
+    assert r == 1, f"ожидалось 1, получено {r!r}"
+
+def test_ksum_matches_brute():
+    """200 случайных списков: ответ совпадает с перебором"""
+    import random
+    rnd = random.Random(114)
+    for _ in range(200):
+        nums = [rnd.randint(-3, 3) for _ in range(rnd.randint(0, 10))]
+        k = rnd.randint(-3, 3)
+        want = sum(1 for l in range(len(nums)) for r in range(l + 1, len(nums) + 1) if sum(nums[l:r]) == k)
+        got = count_k_sums(nums, k)
+        assert got == want, f"nums = {nums}, k = {k}: ожидалось {want}, получено {got}"
+</script>
+</div>
+
+        <h2 id="s4"><span class="sec">§4</span>Как объяснить решение</h2>
+        <p>Контроль КТП требует начинать с перебора. На собеседовании это звучит так: сначала назвать простое решение и его сложность, затем показать, где оно делает лишнюю работу, и только потом переходить к префиксам. Ответ строится из трёх частей.</p>
+        <ol class="steps">
+          <li><b>Перебор и его цена.</b> «На каждый запрос складываю числа участка: до n сложений, на q запросов O(n·q)». Перебор — эталон для тестов: на маленьких входах его ответы сравнивают с быстрым решением.</li>
+          <li><b>Что считается заранее и что хранится.</b> Назвать список или переменную и то, что в ней лежит: «<code>prefix[i]</code> — сумма первых i чисел, <code>prefix[0] = 0</code>», «<code>seen</code> — сколько раз встречалась каждая префиксная сумма».</li>
+          <li><b>Индексация и границы.</b> Сказать, как записан запрос, вывести из этого формулу и назвать граничные тесты: запрос с первого дня, пустой запрос, неверный запрос.</li>
+        </ol>
+        <div class="speech">
+          <div class="speech__item">
+            <p class="speech__said">«Перебор складывает участок на каждый запрос, это O(n·q). Журнал не меняется, поэтому один раз считаю prefix: prefix[i] — сумма первых i дней, ячеек n + 1, prefix[0] = 0. Подготовка O(n), каждый ответ O(1), всего O(n + q)».</p>
+            <p class="speech__note"><b>Что показывает</b>Переход от перебора к префиксам и оценку сложности.</p>
+          </div>
+          <div class="speech__item">
+            <p class="speech__said">«Запрос — полуинтервал [l, r), поэтому ответ prefix[r] − prefix[l] без поправок на единицу. Проверяю 0 ≤ l ≤ r ≤ n: отрицательный индекс Python не остановит. Тесты — с первого дня, l = r и запрос за границей».</p>
+            <p class="speech__note"><b>Что показывает</b>Согласование индексации и проверку границ диапазона.</p>
+          </div>
+        </div>
+
+        <div class="pager"><a href="03-ravnovesnyj-indeks.html">← 11.3 Равновесный индекс</a><a href="../index.html">К оглавлению книги →</a></div>
+        <div class="colophon">
+          <span>Модуль 11 · Префиксные суммы · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>

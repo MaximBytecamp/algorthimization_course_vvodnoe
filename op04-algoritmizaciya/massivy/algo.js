@@ -37,7 +37,8 @@
      compress — то же, что rw, но граница чтения — start;
      window — окно длины k модуля 9 (см. ниже);
      events — события во временном окне: левее l бледно, с l по r — окно;
-     prefix — список prefix модуля 11 (см. ниже). */
+     prefix — список prefix модуля 11 (см. ниже);
+     balance — левее i, сам i и правее i для равновесного индекса. */
   document.querySelectorAll('.tracer[data-trace]').forEach(root => {
     const t = (window.TRACES || {})[root.dataset.trace];
     if (!t) { root.innerHTML = '<p style="padding:14px">Прогон не загружен.</p>'; return; }
@@ -126,6 +127,11 @@
             // При подготовке записанная ячейка видна по вспышке.
             const ll = num(f, 'l'), rr = num(f, 'r');
             if (ll !== null && rr !== null) return (k === ll || k === rr) ? 'is-hot' : '';
+          }
+          if (zone === 'balance') {
+            // Равновесный индекс модуля 11: левее i — сумма left, i — текущий, правее — right.
+            const ii = num(f, 'i');
+            if (ii !== null) return k < ii ? 'is-done' : k === ii ? 'is-hot' : 'is-win';
           }
           if (zone === 'window') {
             // Окно модуля 9: при r — окно после сдвига [r − len + 1, r], ушедший r − len;
@@ -1203,6 +1209,71 @@
       }
       draw();
     });
+    root.addEventListener('click', e => {
+      const b = e.target.closest('[data-act]'); if (!b) return;
+      if (b.dataset.act === 'check') check();
+      if (b.dataset.act === 'reset') reset();
+    });
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); check(); } });
+    reset();
+  });
+
+  /* ── 9з. Равновесный индекс вручную ───────────────────────────── */
+  /* data-a — список целых чисел. На каждом индексе студент вводит сумму
+     справа: right = total − left − nums[i]. Если left == right, индекс
+     найден; иначе nums[i] уходит в left и проверяется следующий индекс. */
+  document.querySelectorAll('.balance').forEach(root => {
+    const a = json(root, 'a') || [];
+    const n = a.length, total = a.reduce((x, y) => x + y, 0);
+    let i, left, errors, done;
+    root.classList.add('widget');
+    root.innerHTML = `
+      <div class="widget__head"><b>Найдите равновесный индекс</b><span>total = ${minus(total)}</span></div>
+      <div class="widget__body">
+        <div class="cells"></div>
+        <p class="rwg__now"></p>
+        <div class="btnrow slidehand__sum">
+          <label>right = <input type="number" inputmode="numeric"></label>
+          <button class="btn btn--main" data-act="check">Проверить</button>
+        </div>
+        <p class="hunt__msg" aria-live="polite"></p>
+        <div class="btnrow"><span style="flex:1"></span><button class="btn" data-act="reset">↻ заново</button></div>
+        <div class="legend"><span><i class="l-done"></i>левее i: сумма left</span><span><i class="l-hot"></i>nums[i]</span><span><i class="l-win"></i>правее i: сумма right</span></div>
+      </div>`;
+    const cells = root.querySelector('.cells'), now = root.querySelector('.rwg__now'), msg = root.querySelector('.hunt__msg');
+    const box = root.querySelector('.slidehand__sum'), input = box.querySelector('input');
+    const say = (t, kind = '') => { msg.className = 'hunt__msg' + (kind ? ' is-' + kind : ''); msg.innerHTML = t; };
+    function reset() {
+      i = 0; left = 0; errors = 0; done = n === 0; input.value = '';
+      say(`Сумма всего списка total = ${minus(total)} посчитана заранее. Левее индекса 0 чисел нет, left = 0. Введите сумму правее индекса 0.`);
+      draw();
+    }
+    function draw() {
+      const tags = {}; if (!done || i < n) tags[i] = ['i'];
+      drawCells(cells, a, { tags, cls: k => done && i >= n ? '' : k < i ? 'is-done' : k === i ? 'is-hot' : 'is-win' });
+      now.innerHTML = done ? '' : `i = ${i}, left = <b>${minus(left)}</b>, nums[${i}] = ${minus(a[i])}. right = total − left − nums[i] = ?`;
+      box.hidden = done;
+    }
+    function check() {
+      if (done) return;
+      const want = total - left - a[i], got = Number(input.value);
+      if (input.value.trim() === '' || got !== want) {
+        errors++;
+        return say(got === total - left && input.value.trim() !== ''
+          ? `${minus(got)} = total − left: в эту сумму попало само nums[${i}] = ${minus(a[i])}. Справа от индекса его нет, его тоже нужно вычесть.`
+          : `Не сходится. Справа — всё, кроме левой части и самого nums[${i}]: ${minus(total)} − ${minus(left)} − ${minus(a[i])}.`.replace(/− −/g, '+ '), 'no');
+      }
+      input.value = '';
+      if (left === want) {
+        done = true;
+        say(`Верно: right = ${minus(want)}, и left = ${minus(left)}. Суммы равны — индекс <b>${i}</b> равновесный. Ошибок: ${errors}.`, 'ok');
+      } else {
+        const old = left; left += a[i]; i++;
+        if (i === n) { done = true; say(`right = ${minus(want)}, left = ${minus(old)}: не равны. Индексы закончились — равновесного нет, ответ <b>−1</b>. Ошибок: ${errors}.`, 'ok'); }
+        else { say(`Верно: right = ${minus(want)}, left = ${minus(old)} — не равны. nums[${i - 1}] уходит влево: left = ${minus(left)}. Введите сумму правее индекса ${i}.`); setTimeout(() => input.focus(), 0); }
+      }
+      draw();
+    }
     root.addEventListener('click', e => {
       const b = e.target.closest('[data-act]'); if (!b) return;
       if (b.dataset.act === 'check') check();
