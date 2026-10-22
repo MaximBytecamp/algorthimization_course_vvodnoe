@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#020835">
+  <title>Первый запрос к базе из C# · МДК.01.11</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&family=Unbounded:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="lesson.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="home" href="../../index.html">← МДК.01.11 · ADO.NET</a>
+    <nav>
+      <a href="#lec">Лекция</a>
+      <a href="#prak">Практика</a>
+      <a href="#review">Рецензия</a>
+    </nav>
+  </header>
+
+  <div class="wrap">
+    <section class="hero">
+      <p class="hero__kicker">МДК.01.11 · Занятие 1 · лекция и практика</p>
+      <h1>Первый запрос<br>к базе из C#</h1>
+      <p class="lead">На занятии разобрано, как программа на C# подключается к PostgreSQL, отправляет SQL-запрос и читает строки ответа. Первая часть — лекция из пяти разделов, у каждого раздела есть интерактивная схема. Вторая часть — практика из четырёх заданий: три выполняются на этой странице, четвёртое — в стартовом проекте на вашем компьютере. После практики страница выставляет баллы и собирает отчёт.</p>
+      <div class="plan">
+        <a href="../../ustanovka/index.html"><b>До занятия</b><span>Установить .NET 10 SDK и Docker, проверить запуск стартового проекта</span></a>
+        <a href="#lec"><b>Лекция · 35 минут</b><span>ADO.NET и провайдер, четыре объекта, выполнение по шагам, строка подключения, чтение строк</span></a>
+        <a href="#prak"><b>Практика · 45 минут</b><span>Четыре задания, 10 баллов. Каждое задание проверяется один раз</span></a>
+        <a href="#review"><b>Рецензия · 5 минут</b><span>Баллы по заданиям и отчёт .md для сдачи</span></a>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ ЛЕКЦИЯ -->
+    <div class="part-band" id="lec"><b>Лекция</b><span>5 разделов</span></div>
+
+    <!-- 1 -->
+    <section class="sec" id="l1">
+      <h2><span class="n">1</span>Программа, провайдер и база данных</h2>
+      <div class="text">
+        <p>PostgreSQL — сервер баз данных: отдельная программа, которая хранит таблицы и выполняет SQL-запросы. Программа на C#, которой нужны данные, называется клиентом. Клиент и сервер обмениваются сообщениями по сети, даже когда работают на одном компьютере: клиент подключается к адресу и порту сервера, отправляет текст запроса и получает строки результата. Формат этих сообщений задаёт протокол PostgreSQL.</p>
+        <p>Писать обмен сообщениями вручную в каждой программе долго, поэтому в .NET для работы с базами есть готовый набор классов.</p>
+      </div>
+      <div class="term"><b>ADO.NET</b> — часть .NET для работы с базами данных: базовые классы <code>DbConnection</code> (соединение), <code>DbCommand</code> (команда) и <code>DbDataReader</code> (чтение результата) из пространства имён <code>System.Data.Common</code>. В них описано, какие действия есть у соединения, команды и чтения. Код для конкретной СУБД находится в провайдере данных.</div>
+      <div class="term"><b>Провайдер данных</b> — библиотека, которая реализует классы ADO.NET для одной СУБД. Для PostgreSQL это <b>Npgsql</b>: класс <code>NpgsqlConnection</code> наследует <code>DbConnection</code> и передаёт сообщения по протоколу PostgreSQL. Провайдер подключают к проекту как пакет NuGet.</div>
+      <div class="analogy">Так устроена печать на компьютере. Кнопка «Печать» во всех программах одинаковая, а в команды для конкретного принтера документ переводит драйвер этого принтера. ADO.NET — общая кнопка, провайдер — драйвер. Если сменить СУБД, меняются провайдер и названия классов, а порядок действий в программе остаётся тем же.</div>
+      <p class="lead-in">На схеме — путь запроса от программы до базы. Переключатель в заголовке меняет СУБД.</p>
+      <div class="panel" id="prov">
+        <div class="panel__head"><span>Путь запроса</span><span class="sp"></span><div class="tabs" role="group" aria-label="СУБД">
+          <button type="button" data-p="pg" aria-pressed="true">PostgreSQL</button>
+          <button type="button" data-p="ms" aria-pressed="false">SQL Server</button>
+          <button type="button" data-p="lite" aria-pressed="false">SQLite</button>
+        </div></div>
+        <div class="panel__body">
+          <div class="prov">
+            <div class="prov__box"><h4>Программа</h4><span class="big">OrdersApp</span><small>код на C#: открыть соединение, выполнить запрос, прочитать строки</small></div>
+            <div class="wire"><i></i><i></i></div>
+            <div class="prov__box prov__box--ado"><h4>ADO.NET · общие классы</h4><code>DbConnection</code><code>DbCommand</code><code>DbDataReader</code></div>
+            <div class="wire"><i></i><i></i></div>
+            <div class="prov__box prov__box--drv"><h4>Провайдер · пакет NuGet</h4><span class="big" data-f="pkg">Npgsql</span><small data-f="pkgnote">реализует классы ADO.NET для PostgreSQL</small></div>
+            <div class="wire"><i></i><i></i></div>
+            <div class="prov__box prov__box--db"><h4>СУБД</h4><span class="big" data-f="db">PostgreSQL</span><small data-f="addr">сервер, localhost:5432</small></div>
+          </div>
+          <table class="names">
+            <thead><tr><th>Класс ADO.NET</th><th>Класс провайдера</th><th>Для чего</th></tr></thead>
+            <tbody>
+              <tr><td><code>DbConnection</code></td><td class="p"><code data-f="c1">NpgsqlConnection</code></td><td>соединение с сервером</td></tr>
+              <tr><td><code>DbCommand</code></td><td class="p"><code data-f="c2">NpgsqlCommand</code></td><td>текст SQL-запроса</td></tr>
+              <tr><td><code>DbDataReader</code></td><td class="p"><code data-f="c3">NpgsqlDataReader</code></td><td>чтение строк результата</td></tr>
+              <tr><td>подключение пакета</td><td class="p" colspan="2"><code data-f="add">dotnet add package Npgsql</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p class="after">При смене СУБД меняются пакет NuGet, приставка в именах классов и адрес сервера. Блок ADO.NET и порядок вызовов остаются прежними. В курсе используется PostgreSQL, поэтому дальше все классы — с приставкой Npgsql. Этих классов четыре, и каждый отвечает за свой этап работы с базой.</p>
+    </section>
+
+    <!-- 2 -->
+    <section class="sec" id="l2">
+      <h2><span class="n">2</span>Четыре объекта Npgsql</h2>
+      <div class="text">
+        <p>Работа с базой в программе проходит четыре этапа: получить настройки подключения, подключиться к серверу, передать запрос и прочитать ответ. На каждый этап в Npgsql есть свой объект.</p>
+      </div>
+      <div class="analogy">Этапы похожи на звонок на склад. Сначала нужен номер телефона, он записан в записной книжке. Затем звонок: линия соединена, и пока идёт разговор, по ней не позвонить другому человеку. Потом вопрос: «Какие у вас заказы?». Ответ диктуют по одной строке, а вы записываете строку за строкой, пока не услышите «это всё».</div>
+      <p class="lead-in">Карточки стоят в том порядке, в котором объекты создаются в программе. При нажатии на карточку в коде под ними подсвечивается строка, которая создаёт этот объект.</p>
+      <div class="objs" id="objs">
+        <div class="obj" data-l="2" tabindex="0"><span class="num">1</span><h4>NpgsqlDataSource</h4><span class="like">записная книжка с номером</span><p>Источник данных. Хранит строку подключения и пул соединений. При создании к серверу не подключается.</p><dl><dt>Создаётся</dt><dd><code>NpgsqlDataSource.Create(строка)</code></dd><dt>Живёт</dt><dd>всё время работы программы</dd></dl></div>
+        <div class="obj" data-l="3" tabindex="0"><span class="num">2</span><h4>NpgsqlConnection</h4><span class="like">соединённая линия</span><p>Соединение: открытый сетевой канал к серверу с выполненным входом. Пока по нему выполняется запрос, второй запрос по нему не отправить.</p><dl><dt>Создаётся</dt><dd><code>dataSource.OpenConnectionAsync()</code></dd><dt>Живёт</dt><dd>на время одной операции</dd></dl></div>
+        <div class="obj" data-l="4,5" tabindex="0"><span class="num">3</span><h4>NpgsqlCommand</h4><span class="like">вопрос</span><p>Команда: текст SQL и соединение, по которому его отправить. Пока не вызван метод Execute…, на сервер ничего не уходит.</p><dl><dt>Создаётся</dt><dd><code>new NpgsqlCommand(sql, connection)</code></dd><dt>Выполняется</dt><dd><code>ExecuteReaderAsync()</code></dd></dl></div>
+        <div class="obj" data-l="6,7,8" tabindex="0"><span class="num">4</span><h4>NpgsqlDataReader</h4><span class="like">ответ, который диктуют по строке</span><p>Читатель результата: получает строки по одной и двигается только вперёд. Вернуться к прочитанной строке нельзя.</p><dl><dt>Создаётся</dt><dd><code>command.ExecuteReaderAsync()</code></dd><dt>Читает</dt><dd><code>ReadAsync()</code> и Get-методы</dd></dl></div>
+      </div>
+      <div class="panel">
+        <div class="panel__head"><span>Program.cs · четыре объекта</span></div>
+        <pre class="code" id="objcode"></pre>
+      </div>
+      <p class="after">Каждый объект получается из предыдущего: соединение — из источника данных, команда — с соединением, читатель — из команды. Поэтому строки в программе всегда идут в этом порядке.</p>
+      <div class="term"><b>Пул соединений</b> — запас открытых соединений внутри источника данных. Подключение к серверу занимает время: нужно установить сетевой канал и выполнить вход. Поэтому при закрытии соединение возвращается в пул открытым, и следующий вызов <code>OpenConnectionAsync</code> получает его без повторного входа.</div>
+      <p class="after">Как эти объекты работают вместе, видно на пошаговом выполнении программы.</p>
+    </section>
+
+    <!-- 3 -->
+    <section class="sec" id="l3">
+      <h2><span class="n">3</span>Пошаговое выполнение программы</h2>
+      <div class="text">
+        <p>Ниже — программа из стартового проекта. Строка, которая настраивает кодировку терминала, опущена. Кнопка «Шаг» выполняет одну строку: слева подсвечивается строка, справа меняется состояние программы и базы, внизу появляется пояснение. Клавиши <kbd>←</kbd> и <kbd>→</kbd> работают так же, когда схема в фокусе.</p>
+      </div>
+      <div class="panel" id="run" tabindex="0">
+        <div class="panel__head"><span>Program.cs · выполнение по шагам</span><span class="sp"></span><span id="runLabel">не запущена</span></div>
+        <div class="run">
+          <div class="run__code"><pre class="code" id="runcode"></pre></div>
+          <div class="run__stage">
+            <div class="lane">
+              <div class="box">
+                <h5>Программа OrdersApp</h5>
+                <div class="chip" data-o="cs"><span class="lamp"></span>connectionString</div>
+                <div class="chip" data-o="ds"><span class="lamp"></span>dataSource<em data-f="pool"></em></div>
+                <div class="chip" data-o="conn"><span class="lamp" data-f="lamp"></span>connection<em data-f="connst"></em></div>
+                <div class="chip" data-o="cmd"><span class="lamp"></span>command</div>
+                <div class="chip" data-o="rd"><span class="lamp"></span>reader</div>
+                <div class="vars"><span data-v="id">id</span><span data-v="status">status</span><span data-v="total">total</span></div>
+              </div>
+              <div class="net"><span class="port">:5433</span><span class="packet" id="pk1"></span><span class="packet back" id="pk2"></span></div>
+              <div class="box box--db">
+                <h5>PostgreSQL · база orders</h5>
+                <table class="mini" id="dbmini"></table>
+              </div>
+            </div>
+            <div class="answer">
+              <div class="res"><h5>Строки у читателя</h5><div id="resrows"></div></div>
+              <div class="console"><h5>Терминал</h5><div id="cons"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="run__cap" id="runcap"></div>
+        <div class="run__bar">
+          <button class="btn" type="button" id="bBack">← Назад</button>
+          <button class="btn btn--main" type="button" id="bStep">Шаг →</button>
+          <button class="btn" type="button" id="bAuto">▶ Авто</button>
+          <button class="btn" type="button" id="bLoop">До конца цикла</button>
+          <button class="btn" type="button" id="bReset">Сначала</button>
+          <span class="count" id="runCount"></span>
+        </div>
+      </div>
+      <p class="after">Из пошагового выполнения видны три факта. К серверу программа обращается по сети только в двух строках: при открытии соединения и при выполнении команды. Строки результата приходят от сервера потоком, а программа берёт их по одной, вызывая <code>ReadAsync</code>. Объекты, объявленные с <code>await using</code>, закрываются в конце программы в обратном порядке, и соединение возвращается в пул.</p>
+      <div class="term"><b>await using</b> — объявление переменной, после которого объект закрывается автоматически, когда выполнение выходит из блока, где она объявлена. Для переменных верхнего уровня программы это конец программы. Если соединение объявить без <code>using</code>, оно остаётся занятым, пока его не закроют вызовом <code>CloseAsync</code>. В программе, которая обрабатывает много запросов, незакрытые соединения занимают весь пул, и новые запросы ждут свободного соединения.</div>
+      <p class="after">Первая строка программы — строка подключения. От неё зависит, к какому серверу и к какой базе программа подключится.</p>
+    </section>
+
+    <!-- 4 -->
+    <section class="sec" id="l4">
+      <h2><span class="n">4</span>Строка подключения</h2>
+      <div class="text">
+        <p>Строка подключения — текст с настройками подключения в виде пар <code>ключ=значение</code>, разделённых точкой с запятой. Npgsql читает её при создании источника данных. Значения в строке должны совпадать с настройками сервера. В стартовом проекте сервер описан в файле <code>docker-compose.yml</code>, поэтому каждое значение строки можно найти в этом файле.</p>
+      </div>
+      <p class="lead-in">При нажатии на часть строки подсвечивается строка <code>docker-compose.yml</code>, из которой взято значение.</p>
+      <div class="panel">
+        <div class="panel__head"><span>Строка подключения и docker-compose.yml</span></div>
+        <div class="panel__body cs">
+          <div>
+            <div class="cs__string" id="csParts"></div>
+            <div class="cs__explain" id="csExplain">Выберите часть строки.</div>
+          </div>
+          <pre class="yml" id="yml"></pre>
+        </div>
+      </div>
+      <p class="after">Порт в строке подключения — левое число в записи <code>"5433:5432"</code>, это порт на вашем компьютере. Правое число — порт внутри контейнера. Docker передаёт подключения с первого порта на второй, поэтому программа обращается только к левому.</p>
+
+      <h3>Ошибка в строке подключения</h3>
+      <div class="text">
+        <p>Подключение проходит этапы по порядку: сетевое соединение с портом, вход пользователя, выбор базы. Запрос выполняется после них. Ошибка останавливает работу на том этапе, где она возникла, и текст исключения указывает на этот этап. По тексту ошибки можно понять, какую часть строки или запроса исправлять.</p>
+      </div>
+      <p class="lead-in">Выберите ошибку: схема покажет, на каком этапе остановилась программа, а ниже появится сообщение, которое она печатает. Сообщения получены на настоящем стенде.</p>
+      <div class="panel" id="breaks">
+        <div class="panel__head"><span>Что напечатает программа</span></div>
+        <div class="panel__body">
+          <div class="tabs" id="brTabs"></div>
+          <div class="stages" id="brStages">
+            <div class="stage" data-s="0"><i></i><b>1 · Сеть</b><span>соединение с localhost:5433</span></div>
+            <div class="stage" data-s="1"><i></i><b>2 · Вход</b><span>пользователь и пароль</span></div>
+            <div class="stage" data-s="2"><i></i><b>3 · База</b><span>база orders</span></div>
+            <div class="stage" data-s="3"><i></i><b>4 · Запрос</b><span>текст SELECT</span></div>
+          </div>
+          <pre class="term-out" id="brOut"></pre>
+          <p class="cs__note" id="brNote"></p>
+        </div>
+      </div>
+      <p class="after">Пять символов в начале сообщения, например <code>28P01</code>, — код ошибки PostgreSQL (SQLSTATE). Его присылает сервер: коды на <code>28</code> — ошибки входа, <code>3D000</code> — нет такой базы, коды на <code>42</code> — ошибки в тексте запроса. Сообщение без кода, как <code>Failed to connect</code>, означает, что до сервера программа не дошла. Когда подключение и запрос выполнены, остаётся прочитать строки результата.</p>
+    </section>
+
+    <!-- 5 -->
+    <section class="sec" id="l5">
+      <h2><span class="n">5</span>Чтение строк: ReadAsync и Get-методы</h2>
+      <div class="text">
+        <p>После выполнения команды читатель стоит перед первой строкой результата. Метод <code>ReadAsync</code> переводит его на следующую строку и возвращает <code>true</code>. Когда строки закончились, метод возвращает <code>false</code>. Поэтому чтение записывают циклом <code>while (await reader.ReadAsync())</code>: тело цикла выполняется один раз для каждой строки.</p>
+        <p>Значения текущей строки читают Get-методами. Аргумент метода — номер столбца в результате. Номера начинаются с нуля и идут в том порядке, в каком столбцы перечислены после <code>SELECT</code>: в запросе <code>SELECT id, status, total</code> номер 0 — <code>id</code>, 1 — <code>status</code>, 2 — <code>total</code>. Имя метода задаёт тип C#, в котором нужно получить значение. Этот тип должен подходить к типу столбца в PostgreSQL:</p>
+      </div>
+      <table class="typemap">
+        <thead><tr><th>Тип в PostgreSQL</th><th>Тип в C#</th><th>Метод</th></tr></thead>
+        <tbody>
+          <tr><td><code>integer</code></td><td><code>int</code></td><td><code>GetInt32</code></td></tr>
+          <tr><td><code>text</code>, <code>varchar</code></td><td><code>string</code></td><td><code>GetString</code></td></tr>
+          <tr><td><code>numeric</code></td><td><code>decimal</code></td><td><code>GetDecimal</code></td></tr>
+          <tr><td><code>boolean</code></td><td><code>bool</code></td><td><code>GetBoolean</code></td></tr>
+          <tr><td><code>date</code></td><td><code>DateOnly</code></td><td><code>GetFieldValue&lt;DateOnly&gt;</code></td></tr>
+        </tbody>
+      </table>
+      <p class="lead-in">Ниже — первая строка результата. Выберите столбец и метод: справа появится то, что вернёт вызов. Результаты получены на настоящем стенде.</p>
+      <div class="panel">
+        <div class="panel__head"><span>Get-методы на первой строке</span></div>
+        <div class="panel__body getm">
+          <div>
+            <table class="row" id="gmRow">
+              <thead><tr><th>id<small>integer</small></th><th>status<small>text</small></th><th>total<small>numeric(10,2)</small></th></tr></thead>
+              <tbody>
+                <tr class="idx"><td>0</td><td>1</td><td>2</td></tr>
+                <tr class="vals"><td data-c="0">1</td><td data-c="1">shipped</td><td data-c="2">3380.00</td></tr>
+              </tbody>
+            </table>
+            <div class="methods tabs" id="gmMethods">
+              <button type="button" data-m="GetInt32" aria-pressed="true">GetInt32</button>
+              <button type="button" data-m="GetString" aria-pressed="false">GetString</button>
+              <button type="button" data-m="GetDecimal" aria-pressed="false">GetDecimal</button>
+            </div>
+            <div class="methods tabs" id="gmCols">
+              <button type="button" data-c="0" aria-pressed="true">номер 0</button>
+              <button type="button" data-c="1" aria-pressed="false">номер 1</button>
+              <button type="button" data-c="2" aria-pressed="false">номер 2</button>
+              <button type="button" data-c="3" aria-pressed="false">номер 3</button>
+            </div>
+          </div>
+          <div>
+            <div class="call" id="gmCall"></div>
+            <div class="out" id="gmOut"></div>
+          </div>
+        </div>
+      </div>
+      <p class="after">Из пяти неподходящих сочетаний в схеме четыре заканчиваются исключением <code>InvalidCastException</code>, и такую ошибку видно при первом запуске. Пятое сочетание — <code>GetInt32</code> для столбца <code>numeric</code> — отбрасывает дробную часть без ошибки. Поэтому денежные столбцы читают только через <code>GetDecimal</code>.</p>
+
+      <h3>Итоги лекции</h3>
+      <ol class="summary">
+        <li>ADO.NET — базовые классы .NET для работы с базами данных. Провайдер Npgsql реализует их для PostgreSQL и подключается пакетом NuGet.</li>
+        <li>Четыре объекта создаются по порядку: <code>NpgsqlDataSource</code> → <code>NpgsqlConnection</code> → <code>NpgsqlCommand</code> → <code>NpgsqlDataReader</code>.</li>
+        <li>По сети программа обращается к серверу в двух строках: <code>OpenConnectionAsync</code> и <code>ExecuteReaderAsync</code>.</li>
+        <li>Значения строки подключения берутся из настроек сервера в <code>docker-compose.yml</code>. Порт — левое число в <code>ports</code>.</li>
+        <li>Текст ошибки указывает этап, на котором остановилась программа: сеть, вход, база или запрос.</li>
+        <li><code>ReadAsync</code> переводит читатель на следующую строку. Get-метод выбирают по типу столбца, номер столбца считают с нуля по порядку в <code>SELECT</code>.</li>
+        <li><code>await using</code> закрывает объекты автоматически и возвращает соединение в пул.</li>
+      </ol>
+    </section>
+
+    <!-- ══════════════════════════════════════ ПРАКТИКА -->
+    <div class="part-band" id="prak"><b>Практика</b><span>4 задания · 10 баллов</span></div>
+    <div class="text" style="margin-top:3vh">
+      <p>Задания 1–3 выполняются на этой странице, задание 4 — в стартовом проекте на вашем компьютере. У каждого задания одна проверка: после нажатия «Проверить» ответы закрываются, появляются баллы и разбор. Ответы сохраняются в браузере, поэтому страницу можно перезагрузить.</p>
+    </div>
+
+    <!-- задание 1 -->
+    <article class="task" id="t1">
+      <div class="task__head"><span class="n">1</span><h3>Порядок строк программы</h3><span class="pts" data-pts="1">2 балла</span></div>
+      <div class="task__body">
+        <p>Ниже шесть строк программы, которая печатает статусы всех заказов. Строки перемешаны.</p>
+        <div class="todo"><b>Что нужно сделать</b>Нажимайте на строки слева в том порядке, в котором они идут в программе. Строка переходит в правую колонку. Чтобы вернуть строку обратно, нажмите на неё в правой колонке.</div>
+        <div class="order">
+          <div><h4>Строки вразброс</h4><ul id="t1src"></ul></div>
+          <div><h4>Программа</h4><ol id="t1dst"></ol></div>
+        </div>
+      </div>
+      <div class="task__foot"><button class="btn btn--main" type="button" data-check="1">Проверить</button><span class="verdict"></span></div>
+      <div class="feedback" id="t1fb"></div>
+    </article>
+
+    <!-- задание 2 -->
+    <article class="task" id="t2">
+      <div class="task__head"><span class="n">2</span><h3>Строка подключения по docker-compose.yml</h3><span class="pts" data-pts="2">2 балла</span></div>
+      <div class="task__body">
+        <p>Для другого проекта коллега прислал файл <code>docker-compose.yml</code> с базой склада. Контейнер запущен на вашем компьютере.</p>
+        <div class="todo"><b>Что нужно сделать</b>Заполните пять полей строки подключения, по которой программа на этом же компьютере подключится к базе из файла.</div>
+        <div class="compose2">
+          <pre class="yml" id="t2yml"></pre>
+          <div>
+            <div class="fields" id="t2fields">
+              <label>Host <input data-k="Host" autocomplete="off" spellcheck="false"></label>
+              <label>Port <input data-k="Port" autocomplete="off" spellcheck="false"></label>
+              <label>Database <input data-k="Database" autocomplete="off" spellcheck="false"></label>
+              <label>Username <input data-k="Username" autocomplete="off" spellcheck="false"></label>
+              <label>Password <input data-k="Password" autocomplete="off" spellcheck="false"></label>
+            </div>
+            <div class="assembled" id="t2str"></div>
+          </div>
+        </div>
+      </div>
+      <div class="task__foot"><button class="btn btn--main" type="button" data-check="2">Проверить</button><span class="verdict"></span></div>
+      <div class="feedback" id="t2fb"></div>
+    </article>
+
+    <!-- задание 3 -->
+    <article class="task" id="t3">
+      <div class="task__head"><span class="n">3</span><h3>Четыре запуска</h3><span class="pts" data-pts="3">3 балла</span></div>
+      <div class="task__body">
+        <p>В программе ниже четыре ошибки. Её запускали четыре раза и после каждого запуска исправляли одну ошибку. Условия запусков:</p>
+        <ul class="text">
+          <li>контейнер из стартового проекта запущен, порт в <code>docker-compose.yml</code> — <code>"5433:5432"</code>;</li>
+          <li>другого PostgreSQL на компьютере нет;</li>
+          <li>слева — сообщения в том порядке, в котором они появлялись.</li>
+        </ul>
+        <div class="todo"><b>Что нужно сделать</b>Для каждого сообщения выберите его слева, затем нажмите на строку кода, которая вызвала эту ошибку.</div>
+        <div class="runs">
+          <div class="runs__list" id="t3runs"></div>
+          <div class="panel" style="margin:0"><div class="panel__head"><span>Program.cs с ошибками</span></div><pre class="code" id="t3code"></pre></div>
+        </div>
+      </div>
+      <div class="task__foot"><button class="btn btn--main" type="button" data-check="3">Проверить</button><span class="verdict"></span></div>
+      <div class="feedback" id="t3fb"></div>
+    </article>
+
+    <!-- задание 4 -->
+    <article class="task" id="t4">
+      <div class="task__head"><span class="n">4</span><h3>Новые заказы в стартовом проекте</h3><span class="pts" data-pts="4">3 балла</span></div>
+      <div class="task__body">
+        <p>Менеджеру склада нужен список новых заказов: номер заказа, имя клиента и сумма. В конце списка — сколько всего новых заказов. Новые заказы — строки таблицы <code>orders</code> со статусом <code>new</code>. Имя клиента хранится в таблице <code>customers</code> в столбце <code>full_name</code>, заказ связан с клиентом через <code>orders.customer_id</code>.</p>
+        <ol class="steps-pc">
+          <li>Скачайте и распакуйте <a href="orders-starter.zip"><code>orders-starter.zip</code></a>, откройте папку <code>orders-starter</code> в VS Code. Если проект уже открыт после установки, используйте его.</li>
+          <li>Запустите базу и программу. Программа должна напечатать 12 заказов.
+<pre>docker compose up -d
+cd OrdersApp
+dotnet run</pre></li>
+          <li>Измените в <code>Program.cs</code> текст запроса: оставьте только новые заказы и вместо статуса выберите имя клиента.</li>
+          <li>Измените чтение второго столбца и вывод, чтобы строка выглядела так: <code>Заказ 3: Мария Козлова, 3290,00 руб.</code></li>
+          <li>Добавьте счётчик строк и после цикла напечатайте <code>Новых заказов: N</code>.</li>
+          <li>Запустите <code>dotnet run</code>, вставьте ниже текст запроса и весь вывод программы.</li>
+        </ol>
+        <details class="hint"><summary>Подсказка к запросу</summary><div>Таблицы соединяются через <code>JOIN customers c ON c.id = o.customer_id</code>, условие — <code>WHERE o.status = 'new'</code>. Многострочный текст запроса в C# записывают в тройных кавычках <code>"""</code>.</div></details>
+        <details class="hint"><summary>Подсказка к чтению</summary><div>Во втором столбце теперь текст, поэтому читать его нужно тем же методом, что и статус. Счётчик — переменная <code>int count = 0;</code> до цикла и <code>count++;</code> в теле цикла.</div></details>
+        <label class="lbl" for="t4sql">Текст SQL-запроса из Program.cs</label>
+        <textarea class="sql" id="t4sql" spellcheck="false" placeholder="SELECT …"></textarea>
+        <label class="lbl" for="t4out">Вывод программы целиком</label>
+        <textarea id="t4out" spellcheck="false" placeholder="Заказ …"></textarea>
+      </div>
+      <div class="task__foot"><button class="btn btn--main" type="button" data-check="4">Проверить</button><span class="verdict"></span></div>
+      <div class="feedback" id="t4fb"></div>
+    </article>
+
+    <!-- ══════════════════════════════════════ РЕЦЕНЗИЯ -->
+    <div class="part-band" id="review"><b>Рецензия</b><span>баллы и отчёт</span></div>
+    <section class="review">
+      <div class="review__body">
+        <div class="who">
+          <label>Фамилия и имя <input id="rvName" autocomplete="name"></label>
+          <label>Группа <input id="rvGroup"></label>
+        </div>
+        <table id="rvTable"></table>
+        <button class="btn btn--main" type="button" id="rvDownload">Скачать отчёт .md</button>
+        <div class="where"><b>Как сдать.</b> Положите скачанный файл в папку <code>practice/01-first-query/</code> своего репозитория по дисциплине, рядом положите изменённый <code>Program.cs</code> и отправьте изменения на GitHub.</div>
+      </div>
+    </section>
+
+    <footer class="foot"><span>МДК.01.11 Технология доступа к базам данных ADO.NET · занятие 1</span><span>Автор: Макаров Максим Николаевич</span></footer>
+  </div>
+
+  <script src="lesson.js"></script>
+  <script src="praktika.js"></script>
+</body>
+</html>

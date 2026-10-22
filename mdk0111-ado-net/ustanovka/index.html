@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>Установка .NET и Docker · МДК.01.11</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="book.css">
+  <style>
+    /* Палитра МДК.01.11 поверх книжной вёрстки справочника по Git */
+    :root {
+      --ink: #020835; --ink-soft: #3B4467; --ink-faint: #7C84A3;
+      --fire: #6A3FC1; --fire-deep: #4E2A9A; --fire-pale: #E6DDF7;
+      --steel: #B4531F; --steel-pale: #F6E3D6;
+      --moss: #2E7D50; --paper: #F2F1E9; --page: #FFFDF8;
+      --rule: rgba(2, 8, 53, .16);
+    }
+    .ui { display: inline-block; padding: 0 7px; border: 1px solid #b9c0cc; border-radius: 6px; background: #f6f8fa; color: #1f2328; font: 600 .86em/1.65 var(--body); }
+    .ui--blue { background: #0078d4; border-color: #0067b8; color: #fff; }
+    td code, td b, .leaf a { overflow-wrap: anywhere; }
+  </style>
+  <script>
+    try {
+      var saved = localStorage.getItem('git-book-os');
+      if (!saved) {
+        var p = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+        saved = /win/i.test(p) ? 'win' : (/mac|iphone|ipad/i.test(p) ? 'mac' : 'linux');
+      }
+      document.documentElement.dataset.os = saved;
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>МДК.01.11 · Установка</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">МДК.01.11 Технология доступа к базам данных ADO.NET</a> · инструкция для студентов</p>
+          <p class="running__folio">22.10.2026</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">00</span>
+          <h1>Установка .NET 10 SDK<br>и Docker</h1>
+          <p class="lead">В инструкции разобрано, какие программы нужны для занятий, как установить их на Windows, macOS и Linux и как проверить, что всё работает. Проверка в конце — запуск базы заказов в контейнере и программы на C#, которая читает из неё строки. Систему выберите переключателем справа вверху.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Для кого</dt><dd>Студенты 3 курса, дисциплина МДК.01.11</dd></div>
+          <div><dt>Что понадобится</dt><dd>VS Code, права администратора на компьютере, интернет</dd></div>
+          <div><dt>Что получится</dt><dd>Команды <code>dotnet</code> и <code>docker</code> работают, программа печатает 12 заказов</dd></div>
+          <div><dt>Сколько занимает</dt><dd>Около 30 минут, большая часть — скачивание</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>Порядок действий</b>
+          <ol>
+            <li><a href="#s1">Что устанавливаем и зачем</a></li>
+            <li><a href="#s2">.NET 10 SDK</a></li>
+            <li><a href="#s3">Расширение C# Dev Kit для VS Code</a></li>
+            <li><a href="#s4">Docker Desktop</a></li>
+            <li><a href="#s5">Проверка: база и первая программа</a></li>
+            <li><a href="#s6">Частые ошибки</a></li>
+            <li><a href="#s7">Шпаргалка</a></li>
+          </ol>
+        </nav>
+
+        <!-- ═════════════════════════════════════════════ §1 -->
+        <h2 id="s1"><span class="sec">§1</span>Что устанавливаем и зачем</h2>
+        <p>На занятиях программа на C# подключается к базе данных PostgreSQL, отправляет ей SQL-запросы и получает строки. Для этого на компьютере нужны три вещи: средства для сборки и запуска программ на C#, редактор с поддержкой C# и сервер базы данных.</p>
+        <p>Базу не устанавливают на компьютер напрямую. Её запускают в контейнере Docker. Контейнер похож на арендованный кабинет с готовой мебелью: внутри уже установлен и настроен PostgreSQL, а после занятия кабинет можно освободить, и на компьютере ничего не останется. Всем студентам выдаётся одинаковый файл с описанием контейнера, поэтому база у всех одна и та же, с теми же таблицами и строками.</p>
+        <div class="flowline">
+          <p class="flowline__head">Что нужно для занятий</p>
+          <div class="flowline__track">
+            <div class="flowline__step"><b>1 · .NET 10 SDK</b><span>собирает и запускает программы на C#, скачивает библиотеки</span><em>§2</em></div>
+            <div class="flowline__step"><b>2 · C# Dev Kit</b><span>подсветка, подсказки и ошибки C# в VS Code</span><em>§3</em></div>
+            <div class="flowline__step"><b>3 · Docker Desktop</b><span>запускает контейнеры, в том числе PostgreSQL</span><em>§4</em></div>
+            <div class="flowline__step"><b>4 · Проверка</b><span>база в контейнере и программа, которая её читает</span><em>§5</em></div>
+          </div>
+        </div>
+        <p>SDK (Software Development Kit) — набор для разработки. Он отличается от среды выполнения (Runtime): Runtime только запускает готовые программы, а SDK ещё и собирает их из исходного кода. Для занятий нужен SDK: Runtime входит в него.</p>
+
+        <div class="part" role="separator"><span><b>1</b>Установка</span></div>
+
+        <!-- ═════════════════════════════════════════════ §2 -->
+        <h2 id="s2"><span class="sec">§2</span>.NET 10 SDK</h2>
+        <p>.NET 10 — версия с долгой поддержкой (LTS), она получает исправления до ноября 2028 года. Если на компьютере уже стоит .NET 8 или 9, удалять их не нужно: разные версии SDK работают рядом, а нужная проекту версия указана в его файле <code>.csproj</code>.</p>
+
+        <div data-os="win">
+          <h3>Шаг 1. Установить SDK</h3>
+          <p>Откройте терминал PowerShell: <b>Пуск</b> → наберите <b>PowerShell</b> → <b>Enter</b>. Выполните команду:</p>
+          <figure class="code">
+            <figcaption><span>PowerShell</span><span>установить .NET 10 SDK</span></figcaption>
+<pre><span class="cmd">winget install Microsoft.DotNet.SDK.10</span></pre>
+          </figure>
+          <p>Программа <code>winget</code> скачает установщик с сайта Microsoft и запустит его. Если система спросит разрешение на изменения, нажмите <b>Да</b>.</p>
+          <p>Если команда <code>winget</code> не найдена, установите SDK вручную: откройте <a href="https://dotnet.microsoft.com/download/dotnet/10.0">dotnet.microsoft.com/download/dotnet/10.0</a>, в колонке <b>SDK</b> в строке <b>Windows</b> выберите установщик <b>x64</b> и запустите скачанный файл.</p>
+        </div>
+        <div data-os="mac">
+          <h3>Шаг 1. Установить SDK</h3>
+          <p>Откройте <a href="https://dotnet.microsoft.com/download/dotnet/10.0">dotnet.microsoft.com/download/dotnet/10.0</a>. В колонке <b>SDK</b> в строке <b>macOS</b> выберите установщик под процессор: <b>Arm64</b> для Mac на Apple M1–M5, <b>x64</b> для Mac на Intel. Процессор указан в меню  → <b>Об этом Mac</b>. Запустите скачанный файл <code>.pkg</code> и пройдите шаги установщика.</p>
+          <p>Если установлен Homebrew, то же делается одной командой:</p>
+          <figure class="code">
+            <figcaption><span>терминал</span><span>установить .NET SDK через Homebrew</span></figcaption>
+<pre><span class="cmd">brew install --cask dotnet-sdk</span></pre>
+          </figure>
+        </div>
+        <div data-os="linux">
+          <h3>Шаг 1. Установить SDK</h3>
+          <p>Microsoft выпускает скрипт установки, который работает в любом дистрибутиве. Он ставит SDK в папку <code>~/.dotnet</code> и не требует прав администратора:</p>
+          <figure class="code">
+            <figcaption><span>терминал</span><span>скачать и запустить скрипт установки</span></figcaption>
+<pre><span class="cmd">curl -sSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh</span>
+<span class="cmd">bash dotnet-install.sh --channel 10.0</span></pre>
+          </figure>
+          <p>Чтобы команда <code>dotnet</code> находилась в любом терминале, добавьте папку в переменную PATH:</p>
+          <figure class="code">
+            <figcaption><span>терминал</span><span>добавить ~/.dotnet в PATH</span></figcaption>
+<pre><span class="cmd">echo 'export DOTNET_ROOT=$HOME/.dotnet' >> ~/.bashrc</span>
+<span class="cmd">echo 'export PATH=$PATH:$DOTNET_ROOT' >> ~/.bashrc</span></pre>
+          </figure>
+        </div>
+
+        <h3>Шаг 2. Проверить установку</h3>
+        <p>Закройте все окна терминала и VS Code и откройте их заново. Терминал читает список папок с программами (PATH) один раз при запуске, поэтому в окне, открытом до установки, команда <code>dotnet</code> не найдётся. Затем выполните:</p>
+        <figure class="code code--out">
+          <figcaption><span>терминал</span><span>список установленных SDK</span></figcaption>
+<pre><span class="cmd">dotnet --list-sdks</span>
+<span data-os="win">10.0.402 [C:\Program Files\dotnet\sdk]</span><span data-os="mac">10.0.402 [/usr/local/share/dotnet/sdk]</span><span data-os="linux">10.0.402 [/home/student/.dotnet/sdk]</span></pre>
+        </figure>
+        <p>В строке должна быть версия, которая начинается с <code>10.0</code>. Последние цифры зависят от даты установки: Microsoft выпускает обновления каждый месяц. Если в списке есть и другие версии, это не мешает.</p>
+        <p class="step-done"><b>Что получилось.</b>Команда <code>dotnet</code> работает, в списке есть SDK 10.0.</p>
+
+        <!-- ═════════════════════════════════════════════ §3 -->
+        <h2 id="s3"><span class="sec">§3</span>Расширение C# Dev Kit для VS Code</h2>
+        <p>Без расширений VS Code показывает код на C# как обычный текст. Расширение C# Dev Kit от Microsoft добавляет подсветку, подсказки при наборе, подчёркивание ошибок до запуска и панель Solution Explorer со списком проектов.</p>
+        <ol class="steps">
+          <li>Откройте VS Code и панель расширений: <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>Shift</kbd> + <kbd>X</kbd>.</li>
+          <li>В поиске наберите <code>C# Dev Kit</code>.</li>
+          <li>У расширения от <b>Microsoft</b> нажмите <span class="ui ui--blue">Install</span>. Вместе с ним установятся расширения <b>C#</b> и <b>.NET Install Tool</b>.</li>
+        </ol>
+        <p>То же одной командой в терминале:</p>
+        <figure class="code">
+          <figcaption><span>терминал</span><span>установить C# Dev Kit</span></figcaption>
+<pre><span class="cmd">code --install-extension ms-dotnettools.csdevkit</span></pre>
+        </figure>
+        <p class="step-done"><b>Что получилось.</b>В списке расширений VS Code есть C# Dev Kit, C# и .NET Install Tool.</p>
+
+        <!-- ═════════════════════════════════════════════ §4 -->
+        <h2 id="s4"><span class="sec">§4</span>Docker Desktop</h2>
+        <p>Docker Desktop — программа, которая запускает контейнеры и показывает их в окне. В неё входят команды <code>docker</code> и <code>docker compose</code>. Вторая команда поднимает контейнеры по описанию из файла <code>docker-compose.yml</code>: какой образ взять, какие настройки передать, какой порт открыть.</p>
+
+        <div data-os="win">
+          <h3>Шаг 1. Включить WSL 2</h3>
+          <p>Контейнеры с PostgreSQL рассчитаны на Linux. На Windows Docker запускает их внутри WSL 2 — встроенной в Windows подсистемы Linux. Откройте PowerShell <b>от имени администратора</b>: <b>Пуск</b> → наберите <b>PowerShell</b> → правая кнопка мыши → <b>Запуск от имени администратора</b>. Выполните:</p>
+          <figure class="code">
+            <figcaption><span>PowerShell · администратор</span><span>установить WSL 2</span></figcaption>
+<pre><span class="cmd">wsl --install</span></pre>
+          </figure>
+          <p>После установки перезагрузите компьютер. Если WSL уже установлен, команда сообщит об этом, и шаг пропускается.</p>
+          <h3>Шаг 2. Установить Docker Desktop</h3>
+          <figure class="code">
+            <figcaption><span>PowerShell</span><span>установить Docker Desktop</span></figcaption>
+<pre><span class="cmd">winget install Docker.DockerDesktop</span></pre>
+          </figure>
+          <p>Без <code>winget</code> установщик скачивается с <a href="https://www.docker.com/products/docker-desktop/">docker.com/products/docker-desktop</a>. В окне установщика оставьте отмеченным пункт <b>Use WSL 2 instead of Hyper-V</b>.</p>
+        </div>
+        <div data-os="mac">
+          <h3>Шаг 1. Установить Docker Desktop</h3>
+          <p>Скачайте Docker Desktop с <a href="https://www.docker.com/products/docker-desktop/">docker.com/products/docker-desktop</a>, выбрав версию под процессор: <b>Apple Silicon</b> или <b>Intel</b>. Откройте файл <code>.dmg</code> и перетащите значок Docker в папку <b>Программы</b>. Через Homebrew:</p>
+          <figure class="code">
+            <figcaption><span>терминал</span><span>установить Docker Desktop через Homebrew</span></figcaption>
+<pre><span class="cmd">brew install --cask docker-desktop</span></pre>
+          </figure>
+        </div>
+        <div data-os="linux">
+          <h3>Шаг 1. Установить Docker Engine</h3>
+          <p>На Linux контейнеры работают без виртуальной машины, поэтому вместо Docker Desktop обычно ставят Docker Engine — ту же программу без окна. Официальный скрипт определяет дистрибутив и ставит подходящие пакеты:</p>
+          <figure class="code">
+            <figcaption><span>терминал</span><span>установить Docker Engine и разрешить запуск без sudo</span></figcaption>
+<pre><span class="cmd">curl -fsSL https://get.docker.com | sudo sh</span>
+<span class="cmd">sudo usermod -aG docker $USER</span></pre>
+          </figure>
+          <p>Вторая команда добавляет вас в группу <code>docker</code>, чтобы команды работали без <code>sudo</code>. Изменение вступает в силу после выхода из системы и повторного входа.</p>
+        </div>
+
+        <h3><span data-os="win mac">Шаг 3. Запустить Docker и проверить</span><span data-os="linux">Шаг 2. Проверить</span></h3>
+        <p data-os="win mac">Запустите Docker Desktop из меню программ. При первом запуске он предложит войти в аккаунт: этот шаг можно пропустить кнопкой <b>Skip</b>. Дождитесь, пока в левом нижнем углу окна появится зелёная надпись <b>Engine running</b>. Пока её нет, команды <code>docker</code> заканчиваются ошибкой.</p>
+        <p>Проверьте, что Docker скачивает образы и запускает контейнеры. Образ <code>hello-world</code> весит несколько килобайт и только печатает приветствие:</p>
+        <figure class="code code--out">
+          <figcaption><span>терминал</span><span>пробный контейнер</span></figcaption>
+<pre><span class="cmd">docker run hello-world</span>
+Hello from Docker!
+This message shows that your installation appears to be working correctly.</pre>
+        </figure>
+        <p>Строка <code>Hello from Docker!</code> означает, что Docker работает. Над ней могут быть строки о скачивании образа <code>Pulling from library/hello-world</code>, они появляются только при первом запуске.</p>
+        <p class="step-done"><b>Что получилось.</b>Docker запущен, пробный контейнер напечатал приветствие.</p>
+
+        <div class="part" role="separator"><span><b>2</b>Проверка</span></div>
+
+        <!-- ═════════════════════════════════════════════ §5 -->
+        <h2 id="s5"><span class="sec">§5</span>Проверка: база и первая программа</h2>
+        <p>Последний шаг проверяет всё вместе. Стартовый проект состоит из двух частей: файла <code>docker-compose.yml</code>, который описывает контейнер с базой заказов, и консольного приложения <code>OrdersApp</code>, которое подключается к этой базе и печатает заказы.</p>
+        <h3>Шаг 1. Скачать и открыть проект</h3>
+        <p>Скачайте архив <a href="../lessons/01-pervyy-zapros/orders-starter.zip"><code>orders-starter.zip</code></a> и распакуйте его. В VS Code откройте папку <code>orders-starter</code>: <b>File</b> → <b>Open Folder</b>. Внутри четыре элемента:</p>
+        <div class="tree">
+          <p class="tree__head">orders-starter</p>
+          <div class="tree__body">
+            <div class="tree__row tree__row--hi"><span>docker-compose.yml</span><em>описание контейнера с PostgreSQL: образ, имя базы, пользователь, порт</em></div>
+            <div class="tree__row"><span>db/init.sql</span><em>таблицы и строки базы заказов</em></div>
+            <div class="tree__row tree__row--hi"><span>OrdersApp/Program.cs</span><em>программа на C#, которая читает заказы</em></div>
+            <div class="tree__row"><span>OrdersApp/OrdersApp.csproj</span><em>файл проекта: версия .NET и библиотека Npgsql</em></div>
+          </div>
+        </div>
+        <h3>Шаг 2. Запустить базу</h3>
+        <p>Откройте терминал VS Code: <kbd>Ctrl</kbd> + <kbd>`</kbd>. Терминал открывается в папке проекта. Выполните:</p>
+        <figure class="code code--out">
+          <figcaption><span>терминал</span><span>запустить контейнер в фоне</span></figcaption>
+<pre><span class="cmd">docker compose up -d</span>
+ Network orders-starter_default Created
+ Container orders-db Created
+ Container orders-db Started</pre>
+        </figure>
+        <p>Ключ <code>-d</code> (detached) запускает контейнер в фоне и возвращает терминал. При первом запуске Docker скачивает образ <code>postgres:17</code>, около 150 МБ, и выполняет скрипт <code>db/init.sql</code>: создаёт четыре таблицы и заполняет их. Убедитесь, что контейнер работает:</p>
+        <figure class="code code--out">
+          <figcaption><span>терминал</span><span>список контейнеров проекта</span></figcaption>
+<pre><span class="cmd">docker compose ps</span>
+NAME        IMAGE         SERVICE   STATUS         PORTS
+orders-db   postgres:17   db        Up 5 seconds   0.0.0.0:5433->5432/tcp</pre>
+        </figure>
+        <p>В колонке STATUS написано <code>Up</code> — контейнер работает. В колонке PORTS запись <code>5433-&gt;5432</code> означает, что порт 5433 на вашем компьютере ведёт к порту 5432 внутри контейнера, на котором PostgreSQL принимает подключения. Порт 5433 выбран, чтобы контейнер не мешал PostgreSQL, если он уже установлен на компьютере и занимает стандартный порт 5432.</p>
+        <h3>Шаг 3. Запустить программу</h3>
+        <figure class="code code--out">
+          <figcaption><span>терминал</span><span>перейти в папку приложения и запустить его</span></figcaption>
+<pre><span class="cmd">cd OrdersApp</span><span class="cmd">dotnet run</span>
+Заказ 1: shipped, 3380,00 руб.
+Заказ 2: paid, 13990,00 руб.
+Заказ 3: new, 3290,00 руб.
+…
+Заказ 12: cancelled, 3290,00 руб.</pre>
+        </figure>
+        <p>При первом запуске <code>dotnet run</code> скачивает из каталога NuGet библиотеку Npgsql и собирает проект, это занимает до минуты. Затем программа печатает 12 строк. Разделитель в суммах зависит от языка системы: на русской Windows печатается запятая, на английской — точка.</p>
+        <div class="checklist">
+          <p class="checklist__head">Проверка перед занятием</p>
+          <div class="checklist__item"><span><b><code>dotnet --list-sdks</code> показывает 10.0</b>Версия после второй точки может отличаться.</span></div>
+          <div class="checklist__item"><span><b><code>docker compose ps</code> показывает <code>Up</code></b>Контейнер <code>orders-db</code> с портом 5433.</span></div>
+          <div class="checklist__item"><span><b><code>dotnet run</code> печатает 12 заказов</b>Первая строка — <code>Заказ 1: shipped</code>.</span></div>
+        </div>
+        <h3>Шаг 4. Остановить базу</h3>
+        <p>После работы контейнер останавливают из папки <code>orders-starter</code>:</p>
+        <figure class="code">
+          <figcaption><span>терминал</span><span>остановить и удалить контейнер</span></figcaption>
+<pre><span class="cmd">docker compose down</span></pre>
+        </figure>
+        <p>Команда удаляет контейнер. При следующем <code>docker compose up -d</code> база создаётся заново из <code>init.sql</code>, поэтому все изменения, сделанные в таблицах, пропадут, и база вернётся к исходным строкам. На занятиях так сбрасывают базу после экспериментов.</p>
+
+        <!-- ═════════════════════════════════════════════ §6 -->
+        <h2 id="s6"><span class="sec">§6</span>Частые ошибки</h2>
+        <p>Сообщения в таблице получены на настоящем стенде. Ищите в выводе строку с текстом из первой колонки: в длинном сообщении .NET она обычно стоит в первой строке после слов <code>Unhandled exception</code>.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Сообщение</th><th>Причина</th><th>Что сделать</th></tr></thead>
+            <tbody>
+              <tr><td><code>The term 'dotnet' is not recognized</code> или <code>command not found: dotnet</code></td><td>Терминал открыт до установки SDK, и в его PATH нет папки dotnet</td><td>Закрыть VS Code и все терминалы, открыть заново</td></tr>
+              <tr><td><code>Cannot connect to the Docker daemon</code> или <code>error during connect</code></td><td>Docker Desktop не запущен или ещё запускается</td><td>Запустить Docker Desktop, дождаться надписи Engine running</td></tr>
+              <tr><td><code>Bind for 0.0.0.0:5433 failed: port is already allocated</code></td><td>Порт 5433 занят другим контейнером</td><td>Команда <code>docker ps</code> покажет, кто его занял; остановить его: <code>docker stop &lt;имя&gt;</code></td></tr>
+              <tr><td><code>Failed to connect to 127.0.0.1:5433</code> и ниже <code>Connection refused</code></td><td>Контейнер с базой не запущен</td><td>В папке <code>orders-starter</code> выполнить <code>docker compose up -d</code> и проверить <code>docker compose ps</code></td></tr>
+              <tr><td><code>28000: role "student" does not exist</code></td><td>Программа подключилась к другому PostgreSQL, обычно установленному на компьютере на порту 5432</td><td>Проверить, что в строке подключения <code>Port=5433</code></td></tr>
+              <tr><td><code>28P01: password authentication failed for user "student"</code></td><td>Неверный пароль в строке подключения</td><td>Пароль — <code>student</code>, как в <code>docker-compose.yml</code></td></tr>
+              <tr><td><code>3D000: database "order" does not exist</code></td><td>Ошибка в имени базы</td><td>База называется <code>orders</code></td></tr>
+              <tr><td><code>error NU1301: Unable to load the service index for source https://api.nuget.org/v3/index.json</code></td><td>Нет доступа к каталогу библиотек NuGet</td><td>Проверить интернет; в сети колледжа сообщить преподавателю</td></tr>
+              <tr><td data-os="win"><code>Virtualization support not detected</code></td><td data-os="win">В настройках BIOS выключена виртуализация, без неё WSL 2 не работает</td><td data-os="win">На своём компьютере включить в BIOS пункт Intel VT-x или AMD-V (SVM); в колледже сообщить преподавателю</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Четыре ошибки подключения из таблицы разбираются на первом занятии: по тексту ошибки можно понять, на каком этапе подключение не удалось.</p>
+
+        <!-- ═════════════════════════════════════════════ §7 -->
+        <h2 id="s7"><span class="sec">§7</span>Шпаргалка</h2>
+        <div class="cheat">
+          <div>
+            <b>Проверить установку</b>
+            <code>dotnet --list-sdks</code>
+            <code>docker run hello-world</code>
+            <code>docker compose version</code>
+          </div>
+          <div>
+            <b>База заказов</b>
+            <code>docker compose up -d</code>
+            <code>docker compose ps</code>
+            <code>docker compose down</code>
+          </div>
+          <div>
+            <b>Программа</b>
+            <code>cd OrdersApp</code>
+            <code>dotnet run</code>
+          </div>
+          <div>
+            <b>Строка подключения</b>
+            <code>Host=localhost;Port=5433</code>
+            <code>Database=orders</code>
+            <code>Username=student;Password=student</code>
+          </div>
+        </div>
+
+        <div class="pager"><a href="../index.html">← Страница дисциплины</a><a href="../lessons/01-pervyy-zapros/index.html">Занятие 1 →</a></div>
+
+        <div class="colophon">
+          <span>Установка .NET 10 SDK и Docker · МДК.01.11 Технология доступа к базам данных ADO.NET</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="book.js"></script>
+</body>
+</html>
