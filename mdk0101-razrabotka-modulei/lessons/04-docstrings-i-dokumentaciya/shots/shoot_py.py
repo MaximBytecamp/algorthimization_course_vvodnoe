@@ -8,6 +8,7 @@
 и Ruff.
 """
 import asyncio
+import json
 import shutil
 import subprocess
 import sys
@@ -157,6 +158,146 @@ async def st_fileclean(e: Editor) -> None:
         (project() / rel).write_text(original, encoding="utf-8")
 
 
+
+PROBA_GEN = """from app.domain.order import Order
+
+
+def revenue_by_waiter(orders: list[Order], top: int = 0) -> dict[str, int]:
+    
+    if not orders:
+        raise ValueError("Список заказов пуст")
+    return {}
+"""
+BASE_SETTINGS = {
+    "autoDocstring.docstringFormat": "google",
+    "autoDocstring.startOnNewLine": False,
+    "autoDocstring.includeName": False,
+    "autoDocstring.guessTypes": True,
+}
+TEMPLATE = """{{summaryPlaceholder}}
+
+{{#parametersExist}}
+Args:
+{{#args}}
+    {{var}}: {{descriptionPlaceholder}}
+{{/args}}
+{{#kwargs}}
+    {{var}}: {{descriptionPlaceholder}}. По умолчанию {{&default}}.
+{{/kwargs}}
+{{/parametersExist}}
+{{#exceptionsExist}}
+
+Raises:
+{{#exceptions}}
+    {{type}}: {{descriptionPlaceholder}}
+{{/exceptions}}
+{{/exceptionsExist}}
+{{#returnsExist}}
+
+Returns:
+    {{descriptionPlaceholder}}
+{{/returnsExist}}
+"""
+VARIANTS = {
+    "base": {},
+    "startOnNewLine": {"autoDocstring.startOnNewLine": True},
+    "includeName": {"autoDocstring.includeName": True},
+    "guessTypes-false": {"autoDocstring.guessTypes": False},
+    "extendedSummary": {"autoDocstring.includeExtendedSummary": True},
+    "quoteStyle": {"autoDocstring.quoteStyle": "\'\'\'"},
+    "google-notypes": {"autoDocstring.docstringFormat": "google-notypes"},
+    "numpy": {"autoDocstring.docstringFormat": "numpy"},
+    "sphinx": {"autoDocstring.docstringFormat": "sphinx"},
+    "pep257": {"autoDocstring.docstringFormat": "pep257"},
+    "one-line-sphinx": {"autoDocstring.docstringFormat": "one-line-sphinx"},
+    "template": {"autoDocstring.customTemplatePath": ".vscode/docstring.mustache"},
+}
+CAPTURED = Path(__file__).resolve().parent / "raw" / "autodocstring-variants.txt"
+ONLY: list[str] = []
+
+
+def write_settings(extra: dict) -> None:
+    data = dict(BASE_SETTINGS)
+    data["python.defaultInterpreterPath"] = f"{project()}/.venv/bin/python"
+    data.update(extra)
+    (project() / ".vscode" / "settings.json").write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+async def st_variants(e: Editor) -> None:
+    """4.10: заготовка autoDocstring при каждой настройке — настоящий текст."""
+    (project() / ".vscode" / "docstring.mustache").write_text(TEMPLATE, encoding="utf-8")
+    original = (project() / ".vscode" / "settings.json").read_text(encoding="utf-8")
+    out = []
+    try:
+        for name, extra in VARIANTS.items():
+            if ONLY and name not in ONLY:
+                continue
+            write_settings(extra)
+            (project() / "proba.py").write_text(PROBA_GEN, encoding="utf-8")
+            await reset(e)
+            await open_file(e, "proba.py", 4.0)
+            await e.palette("File: Revert File", 1.5)
+            await goto(e, 5, 5)
+            await e.palette("Generate Docstring", 2.5)
+            await e.key("Escape", 0.3)
+            await e.key("Meta+S", 1.5)
+            text = (project() / "proba.py").read_text(encoding="utf-8")
+            body = text[text.index("def revenue_by_waiter"):text.index("    if not orders")]
+            out.append(f"===== {name}\n{body}")
+            print(f"  {name}: {len(body.splitlines())} строк")
+        CAPTURED.write_text("\n".join(out), encoding="utf-8")
+    finally:
+        (project() / ".vscode" / "settings.json").write_text(original, encoding="utf-8")
+        (project() / "proba.py").unlink(missing_ok=True)
+
+
+
+PY_SNIPPET = """{
+  "Докстринг в формате Google": {
+    "scope": "python",
+    "prefix": "dsg",
+    "body": [
+      "\\"\\"\\"${1:Действие функции одним предложением.}",
+      "",
+      "Args:",
+      "    ${2:параметр}: ${3:ограничения и смысл}",
+      "",
+      "Returns:",
+      "    ${4:что означает результат}",
+      "\\"\\"\\""
+    ],
+    "description": "Заготовка докстринга с разделами Args и Returns"
+  }
+}
+"""
+
+
+async def st_pysnippet(e: Editor) -> None:
+    """4.10: сниппет dsg — команда настройки, подсказка, вставка."""
+    await reset(e)
+    await e.palette("Snippets: Configure Snippets", 2.5)
+    await e.shot(f"{RAW}/py-snippet-configure.png")
+    await e.key("Escape", 0.5)
+    (project() / ".vscode" / "python.code-snippets").write_text(PY_SNIPPET, encoding="utf-8")
+    (project() / "proba.py").write_text(PROBA_GEN, encoding="utf-8")
+    try:
+        await reset(e)
+        await open_file(e, "proba.py", 5.0)
+        await e.palette("File: Revert File", 1.5)
+        await goto(e, 5, 5)
+        await e.type("dsg", 2.5)
+        await e.shot(f"{RAW}/py-snippet-list.png")
+        await e.key("Enter", 1.5)
+        await e.shot(f"{RAW}/py-snippet-inserted.png")
+        await e.key("Escape", 0.3)
+        await e.key("Meta+S", 1.5)
+        text = (project() / "proba.py").read_text(encoding="utf-8")
+        (RAW / "py-snippet-inserted.txt").write_text(text, encoding="utf-8")
+        print(text)
+    finally:
+        (project() / "proba.py").unlink(missing_ok=True)
+
+
 STAGES = {name[3:]: fn for name, fn in globals().items() if name.startswith("st_")}
 
 
@@ -175,6 +316,10 @@ async def run(names: list[str]) -> None:
 
 def main() -> None:
     RAW.mkdir(exist_ok=True)
+    if "--only" in sys.argv:
+        k = sys.argv.index("--only")
+        ONLY.extend(sys.argv[k + 1].split(","))
+        del sys.argv[k:k + 2]
     if sys.argv[1] == "prepare":
         prepare()
         return
