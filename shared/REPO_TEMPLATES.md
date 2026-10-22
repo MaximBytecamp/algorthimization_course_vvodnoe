@@ -16,7 +16,7 @@
 | ОП.03, сайт для практики | `op03-informacionnye-tehnologii/ga4-analytics-lab/` | `MaximBytecamp/ga4-analytics-lab` |
 | ОП.04 Алгоритмизация | `op04-algoritmizaciya/starter-pack/` | `MaximBytecamp/algo-portfolio-template` |
 | ОП.05 Операционные системы | `op05-operacionnye-sistemy-i-sredy/os-starter/` | `MaximBytecamp/os-environments-template` |
-| ДУП.02 Введение в Python | `dup02-vvedenie-v-python/python-starter/` (собирается скриптом, см. ниже) | `MaximBytecamp/python-start-template` |
+| ДУП.02 Введение в Python | `dup02-vvedenie-v-python/python-starter/` (собирается скриптом, см. ниже; инструкция для студентов — `dup02-vvedenie-v-python/repozitoriy/`) | `MaximBytecamp/python-start-template` |
 | МДК.01.01 Разработка модулей | `mdk0101-razrabotka-modulei/backend-starter/` | `MaximBytecamp/backend-starter-template` |
 | МДК.04.01 Базы данных | `mdk0401-razrabotka-i-zashchita-baz-dannyh/data-platform-starter/` (вторая копия — `~/data-platform-template`) | `MaximBytecamp/data-platform-template` |
 | Стандартизация | `standartizaciya-sertifikaciya-i-dokumentovedenie/api-standard-template/` | `MaximBytecamp/api-standard-template` |
@@ -47,12 +47,25 @@
 
 Образец полного состава — `funnel-starter` (ОП.03).
 
-ДУП.02 устроен по-другому: вместо `lesson_NN/` — папки по видам работ `dz/`,
-`praktiki/`, `kontrolnye/`, `zadachnik/glava-N-N/` и конспекты глав справочника
-в `lectures/`. Работы загружаются в `main` без веток и Pull Request (через сайт
-GitHub или Sync Changes в VS Code). Шаблон собирается скриптом
-`~/python-tests-private/python-starter/build.py`: конспекты — `lectures_data.py`,
-списки задач читаются со страниц задачника, разборы главы 1.1 — из `m1.py`.
+ДУП.02 — первый шаблон по [стандарту репозитория студента](standart-repozitoriya/index.html)
+(22.10.2026): папки по видам работ `homework/NN-тема/`, `practice/NN-тема/`, `exams/quiz-NN-…`,
+`exams/exam-NN/`, `problems/chapter-N-M/` с файлами `task_NN.py`, конспекты
+`lectures/chapter-N-M-тема.md`, правила в `docs/SUBMIT.md` и `docs/UPDATES.md`. `README.md` в корне
+принадлежит студенту. Работы загружаются в `main` без веток и Pull Request. Шаблон собирается
+скриптом `~/python-tests-private/python-starter/build.py` (копии до перевода — `*.bak-2026-10-22`):
+конспекты — `lectures_data.py`, списки задач читаются со страниц задачника, разборы главы 1.1 —
+из `m1.py`, workflow и скрипт обновления — из `common/`.
+
+### Обновление копий студентов
+
+В шаблоне ДУП.02 лежат `.github/workflows/update-materials.yml` и `.github/scripts/update_materials.py`.
+Каждый день в 06:00 МСК и по кнопке Run workflow копия студента сравнивается с шаблоном (имя шаблона
+берётся из `template_repository`): файлы преподавателя (`lectures/`, `materials/`, `docs/`,
+`.github/scripts/`, `.gitignore`, `.gitattributes`, `README.md` папок первого уровня) заменяются,
+недостающие файлы добавляются, остальные не меняются, ничего не удаляется. Поэтому выданные файлы
+не переименовываются и не удаляются, а заготовки после выдачи не правятся. Проверено 22.10.2026
+на закрытом `MaximBytecamp/python-start-sync-check`. Остальные шаблоны стандарту пока
+не соответствуют, сверка — на странице стандарта.
 
 ## После каждого занятия
 

@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>ДУП.02 · Работа с репозиторием</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Literata:opsz,wght@7..72,600;7..72,700&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F2F1E9; --panel: #FFFDF8; --panel-2: #E9EEF5; --ink: #020835;
+      --muted: #3B4467; --line: #020835; --hard: #020835; --hair: #C9D0E0;
+      --blue: #2D7FC1; --sky: #6FB8E3; --clay: #B4531F; --mint: #2E7D50; --red: #C0392B;
+      --display: "Literata", Georgia, serif;
+      --body: "Inter", system-ui, sans-serif;
+      --mono: "Roboto Mono", monospace;
+      --pixel: "Pixelify Sans", "Roboto Mono", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); line-height: 1.55;
+      background-image: linear-gradient(rgba(2,8,53,.055) 1px, transparent 1px), linear-gradient(90deg, rgba(2,8,53,.055) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 6vh 28px 8vh; }
+    .top { display: flex; align-items: center; gap: 14px; margin-bottom: 4vh; }
+    .mark {
+      display: grid; place-items: center; width: 54px; height: 54px; border: 3px solid var(--ink); text-decoration: none;
+      background: var(--ink); color: var(--sky); box-shadow: 4px 4px 0 var(--blue); font: 700 18px/1 var(--pixel);
+    }
+    .top p { margin: 0; font: 600 11px/1.5 var(--pixel); letter-spacing: 1px; text-transform: uppercase; color: var(--blue); }
+    .top p + p { color: var(--muted); }
+    .top a { color: inherit; }
+    h1 { margin: 0 0 12px; font-family: var(--display); font-size: clamp(28px, 4vw, 46px); line-height: 1.08; }
+    h2 { margin: 7vh 0 8px; font-family: var(--display); font-size: clamp(22px, 2.4vw, 30px); line-height: 1.15; scroll-margin-top: 20px; }
+    h2 .tag { display: inline-block; vertical-align: middle; margin-right: 10px; padding: 5px 10px; background: var(--blue); color: #fff; font: 700 13px/1 var(--mono); }
+    h3 { margin: 30px 0 8px; font-size: 18px; }
+    p, li { font-size: 16px; }
+    .lead { margin: 0 0 4vh; max-width: 760px; color: var(--muted); font-size: clamp(15px, 1.3vw, 18px); }
+    .sub { margin: 0 0 18px; color: var(--muted); max-width: 760px; }
+    code, kbd { font-family: var(--mono); font-size: .9em; }
+    code { background: var(--panel-2); padding: 1px 5px; border: 1px solid var(--hair); }
+    kbd { padding: 1px 6px; border: 2px solid var(--line); border-bottom-width: 3px; background: var(--panel); font-weight: 600; }
+    a { color: var(--blue); }
+    /* надпись на кнопке интерфейса */
+    .ui { display: inline-block; padding: 1px 8px; border: 1px solid #b9c0cc; border-radius: 6px; background: #f6f8fa; color: #1f2328; font: 600 .88em/1.6 var(--body); white-space: nowrap; }
+    .ui--green { background: #1f883d; border-color: #1a7f37; color: #fff; }
+    .ui--blue { background: #0078d4; border-color: #0067b8; color: #fff; }
+    .ui--dark { background: #1f1f1f; border-color: #3c3c3c; color: #ccc; }
+
+    .map { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin: 18px 0 10px; }
+    .map a { display: block; padding: 14px 16px; border: 3px solid var(--line); background: var(--panel); color: var(--ink); text-decoration: none; box-shadow: 4px 4px 0 var(--tone, var(--blue)); transition: transform .08s steps(2), box-shadow .08s steps(2); }
+    .map a:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--tone, var(--blue)); }
+    .map b { display: block; font-size: 15px; margin-bottom: 4px; }
+    .map span { color: var(--muted); font-size: 13px; line-height: 1.4; }
+    .map i { float: right; font: 700 12px/1 var(--mono); font-style: normal; color: var(--tone, var(--blue)); }
+
+    .scheme { margin: 20px 0; padding: 16px; border: 3px solid var(--line); background: var(--panel); }
+    .scheme svg { display: block; width: 100%; height: auto; }
+
+    ol.steps { list-style: none; counter-reset: s; margin: 16px 0; padding: 0; }
+    ol.steps > li { counter-increment: s; position: relative; margin: 0 0 14px; padding: 14px 18px 14px 64px; border: 3px solid var(--line); background: var(--panel); }
+    ol.steps > li::before { content: counter(s); position: absolute; left: 14px; top: 13px; display: grid; place-items: center; width: 34px; height: 34px; background: var(--ink); color: var(--sky); font: 700 16px/1 var(--pixel); }
+    ol.steps > li > b:first-child { display: block; margin-bottom: 4px; font-size: 16px; }
+    ol.steps > li p { margin: 6px 0; }
+    ol.steps ul { margin: 6px 0; padding-left: 20px; }
+    .check { margin: 8px 0 0; padding: 8px 12px; border-left: 4px solid var(--mint); background: #E7F2EA; font-size: 14px; }
+    .check::before { content: "Проверка: "; font-weight: 700; color: var(--mint); }
+    .warn { margin: 8px 0 0; padding: 8px 12px; border-left: 4px solid var(--clay); background: #F7E9DF; font-size: 14px; }
+    .note { margin: 16px 0; padding: 14px 18px; border: 3px solid var(--line); background: var(--panel-2); }
+    .note b:first-child { display: block; margin-bottom: 4px; }
+
+    pre { margin: 8px 0; padding: 12px 14px; overflow-x: auto; background: #1e1e1e; color: #d4d4d4; border: 3px solid var(--line); font: 500 14px/1.55 var(--mono); }
+    pre .c { color: #6a9955; }
+    .shot { margin: 10px 0 4px; }
+    .shot img { display: block; max-width: 100%; height: auto; border: 3px solid var(--line); background: #fff; }
+    .shot--narrow img { max-width: 420px; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .two > div { padding: 10px 14px; border: 2px solid var(--hair); background: #fff; }
+    .two h4 { margin: 0 0 6px; font: 700 12px/1 var(--mono); letter-spacing: .05em; text-transform: uppercase; color: var(--blue); }
+    .two ol, .two p { margin: 4px 0; font-size: 14px; }
+    .two ol { padding-left: 18px; }
+    .two li { font-size: 14px; }
+
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; background: var(--panel); border: 3px solid var(--line); font-size: 14px; }
+    th, td { padding: 9px 11px; border: 1px solid var(--hair); text-align: left; vertical-align: top; }
+    th { background: var(--ink); color: #fff; font: 600 12px/1.3 var(--mono); letter-spacing: .03em; }
+    td code { white-space: nowrap; }
+    .tree { background: var(--panel); color: var(--ink); border: 3px solid var(--line); }
+    .tree .c { color: var(--muted); }
+
+    .foot { margin-top: 8vh; padding-top: 18px; border-top: 3px solid var(--line); color: var(--muted); font-size: 13px; }
+    @media (max-width: 640px) {
+      .wrap { padding: 4vh 16px 6vh; }
+      .two { grid-template-columns: 1fr; }
+      ol.steps > li { padding: 52px 14px 14px; }
+      table { display: block; overflow-x: auto; }
+      td code { white-space: normal; }
+      .ui { white-space: normal; }
+      code { overflow-wrap: anywhere; }
+      pre { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="mark" href="../index.html" title="К странице дисциплины">Py</a>
+    <div>
+      <p><a href="../index.html">ДУП.02 · Введение в Python</a></p>
+      <p>инструкция · обновлено 22.10.2026</p>
+    </div>
+  </div>
+
+  <h1>Работа с репозиторием курса</h1>
+  <p class="lead">Все работы по дисциплине хранятся в одном репозитории на GitHub. Его создаёт каждый студент из шаблона преподавателя. Здесь по шагам разобрано всё, что с ним делается: как создать, как работать за компьютером колледжа и дома, как сдать работу и как получить новые задания.</p>
+
+  <h2 id="map" style="margin-top:4vh">Что открыть</h2>
+  <p class="sub">Найдите свою ситуацию и перейдите к шагам.</p>
+  <div class="map">
+    <a href="#create" style="--tone: var(--mint)"><i>1</i><b>Первый раз: создать репозиторий</b><span>аккаунт GitHub, почта для коммитов, копия шаблона. Делается один раз в начале курса</span></a>
+    <a href="#college" style="--tone: var(--blue)"><i>2</i><b>Начало пары за компьютером колледжа</b><span>выйти из чужого аккаунта, войти в свой, склонировать репозиторий</span></a>
+    <a href="#home" style="--tone: var(--blue)"><i>3</i><b>Свой компьютер дома</b><span>установить Git, склонировать один раз, дальше только Sync</span></a>
+    <a href="#submit" style="--tone: var(--clay)"><i>4</i><b>Сдать работу из VS Code</b><span>куда положить файлы, как назвать, Commit и Sync Changes</span></a>
+    <a href="#web" style="--tone: var(--clay)"><i>5</i><b>Сдать работу через сайт GitHub</b><span>когда под рукой нет VS Code: загрузка файлов в браузере</span></a>
+    <a href="#update" style="--tone: var(--mint)"><i>6</i><b>Получить новые задания</b><span>материалы приходят каждый день в 06:00; как забрать их сразу</span></a>
+    <a href="#end" style="--tone: var(--blue)"><i>7</i><b>Конец пары за компьютером колледжа</b><span>отправить работу и выйти из всех аккаунтов</span></a>
+    <a href="#errors" style="--tone: var(--red)"><i>8</i><b>Ошибки и что с ними делать</b><span>чужой аккаунт, user.name, GH007, divergent branches, не та папка</span></a>
+  </div>
+
+  <h3>Где лежат файлы</h3>
+  <p>Работа идёт с тремя копиями. Шаблон ведёт преподаватель. Ваш репозиторий на GitHub — копия шаблона, в которую вы сдаёте работы. Папка на компьютере — копия вашего репозитория, в ней вы пишете код.</p>
+  <div class="scheme">
+    <svg viewBox="0 0 900 250" role="img" aria-label="Шаблон преподавателя, ваш репозиторий на GitHub и папка на компьютере">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#020835"/></marker>
+        <marker id="arg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2E7D50"/></marker>
+      </defs>
+      <g font-family="Inter, sans-serif">
+        <rect x="10" y="60" width="230" height="120" fill="#E9EEF5" stroke="#020835" stroke-width="3"/>
+        <text x="125" y="95" text-anchor="middle" font-size="13" font-weight="700" fill="#2D7FC1">GITHUB · ПРЕПОДАВАТЕЛЬ</text>
+        <text x="125" y="124" text-anchor="middle" font-size="17" font-weight="700" fill="#020835">Шаблон курса</text>
+        <text x="125" y="150" text-anchor="middle" font-size="12" fill="#3B4467" font-family="Roboto Mono, monospace">python-start-template</text>
+
+        <rect x="335" y="60" width="230" height="120" fill="#FFFDF8" stroke="#020835" stroke-width="3"/>
+        <text x="450" y="95" text-anchor="middle" font-size="13" font-weight="700" fill="#2D7FC1">GITHUB · ВЫ</text>
+        <text x="450" y="124" text-anchor="middle" font-size="17" font-weight="700" fill="#020835">Ваш репозиторий</text>
+        <text x="450" y="150" text-anchor="middle" font-size="12" fill="#3B4467" font-family="Roboto Mono, monospace">логин/python-start</text>
+
+        <rect x="660" y="60" width="230" height="120" fill="#FFFDF8" stroke="#020835" stroke-width="3"/>
+        <text x="775" y="95" text-anchor="middle" font-size="13" font-weight="700" fill="#2D7FC1">КОМПЬЮТЕР</text>
+        <text x="775" y="124" text-anchor="middle" font-size="17" font-weight="700" fill="#020835">Папка в VS Code</text>
+        <text x="775" y="150" text-anchor="middle" font-size="12" fill="#3B4467" font-family="Roboto Mono, monospace">Документы/python-start</text>
+
+        <line x1="242" y1="90" x2="331" y2="90" stroke="#020835" stroke-width="2.5" marker-end="url(#ar)"/>
+        <text x="287" y="40" text-anchor="middle" font-size="12" font-weight="700" fill="#020835">Use this template</text>
+        <text x="287" y="56" text-anchor="middle" font-size="11" fill="#3B4467">один раз</text>
+
+        <line x1="242" y1="150" x2="331" y2="150" stroke="#2E7D50" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arg)"/>
+        <text x="287" y="205" text-anchor="middle" font-size="12" font-weight="700" fill="#2E7D50">новые материалы</text>
+        <text x="287" y="221" text-anchor="middle" font-size="11" fill="#2E7D50">каждый день в 06:00</text>
+
+        <line x1="567" y1="90" x2="656" y2="90" stroke="#020835" stroke-width="2.5" marker-end="url(#ar)"/>
+        <text x="612" y="40" text-anchor="middle" font-size="12" font-weight="700" fill="#020835">Clone</text>
+        <text x="612" y="56" text-anchor="middle" font-size="11" fill="#3B4467">скачать на компьютер</text>
+        <line x1="656" y1="150" x2="569" y2="150" stroke="#020835" stroke-width="2.5" marker-end="url(#ar)"/>
+        <line x1="569" y1="162" x2="656" y2="162" stroke="#020835" stroke-width="2.5" marker-end="url(#ar)"/>
+        <text x="612" y="205" text-anchor="middle" font-size="12" font-weight="700" fill="#020835">Sync Changes</text>
+        <text x="612" y="221" text-anchor="middle" font-size="11" fill="#3B4467">отправить и забрать</text>
+      </g>
+    </svg>
+  </div>
+  <p>Из этого следуют два правила. Работа считается сданной, когда она есть в вашем репозитории на GitHub. Файлы, которые лежат только в папке на компьютере, преподаватель не видит. Новые задания сначала приходят на GitHub, а на компьютере появляются после <span class="ui ui--blue">Sync Changes</span>.</p>
+
+  <!-- ============================================================ 1 -->
+  <h2 id="create"><span class="tag">1</span>Первый раз: создать репозиторий</h2>
+  <p class="sub">Делается один раз в начале курса, удобнее всего в браузере. Если аккаунт на GitHub уже есть, начните с шага 2.</p>
+  <ol class="steps">
+    <li><b>Зарегистрируйтесь на GitHub</b>
+      <p>Откройте <a href="https://github.com/signup" target="_blank" rel="noreferrer">github.com/signup</a>, введите почту, пароль и имя пользователя (логин). Подтвердите почту кодом из письма.</p>
+      <p>Логин будет в адресе каждого вашего репозитория, его увидит работодатель. Берите латиницу по имени и фамилии: <code>ivan-petrov</code>, <code>ipetrov-dev</code>. Не подходят <code>krutoy2009</code>, <code>user123456</code>.</p>
+      <div class="check">справа вверху на github.com стоит ваш аватар, в меню под ним — ваш логин.</div>
+    </li>
+    <li><b>Скопируйте почту для коммитов</b>
+      <p>Git подписывает каждое сохранение (коммит) почтой. Репозиторий открытый, поэтому настоящую почту увидит любой. GitHub выдаёт для этого служебный адрес.</p>
+      <ul>
+        <li>Аватар справа вверху → <span class="ui">Settings</span> → слева <span class="ui">Emails</span>.</li>
+        <li>Отметьте <span class="ui">Keep my email addresses private</span>.</li>
+        <li>Под этим пунктом написан адрес вида <code>12345678+ivan-petrov@users.noreply.github.com</code>. Скопируйте его в заметки: он понадобится в разделах 2 и 3.</li>
+      </ul>
+      <div class="warn">Коммиты с другой почтой не появятся на графике активности в профиле. Если указать настоящую почту при включённом пункте Keep private, GitHub не примет отправку с ошибкой GH007.</div>
+    </li>
+    <li><b>Откройте шаблон курса</b>
+      <p><a href="https://github.com/MaximBytecamp/python-start-template" target="_blank" rel="noreferrer">github.com/MaximBytecamp/python-start-template</a>. Справа вверху над списком файлов нажмите <span class="ui ui--green">Use this template</span> → <span class="ui">Create a new repository</span>.</p>
+      <div class="warn">Кнопку <span class="ui">Fork</span> не нажимайте. Форк остаётся привязан к шаблону, и GitHub не засчитывает коммиты в форке в активность профиля.</div>
+    </li>
+    <li><b>Заполните форму</b>
+      <table>
+        <tr><th>Поле</th><th>Что выбрать</th></tr>
+        <tr><td><span class="ui">Include all branches</span></td><td>не отмечать</td></tr>
+        <tr><td><span class="ui">Owner</span></td><td>ваш логин</td></tr>
+        <tr><td><span class="ui">Repository name</span></td><td><code>python-start</code></td></tr>
+        <tr><td><span class="ui">Description</span></td><td><code>Мои работы по Python: домашние, практические, задачник</code></td></tr>
+        <tr><td>видимость</td><td><span class="ui">Public</span>: репозиторий должны открыть преподаватель и работодатель</td></tr>
+      </table>
+      <p>Нажмите <span class="ui ui--green">Create repository</span>.</p>
+      <div class="check">под именем репозитория написано <code>generated from MaximBytecamp/python-start-template</code>. Без этой строки обновления материалов приходить не будут: удалите репозиторий и создайте заново по шагу 3.</div>
+    </li>
+    <li><b>Впишите себя в README</b>
+      <p>На странице репозитория откройте файл <code>README.md</code> → значок карандаша <span class="ui">✎</span> справа вверху. Замените <code>Имя Фамилия</code> на свои, впишите группу. Нажмите <span class="ui ui--green">Commit changes…</span> → в окне оставьте <span class="ui">Commit directly to the main branch</span> → <span class="ui ui--green">Commit changes</span>.</p>
+      <p>Этот файл первым видит любой, кто открывает репозиторий. Позже в таблицу «Лучшие работы» добавьте 2–3 работы, которые стоит открыть первыми.</p>
+    </li>
+    <li><b>Добавьте темы репозитория</b>
+      <p>Справа на странице репозитория, блок <span class="ui">About</span> → шестерёнка <span class="ui">⚙</span>. В поле <span class="ui">Topics</span> введите через пробел <code>python</code> <code>python3</code> <code>learning</code> → <span class="ui ui--green">Save changes</span>. По темам репозиторий находится в поиске GitHub.</p>
+    </li>
+    <li><b>Отправьте ссылку преподавателю</b>
+      <p>Скопируйте адрес из строки браузера: <code>https://github.com/ваш-логин/python-start</code>.</p>
+    </li>
+  </ol>
+
+  <!-- ============================================================ 2 -->
+  <h2 id="college"><span class="tag">2</span>Начало пары за компьютером колледжа</h2>
+  <p class="sub">За этим компьютером до вас работали другие студенты. Их аккаунт может остаться в трёх местах: в браузере, в VS Code и в хранилище паролей Windows. Пока там чужой вход, ваши коммиты уйдут от чужого имени или GitHub не примет отправку. Проверка занимает пару минут, её делают в начале каждой пары.</p>
+  <ol class="steps">
+    <li><b>Браузер: войдите в свой GitHub</b>
+      <p>Откройте <a href="https://github.com" target="_blank" rel="noreferrer">github.com</a>. Если справа вверху чужой аватар: аватар → <span class="ui">Sign out</span> → на странице подтверждения снова <span class="ui">Sign out</span> (если вошли несколько аккаунтов — <span class="ui">Sign out from all accounts</span>). Затем <span class="ui">Sign in</span> и войдите в свой аккаунт.</p>
+      <div class="check">аватар → в меню ваш логин.</div>
+    </li>
+    <li><b>VS Code: выйдите из чужого аккаунта</b>
+      <p>Значок человечка внизу левой панели. Если там чужое имя: имя → <span class="ui ui--dark">Sign Out</span>.</p>
+      <figure class="shot shot--narrow"><img src="../../shared/git-guide/img/20-signout.png" alt="Меню аккаунта VS Code с пунктом Sign Out" loading="lazy"></figure>
+    </li>
+    <li><b>Удалите сохранённый пароль GitHub</b>
+      <p>Git запоминает вход отдельно от VS Code, в хранилище паролей системы. После выхода из VS Code запись прошлого студента остаётся, и Git отправит ваши файлы от его имени.</p>
+      <div class="two">
+        <div><h4>Windows</h4>
+          <ol>
+            <li>Пуск → наберите <b>Диспетчер учётных данных</b> → откройте.</li>
+            <li>Вкладка <b>Учётные данные Windows</b>.</li>
+            <li>В списке «Общие учётные данные» найдите записи со словом <code>github</code>, например <code>git:https://github.com</code>.</li>
+            <li>Каждую раскройте стрелкой → <b>Удалить</b> → <b>Да</b>.</li>
+          </ol>
+          <p>То же одной командой в терминале: <code>cmdkey /delete:git:https://github.com</code></p>
+        </div>
+        <div><h4>macOS</h4>
+          <ol>
+            <li><kbd>Cmd</kbd> + <kbd>Пробел</kbd> → наберите <b>Связка ключей</b> (Keychain Access) → откройте.</li>
+            <li>В поиске справа вверху введите <code>github.com</code>.</li>
+            <li>Записи вида «пароль интернета»: правая кнопка → <b>Удалить</b>.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="check">в списке нет записей со словом github. Если записей не было с самого начала, шаг пропускается.</div>
+    </li>
+    <li><b>Склонируйте свой репозиторий</b>
+      <p>VS Code → значок <b>Source Control</b> слева (<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>G</kbd>) → <span class="ui ui--blue">Clone Repository</span> → <span class="ui ui--dark">Clone from GitHub</span>.</p>
+      <figure class="shot"><img src="../../shared/git-guide/img/02-clone.png" alt="Кнопка Clone Repository и пункт Clone from GitHub" loading="lazy"></figure>
+      <p>VS Code попросит войти: <span class="ui ui--blue">Allow</span> → откроется браузер → <span class="ui ui--green">Continue</span> или <span class="ui ui--green">Authorize Visual-Studio-Code</span> → вернитесь в VS Code. Если окно предлагает войти от чужого имени, значит, в браузере не выполнен шаг 1.</p>
+      <p>В списке выберите <code>ваш-логин/python-start</code>. Папку для копии укажите <b>Документы</b>: не «Загрузки» и не рабочий стол. На вопрос <span class="ui ui--dark">Would you like to open the cloned repository?</span> нажмите <span class="ui ui--blue">Open</span>.</p>
+      <div class="check">слева в проводнике VS Code видны папки <code>homework</code>, <code>practice</code>, <code>problems</code>, <code>exams</code>; в строке состояния внизу слева написано <code>main</code>.</div>
+    </li>
+    <li><b>Укажите Git своё имя и почту</b>
+      <p>Откройте терминал: <span class="ui ui--dark">Terminal → New Terminal</span> (<kbd>Ctrl</kbd> + <kbd>`</kbd>). Терминал откроется в папке репозитория. Выполните три команды, подставив своё имя и почту из шага 2 раздела 1:</p>
+<pre>git config user.name "Иван Петров"
+git config user.email "12345678+ivan-petrov@users.noreply.github.com"
+git config pull.rebase false</pre>
+      <p>Команды без <code>--global</code> пишут настройку только в эту папку. Следующий студент за этим компьютером её не получит. Настройка папки важнее общей настройки компьютера, поэтому имя прошлого студента в ваши коммиты не попадёт. Третья команда говорит Git, как объединять ваши коммиты с новыми материалами, пришедшими на GitHub.</p>
+      <div class="check">команда <code>git config user.email</code> печатает вашу почту.</div>
+    </li>
+  </ol>
+  <div class="note"><b>Если папка уже склонирована вами на прошлой паре</b>Откройте её через <span class="ui ui--dark">File → Open Folder…</span> и нажмите <span class="ui ui--blue">Sync Changes</span>, чтобы забрать новое с GitHub. Шаги 1–3 выполняются всё равно: на компьютере мог работать кто-то после вас. Если папки нет или сомневаетесь, чья она, склонируйте заново: всё сданное лежит на GitHub.</div>
+
+  <!-- ============================================================ 3 -->
+  <h2 id="home"><span class="tag">3</span>Свой компьютер дома</h2>
+  <p class="sub">Настройка делается один раз. Python и VS Code ставятся по <a href="https://python-theory-makarov.vercel.app/temy/00-vs-code/index.html" target="_blank" rel="noreferrer">главе 0 справочника</a>.</p>
+  <ol class="steps">
+    <li><b>Установите Git</b>
+      <div class="two">
+        <div><h4>Windows</h4><p>Скачайте установщик с <a href="https://git-scm.com/downloads/win" target="_blank" rel="noreferrer">git-scm.com/downloads/win</a> и установите, на всех экранах нажимая <b>Next</b>. Перезапустите VS Code.</p></div>
+        <div><h4>macOS</h4><p>В терминале выполните <code>git --version</code>. Если Git не установлен, система предложит поставить инструменты разработчика: нажмите <b>Установить</b>.</p></div>
+      </div>
+      <div class="check">в терминале VS Code команда <code>git --version</code> печатает номер версии.</div>
+    </li>
+    <li><b>Укажите Git имя и почту для всего компьютера</b>
+      <p>Дома компьютер ваш, поэтому настройка ставится с <code>--global</code> один раз для всех папок:</p>
+<pre>git config --global user.name "Иван Петров"
+git config --global user.email "12345678+ivan-petrov@users.noreply.github.com"
+git config --global pull.rebase false</pre>
+    </li>
+    <li><b>Войдите в GitHub и склонируйте репозиторий</b>
+      <p>Как в шагах 4 раздела 2: <span class="ui ui--blue">Clone Repository</span> → <span class="ui ui--dark">Clone from GitHub</span> → ваш <code>python-start</code> → папка <b>Документы</b> → <span class="ui ui--blue">Open</span>.</p>
+    </li>
+    <li><b>Дальше — каждый раз</b>
+      <p>VS Code при запуске открывает последнюю папку. Перед работой нажмите <span class="ui ui--blue">Sync Changes</span> или значок ⟳ внизу в строке состояния. Клонировать заново не нужно.</p>
+    </li>
+  </ol>
+
+  <!-- ============================================================ 4 -->
+  <h2 id="submit"><span class="tag">4</span>Сдать работу из VS Code</h2>
+  <p class="sub">Порядок одинаковый для домашних, практических работ, задачника и контрольных. Все работы загружаются в ветку <code>main</code>: отдельные ветки и Pull Request не создаются.</p>
+  <ol class="steps">
+    <li><b>Заберите новое с GitHub</b>
+      <p>Source Control → <span class="ui ui--blue">Sync Changes</span> (или ⟳ в строке состояния). Так на компьютер придут новые задания и правки, сделанные через сайт.</p>
+    </li>
+    <li><b>Узнайте, куда класть работу</b>
+      <table>
+        <tr><th>Работа</th><th>Папка</th><th>Пример пути</th></tr>
+        <tr><td>домашнее задание</td><td><code>homework/NN-тема/</code></td><td><code>homework/01-variables/task_01.py</code></td></tr>
+        <tr><td>практическая на паре</td><td><code>practice/NN-тема/</code></td><td><code>practice/01-variables/main.py</code></td></tr>
+        <tr><td>задача из задачника</td><td><code>problems/chapter-глава/</code></td><td><code>problems/chapter-1-3/task_07.py</code></td></tr>
+        <tr><td>тест на сайте</td><td><code>exams/quiz-NN-…/</code></td><td>код результата в <code>README.md</code></td></tr>
+        <tr><td>контрольная</td><td><code>exams/exam-NN/</code></td><td><code>exams/exam-01/task_03.py</code></td></tr>
+      </table>
+      <p>Имя папки для ДЗ и практической работы не придумывается: откройте <code>homework/README.md</code> или <code>practice/README.md</code>, преподаватель вписывает туда строку с именем папки, когда выдаёт работу.</p>
+    </li>
+    <li><b>Создайте папку и файлы</b>
+      <p>В проводнике VS Code наведите на папку <code>homework</code> → значок <span class="ui ui--dark">New Folder…</span> → введите имя, например <code>01-variables</code>. Затем на новой папке → <span class="ui ui--dark">New File…</span> → <code>task_01.py</code>.</p>
+      <table>
+        <tr><th>Правило имени</th><th>Так</th><th>Не так</th></tr>
+        <tr><td>латиница, без пробелов</td><td><code>task_01.py</code></td><td><code>задача 1.py</code></td></tr>
+        <tr><td>маленькие буквы</td><td><code>task_01.py</code></td><td><code>Task_01.py</code></td></tr>
+        <tr><td>номер двумя цифрами</td><td><code>task_07.py</code></td><td><code>task_7.py</code></td></tr>
+        <tr><td>в файле <code>.py</code> слова через <code>_</code></td><td><code>task_01.py</code></td><td><code>task-01.py</code></td></tr>
+        <tr><td>в папке слова через <code>-</code></td><td><code>01-variables</code></td><td><code>01_Variables</code></td></tr>
+        <tr><td>имя говорит, что внутри</td><td><code>task_03.py</code></td><td><code>new.py</code>, <code>final2.py</code></td></tr>
+      </table>
+      <p>Пример оформления папки ДЗ — <code>homework/00-example</code>: в ней <code>README.md</code> с заданием и таблицей проверки и по одному файлу на задачу.</p>
+    </li>
+    <li><b>Запустите каждый файл</b>
+      <p>Кнопка ▷ справа вверху или в терминале <code>python homework/01-variables/task_01.py</code> (на macOS — <code>python3</code>). Сверьте вывод с примерами задания.</p>
+    </li>
+    <li><b>Сделайте коммит</b>
+      <p>Source Control → в поле <b>Message</b> напишите, что сдаёте. Первое слово — папка, затем номер и что сделано: <code>homework 01: задачи 1–3</code>. Нажмите <span class="ui ui--blue">✓ Commit</span>.</p>
+      <figure class="shot shot--narrow"><img src="../../shared/git-guide/img/04-source-control.png" alt="Панель Source Control: поле сообщения, кнопка Commit, список изменений" loading="lazy"></figure>
+      <p>Если VS Code спросит <span class="ui ui--dark">There are no staged changes to commit. Would you like to stage all your changes…?</span>, нажмите <span class="ui ui--blue">Yes</span>: в коммит попадут все изменённые файлы.</p>
+      <table>
+        <tr><th>Работа</th><th>Сообщение коммита</th></tr>
+        <tr><td>ДЗ 1</td><td><code>homework 01: задачи 1–3</code></td></tr>
+        <tr><td>исправление в ДЗ 1</td><td><code>homework 01: исправлен вывод в задаче 2</code></td></tr>
+        <tr><td>задачник</td><td><code>problems 1.3: задачи 1–5</code></td></tr>
+        <tr><td>практическая</td><td><code>practice 02: калькулятор скидки</code></td></tr>
+        <tr><td>тест</td><td><code>quiz 01: код результата</code></td></tr>
+        <tr><td>контрольная</td><td><code>exam 01: вариант 2, задачи 1–10</code></td></tr>
+      </table>
+    </li>
+    <li><b>Отправьте на GitHub</b>
+      <p>После коммита на месте кнопки появится <span class="ui ui--blue">Sync Changes 1↑</span>: один коммит ждёт отправки. Нажмите её. Если VS Code спросит про отправку и получение коммитов, нажмите <span class="ui ui--blue">OK</span>.</p>
+      <figure class="shot shot--narrow"><img src="../../shared/git-guide/img/12-sync.png" alt="Кнопка Sync Changes со счётчиками коммитов" loading="lazy"></figure>
+    </li>
+    <li><b>Проверьте на сайте</b>
+      <p>Откройте свой репозиторий на github.com. Над списком файлов — ваше сообщение коммита и ваш логин, в папке <code>homework</code> — новая папка.</p>
+      <div class="check">коммит на GitHub подписан вашим логином. Если там чужое имя или серый значок без аватара — раздел 8, строки 2 и 3.</div>
+    </li>
+  </ol>
+
+  <!-- ============================================================ 5 -->
+  <h2 id="web"><span class="tag">5</span>Сдать работу через сайт GitHub</h2>
+  <p class="sub">Подходит, когда файлы готовы, а VS Code под рукой нет: на чужом компьютере, с телефона. Если вы работаете и в VS Code, перед следующей работой в нём нажмите Sync Changes, чтобы забрать загруженное через сайт.</p>
+  <h3>Загрузить готовые файлы в новую папку</h3>
+  <ol class="steps">
+    <li><b>Откройте папку вида работы</b>
+      <p>Свой репозиторий на github.com → папка <code>homework</code> (или <code>practice</code>, <code>problems</code>, <code>exams</code>).</p>
+    </li>
+    <li><b>Создайте папку работы</b>
+      <p>GitHub не создаёт пустые папки, поэтому папка появляется вместе с первым файлом. Нажмите <span class="ui">Add file</span> → <span class="ui">Create new file</span>. В поле имени наберите <code>01-variables/README.md</code>: знак <code>/</code> превращает <code>01-variables</code> в папку. В тексте файла напишите задание. Нажмите <span class="ui ui--green">Commit changes…</span>, в сообщении — <code>homework 01: README</code>, оставьте <span class="ui">Commit directly to the main branch</span> → <span class="ui ui--green">Commit changes</span>.</p>
+    </li>
+    <li><b>Загрузите файлы решений</b>
+      <p>Вы оказались в новой папке. <span class="ui">Add file</span> → <span class="ui">Upload files</span> → перетащите файлы <code>task_01.py</code>, <code>task_02.py</code>. Внизу в сообщении напишите <code>homework 01: задачи 1–2</code> → <span class="ui ui--green">Commit changes</span>.</p>
+      <div class="warn">Пункт <span class="ui">Create a new branch for this commit</span> не выбирайте: работа уйдёт в отдельную ветку, и в <code>main</code> её не будет видно.</div>
+    </li>
+  </ol>
+  <h3>Исправить файл, который уже лежит в репозитории</h3>
+  <p>Откройте файл → карандаш <span class="ui">✎</span> → исправьте → <span class="ui ui--green">Commit changes…</span> → сообщение <code>homework 01: исправлена задача 2</code> → <span class="ui ui--green">Commit changes</span>.</p>
+
+  <!-- ============================================================ 6 -->
+  <h2 id="update"><span class="tag">6</span>Получить новые задания</h2>
+  <p class="sub">Преподаватель дополняет шаблон: новые задания, конспекты, заготовки задач. Создавать репозиторий заново не нужно.</p>
+  <h3>Как это устроено</h3>
+  <p>В репозитории лежит файл <code>.github/workflows/update-materials.yml</code>. Каждый день в 06:00 по Москве GitHub по этому файлу сравнивает ваш репозиторий с шаблоном и переносит новое. В истории это коммит <code>materials: обновление из шаблона курса</code> от <code>github-actions[bot]</code>.</p>
+  <table>
+    <tr><th>Что</th><th>Что происходит</th></tr>
+    <tr><td><code>lectures/</code>, <code>materials/</code>, <code>docs/</code></td><td>заменяются версией преподавателя</td></tr>
+    <tr><td><code>README.md</code> в папках <code>homework/</code>, <code>practice/</code>, <code>problems/</code>, <code>exams/</code></td><td>заменяются: в них таблицы выданных работ</td></tr>
+    <tr><td>новые папки заданий и заготовки</td><td>добавляются, если их у вас нет</td></tr>
+    <tr><td>ваши решения, ваши <code>README.md</code> в папках работ, <code>README.md</code> в корне</td><td>не меняются</td></tr>
+  </table>
+  <p>Отсюда правило: файлы из первых двух строк не редактируйте, правка пропадёт при следующем обновлении. Свои решения пишите в своих файлах.</p>
+  <h3>Забрать обновление сразу</h3>
+  <ol class="steps">
+    <li><b>Запустите обновление на GitHub</b>
+      <p>Свой репозиторий → вкладка <span class="ui">Actions</span> → слева <span class="ui">Обновление материалов курса</span> → справа <span class="ui">Run workflow</span> → зелёная <span class="ui ui--green">Run workflow</span>.</p>
+    </li>
+    <li><b>Дождитесь зелёной галочки</b>
+      <p>Через полминуты в списке появится запуск. Зелёная галочка — обновление прошло. Внутри запуска, в разделе <b>Обновление материалов курса</b>, перечислены добавленные и обновлённые файлы.</p>
+      <div class="warn">Красный крестик и текст <code>шаблон не найден</code> означают, что репозиторий создан не кнопкой Use this template. Создайте его заново по разделу 1 и перенесите свои файлы.</div>
+    </li>
+    <li><b>Заберите на компьютер</b>
+      <p>VS Code → <span class="ui ui--blue">Sync Changes</span>. Новые папки появятся в проводнике.</p>
+    </li>
+  </ol>
+  <div class="note"><b>Репозиторий создан до 22.10.2026</b>В нём старые имена папок и нет файла обновления. Создайте новый репозиторий по разделу 1 с именем <code>python-start</code>: старый сначала переименуйте в <code>python-start-old</code> (<span class="ui">Settings</span> → <span class="ui">Repository name</span> → <span class="ui">Rename</span>). Перенесите свои решения по таблице ниже, затем удалите старый репозиторий: <span class="ui">Settings</span> → внизу <span class="ui">Delete this repository</span>.
+    <table>
+      <tr><th>Было</th><th>Стало</th></tr>
+      <tr><td><code>dz/dz-01-…/zadacha_1.py</code></td><td><code>homework/01-…/task_01.py</code></td></tr>
+      <tr><td><code>praktiki/pr-01-…/</code></td><td><code>practice/01-…/</code></td></tr>
+      <tr><td><code>zadachnik/glava-1-3/zadacha_07.py</code></td><td><code>problems/chapter-1-3/task_07.py</code></td></tr>
+      <tr><td><code>kontrolnye/test-01-temy-1-1-1-3/</code></td><td><code>exams/quiz-01-topics-1-1-1-3/</code></td></tr>
+      <tr><td><code>kontrolnye/kr-01/zadacha_03.py</code></td><td><code>exams/exam-01/task_03.py</code></td></tr>
+      <tr><td><code>kontrolnye/kr-01-podgotovka/</code></td><td><code>exams/exam-01-prep/</code></td></tr>
+    </table>
+  </div>
+
+  <!-- ============================================================ 7 -->
+  <h2 id="end"><span class="tag">7</span>Конец пары за компьютером колледжа</h2>
+  <p class="sub">Следующий студент не должен получить доступ к вашему GitHub. Шаги обратные разделу 2.</p>
+  <ol class="steps">
+    <li><b>Отправьте всё на GitHub</b>
+      <p>Source Control: в списке <b>Changes</b> пусто, на кнопке нет счётчика ↑. Если есть изменения — коммит и <span class="ui ui--blue">Sync Changes</span> по разделу 4.</p>
+    </li>
+    <li><b>Выйдите из VS Code</b>
+      <p>Значок человечка → ваше имя → <span class="ui ui--dark">Sign Out</span>.</p>
+    </li>
+    <li><b>Удалите сохранённый пароль</b>
+      <p>Как в шаге 3 раздела 2: Диспетчер учётных данных Windows или Связка ключей macOS, записи со словом <code>github</code>.</p>
+    </li>
+    <li><b>Выйдите из GitHub в браузере</b>
+      <p>Аватар → <span class="ui">Sign out</span> → на странице подтверждения снова <span class="ui">Sign out</span>.</p>
+    </li>
+    <li><b>Удалите папку репозитория</b>
+      <p>Закройте папку в VS Code (<span class="ui ui--dark">File → Close Folder</span>) и удалите <code>Документы/python-start</code>. Всё отправленное хранится на GitHub, на следующей паре склонируете заново.</p>
+    </li>
+  </ol>
+
+  <!-- ============================================================ 8 -->
+  <h2 id="errors"><span class="tag">8</span>Ошибки и что с ними делать</h2>
+  <p class="sub">Полный текст ошибки VS Code показывает по кнопке <span class="ui ui--dark">Show Command Output</span> или <span class="ui ui--dark">Open Git Log</span>. Ищите строку из первого столбца.</p>
+  <table>
+    <tr><th>#</th><th>Что видно</th><th>Причина</th><th>Что делать</th></tr>
+    <tr><td>1</td><td><code>Make sure you configure your "user.name" and "user.email" in git</code></td><td>в настройках Git не заданы имя и почта</td><td>шаг 5 раздела 2 (или шаг 2 раздела 3 дома), затем снова Commit</td></tr>
+    <tr><td>2</td><td><code>Permission to ваш-логин/python-start.git denied to другой-логин</code> или ошибка 403</td><td>Git отправляет от имени прошлого студента: его пароль сохранён в системе</td><td>шаг 3 раздела 2, затем снова Sync Changes и войдите в свой аккаунт в открывшемся окне</td></tr>
+    <tr><td>3</td><td><code>GH007: Your push would publish a private email address</code></td><td>в настройке Git настоящая почта, а на GitHub включено её скрытие</td><td>укажите служебную почту: <code>git config user.email "…@users.noreply.github.com"</code>, исправьте последний коммит: <code>git commit --amend --reset-author --no-edit</code>, затем Sync Changes</td></tr>
+    <tr><td>4</td><td><code>fatal: Need to specify how to reconcile divergent branches</code></td><td>на GitHub есть новые коммиты (обновление материалов или правка через сайт), а у вас свои; в настройках Git не указано, как их объединять</td><td><code>git config pull.rebase false</code>, затем Sync Changes</td></tr>
+    <tr><td>5</td><td><code>Can't push refs to remote. Try running "Pull" first</code></td><td>на GitHub появились коммиты, которых нет на компьютере</td><td>нажмите Sync Changes: эта кнопка сначала забирает новое с GitHub, потом отправляет ваше. Кнопка Push только отправляет и выдаст ту же ошибку</td></tr>
+    <tr><td>6</td><td>в файле появились строки <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, <code>=======</code>, <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code></td><td>конфликт: один и тот же файл изменён и на сайте, и на компьютере</td><td>над блоком нажмите <span class="ui ui--dark">Accept Current Change</span> (оставить версию с компьютера) или <span class="ui ui--dark">Accept Incoming Change</span> (с сайта), сохраните файл, Commit, Sync Changes</td></tr>
+    <tr><td>7</td><td><code>Repository not found</code> при клонировании</td><td>VS Code вошёл в другой аккаунт или адрес набран с ошибкой</td><td>значок человечка: чьё имя? Выйдите и войдите заново по шагам 1–2 раздела 2</td></tr>
+    <tr><td>8</td><td>внизу слева написано не <code>main</code></td><td>случайно создана или выбрана другая ветка</td><td>нажмите на имя ветки → выберите <code>main</code>. Если коммиты уже сделаны в другой ветке, напишите преподавателю</td></tr>
+    <tr><td>9</td><td>файл лежит не в той папке или назван не по правилам</td><td>—</td><td>в проводнике VS Code: перетащите файл в нужную папку или <kbd>F2</kbd> — переименовать. Коммит <code>homework 01: файлы переименованы</code>, Sync Changes</td></tr>
+    <tr><td>10</td><td>коммиты на GitHub с серым значком, на графике в профиле их нет</td><td>почта в настройке Git не привязана к аккаунту</td><td>укажите служебную почту из шага 2 раздела 1; новые коммиты свяжутся с профилем</td></tr>
+    <tr><td>11</td><td>в Actions красный крестик <code>шаблон не найден</code></td><td>репозиторий создан форком или вручную</td><td>создайте репозиторий кнопкой Use this template по разделу 1 и перенесите файлы</td></tr>
+  </table>
+  <figure class="shot"><img src="../../shared/git-guide/img/15-commit-error.png" alt="Окно VS Code с ошибкой user.name и user.email" loading="lazy"></figure>
+  <figure class="shot"><img src="../../shared/git-guide/img/19-divergent.png" alt="Текст ошибки divergent branches" loading="lazy"></figure>
+
+  <h2 style="margin-top:6vh">Подробнее</h2>
+  <ul>
+    <li><a href="../../shared/standart-repozitoriya/index.html">Стандарт репозитория студента</a>: почему структура и имена такие и что в репозитории смотрит работодатель.</li>
+    <li><a href="https://github.com/MaximBytecamp/python-start-template" target="_blank" rel="noreferrer">Шаблон python-start-template</a>, правила сдачи в нём — <code>docs/SUBMIT.md</code>.</li>
+    <li>Справочник по Git: <a href="https://maximbytecamp.github.io/git_github_makarov/temy/05-init-i-clone/index.html" target="_blank" rel="noreferrer">init и clone</a>, <a href="https://maximbytecamp.github.io/git_github_makarov/temy/06-izmeneniya-indeks-kommit/index.html" target="_blank" rel="noreferrer">изменения и коммиты</a>.</li>
+  </ul>
+
+  <p class="foot">← <a href="../index.html">К странице дисциплины</a></p>
+</div>
+</body>
+</html>
