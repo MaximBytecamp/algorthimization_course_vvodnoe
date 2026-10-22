@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#020835">
+  <title>Строки в объекты и ошибки ограничений · МДК.01.11</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&family=Unbounded:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/lesson.css">
+  <link rel="stylesheet" href="../../assets/widgets.css">
+  <link rel="stylesheet" href="l3.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="home" href="../../index.html">← МДК.01.11 · ADO.NET</a>
+    <nav>
+      <a href="#lec">Лекция</a>
+      <a href="#prak">Практика</a>
+      <a href="#review">Рецензия</a>
+    </nav>
+  </header>
+
+  <div class="wrap">
+    <section class="hero">
+      <p class="hero__kicker">МДК.01.11 · Занятие 3 · лекция и практика</p>
+      <h1>Строки в объекты<br>и ошибки ограничений</h1>
+      <p class="lead">На занятии разобрано, как перенести строку результата в объект C#, как читать столбцы по имени и как обрабатывать NULL. Вторая половина лекции — команды, которые меняют данные, и ошибки, которыми PostgreSQL отвечает на нарушение ограничений таблицы. Все результаты и сообщения получены на базе заказов из стартового проекта.</p>
+      <div class="plan">
+        <a href="../02-parametry/index.html"><b>До занятия</b><span>Занятие 2: параметры запроса</span></a>
+        <a href="#lec"><b>Лекция · 35 минут</b><span>record и маппер, GetOrdinal, NULL, ExecuteNonQuery и ExecuteScalar, коды 23505, 23503, 23514</span></a>
+        <a href="#prak"><b>Практика · 45 минут</b><span>Четыре задания, 10 баллов. Каждое задание проверяется один раз</span></a>
+        <a href="#review"><b>Рецензия · 5 минут</b><span>Баллы по заданиям и отчёт report.md</span></a>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ ЛЕКЦИЯ -->
+    <div class="part-band" id="lec"><b>Лекция</b><span>5 разделов</span></div>
+
+    <!-- 1 -->
+    <section class="sec" id="l1">
+      <h2><span class="n">1</span>Строка результата и объект C#</h2>
+      <div class="analogy">В регистратуре данные пациента из журнала переписывают в карточку с подписанными графами. Дальше врач работает с карточкой и не ищет нужную строку в журнале.</div>
+      <div class="text">
+        <p>В занятиях 1 и 2 значения строки читались в отдельные переменные и сразу печатались. В программе, где данные передаются дальше — в другой метод, в отчёт, на страницу сайта, — строку переносят в объект. Объект хранит все значения строки вместе, а читатель и соединение можно закрыть сразу после чтения.</p>
+      </div>
+      <div class="term"><b>record</b> — тип C#, который объявляют одной строкой: <code>record OrderRow(int Id, string Status, decimal Total);</code>. Компилятор создаёт для него конструктор и свойства <code>Id</code>, <code>Status</code>, <code>Total</code>. Значения свойств задаются при создании объекта и потом не меняются.</div>
+      <div class="term"><b>Маппер</b> — метод, который переносит одну строку читателя в объект. Он собирает все вызовы Get-методов в одном месте: если в запросе меняется столбец, правка нужна только в маппере.</div>
+      <div class="panel"><div class="panel__head"><span>Program.cs · маппер и список объектов</span></div><pre class="code" id="code1"></pre></div>
+      <p class="lead-in">На схеме — как цикл чтения превращает строки результата в список объектов. Каждое нажатие «Шаг» переносит одну строку.</p>
+      <div class="panel" id="map">
+        <div class="panel__head"><span>Строки результата → List&lt;OrderRow&gt;</span><span class="sp"></span><span id="mapCount"></span></div>
+        <div class="panel__body">
+          <div class="mapper">
+            <table id="mapRows"></table>
+            <div class="mapper__arrow">→</div>
+            <div class="objlist" id="mapObjs"></div>
+          </div>
+          <div class="text" style="margin-top:12px"><button class="btn btn--main" type="button" id="mapStep">Шаг →</button> <button class="btn" type="button" id="mapReset">Сначала</button></div>
+        </div>
+      </div>
+      <p class="after">Метод возвращает список <code>List&lt;OrderRow&gt;</code>. Вызывающий код получает готовые объекты, читатель и номера столбцов остаются внутри метода. Маппер в примере читает столбцы по номерам, и это его слабое место.</p>
+    </section>
+
+    <!-- 2 -->
+    <section class="sec" id="l2">
+      <h2><span class="n">2</span>Чтение столбца по имени</h2>
+      <div class="analogy">В анкете нужную графу ищут по названию. Если графы в новом бланке переставили, «Фамилия» найдётся по подписи, а графа «третья сверху» окажется другой.</div>
+      <div class="text">
+        <p>Номер столбца зависит от порядка в <code>SELECT</code>. Если кто-то поменяет порядок столбцов в запросе, маппер с номерами начнёт читать не те значения. Метод <code>GetOrdinal("status")</code> возвращает номер столбца по его имени, и маппер работает при любом порядке. Регистр в имени не учитывается: <code>GetOrdinal("Status")</code> тоже находит столбец.</p>
+        <p>Имя столбца в результате задаёт <code>SELECT</code>. Для выражения или столбца из другой таблицы его задают словом <code>AS</code>: <code>c.full_name AS customer</code>. После этого столбец ищется только по новому имени. Вызов <code>GetOrdinal("full_name")</code> на стенде закончился ошибкой <code>Field not found in row: full_name</code>.</p>
+      </div>
+      <p class="lead-in">Переключатель меняет порядок столбцов в запросе. Ниже — два маппера на одной и той же строке результата.</p>
+      <div class="panel" id="reorder">
+        <div class="panel__head"><span>Порядок столбцов в SELECT</span><span class="sp"></span><div class="tabs" role="group">
+          <button type="button" data-o="0" aria-pressed="true">id, status, total</button>
+          <button type="button" data-o="1" aria-pressed="false">status, id, total</button>
+        </div></div>
+        <div class="panel__body">
+          <div class="selrow" id="selrow"></div>
+          <div class="twomap">
+            <div><pre class="code" id="byIndex"></pre><div class="verdict-box" id="byIndexOut"></div></div>
+            <div><pre class="code" id="byName"></pre><div class="verdict-box" id="byNameOut"></div></div>
+          </div>
+        </div>
+      </div>
+      <p class="after">После перестановки маппер с номерами вызывает <code>GetInt32(0)</code> для столбца <code>status</code>, и Npgsql отвечает исключением. Маппер с именами получает те же значения. Дальше — случай, когда значения в столбце нет совсем.</p>
+    </section>
+
+    <!-- 3 -->
+    <section class="sec" id="l3">
+      <h2><span class="n">3</span>NULL в результате</h2>
+      <div class="analogy">В карточке покупателя есть графа «Дата последнего возврата». У покупателя, который ничего не возвращал, она пустая. Написать туда «0» или «01.01.0001» неверно: такая дата выглядит как настоящая.</div>
+      <div class="text">
+        <p>NULL в столбце означает отсутствие значения. Он часто появляется после <code>LEFT JOIN</code>: строка из левой таблицы остаётся в результате, даже если в правой для неё ничего не нашлось. Запрос ниже выбирает для каждого клиента дату последнего отменённого заказа. Отменённые заказы есть только у двух клиентов, у остальных в столбце <code>last_cancelled</code> NULL.</p>
+      </div>
+      <div class="panel"><div class="panel__head"><span>Запрос с LEFT JOIN</span></div><pre class="code" id="code3"></pre></div>
+      <p class="lead-in">Выберите способ чтения столбца <code>last_cancelled</code>. В таблице — что получил каждый вызов на стенде.</p>
+      <div class="panel" id="nulls">
+        <div class="panel__head"><span>Чтение столбца с NULL</span></div>
+        <div class="panel__body">
+          <div class="tabs" id="nullTabs"></div>
+          <pre class="code" id="nullCode" style="margin-top:12px;padding:8px 0"></pre>
+          <table class="nulltab" id="nullTab"></table>
+          <div class="verdict-box" id="nullOut"></div>
+        </div>
+      </div>
+      <p class="after">Для столбца, где может быть NULL, свойство объекта объявляют с типом, допускающим пустое значение: <code>DateOnly?</code>, <code>int?</code>, <code>string?</code>. Короче всего его читает <code>GetFieldValue&lt;DateOnly?&gt;</code>. Проверка <code>IsDBNull</code> нужна, если вместо пустого значения подставляется своё. До сих пор программа только читала данные. Следующие команды их меняют.</p>
+    </section>
+
+    <!-- 4 -->
+    <section class="sec" id="l4">
+      <h2><span class="n">4</span>Команды, которые меняют данные</h2>
+      <div class="analogy">Когда в бухгалтерии проводят платёж, в ответ приходит отметка «проведено записей: 1». Если такого счёта нет, придёт «проведено записей: 0», и это тоже ответ.</div>
+      <div class="text">
+        <p>Для <code>INSERT</code>, <code>UPDATE</code> и <code>DELETE</code> строк результата нет, поэтому читатель не нужен. Метод <code>ExecuteNonQueryAsync</code> выполняет команду и возвращает число затронутых строк. Ноль означает, что условию <code>WHERE</code> не подошла ни одна строка. Исключения в этом случае нет. Метод <code>ExecuteScalarAsync</code> возвращает одно значение — первый столбец первой строки. Его используют для <code>count(*)</code> и для <code>INSERT … RETURNING id</code>, который возвращает номер новой строки.</p>
+      </div>
+      <p class="lead-in">Выберите команду: справа появятся метод и результат на стенде.</p>
+      <div class="panel">
+        <div class="panel__head"><span>Метод и результат</span></div>
+        <div class="panel__body cases">
+          <div class="cases__list" id="cmds"></div>
+          <div class="cases__view"><pre class="code" id="cmdCode"></pre><div class="verdict-box" id="cmdOut"></div></div>
+        </div>
+      </div>
+      <p class="after">Тип значения <code>ExecuteScalarAsync</code> зависит от типа столбца: <code>count(*)</code> в PostgreSQL имеет тип <code>bigint</code>, поэтому приходит <code>long</code>, а <code>id</code> — <code>int</code>. Метод возвращает <code>object?</code>, и значение приводят к нужному типу: <code>(long)(await command.ExecuteScalarAsync())!</code>. Команда на изменение может нарушить правила таблицы, и тогда сервер её отклоняет.</p>
+    </section>
+
+    <!-- 5 -->
+    <section class="sec" id="l5">
+      <h2><span class="n">5</span>Ошибки ограничений</h2>
+      <div class="analogy">Регистратура не запишет пациента дважды к одному врачу на одно время. Она не запишет к врачу, которого нет в штате, и на приём длиной ноль минут. Каждое правило проверяется при записи, и на каждое есть свой ответ.</div>
+      <div class="term"><b>Ограничение</b> — правило в описании таблицы, которое PostgreSQL проверяет при каждом изменении. Виды ограничений: первичный ключ (<code>PRIMARY KEY</code>), внешний ключ (<code>REFERENCES</code>), проверка значения (<code>CHECK</code>), запрет пустого значения (<code>NOT NULL</code>). Если команда нарушает ограничение, сервер отменяет её целиком и присылает код ошибки SQLSTATE.</div>
+      <div class="text">
+        <p>Npgsql превращает ответ сервера в исключение <code>PostgresException</code>. В нём есть код <code>SqlState</code>, имя нарушенного ограничения <code>ConstraintName</code> и текст <code>MessageText</code>. Свойство <code>Detail</code> со значениями ключа по умолчанию скрыто, потому что в нём могут быть данные. Его включают настройкой <code>Include Error Detail=true</code> в строке подключения, на стенде для разработки.</p>
+      </div>
+      <p class="lead-in">Ниже — описание таблицы <code>order_items</code> из <code>init.sql</code> и шесть попыток добавить позицию в заказ. Схема подсвечивает правило, которое сработало, и показывает свойства исключения со стенда.</p>
+      <div class="panel" id="cons">
+        <div class="panel__head"><span>INSERT INTO order_items …</span></div>
+        <div class="panel__body cases">
+          <div class="cases__list" id="consList"></div>
+          <div class="cases__view">
+            <pre class="ddl" id="ddl"></pre>
+            <dl class="errgrid" id="consErr"></dl>
+            <div class="friendly" id="consFriendly"></div>
+          </div>
+        </div>
+      </div>
+      <div class="text">
+        <p>Чтобы программа не завершалась, исключение перехватывают. Фильтр <code>when</code> выбирает нужный код, а константы <code>PostgresErrorCodes</code> избавляют от чисел в коде:</p>
+      </div>
+      <div class="panel"><div class="panel__head"><span>Program.cs · обработка ошибок ограничений</span></div><pre class="code" id="code5"></pre></div>
+      <p class="after">Исключения, которые фильтры не выбрали, проходят дальше, и программа завершается с ошибкой. Это нужно для сбоев, на которые у программы нет ответа: если база недоступна, сообщение «товар уже есть в заказе» было бы неверным. Если нужно различить два внешних ключа, проверяют <code>e.ConstraintName</code>: <code>order_items_order_id_fkey</code> или <code>order_items_product_id_fkey</code>.</p>
+
+      <h3>Итоги лекции</h3>
+      <ol class="summary">
+        <li>Строку результата переносят в объект <code>record</code> методом-маппером; метод чтения возвращает список объектов.</li>
+        <li>Столбцы читают по имени через <code>GetOrdinal</code>: маппер не зависит от порядка столбцов в <code>SELECT</code>.</li>
+        <li>NULL читают в тип с <code>?</code>: <code>GetFieldValue&lt;DateOnly?&gt;</code> или проверка <code>IsDBNull</code>. Без этого Get-метод бросает исключение.</li>
+        <li><code>ExecuteNonQueryAsync</code> возвращает число затронутых строк, <code>ExecuteScalarAsync</code> — одно значение.</li>
+        <li>Нарушение ограничения приходит как <code>PostgresException</code> с кодом: 23505 — повтор ключа, 23503 — нет связанной строки, 23514 — не прошла проверка, 23502 — пустое значение.</li>
+      </ol>
+    </section>
+
+    <!-- ══════════════════════════════════════ ПРАКТИКА -->
+    <div class="part-band" id="prak"><b>Практика</b><span>4 задания · 10 баллов</span></div>
+    <div class="text" style="margin-top:3vh">
+      <p>Задания 1–3 выполняются на этой странице, задание 4 — в проекте <code>ItemsApp</code> на вашем компьютере. У каждого задания одна проверка: после нажатия «Проверить» ответы закрываются, появляются баллы и разбор.</p>
+    </div>
+
+    <article class="task" id="t1">
+      <div class="task__head"><span class="n">1</span><h3>Маппер для статистики клиента</h3><span class="pts">2 балла</span></div>
+      <div class="task__body">
+        <p>Запрос возвращает для каждого клиента имя, число заказов и дату последнего отменённого заказа. У четырёх клиентов из шести отменённых заказов нет.</p>
+        <pre class="code" id="t1code" style="padding:10px 0"></pre>
+        <div class="todo"><b>Что нужно сделать</b>Для каждого свойства выберите выражение, которое прочитает его для всех строк результата без исключения.</div>
+        <table class="predict" id="t1table"><thead><tr><th>Свойство</th><th>Выражение</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="task__foot"><button class="btn btn--main" type="button" data-check="1">Проверить</button><span class="verdict"></span></div>
+      <div class="feedback" id="t1fb"></div>
+    </article>
+
+    <article class="task" id="t2">
+      <div class="task__head"><span class="n">2</span><h3>Чем закончится INSERT</h3><span class="pts">3 балла</span></div>
+      <div class="task__body">
+        <p>Метод вызывается пять раз подряд на исходной базе из стартового проекта. Обработки ошибок в нём нет. Заказов в базе 12, товаров 8. В заказе 2 уже есть товар 3.</p>
+        <pre class="code" id="t2code" style="padding:10px 0"></pre>
+        <div class="todo"><b>Что нужно сделать</b>Для каждого вызова выберите, чем он закончится.</div>
+        <table class="predict" id="t2table"><thead><tr><th>Вызов</th><th>Результат</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="task__foot"><button class="btn btn--main" type="button" data-check="2">Проверить</button><span class="verdict"></span></div>
+      <div class="feedback" id="t2fb"></div>
+    </article>
+
+    <article class="task" id="t3">
+      <div class="task__head"><span class="n">3</span><h3>Метод выполнения команды</h3><span class="pts">2 балла</span></div>
+      <div class="task__body">
+        <div class="todo"><b>Что нужно сделать</b>Для каждой задачи выберите метод <code>NpgsqlCommand</code>, которым её решают.</div>
+        <table class="predict" id="t3table"><thead><tr><th>Задача</th><th>Метод</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="task__foot"><button class="btn btn--main" type="button" data-check="3">Проверить</button><span class="verdict"></span></div>
+      <div class="feedback" id="t3fb"></div>
+    </article>
+
+    <article class="task" id="t4">
+      <div class="task__head"><span class="n">4</span><h3>Позиции заказа в ItemsApp</h3><span class="pts">3 балла</span></div>
+      <div class="task__body">
+        <p>Приложение <code>ItemsApp</code> четыре раза пытается добавить позицию в заказ 1 и печатает позиции заказа. Сейчас программа завершается на второй попытке с ошибкой 23505, а метод <code>GetItemsAsync</code> возвращает пустой список.</p>
+        <ol class="steps-pc">
+          <li>Откройте свой репозиторий <code>ado-net-start</code> и нажмите <b>Sync Changes</b>: проект лежит в папке <code>practice/03-items/ItemsApp</code>. Без репозитория скачайте <a href="items-app.zip"><code>items-app.zip</code></a> и распакуйте в папку <code>orders-starter</code>.</li>
+          <li>Запустите базу и программу, убедитесь, что она падает на второй попытке.
+<pre>docker compose up -d
+cd practice/03-items/ItemsApp     # без репозитория: cd ItemsApp
+dotnet run</pre></li>
+          <li>В <code>AddItemAsync</code> перехватите три ошибки и верните тексты: для 23505 — <code>Товар {productId} уже есть в заказе {orderId}.</code>, для 23503 — <code>Заказа {orderId} или товара {productId} нет в базе.</code>, для 23514 — <code>Количество должно быть больше нуля, указано {quantity}.</code></li>
+          <li>В <code>GetItemsAsync</code> создайте <code>OrderItemRow</code> из текущей строки, читая столбцы по имени через <code>GetOrdinal</code>, и добавьте его в список.</li>
+          <li>Запустите программу и вставьте весь вывод в поле ниже.</li>
+        </ol>
+        <details class="hint"><summary>Подсказка к обработке ошибок</summary><div>Вызов <code>ExecuteNonQueryAsync</code> и <code>return</code> помещаются в блок <code>try</code>. После него идут три блока вида <code>catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.UniqueViolation)</code>, по одному на код.</div></details>
+        <details class="hint"><summary>Подсказка к мапперу</summary><div>Имена столбцов в запросе: <code>product_name</code>, <code>quantity</code>, <code>price</code>. Пример чтения: <code>reader.GetString(reader.GetOrdinal("product_name"))</code>.</div></details>
+        <label class="lbl" for="t4out">Вывод программы целиком</label>
+        <textarea id="t4out" spellcheck="false" placeholder="Добавлено строк: 1 …"></textarea>
+      </div>
+      <div class="task__foot"><button class="btn btn--main" type="button" data-check="4">Проверить</button><span class="verdict"></span></div>
+      <div class="feedback" id="t4fb"></div>
+    </article>
+
+    <!-- ══════════════════════════════════════ РЕЦЕНЗИЯ -->
+    <div class="part-band" id="review"><b>Рецензия</b><span>баллы и отчёт</span></div>
+    <section class="review">
+      <div class="review__body">
+        <div class="who">
+          <label>Фамилия и имя <input id="rvName" autocomplete="name"></label>
+          <label>Группа <input id="rvGroup"></label>
+        </div>
+        <table id="rvTable"></table>
+        <button class="btn btn--main" type="button" id="rvDownload">Скачать отчёт .md</button>
+        <div class="where"><b>Как сдать.</b> Сохраните скачанный файл как <code>practice/03-items/report.md</code> в своём репозитории <code>ado-net-start</code>. Сделайте коммит <code>practice 03: маппер и ошибки ограничений</code> вместе с изменённым <code>ItemsApp/Program.cs</code> и отправьте его на GitHub.</div>
+      </div>
+    </section>
+
+    <footer class="foot"><span>МДК.01.11 Технология доступа к базам данных ADO.NET · занятие 3</span><span>Автор: Макаров Максим Николаевич</span></footer>
+  </div>
+
+  <script src="../../assets/ado.js"></script>
+  <script src="l3.js"></script>
+  <script src="praktika3.js"></script>
+</body>
+</html>
