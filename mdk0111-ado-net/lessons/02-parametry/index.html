@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#020835">
+  <title>Параметры запроса и SQL-инъекция · МДК.01.11</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&family=Unbounded:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/lesson.css">
+  <link rel="stylesheet" href="l2.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="home" href="../../index.html">← МДК.01.11 · ADO.NET</a>
+    <nav>
+      <a href="#lec">Лекция</a>
+      <a href="#prak">Практика</a>
+      <a href="#review">Рецензия</a>
+    </nav>
+  </header>
+
+  <div class="wrap">
+    <section class="hero">
+      <p class="hero__kicker">МДК.01.11 · Занятие 2 · лекция и практика</p>
+      <h1>Параметры запроса<br>и SQL-инъекция</h1>
+      <p class="lead">На занятии разобрано, что происходит, когда программа вклеивает ввод пользователя в текст SQL-запроса, и как этим пользуются для SQL-инъекции. Затем — как параметры передают значение отдельно от текста запроса. Все примеры выполнены на базе заказов из стартового проекта занятия 1. Первая часть — лекция из пяти разделов со схемами, вторая — практика из четырёх заданий.</p>
+      <div class="plan">
+        <a href="../01-pervyy-zapros/index.html"><b>До занятия</b><span>Занятие 1: четыре объекта Npgsql и запуск стартового проекта</span></a>
+        <a href="#lec"><b>Лекция · 35 минут</b><span>Ввод в тексте запроса, инъекция, параметры, тип и NULL, белый список для сортировки</span></a>
+        <a href="#prak"><b>Практика · 45 минут</b><span>Четыре задания, 10 баллов. Каждое задание проверяется один раз</span></a>
+        <a href="#review"><b>Рецензия · 5 минут</b><span>Баллы по заданиям и отчёт .md для сдачи</span></a>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ ЛЕКЦИЯ -->
+    <div class="part-band" id="lec"><b>Лекция</b><span>5 разделов</span></div>
+
+    <!-- 1 -->
+    <section class="sec" id="l1">
+      <h2><span class="n">1</span>Ввод пользователя в тексте запроса</h2>
+      <div class="analogy">Секретарь печатает приказы по шаблону: «Выдать пропуск сотруднику ___». Фамилию он берёт из заявки и впечатывает в пустое место. Пока в заявке написана фамилия, приказ получается правильным.</div>
+      <div class="text">
+        <p>Программа поиска товаров получает текст для поиска от пользователя. Текст можно вставить в строку запроса интерполяцией C#. Интерполяция подставляет значение переменной на место выражения в фигурных скобках: <code>$"…'%{text}%'…"</code>.</p>
+        <p>Оператор <code>ILIKE</code> сравнивает строку с шаблоном без учёта регистра. Знак <code>%</code> в шаблоне означает «любые символы, в том числе ни одного». Для ввода <code>мыш</code> получается шаблон <code>'%мыш%'</code>: ему подходят названия, в которых «мыш» стоит в любом месте.</p>
+      </div>
+      <div class="panel"><div class="panel__head"><span>Program.cs · поиск склейкой</span></div><pre class="code" id="code1"></pre></div>
+      <p class="lead-in">Введите текст поиска или выберите готовый вариант. Ниже появится запрос, который получит сервер, и результат на базе заказов. Подчёркнут текст, пришедший от пользователя.</p>
+      <div class="panel" data-builder="safe">
+        <div class="panel__head"><span>Запрос, собранный из ввода</span></div>
+        <div class="panel__body">
+          <div class="inp"><label>Поиск товара:</label><input type="text" spellcheck="false" autocomplete="off"></div>
+          <div class="presets"></div>
+          <div class="sqlview"></div>
+          <div class="legend"><span><i class="l-data"></i>ввод внутри строки SQL</span><span><i class="l-code"></i>ввод, который стал кодом SQL</span><span><i class="l-com"></i>комментарий</span></div>
+          <div class="verdict-box"></div>
+        </div>
+      </div>
+      <p class="after">Для ввода <code>мыш</code>, <code>USB</code> и <code>24"</code> запрос работает. Для фамилии <code>O'Neil</code> запрос ломается: апостроф в тексте закрывает строку SQL раньше времени, и слово <code>Neil</code> сервер разбирает как часть кода. Ошибка возникает при вводе настоящей фамилии, без злого умысла. Из этого случая видно, что ввод пользователя может выйти за пределы строки и стать частью кода запроса. Этим пользуются намеренно.</p>
+    </section>
+
+    <!-- 2 -->
+    <section class="sec" id="l2">
+      <h2><span class="n">2</span>SQL-инъекция</h2>
+      <div class="analogy">Секретарь из прошлого раздела впечатывает в приказ всё, что написано в заявке. Если в графе фамилии написать «Иванову. Также выдать ключи от склада», в приказе дословно окажется второе распоряжение.</div>
+      <div class="term"><b>SQL-инъекция</b> — атака, при которой пользователь вводит текст, меняющий смысл SQL-запроса. Она возможна, когда программа собирает текст запроса из ввода: склеивает строки через <code>+</code>, использует интерполяцию <code>$"…"</code> или <code>string.Format</code>.</div>
+      <div class="text">
+        <p>Пример такого ввода — <code>' OR 1=1 --</code>. Первый апостроф закрывает строку шаблона. <code>OR 1=1</code> добавляет условие, которое верно для каждой строки таблицы. Два дефиса начинают комментарий SQL: сервер пропускает всё, что стоит после них до конца строки, в том числе остаток шаблона и <code>ORDER BY</code>.</p>
+      </div>
+      <p class="lead-in">Выберите ввод. Красным выделены символы ввода, которые сервер разобрал как код SQL. Результаты для готовых вариантов получены на стенде.</p>
+      <div class="panel" data-builder="attack">
+        <div class="panel__head"><span>Ввод, который меняет запрос</span></div>
+        <div class="panel__body">
+          <div class="inp"><label>Поиск товара:</label><input type="text" spellcheck="false" autocomplete="off"></div>
+          <div class="presets"></div>
+          <div class="sqlview"></div>
+          <div class="legend"><span><i class="l-data"></i>ввод внутри строки SQL</span><span><i class="l-code"></i>ввод, который стал кодом SQL</span><span><i class="l-com"></i>комментарий</span></div>
+          <div class="verdict-box"></div>
+        </div>
+      </div>
+      <p class="after">Ввод с <code>UPDATE</code> опаснее остальных. Точка с запятой завершает первый запрос, после неё идёт второй — <code>UPDATE</code>, который ставит всем товарам цену 1.00. Npgsql отправляет на сервер оба запроса, и сервер выполняет оба. Программа печатает список из восьми товаров со старыми ценами, по её выводу изменение не заметно. На стенде цены возвращаются командами <code>docker compose down</code> и <code>docker compose up -d</code>: база создаётся заново из <code>init.sql</code>.</p>
+      <p class="after">Защита от инъекции — передавать значение так, чтобы сервер не мог разобрать его как код.</p>
+    </section>
+
+    <!-- 3 -->
+    <section class="sec" id="l3">
+      <h2><span class="n">3</span>Параметры запроса</h2>
+      <div class="analogy">В анкете у каждого поля своя клетка. Что бы ни написали в клетке «Фамилия», это остаётся фамилией: графы анкеты от этого не меняются.</div>
+      <div class="term"><b>Параметр запроса</b> — именованное место в тексте SQL, значение для которого передаётся отдельно от текста. В Npgsql место обозначают именем с <code>@</code>, например <code>@pattern</code>. Значение добавляют в коллекцию <code>command.Parameters</code> методом <code>AddWithValue(имя, значение)</code>.</div>
+      <div class="panel"><div class="panel__head"><span>Program.cs · поиск с параметром</span></div><pre class="code" id="code3"></pre></div>
+      <div class="text">
+        <p>Знаки <code>%</code> добавлены к значению в C#: шаблон целиком — значение параметра, в тексте запроса остаётся только <code>@pattern</code>. Npgsql заменяет <code>@pattern</code> на <code>$1</code> — так места параметров обозначаются в протоколе PostgreSQL. Затем он отправляет текст запроса и значения отдельными сообщениями. Сервер сначала разбирает текст, потом подставляет значение в разобранный запрос как данные. Поэтому апострофы и дефисы в значении остаются символами строки.</p>
+      </div>
+      <p class="lead-in">На схеме — что уходит на сервер при склейке и при параметре для ввода <code>' OR 1=1 --</code>. Ниже — строки из журнала PostgreSQL на стенде, где включена запись всех запросов.</p>
+      <div class="panel" id="chan">
+        <div class="panel__head"><span>Что получает сервер</span><span class="sp"></span><div class="tabs" role="group" aria-label="Способ">
+          <button type="button" data-m="concat" aria-pressed="true">склейка</button>
+          <button type="button" data-m="param" aria-pressed="false">параметр</button>
+        </div></div>
+        <div class="panel__body">
+          <div class="chan">
+            <div class="chan__box"><h5>Программа</h5><pre class="code" id="chanCode" style="padding:6px 0;font-size:12px"></pre></div>
+            <div class="chan__wires">
+              <div class="lanewire" id="w1"><small>текст запроса</small><span class="pk" id="p1"></span></div>
+              <div class="lanewire" id="w2"><small>значения</small><span class="pk val" id="p2"></span></div>
+            </div>
+            <div class="chan__box chan__box--srv"><h5>PostgreSQL</h5><ol class="srvsteps" id="srv"></ol></div>
+          </div>
+          <pre class="applog" id="chanLog"></pre>
+          <div class="text" style="margin-top:12px"><button class="btn" type="button" id="chanPlay">▶ Отправить ещё раз</button></div>
+        </div>
+      </div>
+      <p class="after">При склейке сервер получил запрос с условием <code>OR 1=1</code> и выполнил его. С параметром сервер получил текст с <code>$1</code> и значение отдельно. Апостроф в значении журнал показывает удвоенным: так журнал записывает апостроф внутри строки, в самом значении он один. Поиск по шаблону <code>%' OR 1=1 --%</code> находит 0 товаров, потому что такого названия в таблице нет.</p>
+      <p class="after">Значение параметра имеет тип, и от типа зависит, как сервер сравнит его со столбцом.</p>
+    </section>
+
+    <!-- 4 -->
+    <section class="sec" id="l4">
+      <h2><span class="n">4</span>Тип значения, NULL и забытый параметр</h2>
+      <div class="analogy">В графу «Сумма» банковского бланка пишут число. Если написать «три тысячи» словами, бланк не примут, хотя смысл тот же. Пустая графа тоже не означает сумму ноль.</div>
+      <div class="text">
+        <p>Тип параметра Npgsql определяет по типу значения в C#: <code>int</code> передаётся как <code>integer</code>, <code>string</code> — как <code>text</code>, <code>decimal</code> — как <code>numeric</code>. Сервер сравнивает значения совместимых типов. Если тип значения не подходит к столбцу, запрос заканчивается ошибкой.</p>
+      </div>
+      <p class="lead-in">Выберите случай: справа появятся код и результат на стенде.</p>
+      <div class="panel">
+        <div class="panel__head"><span>Ошибки с параметрами</span></div>
+        <div class="panel__body cases">
+          <div class="cases__list" id="cases"></div>
+          <div class="cases__view"><pre class="code" id="caseCode"></pre><div class="verdict-box" id="caseOut"></div></div>
+        </div>
+      </div>
+      <p class="after">Отдельно о NULL. В SQL сравнение с NULL через знак <code>=</code> не даёт истину, даже если в столбце тоже NULL. Поэтому условие <code>name = @n</code> со значением <code>DBNull.Value</code> не находит ни одной строки. Пустые значения ищут условием <code>IS NULL</code>.</p>
+      <p class="after">Параметром передают значения. Имя столбца или направление сортировки параметром передать нельзя.</p>
+    </section>
+
+    <!-- 5 -->
+    <section class="sec" id="l5">
+      <h2><span class="n">5</span>Сортировка по выбору пользователя</h2>
+      <div class="analogy">В анкете можно заполнить клетку, но нельзя переставить графы. Порядок граф задаёт тот, кто составил бланк, и посетитель выбирает только из того, что в бланке предусмотрено.</div>
+      <div class="text">
+        <p>Параметр заменяет только значение: число, строку, дату. Имена таблиц и столбцов, ключевые слова <code>ASC</code> и <code>DESC</code> — часть текста запроса, сервер разбирает их до подстановки значений. Если написать <code>ORDER BY @col</code> и передать <code>"price"</code>, ошибки не будет. Сервер отсортирует строки по строке <code>'price'</code>, одинаковой для всех строк, и порядок не изменится. На стенде такой запрос вернул товары в том же порядке, что и без сортировки: Клавиатура, Мышь, Монитор 24".</p>
+      </div>
+      <div class="term"><b>Белый список</b> — заранее заданный набор допустимых вариантов. Программа ищет выбор пользователя среди ключей набора и вставляет в запрос только фрагмент, записанный в наборе. Введённый текст в запрос не попадает.</div>
+      <div class="panel"><div class="panel__head"><span>Program.cs · сортировка по белому списку</span></div><pre class="code" id="code5"></pre></div>
+      <p class="lead-in">Выберите вариант сортировки. Схема покажет, какую строку словаря нашла программа, какой запрос получился и что вернул стенд.</p>
+      <div class="panel">
+        <div class="panel__head"><span>Выбор пользователя → словарь → запрос</span></div>
+        <div class="panel__body wl">
+          <div>
+            <div class="presets" id="wlChoices"></div>
+            <table class="dict" id="wlDict"><thead><tr><th>ключ</th><th>фрагмент ORDER BY</th></tr></thead><tbody></tbody></table>
+            <p class="lookup" id="wlLookup"></p>
+          </div>
+          <div>
+            <div class="sqlview" id="wlSql" style="margin-top:0"></div>
+            <div class="prodlist" id="wlRows"></div>
+          </div>
+        </div>
+      </div>
+      <p class="after">Интерполяция в этом коде безопасна: в запрос попадает одна из трёх строк, записанных программистом. Для ввода, которого нет в словаре, <code>TryGetValue</code> возвращает <code>false</code>, и программа сортирует по <code>id</code>.</p>
+
+      <h3>Итоги лекции</h3>
+      <ol class="summary">
+        <li>Ввод, вклеенный в текст SQL склейкой, интерполяцией или <code>string.Format</code>, может выйти за пределы строки и стать кодом запроса.</li>
+        <li>SQL-инъекция меняет смысл запроса: <code>' OR 1=1 --</code> выдаёт всю таблицу, ввод с <code>; UPDATE …</code> выполняет второй запрос.</li>
+        <li>Параметр — место <code>@имя</code> в тексте запроса. Значение добавляют через <code>command.Parameters.AddWithValue</code>, и сервер получает его отдельно от текста.</li>
+        <li>Тип параметра берётся из типа значения в C#. Пустое значение передают как <code>DBNull.Value</code>, а ищут условием <code>IS NULL</code>.</li>
+        <li>Параметром передают только значения. Имена столбцов и направление сортировки выбирают из белого списка.</li>
+      </ol>
+    </section>
+
+    <!-- ══════════════════════════════════════ ПРАКТИКА -->
+    <div class="part-band" id="prak"><b>Практика</b><span>4 задания · 10 баллов</span></div>
+    <div class="text" style="margin-top:3vh">
+      <p>Задания 1–3 выполняются на этой странице, задание 4 — в стартовом проекте на вашем компьютере. У каждого задания одна проверка: после нажатия «Проверить» ответы закрываются, появляются баллы и разбор. Ответы сохраняются в браузере.</p>
+    </div>
+
+    <article class="task" id="t1">
+      <div class="task__head"><span class="n">1</span><h3>Где можно внедрить SQL</h3><span class="pts">2 балла</span></div>
+      <div class="task__body">
+        <p>В каждой строке переменные <code>name</code>, <code>city</code>, <code>text</code> и <code>choice</code> получены от пользователя. Словарь <code>sorts</code> — белый список из раздела 5.</p>
+        <div class="todo"><b>Что нужно сделать</b>Для каждой строки отметьте, можно ли через неё выполнить SQL-инъекцию.</div>
+        <div class="marklist" id="t1list"></div>
+      </div>
+      <div class="task__foot"><button class="btn btn--main" type="button" data-check="1">Проверить</button><span class="verdict"></span></div>
+      <div class="feedback" id="t1fb"></div>
+    </article>
+
+    <article class="task" id="t2">
+      <div class="task__head"><span class="n">2</span><h3>Что сделает запрос</h3><span class="pts">3 балла</span></div>
+      <div class="task__body">
+        <p>Программа поиска собирает запрос склейкой, как в разделе 1:</p>
+        <pre class="code" id="t2code" style="padding:10px 0"></pre>
+        <p style="margin-top:12px">База — исходная из стартового проекта: 8 товаров, в названиях «мыш» встречается в двух: Мышь и Коврик для мыши.</p>
+        <div class="todo"><b>Что нужно сделать</b>Для каждого ввода выберите, что произойдёт при запуске.</div>
+        <table class="predict" id="t2table"><thead><tr><th>Ввод пользователя</th><th>Что произойдёт</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="task__foot"><button class="btn btn--main" type="button" data-check="2">Проверить</button><span class="verdict"></span></div>
+      <div class="feedback" id="t2fb"></div>
+    </article>
+
+    <article class="task" id="t3">
+      <div class="task__head"><span class="n">3</span><h3>Запрос с параметром по образцу</h3><span class="pts">2 балла</span></div>
+      <div class="task__body">
+        <p>Менеджер вводит максимальную цену, программа читает её в переменную <code>decimal maxPrice</code> и должна показать товары не дороже этой цены, от дешёвых к дорогим.</p>
+        <div class="todo"><b>Что нужно сделать</b>Заполните три пропуска так, чтобы цена передавалась параметром.</div>
+        <pre class="blanks" id="t3code">await using var command = new NpgsqlCommand(
+    "SELECT id, name, price FROM products WHERE price &lt;= <input data-b="0" spellcheck="false" autocomplete="off"> ORDER BY price", connection);
+
+command.Parameters.AddWithValue(<input data-b="1" spellcheck="false" autocomplete="off">, <input data-b="2" spellcheck="false" autocomplete="off">);</pre>
+      </div>
+      <div class="task__foot"><button class="btn btn--main" type="button" data-check="3">Проверить</button><span class="verdict"></span></div>
+      <div class="feedback" id="t3fb"></div>
+    </article>
+
+    <article class="task" id="t4">
+      <div class="task__head"><span class="n">4</span><h3>Исправить поиск в SearchApp</h3><span class="pts">3 балла</span></div>
+      <div class="task__body">
+        <p>Приложение <code>SearchApp</code> ищет товары по части названия и печатает запрос, который отправляет на сервер. Текст поиска в нём вклеивается в SQL интерполяцией.</p>
+        <ol class="steps-pc">
+          <li>Скачайте <a href="search-app.zip"><code>search-app.zip</code></a> и распакуйте в папку <code>orders-starter</code> из занятия 1, рядом с папкой <code>OrdersApp</code>. Если папки нет, сначала скачайте <a href="../01-pervyy-zapros/orders-starter.zip"><code>orders-starter.zip</code></a>.</li>
+          <li>В папке <code>orders-starter</code> запустите базу. Если вы меняли данные в прошлых опытах, сначала выполните <code>docker compose down</code>: база создастся заново.
+<pre>docker compose up -d
+cd SearchApp
+dotnet run</pre></li>
+          <li>На запрос «Поиск товара» введите <code>USB</code>: программа найдёт 1 товар.</li>
+          <li>Запустите ещё раз и введите <code>' OR 1=1 --</code>. Скопируйте весь вывод в поле 1.</li>
+          <li>Исправьте <code>Program.cs</code>: в тексте запроса — параметр <code>@pattern</code>, значение со знаками <code>%</code> — через <code>command.Parameters.AddWithValue</code>.</li>
+          <li>Запустите исправленную программу дважды: с вводом <code>' OR 1=1 --</code> и с вводом <code>USB</code>. Скопируйте выводы в поля 2 и 3.</li>
+        </ol>
+        <details class="hint"><summary>Подсказка</summary><div>Строка запроса больше не должна содержать <code>{text}</code>. Параметр добавляется после создания команды и до вызова <code>ExecuteReaderAsync</code>. Шаблон собирается так: <code>"%" + text + "%"</code>.</div></details>
+        <label class="lbl" for="t4a">Поле 1 · до исправления, ввод <code>' OR 1=1 --</code></label>
+        <textarea id="t4a" spellcheck="false" placeholder="Поиск товара: …"></textarea>
+        <label class="lbl" for="t4b">Поле 2 · после исправления, ввод <code>' OR 1=1 --</code></label>
+        <textarea id="t4b" spellcheck="false" placeholder="Поиск товара: …"></textarea>
+        <label class="lbl" for="t4c">Поле 3 · после исправления, ввод <code>USB</code></label>
+        <textarea id="t4c" spellcheck="false" placeholder="Поиск товара: …"></textarea>
+      </div>
+      <div class="task__foot"><button class="btn btn--main" type="button" data-check="4">Проверить</button><span class="verdict"></span></div>
+      <div class="feedback" id="t4fb"></div>
+    </article>
+
+    <!-- ══════════════════════════════════════ РЕЦЕНЗИЯ -->
+    <div class="part-band" id="review"><b>Рецензия</b><span>баллы и отчёт</span></div>
+    <section class="review">
+      <div class="review__body">
+        <div class="who">
+          <label>Фамилия и имя <input id="rvName" autocomplete="name"></label>
+          <label>Группа <input id="rvGroup"></label>
+        </div>
+        <table id="rvTable"></table>
+        <button class="btn btn--main" type="button" id="rvDownload">Скачать отчёт .md</button>
+        <div class="where"><b>Как сдать.</b> Положите скачанный файл в папку <code>practice/02-parameters/</code> своего репозитория по дисциплине, рядом положите исправленный <code>SearchApp/Program.cs</code> и отправьте изменения на GitHub.</div>
+      </div>
+    </section>
+
+    <footer class="foot"><span>МДК.01.11 Технология доступа к базам данных ADO.NET · занятие 2</span><span>Автор: Макаров Максим Николаевич</span></footer>
+  </div>
+
+  <script src="../../assets/ado.js"></script>
+  <script src="l2.js"></script>
+  <script src="praktika2.js"></script>
+</body>
+</html>
