@@ -26,7 +26,7 @@
   const L1 = [
     ['new NpgsqlCommand($"SELECT * FROM customers WHERE full_name = \'{name}\'", connection);', true, 'интерполяция вклеивает имя в текст запроса'],
     ['new NpgsqlCommand("SELECT * FROM customers WHERE full_name = @name", connection);\ncommand.Parameters.AddWithValue("name", name);', false, 'имя передано параметром'],
-    ['new NpgsqlCommand("SELECT * FROM customers WHERE city = \'" + city + "\'", connection);', true, 'город приклеен к тексту запроса через +'],
+    ['new NpgsqlCommand("SELECT * FROM customers WHERE city = \'" + city + "\'", connection);', true, 'город присоединён к тексту запроса через +'],
     ['new NpgsqlCommand(string.Format("SELECT * FROM customers WHERE city = \'{0}\'", city), connection);', true, 'string.Format вставляет город в текст так же, как интерполяция'],
     ['new NpgsqlCommand("SELECT * FROM customers WHERE city = @city", connection);\ncommand.Parameters.AddWithValue("city", city);', false, 'город передан параметром'],
     ['new NpgsqlCommand("SELECT * FROM products WHERE name ILIKE @p", connection);\ncommand.Parameters.AddWithValue("p", "%" + text + "%");', false, 'склейка со знаками % идёт в значении параметра, текст запроса не меняется'],
