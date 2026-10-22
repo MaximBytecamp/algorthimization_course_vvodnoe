@@ -185,7 +185,7 @@ command.Parameters.AddWithValue("pattern", "%" + text + "%");</pre>`;
     ].join('\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown;charset=utf-8' }));
-    a.download = `lesson02_${name.replace(/\s+/g, '_')}.md`;
+    a.download = 'report.md';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   });
