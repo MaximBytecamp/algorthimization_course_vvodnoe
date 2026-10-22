@@ -298,6 +298,27 @@ async def st_pysnippet(e: Editor) -> None:
         (project() / "proba.py").unlink(missing_ok=True)
 
 
+async def st_wsjson(e: Editor) -> None:
+    """4.10 §4: команда Open Workspace Settings (JSON) в палитре и что она делает без файла."""
+    settings = project() / ".vscode" / "settings.json"
+    backup = settings.read_text(encoding="utf-8")
+    settings.unlink()
+    try:
+        await reset(e)
+        await e.key("F1", 0.8)
+        await e.paste("workspace settings json", 1.5)
+        await e.shot(f"{RAW}/py-wsjson-palette.png")
+        await e.key("Enter", 3.0)
+        print("файл на диске сразу после команды:", settings.exists())
+        if settings.exists():
+            print(repr(settings.read_text(encoding="utf-8")))
+        await e.shot(f"{RAW}/py-wsjson-opened.png")
+        await e.palette("View: Revert and Close Editor", 1.5)
+        print("после закрытия без сохранения:", settings.exists())
+    finally:
+        settings.write_text(backup, encoding="utf-8")
+
+
 STAGES = {name[3:]: fn for name, fn in globals().items() if name.startswith("st_")}
 
 
