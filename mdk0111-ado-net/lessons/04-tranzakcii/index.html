@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#020835">
+  <title>Транзакции и откат операций · МДК.01.11</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&family=Unbounded:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/lesson.css">
+  <link rel="stylesheet" href="../../assets/widgets.css">
+  <link rel="stylesheet" href="l4.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="home" href="../../index.html">← МДК.01.11 · ADO.NET</a>
+    <nav>
+      <a href="#lec">Лекция</a>
+      <a href="#prak">Практика</a>
+      <a href="#review">Рецензия</a>
+    </nav>
+  </header>
+
+  <div class="wrap">
+    <section class="hero">
+      <p class="hero__kicker">МДК.01.11 · Занятие 4 · лекция и практика</p>
+      <h1>Транзакции<br>и откат операций</h1>
+      <p class="lead">На занятии разобрано, что происходит с базой, когда операция из нескольких команд обрывается на середине, и как транзакция делает такую операцию неделимой. Сквозной пример — оформление заказа: строка в <code>orders</code>, позиции в <code>order_items</code> и уменьшение остатков в <code>products</code>. Все числа получены на базе заказов из стартового проекта.</p>
+      <div class="plan">
+        <a href="../03-obekty-i-oshibki/index.html"><b>До занятия</b><span>Занятие 3: команды на изменение и ошибки ограничений</span></a>
+        <a href="#lec"><b>Лекция · 35 минут</b><span>Сбой посередине, BeginTransaction и Commit, откат, видимость для других соединений, точка сохранения</span></a>
+        <a href="#prak"><b>Практика · 45 минут</b><span>Четыре задания, 10 баллов. Каждое задание проверяется один раз</span></a>
+        <a href="#review"><b>Рецензия · 5 минут</b><span>Баллы по заданиям и отчёт report.md</span></a>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ ЛЕКЦИЯ -->
+    <div class="part-band" id="lec"><b>Лекция</b><span>5 разделов</span></div>
+
+    <!-- 1 -->
+    <section class="sec" id="l1">
+      <h2><span class="n">1</span>Операция из нескольких команд</h2>
+      <div class="analogy">Кладовщик оформляет выдачу: записывает накладную, вписывает в неё товары и списывает их со склада. Если на середине выясняется, что второго товара не хватает, а первые записи уже сделаны, в журнале остаётся накладная на товар, который никто не получил.</div>
+      <div class="text">
+        <p>Оформление заказа в программе — тоже несколько команд. Сначала <code>INSERT</code> добавляет строку в <code>orders</code>. Затем для каждой позиции <code>INSERT</code> добавляет строку в <code>order_items</code>, а <code>UPDATE</code> уменьшает остаток товара в <code>products</code>. В таблице <code>products</code> есть ограничение <code>CHECK (stock &gt;= 0)</code>: остаток не может стать отрицательным.</p>
+        <p>Каждая команда без транзакции сохраняется в базе сразу после выполнения. Если третья команда из пяти заканчивается ошибкой, первые две уже записаны.</p>
+      </div>
+      <p class="lead-in">На схеме — заказ из монитора (1 шт.) и веб-камер (20 шт.); веб-камер на складе 9. Кнопка «Шаг» выполняет одну команду, справа — содержимое базы после неё.</p>
+      <div class="panel" data-op="notx">
+        <div class="panel__head"><span>Заказ без транзакции</span></div>
+        <div class="panel__body">
+          <div class="op">
+            <ol class="steplist"></ol>
+            <div><table class="counters"></table><div class="opmsg"></div></div>
+          </div>
+          <div class="text" style="margin-top:12px"><button class="btn btn--main" type="button" data-act="step">Шаг →</button> <button class="btn" type="button" data-act="reset">Сначала</button></div>
+        </div>
+      </div>
+      <p class="after">На стенде программа поймала ошибку 23514 и сообщила, что заказ не оформлен. В базе после этого 13 заказов вместо 12, две новые позиции и монитор, списанный со склада. Чтобы такого не было, команды операции объединяют в транзакцию.</p>
+    </section>
+
+    <!-- 2 -->
+    <section class="sec" id="l2">
+      <h2><span class="n">2</span>Транзакция</h2>
+      <div class="analogy">Покупка в интернет-магазине оформляется целиком: деньги списываются, заказ создаётся, товар резервируется. Если платёж не прошёл, магазин не держит у себя половину заказа: всё возвращается к состоянию до нажатия кнопки «Оплатить».</div>
+      <div class="term"><b>Транзакция</b> — группа команд, которую база выполняет как одно целое: изменения либо сохраняются все вместе, либо не сохраняется ни одно. Начало транзакции — команда <code>BEGIN</code>, сохранение — <code>COMMIT</code>, отмена — <code>ROLLBACK</code>. Пока транзакция не завершена, её изменения видны только в соединении, где она открыта.</div>
+      <div class="text">
+        <p>В Npgsql транзакцию открывает метод соединения <code>BeginTransactionAsync</code>, сохраняет — <code>CommitAsync</code>. Все команды на этом соединении между ними входят в транзакцию. Объект транзакции можно передать третьим аргументом в <code>new NpgsqlCommand(sql, connection, transaction)</code>. Npgsql привязывает транзакцию к соединению и без этого, но в провайдере SQL Server команда без переданной транзакции заканчивается ошибкой. Поэтому транзакцию в команду принято передавать явно.</p>
+      </div>
+      <div class="panel"><div class="panel__head"><span>Program.cs · заказ в транзакции</span></div><pre class="code" id="code2"></pre></div>
+      <p class="lead-in">Тот же заказ в транзакции. Средняя колонка — данные внутри транзакции, правая — что сохранено в базе.</p>
+      <div class="panel" data-op="tx">
+        <div class="panel__head"><span>Заказ в транзакции</span></div>
+        <div class="panel__body">
+          <div class="op">
+            <ol class="steplist"></ol>
+            <div><table class="counters"></table><div class="opmsg"></div></div>
+          </div>
+          <div class="text" style="margin-top:12px"><button class="btn btn--main" type="button" data-act="step">Шаг →</button> <button class="btn" type="button" data-act="reset">Сначала</button></div>
+        </div>
+      </div>
+      <p class="after">До <code>COMMIT</code> изменения существуют только внутри транзакции. Ошибка на пятой команде — и после отката в базе снова 12 заказов, 18 позиций и 6 мониторов. Дальше — как транзакция откатывается и что происходит с командами после ошибки.</p>
+    </section>
+
+    <!-- 3 -->
+    <section class="sec" id="l3">
+      <h2><span class="n">3</span>Откат и ошибка внутри транзакции</h2>
+      <div class="analogy">Черновик письма можно дописывать, пока не нажата кнопка «Отправить». Если закрыть окно без отправки, черновик пропадает. А если в письме нашлась ошибка, сначала решают, отправлять ли его вообще.</div>
+      <div class="text">
+        <p>Транзакцию отменяют тремя способами. Явно — вызовом <code>RollbackAsync</code> в блоке <code>catch</code>. Неявно — когда объект транзакции, объявленный через <code>await using</code>, закрывается без вызова <code>CommitAsync</code>. И сервер переводит транзакцию в состояние ошибки, если одна из её команд не выполнилась: после этого он отклоняет все следующие команды до <code>ROLLBACK</code>.</p>
+      </div>
+      <p class="lead-in">Выберите случай: справа появятся код и результат на стенде.</p>
+      <div class="panel">
+        <div class="panel__head"><span>Как заканчивается транзакция</span></div>
+        <div class="panel__body cases">
+          <div class="cases__list" id="cases"></div>
+          <div class="cases__view"><pre class="code" id="caseCode"></pre><div class="verdict-box" id="caseOut"></div></div>
+        </div>
+      </div>
+      <p class="after">Номер нового заказа после отката не возвращается: на стенде заказ из отменённой транзакции занял номер 13, и следующий получил 14. Счётчик <code>GENERATED ALWAYS AS IDENTITY</code> работает вне транзакций. Пропуск в номерах означает отменённую вставку, данные из таблицы не пропали. Пока транзакция не завершена, её изменения видны только в своём соединении.</p>
+    </section>
+
+    <!-- 4 -->
+    <section class="sec" id="l4">
+      <h2><span class="n">4</span>Что читают другие соединения</h2>
+      <div class="analogy">Бухгалтер правит отчёт в своём черновике. Коллеги видят опубликованную версию отчёта, пока бухгалтер не нажмёт «Опубликовать». Если он выбросит черновик, коллеги так и не узнают о его правках.</div>
+      <div class="text">
+        <p>Программа, которая обслуживает много пользователей, держит одновременно несколько соединений с базой. PostgreSQL по умолчанию работает в режиме изоляции <code>READ COMMITTED</code>: каждая команда читает только сохранённые данные и изменения своей транзакции. Поэтому другие соединения не видят незавершённый заказ.</p>
+      </div>
+      <p class="lead-in">На схеме — два соединения с одной базой. Первое открывает транзакцию и списывает 2 монитора, второе читает остаток. Числа получены на чистой базе стенда.</p>
+      <div class="panel" id="vis">
+        <div class="panel__head"><span>Два соединения</span><span class="sp"></span><div class="tabs" role="group">
+          <button type="button" data-v="commit" aria-pressed="true">COMMIT</button>
+          <button type="button" data-v="rollback" aria-pressed="false">ROLLBACK</button>
+        </div></div>
+        <div class="panel__body">
+          <div class="conns"><div><h5>соединение 1 · транзакция</h5><div id="c1"></div></div><div><h5>соединение 2 · только чтение</h5><div id="c2"></div></div></div>
+          <div class="basebar" id="base"></div>
+          <div class="text" style="margin-top:12px"><button class="btn btn--main" type="button" id="visStep">Шаг →</button> <button class="btn" type="button" id="visReset">Сначала</button></div>
+        </div>
+      </div>
+      <p class="after">Второе соединение читает 4 монитора только после <code>COMMIT</code>. При <code>ROLLBACK</code> оно так и не узнаёт о списании. Остаётся случай, когда отменить нужно не всю транзакцию, а одну её часть.</p>
+    </section>
+
+    <!-- 5 -->
+    <section class="sec" id="l5">
+      <h2><span class="n">5</span>Точка сохранения</h2>
+      <div class="analogy">В компьютерной игре перед трудным уровнем делают сохранение. Если уровень не пройден, игра возвращается к сохранению, а пройденные раньше уровни остаются.</div>
+      <div class="term"><b>Точка сохранения</b> (<code>SAVEPOINT</code>) — отметка внутри транзакции, к которой можно откатиться, не отменяя всю транзакцию. В Npgsql её ставит <code>transaction.SaveAsync("имя")</code>, откат к ней — <code>transaction.RollbackAsync("имя")</code>, удаление ненужной отметки — <code>transaction.ReleaseAsync("имя")</code>. На сервер уходят команды <code>SAVEPOINT</code>, <code>ROLLBACK TO SAVEPOINT</code> и <code>RELEASE SAVEPOINT</code>.</div>
+      <div class="text">
+        <p>Точку сохранения ставят, когда часть операции можно пропустить. Например, магазин принимает заказ без позиций, которых нет на складе: позиция пропускается, остальные сохраняются. Откат к точке снимает и состояние ошибки, поэтому следующие команды выполняются.</p>
+      </div>
+      <div class="panel"><div class="panel__head"><span>Program.cs · точка сохранения на каждую позицию</span></div><pre class="code" id="code5"></pre></div>
+      <p class="lead-in">Заказ из клавиатуры (1 шт.), веб-камер (20 шт.) и мышей (2 шт.). Перед каждой позицией ставится точка сохранения.</p>
+      <div class="panel" data-op="sp">
+        <div class="panel__head"><span>Заказ с точками сохранения</span></div>
+        <div class="panel__body">
+          <div class="op">
+            <ol class="steplist"></ol>
+            <div><table class="counters"></table><div class="opmsg"></div></div>
+          </div>
+          <div class="text" style="margin-top:12px"><button class="btn btn--main" type="button" data-act="step">Шаг →</button> <button class="btn" type="button" data-act="reset">Сначала</button></div>
+        </div>
+      </div>
+      <p class="after">После <code>COMMIT</code> в заказе две позиции из трёх, клавиатура и мыши списаны, веб-камер на складе по-прежнему 9. Решение, пропускать позицию или отменять весь заказ, принимает программа: в этой схеме — пропускать.</p>
+
+      <h3>Итоги лекции</h3>
+      <ol class="summary">
+        <li>Без транзакции каждая команда сохраняется сразу, и сбой посередине оставляет в базе часть операции.</li>
+        <li>Транзакция объединяет команды: <code>BeginTransactionAsync</code>, команды, <code>CommitAsync</code>. Изменения сохраняются все вместе или не сохраняется ни одно.</li>
+        <li>Откат — <code>RollbackAsync</code> или закрытие транзакции без <code>CommitAsync</code>. После ошибки сервер отклоняет команды транзакции с кодом 25P02, а <code>COMMIT</code> превращает в откат без исключения.</li>
+        <li>До <code>COMMIT</code> изменения видны только в своём соединении. Номера, выданные в отменённой транзакции, не возвращаются.</li>
+        <li>Точка сохранения отменяет часть транзакции: <code>SaveAsync</code>, <code>RollbackAsync(имя)</code>, <code>ReleaseAsync</code>.</li>
+      </ol>
+    </section>
+
+    <!-- ══════════════════════════════════════ ПРАКТИКА -->
+    <div class="part-band" id="prak"><b>Практика</b><span>4 задания · 10 баллов</span></div>
+    <div class="text" style="margin-top:3vh">
+      <p>Задания 1–3 выполняются на этой странице, задание 4 — в проекте <code>OrderApp</code> на вашем компьютере. У каждого задания одна проверка: после нажатия «Проверить» ответы закрываются, появляются баллы и разбор. Условия всех четырёх заданий в тексте лежат в репозитории: <code>practice/04-orders/tasks.md</code>.</p>
+    </div>
+
+    <article class="task" id="t1">
+      <div class="task__head"><span class="n">1</span><h3>Порядок вызовов в транзакции</h3><span class="pts">2 балла</span></div>
+      <div class="task__body">
+        <p>Ниже шесть строк метода, который оформляет заказ в транзакции. Строки перемешаны.</p>
+        <div class="todo"><b>Что нужно сделать</b>Нажимайте на строки слева в том порядке, в котором они выполняются при успешном оформлении. Нажатие на строку справа возвращает её обратно.</div>
+        <div class="order">
+          <div><h4>Строки вразброс</h4><ul id="t1src"></ul></div>
+          <div><h4>Метод</h4><ol id="t1dst"></ol></div>
+        </div>
+      </div>
+      <div class="task__foot"><button class="btn btn--main" type="button" data-check="1">Проверить</button><span class="verdict"></span></div>
+      <div class="feedback" id="t1fb"></div>
+    </article>
+
+    <article class="task" id="t2">
+      <div class="task__head"><span class="n">2</span><h3>Что останется в базе</h3><span class="pts">3 балла</span></div>
+      <div class="task__body">
+        <p>В исходной базе 12 заказов. Каждый случай выполняется на исходной базе и пытается оформить один заказ из двух позиций, как в разделе 1.</p>
+        <div class="todo"><b>Что нужно сделать</b>Для каждого случая выберите, сколько заказов будет в базе после него, или исключение, которым он закончится.</div>
+        <table class="predict" id="t2table"><thead><tr><th>Случай</th><th>Результат</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="task__foot"><button class="btn btn--main" type="button" data-check="2">Проверить</button><span class="verdict"></span></div>
+      <div class="feedback" id="t2fb"></div>
+    </article>
+
+    <article class="task" id="t3">
+      <div class="task__head"><span class="n">3</span><h3>Что прочитает другое соединение</h3><span class="pts">2 балла</span></div>
+      <div class="task__body">
+        <p>На складе 9 веб-камер. Соединение 1 открывает транзакцию и выполняет <code>UPDATE products SET stock = stock - 3 WHERE id = 5</code>. Соединение 2 читает <code>SELECT stock FROM products WHERE id = 5</code>.</p>
+        <div class="todo"><b>Что нужно сделать</b>Для каждого момента выберите, какой остаток будет прочитан.</div>
+        <table class="predict" id="t3table"><thead><tr><th>Момент</th><th>Прочитано</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="task__foot"><button class="btn btn--main" type="button" data-check="3">Проверить</button><span class="verdict"></span></div>
+      <div class="feedback" id="t3fb"></div>
+    </article>
+
+    <article class="task" id="t4">
+      <div class="task__head"><span class="n">4</span><h3>Транзакция в OrderApp</h3><span class="pts">3 балла</span></div>
+      <div class="task__body">
+        <p>Приложение <code>OrderApp</code> оформляет два заказа. Второй заказ не проходит: веб-камер на складе 9, а заказано 20. Программа сообщает, что заказ не оформлен, но в базе остаются его строка, позиция с мышами и списанные мыши.</p>
+        <ol class="steps-pc">
+          <li>Откройте свой репозиторий <code>ado-net-start</code> и нажмите <b>Sync Changes</b>: проект лежит в папке <code>practice/04-orders/OrderApp</code>. Без репозитория скачайте <a href="order-app.zip"><code>order-app.zip</code></a> и распакуйте в папку <code>orders-starter</code>.</li>
+          <li>Запустите базу и программу. В строке «Стало» будет 14 заказов, а мышей в остатках 38.
+<pre>docker compose up -d
+cd practice/04-orders/OrderApp     # без репозитория: cd OrderApp
+dotnet run</pre></li>
+          <li>В <code>CreateOrderAsync</code> откройте транзакцию сразу после открытия соединения, сохраните её после цикла по позициям и откатите в блоке <code>catch</code>. Передайте транзакцию третьим аргументом во все три <code>NpgsqlCommand</code>.</li>
+          <li>Запустите программу и вставьте весь вывод в поле ниже.</li>
+        </ol>
+        <details class="hint"><summary>Подсказка</summary><div>Транзакция объявляется так: <code>await using var transaction = await connection.BeginTransactionAsync();</code>. Сохранение — <code>await transaction.CommitAsync();</code> перед <code>return</code> в блоке <code>try</code>, откат — <code>await transaction.RollbackAsync();</code> в блоке <code>catch</code>.</div></details>
+        <label class="lbl" for="t4out">Вывод программы целиком</label>
+        <textarea id="t4out" spellcheck="false" placeholder="Было: заказов 12, позиций 18 …"></textarea>
+      </div>
+      <div class="task__foot"><button class="btn btn--main" type="button" data-check="4">Проверить</button><span class="verdict"></span></div>
+      <div class="feedback" id="t4fb"></div>
+    </article>
+
+    <!-- ══════════════════════════════════════ РЕЦЕНЗИЯ -->
+    <div class="part-band" id="review"><b>Рецензия</b><span>баллы и отчёт</span></div>
+    <section class="review">
+      <div class="review__body">
+        <div class="who">
+          <label>Фамилия и имя <input id="rvName" autocomplete="name"></label>
+          <label>Группа <input id="rvGroup"></label>
+        </div>
+        <table id="rvTable"></table>
+        <button class="btn btn--main" type="button" id="rvDownload">Скачать отчёт .md</button>
+        <div class="where"><b>Как сдать.</b> Сохраните скачанный файл как <code>practice/04-orders/report.md</code> в своём репозитории <code>ado-net-start</code>. Сделайте коммит <code>practice 04: заказ в транзакции</code> вместе с изменённым <code>OrderApp/Program.cs</code> и отправьте его на GitHub.</div>
+      </div>
+    </section>
+
+    <footer class="foot"><span>МДК.01.11 Технология доступа к базам данных ADO.NET · занятие 4</span><span>Автор: Макаров Максим Николаевич</span></footer>
+  </div>
+
+  <script src="../../assets/ado.js"></script>
+  <script src="l4.js"></script>
+  <script src="praktika4.js"></script>
+</body>
+</html>
