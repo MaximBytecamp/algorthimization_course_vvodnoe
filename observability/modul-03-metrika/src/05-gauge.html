@@ -1,0 +1,223 @@
+        <header class="chapter-head">
+          <span class="chapter-num">3.5</span>
+          <h1>Gauge: состояние<br>системы</h1>
+          <p class="lead">Второй тип метрик — gauge. Он показывает текущую величину, которая растёт и уменьшается. В этой главе разобрано, какие величины записывают в gauge и как его меняют в коде. Затем на стенде показано, что из значений gauge попадает в базу при опросе раз в 15 секунд. В конце собраны признаки, по которым выбирают между gauge и counter.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Типы метрик</dd></div>
+          <div><dt>Уровень</dt><dd>Средний</dd></div>
+          <div><dt>Опирается на</dt><dd>Глава 2.4: интервал опроса; глава 3.4: counter</dd></div>
+          <div><dt>Результат</dt><dd>Выбор между gauge и counter; чтение ряда gauge с учётом опроса</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Текущая величина</a></li>
+            <li><a href="#s2">Как меняют gauge в коде</a></li>
+            <li><a href="#s3">Что попадает в базу при опросе</a></li>
+            <li><a href="#s4">Запросы в работе</a></li>
+            <li><a href="#s5">Gauge или counter</a></li>
+            <li><a href="#s6">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Текущая величина</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Табло у въезда на парковку</b><p>Табло показывает, сколько мест свободно: 37. Машина въехала — 36, выехала — снова 37. Число меняется в обе стороны и сообщает, что происходит на парковке сейчас.</p></div>
+            <div class="analogy__side"><b>Gauge</b><p>Метрика показывает, сколько заказов ждёт сборки: 3. Пришёл заказ — 4, собран — снова 3. Значение сообщает состояние сервиса в момент опроса.</p></div>
+          </div>
+        </div>
+        <div class="term-card">
+          <p class="term-card__head"><b>Gauge</b><span>измеритель · тип метрики</span></p>
+          <div class="term-card__body">
+            <p>Метрика с одним числом, которое может расти и уменьшаться. Документация Prometheus приводит примеры: температура, использованная память, число одновременных запросов.</p>
+            <p>Окончания <code>_total</code> у gauge нет. Значение может быть отрицательным.</p>
+          </div>
+        </div>
+        <p>У счётчика из главы 3.4 смотрят рост за промежуток. У gauge смотрят само значение: оно уже отвечает на вопрос о сервисе. Значение «в очереди 3 заказа» отвечает на вопрос о сервисе, и вычитать из него прошлое значение не нужно.</p>
+        <p>На стенде четыре метрики этого типа. Две объявлены в коде сервиса, две добавляет библиотека.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Gauge на стенде</span><span>ответ /metrics</span></div>
+          <div class="pic__body">
+            <div class="cards">
+              <div class="is-key"><small>сервис</small><b>orders_queue_length</b>заказы, которые ждут сборки</div>
+              <div class="is-key"><small>сервис</small><b>http_requests_in_progress</b>запросы, которые обрабатываются сейчас</div>
+              <div><small>библиотека</small><b>process_resident_memory_bytes</b>память процесса в байтах</div>
+              <div><small>библиотека</small><b>process_open_fds</b>открытые файлы и соединения процесса</div>
+            </div>
+          </div>
+        </div>
+        <p>Все четыре величины описывают состояние: что есть сейчас. Ни одна не считает события, и каждая может уменьшиться. Память освобождается, соединения закрываются, заказы собираются.</p>
+        <p class="bridge">Значение gauge меняется в обе стороны, поэтому в коде для него больше способов изменения, чем у счётчика.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Как меняют gauge в коде</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Табло парковки</b><p>Табло меняют двумя способами. Датчик у шлагбаума прибавляет или отнимает единицу на каждую машину. Охранник после пересчёта вручную ставит точное число.</p></div>
+            <div class="analogy__side"><b>Методы Gauge</b><p><code>inc()</code> и <code>dec()</code> прибавляют и отнимают. <code>set()</code> ставит точное значение, полученное другим способом.</p></div>
+          </div>
+        </div>
+        <p>В prometheus-client у Gauge шесть способов изменить значение. Все они проверены на версии 0.26.0.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Метод</th><th>Что делает</th><th>Пример</th></tr></thead>
+            <tbody>
+              <tr><td><code>inc(n)</code></td><td>Прибавляет <code>n</code>, по умолчанию 1</td><td>Заказ встал в очередь</td></tr>
+              <tr><td><code>dec(n)</code></td><td>Отнимает <code>n</code>, по умолчанию 1</td><td>Заказ собран</td></tr>
+              <tr><td><code>set(x)</code></td><td>Ставит значение <code>x</code>, в том числе отрицательное</td><td>Размер очереди прочитан из базы данных</td></tr>
+              <tr><td><code>set_to_current_time()</code></td><td>Ставит текущее Unix-время</td><td>Момент последнего созданного заказа</td></tr>
+              <tr><td><code>track_inprogress()</code></td><td>Прибавляет 1 при входе в блок <code>with</code>, отнимает при выходе</td><td>Запросы в работе</td></tr>
+              <tr><td><code>set_function(f)</code></td><td>Вызывает функцию <code>f</code> при каждом запросе <code>/metrics</code></td><td>Размер очереди <code>queue.qsize()</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>На стенде очередь меняется методами <code>inc</code> и <code>dec</code>. Когда создан заказ, gauge увеличивается. Когда склад собрал заказ, gauge уменьшается.</p>
+        <figure class="code">
+          <figcaption><span>stand/app.py</span><span>очередь заказов</span></figcaption>
+<pre><span class="k">async def</span> <span class="f">create_order</span>(payment: str = <span class="s">"card"</span>):
+    ...
+    QUEUE_LENGTH.inc()                 <span class="c"># заказ встал в очередь</span>
+    <span class="k">await</span> queue.put(payment)
+
+<span class="k">async def</span> <span class="f">packer</span>():
+    <span class="k">while</span> True:
+        <span class="k">await</span> queue.get()
+        <span class="k">await</span> asyncio.sleep(PACK_SECONDS)  <span class="c"># сборка занимает 1 с</span>
+        QUEUE_LENGTH.dec()             <span class="c"># заказ собран</span></pre>
+        </figure>
+        <p>Функция <code>create_order</code> обрабатывает запрос <code>POST /orders</code>. Функция <code>packer</code> работает всё время: берёт заказ из очереди, ждёт секунду и уменьшает gauge. Значение gauge совпадает с числом заказов в очереди, пока за каждым <code>inc</code> следует свой <code>dec</code>.</p>
+        <div class="sep" role="separator"></div>
+        <h3>Уменьшение при ошибке</h3>
+        <p>Пара <code>inc</code> и <code>dec</code> требует внимания к ошибкам. Если между ними код завершится исключением и <code>dec</code> не выполнится, gauge останется на единицу больше. После сотни таких ошибок он покажет сто запросов в работе, хотя сервис свободен. Поэтому на стенде <code>dec</code> стоит в блоке <code>finally</code>: этот блок выполняется и при исключении.</p>
+        <figure class="code">
+          <figcaption><span>stand/app.py</span><span>запросы в работе</span></figcaption>
+<pre>IN_PROGRESS.inc()
+<span class="k">try</span>:
+    response = <span class="k">await</span> call_next(request)
+<span class="k">finally</span>:
+    IN_PROGRESS.dec()</pre>
+        </figure>
+        <p>Метод <code>track_inprogress()</code> из таблицы делает то же самое короче: <code>with IN_PROGRESS.track_inprogress(): …</code>. На стенде проверено: внутри блока <code>with</code> значение 1, после выхода 0.</p>
+        <p class="bridge">Значение gauge в памяти приложения меняется в любой момент. В базу попадает только то, что было в памяти во время опроса.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Что попадает в базу при опросе</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Фотография табло</b><p>Табло парковки фотографируют раз в 15 минут. Если за 10 минут между снимками парковка заполнилась и снова опустела, на снимках этого не видно.</p></div>
+            <div class="analogy__side"><b>Опрос gauge</b><p>Prometheus читает gauge раз в 15 секунд. Если за 10 секунд между опросами очередь выросла и снова опустела, в базе этого нет.</p></div>
+          </div>
+        </div>
+        <p>В главе 2.4 этот эффект показан на условных числах. Здесь — опыт на стенде. В 15:11:10 в сервис одновременно отправлено десять заказов. Склад собирает по одному в секунду, поэтому очередь должна уменьшаться с 10 до 0 за десять секунд. Скрипт каждую секунду запрашивал <code>/metrics</code> напрямую, а Prometheus опрашивал сервис по своему расписанию.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Очередь заказов: каждую секунду и в базе</span><span>стенд · время UTC</span></div>
+          <div class="pic__body">
+            <div class="tl" style="--n:13">
+              <b>секунда</b><span class="t">:10</span><span class="t">:11</span><span class="t">:12</span><span class="t">:13</span><span class="t">:14</span><span class="t">:15</span><span class="t">:16</span><span class="t">:17</span><span class="t">:18</span><span class="t">:19</span><span class="t">:20</span><span class="t">:21</span><span class="t">:22</span>
+              <b>/metrics</b><span class="hot">10</span><span class="hot">10</span><span>9</span><span>8</span><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span><span>0</span><span>0</span>
+              <b>Prometheus</b><span class="none"></span><span class="none"></span><span class="none"></span><span class="ok">7</span><span class="none"></span><span class="none"></span><span class="none"></span><span class="none"></span><span class="none"></span><span class="none"></span><span class="none"></span><span class="none"></span><span class="none"></span>
+            </div>
+          </div>
+          <p class="pic__note">Строка /metrics — запросы скрипта раз в секунду, 15:11:10–15:11:22. Строка Prometheus — отсчёт опроса 15:11:13.098. Соседние отсчёты: 15:10:58 — 0, 15:11:28 — 0.</p>
+        </div>
+        <p>За минуту в базе четыре отсчёта: 0, 7, 0, 0. Значение 10 не попало ни в один: в 15:11:10 и 15:11:11 опроса не было. Опрос 15:11:13 пришёлся на середину сборки и записал 7. В скрипте на секунде :13 стоит 8: его запрос был на несколько сотых секунды раньше, чем склад собрал очередной заказ.</p>
+        <p>По этим отсчётам можно сказать, что очередь была непустой около 15:11:13. Сказать, какой она была в наибольшем значении и сколько длилась, по ним нельзя. Если бы десять заказов пришли в 15:11:14 и были собраны к 15:11:24, в базе остались бы одни нули.</p>
+        <div class="sep" role="separator"></div>
+        <h3>Если нужны пики</h3>
+        <p>Есть два способа не потерять кратковременный рост. Первый — сократить интервал опроса: при 5 секундах в этом опыте было бы два-три отсчёта внутри сборки. Второй — считать события счётчиками. На стенде уже есть <code>orders_created_total</code>. Если добавить счётчик собранных заказов, разность двух счётчиков даёт длину очереди в момент любого опроса, а рост первого счётчика показывает, сколько заказов пришло между опросами. Счётчик события не теряет (глава 2.4).</p>
+        <p class="bridge">У очереди изменения длятся секунды. У gauge «запросы в работе» каждое изменение длится столько, сколько обрабатывается один запрос.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Запросы в работе</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Очередь в кассу</b><p>Если смотреть в окно магазина раз в минуту, а покупатель проходит кассу за 5 секунд, у кассы почти всегда будет пусто. Если покупатель стоит у кассы 3 минуты, его увидят на каждом взгляде.</p></div>
+            <div class="analogy__side"><b>Gauge «в работе»</b><p>Запрос, который обрабатывается миллисекунду, почти никогда не совпадает с опросом. Запрос, который длится дольше интервала, попадает в каждый опрос.</p></div>
+          </div>
+        </div>
+        <p>Метрика <code>http_requests_in_progress</code> показывает, сколько запросов сервис обрабатывает в этот момент. Опыт на стенде: в 15:13:26 отправлено пять запросов отчёта, каждый длится 4 секунды. Через секунду скрипт прочитал <code>/metrics</code> и получил <code>http_requests_in_progress 5.0</code>.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Пять отчётов по 4 секунды и опросы Prometheus</span><span>стенд · время UTC</span></div>
+          <div class="pic__body">
+            <div class="lanes">
+              <span class="lanes__head">окно 15:12:58 — 15:13:43, точки — опросы</span>
+              <span>опросы</span><u><i style="--x:0%"></i><i style="--x:33.3%"></i><i style="--x:66.7%"></i><i style="--x:100%"></i></u><span>0 · 0 · 5 · 0</span>
+              <span>5 отчётов</span><u><s style="--x:62.2%;--w:8.9%"></s></u><span>15:13:26–30</span>
+            </div>
+          </div>
+          <p class="pic__note">Отчёты шли с 15:13:26 по 15:13:30. Опрос 15:13:28 попал внутрь этого отрезка и записал 5. Остальные опросы записали 0.</p>
+        </div>
+        <p>Значение 5 попало в базу, потому что отчёты длились 4 секунды и опрос пришёлся на них. Запросы к заказам на стенде обрабатываются меньше миллисекунды: сумма длительностей одиннадцати таких запросов — 0,019 секунды. Чтобы такой запрос совпал с опросом, нужно совпадение до миллисекунды, поэтому при обычной нагрузке этот gauge почти всегда равен 0.</p>
+        <p>Из этого следует, для чего он нужен. Gauge запросов в работе показывает долгие и зависшие запросы: если сервис перестал отвечать и запросы копятся, значение растёт от опроса к опросу. Для подсчёта нагрузки он не подходит, нагрузку показывает рост счётчика запросов из главы 3.4.</p>
+        <p class="bridge">У счётчика и у gauge разные вопросы и разные ошибки. Осталось собрать признаки, по которым выбирают тип.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Gauge или counter</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Касса магазина</b><p>Число чеков за день — накопление: чеки только добавляются. Число покупателей в зале — состояние: люди входят и выходят. Для первого держат счёт, для второго смотрят на зал.</p></div>
+            <div class="analogy__side"><b>Метрики сервиса</b><p>Число созданных заказов — counter. Число заказов в очереди — gauge. Тип выбирают по тому, может ли величина уменьшиться сама по смыслу.</p></div>
+          </div>
+        </div>
+        <p>Правило из документации Prometheus: если величина может уменьшаться, это gauge; если она только растёт при событиях, это counter. Для проверки достаточно спросить, что означает уменьшение. У очереди оно означает «заказ собран» — это обычное событие. У числа созданных заказов уменьшение ничего не означает: созданный заказ остаётся созданным. Поэтому первое — gauge, второе — counter.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Вопрос</th><th>Counter</th><th>Gauge</th></tr></thead>
+            <tbody>
+              <tr><td>Что описывает</td><td>Сколько событий произошло</td><td>Какое состояние сейчас</td></tr>
+              <tr><td>Как меняется</td><td>Только растёт, сбрасывается при перезапуске</td><td>В обе стороны</td></tr>
+              <tr><td>Что смотрят в запросах</td><td>Рост за промежуток</td><td>Значение, среднее, наибольшее</td></tr>
+              <tr><td>Что теряется между опросами</td><td>Момент событий; число событий сохраняется</td><td>Все изменения между опросами</td></tr>
+              <tr><td>Пример на стенде</td><td><code>orders_created_total</code></td><td><code>orders_queue_length</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Тип определяет и то, какие вычисления над рядом допустимы. Рост за промежуток считают только у counter. Если посчитать его у gauge, каждое уменьшение будет принято за сброс. Например, память процесса уменьшилась с 500 до 300 МБ. Для счётчика такое уменьшение означает «перезапуск и 300 новых», и функция роста прибавит 300 МБ, хотя память освободилась. Поэтому документация Prometheus разрешает применять функции <code>rate</code> и <code>increase</code> только к счётчикам.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>Какой тип подходит для числа соединений с базой данных, открытых сейчас?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button>Gauge</button><p class="quiz__why">Верно. Соединения открываются и закрываются, число меняется в обе стороны.</p></li>
+            <li><button>Counter</button><p class="quiz__why">Счётчик подходит для числа открытых соединений за всё время, но не для числа открытых сейчас: закрытие соединения его не уменьшит.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>Опрос раз в 15 секунд. Очередь выросла с 0 до 30 и вернулась к 0 за 6 секунд между опросами. Что будет в базе?</p>
+          <ul class="quiz__opts">
+            <li><button>Отсчёт 30 при следующем опросе</button><p class="quiz__why">Gauge показывает значение в момент опроса. К следующему опросу очередь уже 0.</p></li>
+            <li data-ok><button>Отсчёты 0 до и после, рост очереди не записан</button><p class="quiz__why">Верно. На стенде так пропало значение 10: в базе 0, 7, 0, 0.</p></li>
+            <li><button>Среднее за интервал, 12</button><p class="quiz__why">Prometheus не усредняет значения между опросами. Он читает одно число в момент опроса.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 3</b>В коде <code>IN_PROGRESS.inc()</code> стоит перед обработкой, <code>IN_PROGRESS.dec()</code> — после неё, без <code>try/finally</code>. Что будет, если обработка иногда завершается исключением?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button>Gauge будет расти и не вернётся к нулю</button><p class="quiz__why">Верно. При исключении <code>dec()</code> не выполняется, и каждая ошибка оставляет лишнюю единицу.</p></li>
+            <li><button>Библиотека сама вызовет <code>dec()</code></button><p class="quiz__why">Библиотека не связывает <code>inc</code> и <code>dec</code>. Это делает <code>track_inprogress()</code> или блок <code>finally</code>.</p></li>
+            <li><button>Gauge станет отрицательным</button><p class="quiz__why">Пропускается уменьшение, поэтому значение получается больше настоящего.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 4</b>Запросы к сервису обрабатываются 2 мс, <code>http_requests_in_progress</code> всё время равен 0. О чём это говорит?</p>
+          <ul class="quiz__opts">
+            <li><button>Запросов к сервису нет</button><p class="quiz__why">Число запросов показывает счётчик. Короткий запрос почти никогда не совпадает с опросом.</p></li>
+            <li data-ok><button>Долгих и зависших запросов в моменты опроса нет</button><p class="quiz__why">Верно. Этот gauge показывает запросы, которые шли в момент опроса.</p></li>
+            <li><button>Метрика сломана</button><p class="quiz__why">На стенде этот gauge показал 5, когда отчёты по 4 секунды пришлись на опрос.</p></li>
+          </ul>
+        </div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Prometheus. Metric types: Gauge — <a href="https://prometheus.io/docs/concepts/metric_types/" target="_blank" rel="noopener">prometheus.io/docs/concepts/metric_types</a></li>
+            <li>Prometheus. Instrumentation: counter vs. gauge — <a href="https://prometheus.io/docs/practices/instrumentation/" target="_blank" rel="noopener">prometheus.io/docs/practices/instrumentation</a></li>
+            <li>prometheus-client для Python: Gauge — <a href="https://prometheus.github.io/client_python/instrumenting/gauge/" target="_blank" rel="noopener">prometheus.github.io/client_python/instrumenting/gauge</a></li>
+            <li>Стенд модуля 3: опыты с очередью и отчётами 23.10.2026</li>
+          </ol>
+        </div>

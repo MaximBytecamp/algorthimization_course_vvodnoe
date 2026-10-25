@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#EEF1F5">
+  <meta name="description" content="Глава 3.4 модуля «Метрика как данные»: counter: события и сбросы.">
+  <title>3.4 Counter: события и сбросы · Метрика как данные</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&amp;family=Pixelify+Sans:wght@500;600;700&amp;family=Roboto+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../modul-02-prometheus/styles.css">
+  <link rel="stylesheet" href="../modul-02-prometheus/algo.css">
+  <link rel="stylesheet" href="../modul-02-prometheus/prom.css">
+  <link rel="stylesheet" href="m3.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 3 · Метрика как данные · Макаров М. Н.</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Модуль 3 · метрика как данные</a> · модель данных</p>
+          <p class="running__folio">Глава 3.4</p>
+        </div>
+        <header class="chapter-head">
+          <span class="chapter-num">3.4</span>
+          <h1>Counter: события<br>и сбросы</h1>
+          <p class="lead">Первый из трёх типов метрик — счётчик. В этой главе разобрано, что им считают и почему у счётчика смотрят, на сколько он вырос. Затем на стенде показан сброс счётчика при перезапуске сервиса и то, как Prometheus его обнаруживает. В конце разобраны два случая, когда сброс скрыт: быстрый перезапуск и несколько процессов одного сервиса.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Типы метрик</dd></div>
+          <div><dt>Уровень</dt><dd>Средний</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 3.1–3.3: отсчёт, имя, метки</dd></div>
+          <div><dt>Результат</dt><dd>Чтение ряда счётчика со сбросами и выбор того, что считать счётчиком</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Что считают счётчиком</a></li>
+            <li><a href="#s2">Рост вместо значения</a></li>
+            <li><a href="#s3">Сброс при перезапуске</a></li>
+            <li><a href="#s4">Скрытый сброс</a></li>
+            <li><a href="#s5">Несколько процессов одного сервиса</a></li>
+            <li><a href="#s6">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Что считают счётчиком</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Турникет в метро</b><p>В турникете стоит счётчик проходов. Каждый пассажир добавляет единицу, и число только растёт. Назад турникет не крутится: вышедший пассажир число не уменьшает.</p></div>
+            <div class="analogy__side"><b>Counter</b><p>Каждое событие добавляет к счётчику единицу или другое положительное число. Значение только растёт с момента запуска программы.</p></div>
+          </div>
+        </div>
+        <div class="term-card">
+          <p class="term-card__head"><b>Counter</b><span>счётчик · тип метрики</span></p>
+          <div class="term-card__body">
+            <p>Метрика, значение которой только увеличивается или сбрасывается в ноль при перезапуске программы. Документация Prometheus: «Counter — накопительная метрика, значение которой может только расти или быть сброшено в ноль при перезапуске».</p>
+            <p>Имя счётчика заканчивается на <code>_total</code> (глава 3.2).</p>
+          </div>
+        </div>
+        <p>Счётчиком считают то, что происходит: запросы, ошибки, созданные заказы, отправленные письма. На стенде два счётчика приложения. <code>http_requests_total</code> увеличивается на 1 после каждого обработанного запроса. <code>orders_created_total</code> увеличивается на 1, когда создан заказ.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Три счётчика стенда и что их увеличивает</span><span>ответ /metrics</span></div>
+          <div class="pic__body">
+            <div class="cards">
+              <div><small>событие · запрос</small><b>http_requests_total</b>+1 после каждого обработанного запроса</div>
+              <div><small>событие · заказ</small><b>orders_created_total</b>+1, когда создан заказ</div>
+              <div class="is-key"><small>количество · время</small><b>process_cpu_seconds_total</b>+ секунды работы процессора, потраченные процессом</div>
+            </div>
+          </div>
+        </div>
+        <p>Два первых счётчика считают события, третий — накопленное количество. В коде счётчик заказов объявлен и увеличивается так:</p>
+        <figure class="code">
+          <figcaption><span>stand/app.py</span><span>счётчик заказов</span></figcaption>
+<pre>ORDERS_CREATED = Counter(<span class="s">"orders_created_total"</span>, <span class="s">"Orders created"</span>, [<span class="s">"payment"</span>])
+...
+ORDERS_CREATED.labels(payment).inc()</pre>
+        </figure>
+        <p>Метод <code>.inc()</code> без аргумента добавляет 1. С аргументом он добавляет заданное число: <code>.inc(512)</code> подходит для счёта отправленных байтов. Счётчик может считать и время. На стенде метрика <code>process_cpu_seconds_total</code> копит секунды процессора, которые потратил процесс: значение 5.26 означает 5,26 секунды работы процессора с запуска.</p>
+        <p>Уменьшить счётчик нельзя. Вызов <code>.inc(-1)</code> в prometheus-client 0.26.0 завершается ошибкой:</p>
+        <figure class="code code--out">
+          <figcaption><span>Counter(...).inc(-1)</span><span>prometheus-client 0.26.0</span></figcaption>
+<pre>ValueError: Counters can only be incremented by non-negative amounts.</pre>
+        </figure>
+        <p>Если величина должна уменьшаться, например число заказов в очереди, это другой тип — gauge. Счётчик подходит, когда каждое событие только добавляет к числу.</p>
+        <p class="bridge">Счётчик растёт с момента запуска. Поэтому его значение само по себе мало что сообщает о работе сервиса.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Рост вместо значения</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Пробег автомобиля</b><p>Одометр показывает 84 000 км. По этому числу нельзя сказать, много ли машина ездит сейчас. Если неделю назад было 83 300, то за неделю пройдено 700 км — это уже сведение о том, как машиной пользуются.</p></div>
+            <div class="analogy__side"><b>Счётчик запросов</b><p>Счётчик показывает 40. По этому числу нельзя сказать, нагружен ли сервис. Если 15 секунд назад было 10, то за 15 секунд пришло 30 запросов, по два в секунду.</p></div>
+          </div>
+        </div>
+        <p>Значение счётчика зависит от того, когда программа была запущена. Сервис, который работает месяц, покажет миллион запросов, а такой же сервис после утреннего перезапуска — тысячу, хотя нагрузка у них одинаковая. Поэтому у счётчика смотрят, на сколько он вырос за промежуток времени. Деление роста на длину промежутка даёт скорость: событий в секунду.</p>
+        <p>На стенде за несколько секунд отправлено 30 запросов. Отсчёты ряда успешных запросов GET до и после выглядят так.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Рост счётчика между двумя отсчётами</span><span>стенд · время UTC</span></div>
+          <div class="pic__body">
+            <div class="tl tl--wide" style="--n:4">
+              <b>время</b><span class="t">15:04:28</span><span class="t">15:04:43</span><span class="t">15:04:58</span><span class="t">15:05:13</span>
+              <b>значение</b><span>10</span><span>10</span><span class="hot">40</span><span>40</span>
+              <b>рост</b><span class="t">—</span><span class="t">0</span><span class="t">+30</span><span class="t">0</span>
+            </div>
+          </div>
+        </div>
+        <p>Между 15:04:43 и 15:04:58 счётчик вырос на 30. Промежуток — 15 секунд, значит, в среднем пришло 30 / 15 = 2 запроса в секунду. В соседних промежутках рост 0: запросов не было. О нагрузке сообщает рост за промежуток, значение 40 о ней ничего не говорит. В запросах Prometheus рост и скорость считают функции <code>increase</code> и <code>rate</code>; они берут разности соседних отсчётов так же, как здесь.</p>
+        <p class="bridge">Расчёт по разности работает, пока счётчик растёт. Но при перезапуске программы число в памяти пропадает, и счётчик начинает с нуля.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Сброс при перезапуске</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Замена турникета</b><p>Сломанный турникет заменили новым, и его счётчик начал с нуля. Если вычесть из нового показания старое, получится отрицательное число пассажиров. Правильный счёт — старое показание до замены плюс всё, что насчитал новый турникет.</p></div>
+            <div class="analogy__side"><b>Сброс счётчика</b><p>После перезапуска сервиса счётчик начинает с нуля. Prometheus определяет сброс по уменьшению значения: рост после сброса — это всё новое значение.</p></div>
+          </div>
+        </div>
+        <p>Счётчик хранится в памяти процесса. Когда процесс завершается, память освобождается, и новый процесс создаёт счётчик заново. Такой переход к нулю называется сбросом. Опыт на стенде: счётчик доведён до 40, сервис перезапущен командой <code>docker compose restart api</code> в 15:05:26, затем отправлено 10 запросов.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Ряд счётчика при перезапуске сервиса</span><span>стенд · время UTC</span></div>
+          <div class="pic__body">
+            <div class="tl tl--wide" style="--n:6">
+              <b>время</b><span class="t">15:04:58</span><span class="t">15:05:13</span><span class="t">15:05:28</span><span class="t">15:05:43</span><span class="t">15:05:58</span><span class="t">15:06:13</span>
+              <b>up</b><span class="ok">1</span><span class="ok">1</span><span class="bad">0</span><span class="ok">1</span><span class="ok">1</span><span class="ok">1</span>
+              <b>запросы GET 200</b><span>40</span><span>40</span><span class="none">—</span><span class="hot">10</span><span>10</span><span>10</span>
+            </div>
+          </div>
+          <p class="pic__note">Опрос 15:05:28 пришёлся на перезапуск: сервис ещё не принимал запросы, <code>up = 0</code>, отсчёта счётчика нет. Оранжевым выделен первый отсчёт после сброса.</p>
+        </div>
+        <p>Значение уменьшилось с 40 до 10. Для счётчика уменьшение возможно только при сбросе, поэтому Prometheus считает уменьшение сбросом. Функция <code>resets</code> считает сбросы в ряду: запрос <code>resets(http_requests_total{route="/orders/{order_id}",status="200"}[2m])</code> вернул 1. При расчёте роста Prometheus складывает рост до сброса и значение после него: 30 + 10 = 40 запросов за эти две минуты. Простая разность последнего и первого отсчёта, 10 − 10 = 0, была бы ошибкой.</p>
+        <details class="more"><summary>Подробнее: почему increase вернул 45,7</summary><div>
+          <p>Запрос <code>increase(…[2m])</code> в 15:06:15 вернул <code>45.712544284027274</code>. Отсчёты попали в окно с 15:04:28 по 15:06:13, то есть занимают 105 секунд из 120. Рост между ними — 40. Функция <code>increase</code> достраивает рост до краёв окна в предположении, что запросы шли равномерно: 40 × 119,8 / 105 ≈ 45,7. Поэтому результат <code>increase</code> часто дробный даже для счётчика целых событий.</p>
+        </div></details>
+        <p class="bridge">В опыте сброс виден: значение упало с 40 до 10. Но бывает, что после перезапуска счётчик к следующему опросу уже больше старого значения.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Скрытый сброс</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Замена турникета в час пик</b><p>Контролёр переписывает показание раз в час: в 9:00 было 400. В 9:10 турникет заменили, и до 10:00 новый насчитал 600. Контролёр видит 600 после 400 и записывает рост 200. О замене он не знает, и 400 пассажиров потеряны.</p></div>
+            <div class="analogy__side"><b>Сброс между опросами</b><p>В базу после 40 попадает 60, и Prometheus считает рост 20. Перезапуск между опросами в отсчётах не виден, и 40 запросов в расчёт не попадают.</p></div>
+          </div>
+        </div>
+        <p>Prometheus обнаруживает сброс по одному признаку: значение уменьшилось. Если после перезапуска до следующего опроса пришло больше событий, чем было в старом значении, уменьшения нет. Опыт на стенде: счётчик доведён до 40, сервис перезапущен в 15:09:58 сразу после опроса, затем за две секунды отправлено 60 запросов.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Сброс, который Prometheus не обнаружил</span><span>стенд · время UTC</span></div>
+          <div class="pic__body">
+            <div class="tl tl--wide" style="--n:5">
+              <b>время</b><span class="t">15:09:28</span><span class="t">15:09:43</span><span class="t">15:09:58</span><span class="t">15:10:13</span><span class="t">15:10:28</span>
+              <b>в памяти</b><span>40</span><span>40</span><span class="bad">40 → 0 → 60</span><span>60</span><span>60</span>
+              <b>в базе</b><span>40</span><span>40</span><span>40</span><span class="hot">60</span><span>60</span>
+              <b>рост по базе</b><span class="t">—</span><span class="t">0</span><span class="t">0</span><span class="t">+20</span><span class="t">0</span>
+            </div>
+          </div>
+          <p class="pic__note">На самом деле пришло 60 запросов. По отсчётам в базе рост — 20, функция <code>resets</code> за это время вернула 0.</p>
+        </div>
+        <p>Все опросы удались, <code>up</code> всё время равен 1, и в ряду нет уменьшения. Поэтому Prometheus посчитал рост 20 вместо 60. Чем реже опрос, тем больше событий успевает прийти между перезапуском и следующим опросом, и тем вероятнее такая потеря.</p>
+        <div class="sep" role="separator"></div>
+        <h3>Как заметить перезапуск</h3>
+        <p>Перезапуск виден по другой метрике. Библиотека Python показывает <code>process_start_time_seconds</code> — момент запуска процесса в Unix-времени (глава 3.1). При перезапуске значение меняется: на стенде после пересоздания сервиса оно стало <code>1.7927697213e+09</code>, то есть 15:35:21 UTC. Если это значение изменилось, процесс перезапускался, даже когда в ряду счётчика уменьшения нет.</p>
+        <p>Второй признак — ряд <code>_created</code>. Он хранит момент создания ряда счётчика и меняется вместе с ним. На стенде этот ряд отключён вызовом <code>disable_created_metrics()</code>, как в модуле 2.</p>
+        <p class="bridge">Скрытый сброс случается при быстром перезапуске. Тот же эффект, только постоянный, даёт запуск сервиса в нескольких процессах.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Несколько процессов одного сервиса</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Два турникета, один контролёр</b><p>На станции два турникета, у каждого свой счётчик. Контролёр каждый раз подходит к случайному турникету и записывает его показание в одну графу. В графе чередуются числа двух разных счётчиков.</p></div>
+            <div class="analogy__side"><b>Два процесса uvicorn</b><p>Сервис запущен в двух процессах, у каждого свой счётчик в памяти. Запрос <code>/metrics</code> попадает в один из процессов, и в один ряд попадают то одно, то другое число.</p></div>
+          </div>
+        </div>
+        <p>Сервер uvicorn запускает несколько процессов параметром <code>--workers</code>. Это ускоряет обработку запросов, но у каждого процесса своя память и свои счётчики. Запрос к сервису обрабатывает один из процессов, и запрос <code>/metrics</code> — тоже.</p>
+        <p>Опыт на стенде: сервис запущен командой <code>uvicorn app:app --workers 2</code>, отправлено 20 запросов, затем шесть раз подряд запрошена страница <code>/metrics</code>.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Счётчик в шести ответах /metrics</span><span>uvicorn --workers 2 · 20 запросов</span></div>
+          <div class="pic__body">
+            <div class="tl" style="--n:6">
+              <b>ответ</b><span class="t">1</span><span class="t">2</span><span class="t">3</span><span class="t">4</span><span class="t">5</span><span class="t">6</span>
+              <b>значение</b><span>6</span><span class="hot">14</span><span>6</span><span class="hot">14</span><span class="hot">14</span><span class="hot">14</span>
+            </div>
+          </div>
+          <p class="pic__note">Первый процесс обработал 6 запросов, второй — 14. Ни один ответ не показывает 20.</p>
+        </div>
+        <p>Если Prometheus опрашивает такой сервис, в ряд попадают числа двух процессов вперемешку. Каждый переход с 14 на 6 выглядит как сброс, и рост считается неверно. Общее число, 20, не показывает ни один ответ.</p>
+        <p>Для таких сервисов в prometheus-client есть режим нескольких процессов. Каждый процесс пишет свои значения в файлы в общей папке, путь к которой задаёт переменная окружения <code>PROMETHEUS_MULTIPROC_DIR</code>. Страница <code>/metrics</code> складывает значения из всех файлов. Режим и его ограничения описаны в документации библиотеки, раздел Multiprocess Mode. Другой способ — один процесс в контейнере и несколько контейнеров, каждый отдельным target: тогда у каждого процесса свой ряд со своей меткой <code>instance</code>.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>Что из перечисленного подходит для счётчика?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button>Число отправленных писем</button><p class="quiz__why">Верно. Каждое письмо добавляет 1, число только растёт.</p></li>
+            <li><button>Число пользователей на сайте сейчас</button><p class="quiz__why">Пользователи уходят, и число уменьшается. Это gauge.</p></li>
+            <li><button>Свободное место на диске</button><p class="quiz__why">Место освобождается и занимается, число меняется в обе стороны. Это gauge.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>Отсчёты счётчика: 100, 130, 15, 45. Сколько событий произошло между первым и последним отсчётом?</p>
+          <ul class="quiz__opts">
+            <li><button>−55: последнее минус первое</button><p class="quiz__why">Уменьшение счётчика — сброс. Разность первого и последнего отсчёта через сброс не считают.</p></li>
+            <li data-ok><button>75: 30 до сброса, 15 при сбросе и 30 после</button><p class="quiz__why">Верно. После сброса рост — всё новое значение 15, затем ещё 30.</p></li>
+            <li><button>45: последнее значение</button><p class="quiz__why">Тогда потеряны 30 событий до сброса.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 3</b>Сервис перезапустился между опросами. До перезапуска счётчик был 500, к следующему опросу — 700. Что посчитает Prometheus?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button>Рост 200 и ни одного сброса</button><p class="quiz__why">Верно. Уменьшения нет, поэтому сброс не обнаружен. На самом деле событий было 700. Так на стенде: 40, затем 60, <code>resets</code> = 0.</p></li>
+            <li><button>Рост 700 и один сброс</button><p class="quiz__why">Сброс обнаруживается только по уменьшению значения, а здесь значение выросло.</p></li>
+            <li><button>Опрос завершится ошибкой</button><p class="quiz__why">Опрос после перезапуска успешный, <code>up</code> = 1.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 4</b>Как проверить, перезапускался ли сервис на Python, если в ряду счётчика нет уменьшения?</p>
+          <ul class="quiz__opts">
+            <li><button>По ряду <code>up</code>: при перезапуске он всегда равен 0</button><p class="quiz__why">Если перезапуск прошёл между опросами, все опросы успешны и <code>up</code> равен 1.</p></li>
+            <li data-ok><button>По изменению <code>process_start_time_seconds</code></button><p class="quiz__why">Верно. Значение — момент запуска процесса, при перезапуске оно меняется.</p></li>
+            <li><button>По отметкам времени отсчётов</button><p class="quiz__why">Отметки ставит Prometheus по времени опроса, перезапуск на них не влияет.</p></li>
+          </ul>
+        </div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Prometheus. Metric types: Counter — <a href="https://prometheus.io/docs/concepts/metric_types/" target="_blank" rel="noopener">prometheus.io/docs/concepts/metric_types</a></li>
+            <li>Prometheus. Query functions: resets, increase, rate — <a href="https://prometheus.io/docs/prometheus/latest/querying/functions/" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/querying/functions</a></li>
+            <li>prometheus-client для Python: Multiprocess Mode — <a href="https://prometheus.github.io/client_python/multiprocess/" target="_blank" rel="noopener">prometheus.github.io/client_python/multiprocess</a></li>
+            <li>Стенд модуля 3: перезапуски сервиса и запуск с двумя процессами 23.10.2026</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="03-labels.html">← 3.3 Метки и идентичность ряда</a><a href="05-gauge.html">3.5 Gauge: состояние системы →</a></div>
+        <div class="colophon">
+          <span>Метрики и наблюдаемость · Модуль 3 · Метрика как данные</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../modul-02-prometheus/book.js"></script>
+  <script src="../modul-02-prometheus/algo.js"></script>
+  <script src="../modul-02-prometheus/prom.js"></script>
+  <script src="m3.js"></script>
+</body>
+</html>
