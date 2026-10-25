@@ -1,0 +1,257 @@
+        <header class="chapter-head">
+          <span class="chapter-num">3.7</span>
+          <h1>Кардинальность<br>и цена детализации</h1>
+          <p class="lead">По главе 3.3 каждое новое сочетание меток создаёт ряд. В этой главе посчитано, сколько рядов получается из меток и что происходит, когда в метку попадает номер заказа или клиента. Опыт на стенде показывает рост рядов, объёма ответа и памяти Prometheus. Затем разобрано, как найти метку-виновника на странице TSDB status, какие значения в метки записывать и как ограничить число отсчётов в одном опросе.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Модель данных</dd></div>
+          <div><dt>Уровень</dt><dd>Средний</dd></div>
+          <div><dt>Опирается на</dt><dd>Глава 3.1: объём отсчётов; глава 3.3: идентичность ряда; глава 3.6: ряды гистограммы</dd></div>
+          <div><dt>Результат</dt><dd>Расчёт числа рядов метрики заранее; поиск метки, которая даёт лишние ряды</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Число рядов из меток</a></li>
+            <li><a href="#s2">Опыт: полный путь и номер клиента в метках</a></li>
+            <li><a href="#s3">Что растёт вместе с числом рядов</a></li>
+            <li><a href="#s4">Страница TSDB status</a></li>
+            <li><a href="#s5">Какие значения записывать в метки</a></li>
+            <li><a href="#s6">Предел sample_limit</a></li>
+            <li><a href="#s7">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Число рядов из меток</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Ячейки на складе</b><p>Склад раскладывает футболки по цвету и размеру. Пять цветов и шесть размеров — 30 ячеек. Если добавить разделение по имени покупателя, ячеек станет столько, сколько покупателей умножить на 30.</p></div>
+            <div class="analogy__side"><b>Ряды метрики</b><p>Метки делят метрику на ряды. Три адреса, два метода и три кода ответа — до 18 рядов. Если добавить метку с номером клиента, рядов станет до 18 на каждого клиента.</p></div>
+          </div>
+        </div>
+        <div class="term-card">
+          <p class="term-card__head"><b>Кардинальность</b><span>cardinality · число рядов</span></p>
+          <div class="term-card__body">
+            <p>Число разных рядов метрики, то есть разных сочетаний значений её меток. Говорят и о кардинальности одной метки — числе её разных значений.</p>
+            <p>Наибольшее число рядов — произведение числа значений всех меток. Настоящее число меньше или равно ему: ряд появляется, только когда сочетание встретилось (глава 3.3).</p>
+          </div>
+        </div>
+        <p>Число рядов считается умножением, потому что метки независимы: каждое значение одной метки может встретиться с каждым значением другой. У счётчика запросов стенда три метки приложения. Если у <code>route</code> три значения, у <code>method</code> два и у <code>status</code> три, наибольшее число рядов — 3 × 2 × 3 = 18. На стенде встретилось меньше: три ряда на кадре главы 3.3.</p>
+        <p>В блоке ниже число рядов считается по числу значений каждой метки. Кнопки подставляют примеры из этой главы.</p>
+        <div class="widget card">
+          <div class="widget__head"><b>Наибольшее число рядов метрики</b><span>произведение значений меток</span></div>
+          <div class="widget__body">
+            <div class="card__presets">
+              <button type="button" data-preset="3,2,3,1">счётчик стенда</button>
+              <button type="button" data-preset="1000,2,3,1">полный путь вместо шаблона</button>
+              <button type="button" data-preset="1000,2,3,300">полный путь и номер клиента</button>
+            </div>
+            <div class="card__grid">
+              <label>адрес (route или path)<input type="number" min="1" value="3" data-name="адрес"></label>
+              <label>метод<input type="number" min="1" value="2" data-name="метод"></label>
+              <label>код ответа<input type="number" min="1" value="3" data-name="код"></label>
+              <label>номер клиента<input type="number" min="1" value="1" data-name="клиент"></label>
+            </div>
+            <div class="card__out"><p>3 × 2 × 3 × 1 = 18 рядов.</p></div>
+          </div>
+        </div>
+        <p>Первые три метки дают десятки рядов, и это нормальный размер. Если вместо шаблона адреса записать полный путь с номером заказа, у метки станет тысяча значений, а рядов — до 6 000. Если добавить ещё номер клиента, — до 1,8 миллиона на одну метрику и один target. Каждая метка с неограниченным числом значений умножает всё остальное.</p>
+        <p class="bridge">Расчёт показывает наибольшее число. На стенде можно проверить, сколько рядов получается на самом деле.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Опыт: полный путь и номер клиента в метках</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Ведомость посещений</b><p>Если в ведомость записывать каждый визит с именем посетителя и номером кабинета, за месяц в ней будут тысячи строк. Если записывать только число визитов по отделениям — десяток строк, сколько бы ни было визитов.</p></div>
+            <div class="analogy__side"><b>Две метрики стенда</b><p>Метрика с шаблоном адреса при новых запросах меняет значения, а число строк остаётся прежним. Метрика с полным путём и номером клиента добавляет строку почти на каждый запрос.</p></div>
+          </div>
+        </div>
+        <p>Для опыта сервис запускается с переменной <code>BAD_LABELS=1</code>. Тогда, кроме обычного счётчика, он ведёт второй — <code>http_requests_by_path_total</code> с двумя метками: <code>path</code> — полный путь запроса, <code>customer_id</code> — номер клиента из заголовка <code>X-Customer-Id</code>.</p>
+        <figure class="code">
+          <figcaption><span>stand/app.py</span><span>два способа записать адрес</span></figcaption>
+<pre><span class="c"># шаблон адреса: /orders/{order_id}</span>
+HTTP_REQUESTS.labels(request.method, route, str(response.status_code)).inc()
+
+<span class="c"># полный путь /orders/17 и номер клиента — только при BAD_LABELS=1</span>
+customer = request.headers.get(<span class="s">"X-Customer-Id"</span>, <span class="s">"none"</span>)
+REQUESTS_BY_PATH.labels(request.url.path, customer).inc()</pre>
+        </figure>
+        <p>Разница между двумя вызовами — в первом значении метки. <code>route</code> берётся из описания маршрута FastAPI и для всех заказов одинаков: <code>/orders/{order_id}</code>. <code>request.url.path</code> — путь из запроса, в нём стоит номер: <code>/orders/17</code>, <code>/orders/18</code>.</p>
+        <p>Опыт шёл в три шага. Сначала 20 запросов к заказам 1–20. Затем 980 запросов к заказам 21–1000, номер клиента выбирался случайно от 1 до 300. Затем ещё 1000 запросов к тем же заказам 1–1000 с новыми случайными номерами клиентов. После каждого шага Prometheus выполнил опрос.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>После шага</th><th>Запросов всего</th><th><code>http_requests_total</code></th><th><code>http_requests_by_path_total</code></th><th>Рядов в базе</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>20</td><td>2</td><td>21</td><td>66</td></tr>
+              <tr><td>2</td><td>1 000</td><td>3</td><td>1 001</td><td>1 047</td></tr>
+              <tr><td>3</td><td>2 000</td><td>3</td><td>2 001</td><td>2 047</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Обычный счётчик после двух тысяч запросов занимает три ряда. Это успешные запросы к заказам, ответы 404 для номеров больше 500 и запрос к адресу <code>/</code>, которым проверялся запуск сервиса. У счётчика с полным путём каждый запрос к заказу дал новый ряд: 2 000 запросов — 2 000 рядов. Ещё один ряд дал тот же запрос к <code>/</code>.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Ряды двух счётчиков после 2 000 запросов</span><span>стенд · BAD_LABELS=1</span></div>
+          <div class="pic__body">
+            <div class="bars">
+              <span>route, method, status</span><i class="m" style="--w:0.15%"></i><b>3</b>
+              <span>path, customer_id</span><i style="--w:100%"></i><b>2 001</b>
+            </div>
+          </div>
+          <p class="pic__note">Полосы в одном масштабе. Полоса зелёного счётчика — 3 из 2 001, на схеме она почти не видна.</p>
+        </div>
+        <p>Третий шаг показывает, как действует вторая метка. Адресов не прибавилось: их по-прежнему тысяча. Но запрос к тому же заказу пришёл от другого клиента, и сочетание <code>path</code> и <code>customer_id</code> оказалось новым. Например, у заказа 17 стало два ряда: <code>customer_id="4"</code> и <code>customer_id="185"</code>. При продолжении опыта ряды росли бы до 1 000 × 300 = 300 000.</p>
+        <p class="bridge">Ряды — не только строки в таблице запроса. За каждым рядом стоит работа приложения, сети и Prometheus.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Что растёт вместе с числом рядов</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Толщина отчёта</b><p>Если в отчёте строка на каждого покупателя, отчёт печатается дольше, его дольше везти и негде хранить. Расходы растут на каждом шаге, где с отчётом что-то делают.</p></div>
+            <div class="analogy__side"><b>Ряды метрики</b><p>Каждый ряд нужно держать в памяти приложения, записать в ответ <code>/metrics</code>, передать по сети, разобрать и сохранить в Prometheus.</p></div>
+          </div>
+        </div>
+        <p>Число рядов не меняет число запросов к сервису. Оно меняет объём работы на всём пути числа из модуля 2. На стенде измерено, как росли ответ <code>/metrics</code> и данные Prometheus.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>После шага</th><th>Ответ /metrics, байт</th><th>Строк значений</th><th><code>scrape_samples_scraped</code></th><th>Память меток <code>path</code> в TSDB, байт</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>5 516</td><td>61</td><td>61</td><td>—</td></tr>
+              <tr><td>2</td><td>73 787</td><td>1 042</td><td>1 042</td><td>16 900</td></tr>
+              <tr><td>3</td><td>143 325</td><td>2 042</td><td>2 042</td><td>33 793</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Ответ <code>/metrics</code> вырос в 26 раз: с 5,5 до 143 килобайт. Этот текст приложение собирает при каждом опросе, а Prometheus разбирает раз в 15 секунд. Ряд <code>scrape_samples_scraped</code>, который Prometheus пишет после опроса, совпадает с числом строк значений: 2 042 отсчёта за опрос. По расчёту главы 3.1 это 2 042 × 5 760 ≈ 11,8 миллиона отсчётов в сутки вместо 350 тысяч до опыта.</p>
+        <p>Последний столбец взят со страницы TSDB status: столько памяти Prometheus занимают значения метки <code>path</code>. Тысяча адресов — 33 килобайта. Кроме значений меток, Prometheus держит в памяти каждый ряд с его последними отсчётами, и эта часть растёт с числом рядов. Стенд маленький, и все числа здесь в килобайтах. В рабочей системе с сотнями target и миллионами рядов этот рост может измеряться гигабайтами памяти сервера.</p>
+        <p class="bridge">В опыте заранее известно, какая метка виновата. В настоящей системе её нужно найти, и для этого у Prometheus есть отдельная страница.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Страница TSDB status</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Опись склада</b><p>Чтобы понять, что занимает склад, смотрят опись: каких товаров больше всего и в каких отделах. Первые строки описи сразу показывают, откуда переполнение.</p></div>
+            <div class="analogy__side"><b>TSDB status</b><p>Страница перечисляет метрики с наибольшим числом рядов и метки с наибольшим числом значений. Первые строки показывают, какая метрика и какая метка дают ряды.</p></div>
+          </div>
+        </div>
+        <p>TSDB — база временных рядов Prometheus, сокращение от time series database. Страница открывается в меню <b>Status → TSDB status</b>. Ниже снимок после третьего шага опыта.</p>
+        <figure class="shot"><img src="shots/tsdb-status.png" alt="Страница Status → TSDB status в Prometheus 3.5.0: Number of Series 2047, Top 10 label names with value count — path 1001, customer_id 300; Top 10 series count by metric names — http_requests_by_path_total 2001" loading="lazy"><figcaption>Status → TSDB status после двух тысяч запросов с метками path и customer_id</figcaption></figure>
+        <p>На странице несколько таблиц, и для поиска виновника нужны три верхние. <b>TSDB Head Status</b> — общее число рядов в памяти: Number of Series 2047. <b>Top 10 label names with value count</b> — метки с наибольшим числом значений: <code>path</code> — 1001, <code>customer_id</code> — 300. Для сравнения, у <code>route</code> — 2, у <code>status</code> — 2. <b>Top 10 series count by metric names</b> — метрики с наибольшим числом рядов: <code>http_requests_by_path_total</code> — 2001, следующая за ней — 16.</p>
+        <p>Порядок поиска получается такой. Во второй таблице видно, у какой метки слишком много значений. В третьей — какая метрика даёт ряды. Затем в коде приложения находят место, где эта метрика получает значение метки, и смотрят, откуда оно берётся. На стенде это вызов <code>REQUESTS_BY_PATH.labels(request.url.path, customer)</code>.</p>
+        <p class="bridge">Когда метка найдена, нужно выбрать, что записывать в неё вместо номера.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Какие значения записывать в метки</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Журнал и отчёт поликлиники</b><p>В отчёт за месяц пишут число приёмов по отделениям. Фамилии пациентов остаются в медицинских картах. Отчёт отвечает на вопрос «сколько», карта — на вопрос «кто и что».</p></div>
+            <div class="analogy__side"><b>Метрики и логи</b><p>В метки пишут значения из короткого списка: метод, шаблон адреса, код. Номер заказа и клиента остаются в логе и трассе (модуль 1).</p></div>
+          </div>
+        </div>
+        <p>Правило выбора: значение метки берётся из небольшого заранее известного набора. Документация Prometheus советует держать кардинальность большинства метрик ниже 10, а метрики с большим числом рядов ограничивать несколькими на всю систему. Значения, у которых набор не ограничен, в метки не записывают.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Значение</th><th>Сколько разных</th><th>Где хранить</th></tr></thead>
+            <tbody>
+              <tr><td>Метод HTTP</td><td>несколько</td><td>Метка <code>method</code></td></tr>
+              <tr><td>Шаблон адреса <code>/orders/{order_id}</code></td><td>сколько маршрутов в коде</td><td>Метка <code>route</code></td></tr>
+              <tr><td>Код ответа</td><td>несколько десятков</td><td>Метка <code>status</code>, или класс кода: <code>2xx</code>, <code>4xx</code>, <code>5xx</code></td></tr>
+              <tr><td>Полный путь <code>/orders/17</code></td><td>сколько заказов</td><td>Лог запроса</td></tr>
+              <tr><td>Номер клиента, адрес почты</td><td>сколько клиентов</td><td>Лог, трасса</td></tr>
+              <tr><td>Идентификатор запроса</td><td>по одному на запрос</td><td>Лог, трасса (глава 1.5)</td></tr>
+              <tr><td>Текст ошибки</td><td>не ограничено</td><td>Лог; в метку — тип ошибки из короткого списка</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>На стенде полный путь заменён шаблоном. Функция <code>route_of</code> берёт описание маршрута, который FastAPI выбрал для запроса, и возвращает его шаблон. Для запроса без маршрута она возвращает <code>"unknown"</code>. Если бы она возвращала путь, запросы к случайным адресам создавали бы ряды так же, как номера заказов.</p>
+        <figure class="code">
+          <figcaption><span>stand/app.py</span><span>шаблон адреса вместо пути</span></figcaption>
+<pre><span class="k">def</span> <span class="f">route_of</span>(request: Request) -> str:
+    route = request.scope.get(<span class="s">"route"</span>)
+    <span class="k">return</span> getattr(route, <span class="s">"path"</span>, <span class="s">"unknown"</span>)</pre>
+        </figure>
+        <p>Словарь <code>request.scope</code> хранит сведения о запросе, и после выбора маршрута в нём есть ключ <code>"route"</code>. Функция <code>getattr</code> читает у маршрута поле <code>path</code> — шаблон <code>/orders/{order_id}</code>. Если маршрута нет, она возвращает значение по умолчанию <code>"unknown"</code>.</p>
+        <p class="bridge">Правила выбора меток предотвращают рост рядов в коде. На стороне Prometheus есть предохранитель на случай, если ошибка всё же попала в рабочую версию.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Предел sample_limit</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Предохранитель в щитке</b><p>Если в розетку включили слишком мощный прибор, предохранитель отключает всю линию. Свет гаснет во всей комнате, и проводка остаётся целой.</p></div>
+            <div class="analogy__side"><b>sample_limit</b><p>Если ответ target содержит больше отсчётов, чем разрешено, Prometheus отклоняет весь опрос. Пропадают все метрики этого target, но база не растёт.</p></div>
+          </div>
+        </div>
+        <p>Параметр <code>sample_limit</code> задаётся в задании и ограничивает число отсчётов в одном ответе. На стенде для опыта есть отдельный файл настроек с пределом 500.</p>
+        <figure class="code">
+          <figcaption><span>stand/prometheus-limit.yml</span><span>предел 500 отсчётов</span></figcaption>
+<pre>scrape_configs:
+  - job_name: orders
+    sample_limit: <span class="n">500</span>
+    static_configs:
+      - targets: [<span class="s">'api:8000'</span>]</pre>
+        </figure>
+        <p>Prometheus запущен с этим файлом командой <code>PROM_CONFIG=prometheus-limit.yml BAD_LABELS=1 docker compose up -d prometheus</code>. Ответ сервиса в этот момент содержал 2 042 отсчёта. На странице Target health target перешёл в состояние DOWN с текстом ошибки:</p>
+        <figure class="code code--out">
+          <figcaption><span>Status → Target health, job orders</span><span>Prometheus 3.5.0</span></figcaption>
+<pre>sample limit exceeded</pre>
+        </figure>
+        <div class="pic">
+          <div class="pic__bar"><span>Опрос при пределе 500 отсчётов</span><span>стенд · Prometheus 3.5.0</span></div>
+          <div class="pic__body">
+            <div class="chain">
+              <div class="chain__box"><small>ответ /metrics</small><b>2 042 отсчёта</b>2 001 из них — счётчик с полным путём</div>
+              <span class="chain__arr" data-l="больше 500"></span>
+              <div class="chain__box is-bad"><small>sample_limit</small><b>опрос отклонён</b>sample limit exceeded</div>
+              <span class="chain__arr"></span>
+              <div class="chain__box is-bad"><small>в базе</small><b>up = 0</b>ни одного отсчёта сервиса</div>
+            </div>
+          </div>
+        </div>
+        <p>Ряд <code>up</code> стал равен 0, а <code>scrape_samples_scraped</code> показал 2042: ответ получен и прочитан, но отклонён целиком. Вместе с лишними рядами не сохранились и нужные: счётчик заказов, очередь, гистограмма. Поэтому предел выбирают с запасом над обычным числом отсчётов target, чтобы он срабатывал только при ошибке. На стенде в начале опыта отсчётов было 61, и предел 500 оставлял запас почти в восемь раз.</p>
+        <p>После срабатывания предела нужно исправить метки в приложении: предел останавливает рост базы, но не возвращает данные. Пока ошибка не исправлена, у target нет ни одного нового отсчёта.</p>
+
+        <h2 id="s7"><span class="sec">§7</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>У метрики метки <code>route</code> (5 значений), <code>method</code> (2) и <code>status</code> (4). Сколько рядов может быть у неё на одном target в наибольшем случае?</p>
+          <ul class="quiz__opts">
+            <li><button>11</button><p class="quiz__why">Числа значений не складывают: каждое значение одной метки может встретиться с каждым значением другой.</p></li>
+            <li data-ok><button>40</button><p class="quiz__why">Верно: 5 × 2 × 4.</p></li>
+            <li><button>3</button><p class="quiz__why">3 — число меток. Рядов столько, сколько сочетаний значений.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>Что из этого подходит для значения метки?</p>
+          <ul class="quiz__opts">
+            <li><button>Адрес электронной почты пользователя</button><p class="quiz__why">Сколько пользователей, столько значений. Почту хранят в логе.</p></li>
+            <li data-ok><button>Способ оплаты: card или cash</button><p class="quiz__why">Верно. Два значения из известного набора — так устроена метка <code>payment</code> на стенде.</p></li>
+            <li><button>Время запроса в миллисекундах</button><p class="quiz__why">Почти каждое значение новое. Длительность записывают в гистограмму.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 3</b>На странице TSDB status в таблице Top 10 label names with value count первой стоит метка <code>request_id</code> с числом 48 000. Что это значит?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button>У какой-то метрики в метке записан идентификатор запроса, и на каждый запрос создаётся ряд</button><p class="quiz__why">Верно. Следующий шаг — найти метрику в таблице Top 10 series count by metric names и место в коде.</p></li>
+            <li><button>Сервис обработал 48 000 запросов, всё в порядке</button><p class="quiz__why">Число значений метки — это число разных значений в базе. Число запросов показывает счётчик.</p></li>
+            <li><button>Prometheus отклонил 48 000 отсчётов</button><p class="quiz__why">Таблица считает разные значения меток в базе. Отклонённые отсчёты в неё не попадают.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 4</b>У задания <code>sample_limit: 1000</code>, ответ target содержит 1 200 отсчётов. Что сохранит Prometheus?</p>
+          <ul class="quiz__opts">
+            <li><button>Первые 1 000 отсчётов</button><p class="quiz__why">Ответ отклоняется целиком: на стенде при пределе 500 не сохранился ни один отсчёт из 2 042.</p></li>
+            <li><button>Все 1 200, с предупреждением в журнале</button><p class="quiz__why">Предел отклоняет опрос целиком, на стенде target перешёл в DOWN.</p></li>
+            <li data-ok><button>Ни одного отсчёта из ответа, <code>up</code> = 0</button><p class="quiz__why">Верно. Ошибка — sample limit exceeded.</p></li>
+          </ul>
+        </div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Prometheus. Instrumentation: use labels; do not overuse labels — <a href="https://prometheus.io/docs/practices/instrumentation/#use-labels" target="_blank" rel="noopener">prometheus.io/docs/practices/instrumentation</a></li>
+            <li>Prometheus. Metric and label naming: labels — <a href="https://prometheus.io/docs/practices/naming/#labels" target="_blank" rel="noopener">prometheus.io/docs/practices/naming</a></li>
+            <li>Prometheus. Configuration: scrape_config, sample_limit — <a href="https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/configuration/configuration</a></li>
+            <li>Стенд модуля 3: опыт с BAD_LABELS=1 и sample_limit 23.10.2026</li>
+          </ol>
+        </div>
