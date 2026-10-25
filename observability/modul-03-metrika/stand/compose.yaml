@@ -1,0 +1,25 @@
+# Стенд модуля 3: сервис заказов и Prometheus в одной сети Compose.
+# Внутри сети сервис доступен Prometheus по имени: api:8000.
+name: metrika-dannye
+services:
+  api:
+    build: .
+    ports: ['127.0.0.1:8031:8000']
+    environment:
+      BAD_LABELS: ${BAD_LABELS:-0}
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/${PROM_CONFIG:-prometheus.yml}
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    ports: ['127.0.0.1:9094:9090']
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus-limit.yml:/etc/prometheus/prometheus-limit.yml:ro
+      - prometheus-data:/prometheus
+    depends_on: [api]
+
+volumes:
+  prometheus-data:

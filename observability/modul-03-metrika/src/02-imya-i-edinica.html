@@ -1,0 +1,256 @@
+        <header class="chapter-head">
+          <span class="chapter-num">3.2</span>
+          <h1>Имя и единица<br>измерения</h1>
+          <p class="lead">Отсчёт из главы 3.1 хранит время и число. О чём это число и в чём оно измерено, сообщает имя метрики. В этой главе разобраны части имени, базовые единицы и окончания, которые добавляют библиотеки. Затем имена проверяются командой <code>promtool</code>. В конце разобрано, что записывать в имя, а что в метки.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Модель данных</dd></div>
+          <div><dt>Уровень</dt><dd>Вводный</dd></div>
+          <div><dt>Опирается на</dt><dd>Глава 2.3: строка /metrics; глава 3.1: отсчёт</dd></div>
+          <div><dt>Результат</dt><dd>Имя метрики по правилам Prometheus и проверка имён</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Части имени</a></li>
+            <li><a href="#s2">Базовые единицы</a></li>
+            <li><a href="#s3">Окончания _total, _bucket, _info</a></li>
+            <li><a href="#s4">Проверка имён командой promtool</a></li>
+            <li><a href="#s5">Что записать в имя, а что в метки</a></li>
+            <li><a href="#s6">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Части имени</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Строка в накладной</b><p>«Молоко пастеризованное, литры — 40». По названию понятно, что за товар, а единица рядом с ним сообщает, как читать число 40: это литры.</p></div>
+            <div class="analogy__side"><b>Имя метрики</b><p><code>process_resident_memory_bytes 47058944</code>. По имени понятно, что измерено — память процесса, и в чём — в байтах.</p></div>
+          </div>
+        </div>
+        <p>У отсчёта нет поля для единицы и нет поля для описания: только время и число. Поэтому всё, что нужно знать о числе, записывают в имя метрики. Строка HELP из главы 2.3 тоже содержит описание, но в запросах и на графиках её не видно. Имя видно везде.</p>
+        <p>Документация Prometheus описывает имя как несколько слов через знак подчёркивания, которые идут от общего к частному. Первым стоит префикс — к какой части системы относится метрика. Затем слова о том, что измеряется. Последним стоит единица измерения, а у счётчиков после неё ещё окончание <code>_total</code>.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Части имени метрики</span><span>метрика стенда</span></div>
+          <div class="pic__body">
+            <div class="url">
+              <div class="a"><b>http</b><small>Префикс: к чему относится, здесь — к HTTP-запросам</small></div>
+              <div class="b"><b>request_duration</b><small>Что измеряется: длительность запроса</small></div>
+              <div class="c"><b>seconds</b><small>Единица: в чём записано значение</small></div>
+            </div>
+          </div>
+        </div>
+        <p>На стенде по этой схеме построены все имена. В таблице они разложены на те же части. В последнем столбце — окончание, которое показывает тип метрики.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Имя на стенде</th><th>Префикс</th><th>Что измеряется</th><th>Единица</th><th>Окончание</th></tr></thead>
+            <tbody>
+              <tr><td><code>http_request_duration_seconds</code></td><td>http</td><td>длительность запроса</td><td>seconds</td><td>—</td></tr>
+              <tr><td><code>process_resident_memory_bytes</code></td><td>process</td><td>память в RAM</td><td>bytes</td><td>—</td></tr>
+              <tr><td><code>process_cpu_seconds_total</code></td><td>process</td><td>время процессора</td><td>seconds</td><td>_total</td></tr>
+              <tr><td><code>orders_created_total</code></td><td>orders</td><td>созданные заказы</td><td>—</td><td>_total</td></tr>
+              <tr><td><code>orders_queue_length</code></td><td>orders</td><td>длина очереди</td><td>—</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>У двух метрик заказов единицы нет. Они считают штуки — заказы и места в очереди, а для штук единицу не пишут. Префикс <code>orders</code> выбран по названию сервиса: так метрики одного приложения стоят рядом в списке и не смешиваются с метриками других программ. Символы в имени — латинские буквы, цифры и подчёркивание, первым идёт буква; эти правила разобраны в главе 2.3.</p>
+        <p class="bridge">Последняя часть имени — единица. Prometheus разрешает любую, но документация советует определённый набор.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Базовые единицы</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Рецепт в граммах</b><p>Если в одном рецепте мука в граммах, сахар в стаканах, а масло в столовых ложках, сложить вес теста без перевода нельзя. Когда все продукты в граммах, сумма считается сразу.</p></div>
+            <div class="analogy__side"><b>Метрики в секундах</b><p>Если одна метрика в миллисекундах, а другая в секундах, на одном графике их сравнивать нельзя. Когда время везде в секундах, числа складываются и сравниваются без перевода.</p></div>
+          </div>
+        </div>
+        <p>В Prometheus единицы нигде не заданы. База хранит <code>_seconds</code> и <code>_milliseconds</code> как разные буквы имени и одно в другое не переводит. Договорённость о единицах записана в документации, раздел Metric and label naming. Она называется «базовые единицы»: для каждой величины выбрана одна единица без приставок «милли», «кило», «мега».</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Величина</th><th>Базовая единица</th><th>Пример значения</th><th>Вместо</th></tr></thead>
+            <tbody>
+              <tr><td>Время, длительность</td><td><code>seconds</code></td><td><code>0.12</code> — 120 мс</td><td>milliseconds, minutes</td></tr>
+              <tr><td>Объём данных, память</td><td><code>bytes</code></td><td><code>67108864</code> — 64 МБ</td><td>megabytes, bits</td></tr>
+              <tr><td>Доля, процент</td><td><code>ratio</code></td><td><code>0.73</code> — 73 %</td><td>percent</td></tr>
+              <tr><td>Температура</td><td><code>celsius</code></td><td><code>61.5</code></td><td>fahrenheit</td></tr>
+              <tr><td>Длина</td><td><code>meters</code></td><td><code>0.25</code> — 25 см</td><td>centimeters</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Значение в базовой единице часто дробное: 120 миллисекунд записываются как <code>0.12</code> секунды. Значение хранится как float64 (глава 3.1), поэтому дробное число записывается без потерь. Перевод в миллисекунды делают при выводе. Например, Grafana показывает <code>0.12</code> с единицей «секунды» как «120 ms».</p>
+        <p>Доля записывается числом от 0 до 1: 73 % — это <code>0.73</code>. Причина та же, что у секунд: доли разных метрик можно перемножать и сравнивать без деления на 100. Для такой метрики документация советует окончание <code>_ratio</code>, например <code>disk_usage_ratio</code>.</p>
+        <p class="bridge">Единица — предпоследняя часть имени. Последней у многих метрик стоит окончание, и часть окончаний библиотека дописывает без участия программиста.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Окончания _total, _bucket, _info</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Пометка «итого»</b><p>В ведомости строка «Итого» означает сумму всех строк выше. По одному слову понятно, как читать число: это накопленная сумма, и складывать её с другими строками нельзя.</p></div>
+            <div class="analogy__side"><b>Окончание имени</b><p>Окончание <code>_total</code> означает счётчик: число событий, накопленное с запуска. По окончанию понятно, что у такого числа смотрят, на сколько оно выросло.</p></div>
+          </div>
+        </div>
+        <p>Окончание показывает тип метрики, поэтому по одному имени понятно, как обращаться с числом. Каждое окончание из таблицы встречается в ответе стенда.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Окончание</th><th>Где ставится</th><th>Пример на стенде</th></tr></thead>
+            <tbody>
+              <tr><td><code>_total</code></td><td>Счётчик, counter</td><td><code>orders_created_total</code></td></tr>
+              <tr><td><code>_bucket</code>, <code>_sum</code>, <code>_count</code></td><td>Три вида строк гистограммы, histogram</td><td><code>http_request_duration_seconds_bucket</code></td></tr>
+              <tr><td><code>_info</code></td><td>Сведения в метках, значение всегда 1</td><td><code>python_info</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Окончания <code>_total</code>, <code>_bucket</code>, <code>_sum</code> и <code>_count</code> библиотека <code>prometheus-client</code> дописывает при выводе. Программист передаёт имя без них. Ниже опыт с библиотекой 0.26.0: счётчик объявлен под именем <code>orders_created</code>, второй — сразу с <code>_total</code>, а для третьей метрики единица передана отдельным параметром <code>unit</code>.</p>
+        <figure class="code">
+          <figcaption><span>Объявление трёх метрик</span><span>prometheus-client 0.26.0</span></figcaption>
+<pre>Counter(<span class="s">"orders_created"</span>, <span class="s">"Orders"</span>)
+Counter(<span class="s">"orders_paid_total"</span>, <span class="s">"Paid"</span>)
+Gauge(<span class="s">"report_build"</span>, <span class="s">"Build time"</span>, unit=<span class="s">"seconds"</span>)</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Что попало в ответ /metrics</span><span>generate_latest</span></figcaption>
+<pre># TYPE orders_created_total counter
+orders_created_total 1.0
+# TYPE orders_paid_total counter
+orders_paid_total 1.0
+# TYPE report_build_seconds gauge
+report_build_seconds 0.4</pre>
+        </figure>
+        <p>В первой строке библиотека дописала <code>_total</code>, во второй оставила имя как есть: повторно окончание не добавляется. В третьей параметр <code>unit</code> дописал единицу в конец имени. Поэтому оба способа записи счётчика дают одно и то же имя в ответе.</p>
+        <div class="sep" role="separator"></div>
+        <h3>Что библиотека не проверяет</h3>
+        <p>Параметр <code>unit</code> дописывает единицу, но не сверяет её с тем, что уже стоит в имени. На стенде метрика <code>Gauge("x_ms", …, unit="seconds")</code> получила в ответе имя <code>x_ms_seconds</code> без ошибки. Так же без ошибки прошло имя со знаком минус <code>bad-name</code>: библиотека заменила минус подчёркиванием и вывела <code>bad_name_total</code>. Смысл имени библиотека не проверяет, это задача человека и отдельной проверки.</p>
+        <p class="bridge">Отдельная проверка имён есть в составе Prometheus. Она читает ответ <code>/metrics</code> и сообщает, какие имена нарушают договорённости.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Проверка имён командой promtool</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Проверка орфографии</b><p>Редактор текста подчёркивает слово с ошибкой и подсказывает, как его написать. Смысл фразы он не проверяет.</p></div>
+            <div class="analogy__side"><b>promtool check metrics</b><p>Команда читает ответ <code>/metrics</code>, подсказывает, какие имена нарушают договорённости, и предлагает исправление. Правильность чисел она не проверяет.</p></div>
+          </div>
+        </div>
+        <p><code>promtool</code> — программа из поставки Prometheus. В главе 2.7 она проверяла файл <code>prometheus.yml</code>. Подкоманда <code>check metrics</code> читает текст метрик со стандартного ввода. Отдельно ставить её не нужно: она есть в образе <code>prom/prometheus</code>. Сначала проверен настоящий ответ стенда.</p>
+        <figure class="code code--out">
+          <figcaption><span>Проверка ответа стенда</span><span>promtool из Prometheus 3.5.0</span></figcaption>
+<pre>$ curl -s localhost:8031/metrics | docker run --rm -i --entrypoint promtool prom/prometheus:v3.5.0 check metrics
+$ echo $?
+0</pre>
+        </figure>
+        <p>Команда ничего не вывела и завершилась с кодом 0: замечаний нет. Затем проверен файл, где собраны семь неудачных имён.</p>
+        <figure class="code code--out">
+          <figcaption><span>promtool check metrics &lt; bad_names.txt</span><span>код завершения 3</span></figcaption>
+<pre>cache_size_megabytes use base unit "bytes" instead of "megabytes"
+orders_created counter metrics should have "_total" suffix
+orders_total_count counter metrics should have "_total" suffix
+orders_total_count non-histogram and non-summary metrics should not have "_count" suffix
+queue_length_total non-counter metrics should not have "_total" suffix
+report_build_milliseconds use base unit "seconds" instead of "milliseconds"
+requestTime metric names should be written in 'snake_case' not 'camelCase'</pre>
+        </figure>
+        <p>Каждая строка — имя и замечание к нему. Замечания делятся на три группы, и на схеме они разложены по группам с исправленными именами.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Замечания promtool и исправленные имена</span><span>Prometheus 3.5.0</span></div>
+          <div class="pic__body">
+            <span class="pic__label">Единица не базовая</span>
+            <div class="ser">
+              <div><i class="x">cache_size_megabytes</i> → <i>cache_size_bytes</i><em>Мегабайты переводятся в байты: 64 → 67108864.</em></div>
+              <div><i class="x">report_build_milliseconds</i> → <i>report_build_seconds</i><em>Миллисекунды переводятся в секунды: 520 → 0.52.</em></div>
+            </div>
+            <span class="pic__label">Окончание не соответствует типу</span>
+            <div class="ser">
+              <div><i class="x">orders_created</i> → <i>orders_created_total</i><em>Счётчик без _total.</em></div>
+              <div><i class="x">orders_total_count</i> → <i>orders_total</i><em>Окончание _count принадлежит гистограмме, у счётчика в конце стоит _total.</em></div>
+              <div><i class="x">queue_length_total</i> → <i>queue_length</i><em>Длина очереди — gauge, у него нет _total.</em></div>
+            </div>
+            <span class="pic__label">Запись имени</span>
+            <div class="ser">
+              <div><i class="x">requestTime</i> → <i>request_duration_seconds</i><em>Слова пишутся строчными через подчёркивание; заодно добавлена единица.</em></div>
+            </div>
+          </div>
+        </div>
+        <p>Код завершения 3 означает, что найдены замечания. Код можно использовать в автоматической проверке перед выпуском: если он не равен 0, сборка останавливается.</p>
+        <div class="sep" role="separator"></div>
+        <h3>Что promtool пропускает</h3>
+        <p>В файле было восьмое имя — <code>disk_usage_percent</code> со значением 73. Замечания к нему нет, хотя по договорённости из §2 доля записывается как <code>disk_usage_ratio 0.73</code>. Команда проверяет только часть правил: окончания типов, несколько известных единиц и запись слов. Поэтому чистый вывод <code>promtool</code> означает, что известных нарушений нет, и не заменяет чтения имён человеком.</p>
+        <p class="bridge">Договорённости об именах касаются одной величины. Последний вопрос — где граница между именем и метками, если одна величина делится на части.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Что записать в имя, а что в метки</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Ящики в картотеке</b><p>Карточки покупателей лежат в одном ящике «Покупатели» и разделены закладками по буквам. Если завести отдельный ящик на каждую букву, чтобы пересчитать всех покупателей, придётся открыть тридцать ящиков.</p></div>
+            <div class="analogy__side"><b>Имя и метки</b><p>Запросы лежат под одним именем <code>http_requests_total</code> и разделены метками <code>method</code> и <code>status</code>. Чтобы получить все запросы, достаточно сложить ряды одного имени.</p></div>
+          </div>
+        </div>
+        <p>Когда величина делится на части, части записывают в метки, а величину — в имя. На стенде запросы делятся по методу, адресу и коду ответа, и всё это метки одной метрики. Неудачный вариант — вынести метод в имя: <code>http_requests_get_total</code>, <code>http_requests_post_total</code>. Тогда для общего числа запросов нужно перечислить в запросе все имена и не забыть ни одного, а новый метод добавит новое имя.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Метод в метке и метод в имени</span><span>ряды стенда</span></div>
+          <div class="pic__body">
+            <div class="duo">
+              <div><b><span class="ok">Метод в метке</span></b>
+                <div class="ser">
+                  <div>http_requests_total <i>method="GET"</i> <b>11</b></div>
+                  <div>http_requests_total <i>method="POST"</i> <b>1</b></div>
+                </div>
+                <em>Одно имя. Сумма рядов этого имени — все запросы, 12.</em>
+              </div>
+              <div><b><span class="bad">Метод в имени</span></b>
+                <div class="ser">
+                  <div><i class="x">http_requests_get_total</i> <b>11</b></div>
+                  <div><i class="x">http_requests_post_total</i> <b>1</b></div>
+                </div>
+                <em>Два имени. Для суммы их нужно перечислить вручную.</em>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p>Обратная ошибка — собрать под одним именем разные величины. Пусть длина очереди и её вместимость записаны как <code>orders_queue{kind="length"} 3</code> и <code>orders_queue{kind="capacity"} 100</code>. Сумма этих рядов, 103, ничего не означает: заказы и места складывать нельзя. Документация даёт правило для проверки: сумма или среднее по всем рядам одного имени должны иметь смысл. Если не имеют, это разные метрики, и им нужны разные имена: <code>orders_queue_length</code> и <code>orders_queue_capacity</code>.</p>
+        <p>Правило проверяется на стенде. Сумма рядов <code>http_requests_total</code> — все обработанные запросы. Сумма рядов <code>orders_created_total</code> по способам оплаты — все созданные заказы. У обеих метрик сумма имеет смысл, поэтому метки выбраны правильно.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>Сервис записывает время ответа базы данных в миллисекундах. Какое имя и значение подходят для 250 мс?</p>
+          <ul class="quiz__opts">
+            <li><button><code>db_query_duration_milliseconds 250</code></button><p class="quiz__why">Миллисекунды — не базовая единица. promtool ответит: use base unit "seconds" instead of "milliseconds".</p></li>
+            <li data-ok><button><code>db_query_duration_seconds 0.25</code></button><p class="quiz__why">Верно. Время записывается в секундах, и значение может быть дробным.</p></li>
+            <li><button><code>db_query_duration 250</code></button><p class="quiz__why">Без единицы в имени нельзя понять, как читать 250: миллисекунды, секунды или минуты.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>В коде написано <code>Counter("payments_failed", "…")</code>. Какое имя будет в ответе /metrics?</p>
+          <ul class="quiz__opts">
+            <li><button><code>payments_failed</code></button><p class="quiz__why">Для счётчика библиотека дописывает окончание <code>_total</code>.</p></li>
+            <li data-ok><button><code>payments_failed_total</code></button><p class="quiz__why">Верно. На стенде <code>orders_created</code> вышел в ответ как <code>orders_created_total</code>.</p></li>
+            <li><button><code>payments_failed_count</code></button><p class="quiz__why">Окончание <code>_count</code> бывает у гистограммы, у счётчика его нет.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 3</b>promtool не вывел ни одного замечания для <code>cpu_load_percent 87</code>. Значит ли это, что имя записано по договорённостям?</p>
+          <ul class="quiz__opts">
+            <li><button>Да, promtool проверяет все правила документации</button><p class="quiz__why">promtool проверяет часть правил. Проценты он пропустил и на стенде: <code>disk_usage_percent</code> прошёл без замечаний.</p></li>
+            <li data-ok><button>Нет, долю записывают от 0 до 1 с окончанием _ratio</button><p class="quiz__why">Верно: <code>cpu_load_ratio 0.87</code>.</p></li>
+            <li><button>Нет, у gauge должно быть окончание _total</button><p class="quiz__why"><code>_total</code> ставится только у счётчика.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 4</b>Нужно считать отправленные письма отдельно по типам: регистрация, сброс пароля, рассылка. Как это записать?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button>Одно имя <code>emails_sent_total</code> с меткой <code>type</code></button><p class="quiz__why">Верно. Сумма рядов — все отправленные письма, и она имеет смысл.</p></li>
+            <li><button>Три имени: <code>emails_registration_total</code>, <code>emails_reset_total</code>, <code>emails_newsletter_total</code></button><p class="quiz__why">Для общего числа писем пришлось бы перечислять имена, а новый тип письма добавил бы имя.</p></li>
+            <li><button>Одно имя <code>emails_total</code> с меткой <code>kind="sent"</code> или <code>kind="failed"</code></button><p class="quiz__why">Метка <code>kind</code> делит письма по результату отправки. По типу письма такие ряды не разделить.</p></li>
+          </ul>
+        </div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Prometheus. Metric and label naming — <a href="https://prometheus.io/docs/practices/naming/" target="_blank" rel="noopener">prometheus.io/docs/practices/naming</a></li>
+            <li>Prometheus. Command-line: promtool check metrics — <a href="https://prometheus.io/docs/prometheus/latest/command-line/promtool/" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/command-line/promtool</a></li>
+            <li>prometheus-client для Python: Counter, Gauge, параметр unit — <a href="https://prometheus.github.io/client_python/" target="_blank" rel="noopener">prometheus.github.io/client_python</a></li>
+            <li>Стенд модуля 3: вывод promtool и библиотеки получен 23.10.2026</li>
+          </ol>
+        </div>
