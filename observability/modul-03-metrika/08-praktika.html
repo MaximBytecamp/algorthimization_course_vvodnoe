@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#EEF1F5">
+  <meta name="description" content="Глава 3.8 модуля «Метрика как данные»: практика: метрики сервиса заказов.">
+  <title>3.8 Практика: метрики сервиса заказов · Метрика как данные</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&amp;family=Pixelify+Sans:wght@500;600;700&amp;family=Roboto+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../modul-02-prometheus/styles.css">
+  <link rel="stylesheet" href="../modul-02-prometheus/algo.css">
+  <link rel="stylesheet" href="../modul-02-prometheus/prom.css">
+  <link rel="stylesheet" href="m3.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 3 · Метрика как данные · Макаров М. Н.</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Модуль 3 · метрика как данные</a> · модель данных</p>
+          <p class="running__folio">Глава 3.8</p>
+        </div>
+        <header class="chapter-head">
+          <span class="chapter-num">3.8</span>
+          <h1>Практика: метрики<br>сервиса доставки</h1>
+          <p class="lead">Практическая глава модуля. В ней нужно найти и исправить метку, которая создаёт лишние ряды, а затем добавить в сервис три метрики: counter, gauge и histogram. Работа идёт на стенде практики — сервисе доставки с Prometheus 3.5.0. Каждое задание проверяется на стенде: запросом в Prometheus, страницей <code>/metrics</code> или командой <code>promtool</code>. Результаты записываются в бланк отчёта.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Практика</dd></div>
+          <div><dt>Уровень</dt><dd>Средний</dd></div>
+          <div><dt>Нужно</dt><dd>Docker Desktop или Docker Engine с Compose v2; редактор кода; браузер</dd></div>
+          <div><dt>Опирается на</dt><dd>Главы 3.2–3.7</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Сервис доставки</a></li>
+            <li><a href="#s2">Запуск и нагрузка</a></li>
+            <li><a href="#s3">Задание 1. Метка с лишними рядами</a></li>
+            <li><a href="#s4">Задание 2. Шаблон адреса вместо пути</a></li>
+            <li><a href="#s5">Задание 3. Счётчик заявок</a></li>
+            <li><a href="#s6">Задание 4. Заявки, которые ждут курьера</a></li>
+            <li><a href="#s7">Задание 5. Гистограмма расчёта маршрута</a></li>
+            <li><a href="#s8">Сдача работы</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Сервис доставки</h2>
+        <p>Стенд практики устроен так же, как стенд глав, но сервис другой. Это служба доставки: она принимает заявки на доставку, отдаёт доставку по номеру и рассчитывает маршрут курьера. Новые заявки ждут свободного курьера, и курьер забирает одну заявку каждые 2 секунды. Рядом в сети Docker Compose работает Prometheus 3.5.0 и опрашивает сервис раз в 15 секунд.</p>
+        <p><a class="btn btn--main" href="metrika-praktika.zip" download>↓ Скачать стенд metrika-praktika.zip</a></p>
+        <div class="tree">
+          <div class="tree__head">metrika-praktika/</div>
+          <div class="tree__body">
+            <div class="tree__row tree__row--hi"><span>app.py</span><em>сервис; места для заданий 3–5 отмечены словом ЗАДАНИЕ</em></div>
+            <div class="tree__row"><span>compose.yaml</span><em>сервисы api и prometheus</em></div>
+            <div class="tree__row"><span>prometheus/prometheus.yml</span><em>job delivery, опрос раз в 15 секунд</em></div>
+            <div class="tree__row tree__row--hi"><span>nagruzka.sh, nagruzka.ps1</span><em>одинаковая для всех нагрузка: 220 запросов к доставкам, 30 заявок, 20 расчётов маршрута</em></div>
+            <div class="tree__row tree__row--hi"><span>otchet.md</span><em>бланк отчёта</em></div>
+            <div class="tree__row"><span>Dockerfile, requirements.txt, README.md</span><em>образ сервиса и команды</em></div>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Адрес сервиса</th><th>Что делает</th></tr></thead>
+            <tbody>
+              <tr><td><code>GET /deliveries/7</code></td><td>Доставка по номеру; номер больше 300 — ответ 404</td></tr>
+              <tr><td><code>POST /deliveries?zone=north</code></td><td>Новая заявка в зону <code>north</code>, <code>south</code> или <code>center</code>; заявка ждёт курьера</td></tr>
+              <tr><td><code>GET /route?ms=300</code></td><td>Расчёт маршрута, который занимает заданное число миллисекунд</td></tr>
+              <tr><td><code>GET /metrics</code></td><td>Метрики в текстовом формате</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>В сервисе уже есть одна метрика приложения — счётчик <code>http_requests_total</code>, и в нём ошибка из главы 3.7. Остальные метрики нужно добавить. Порты стенда практики — 8033 и 9096, поэтому он может работать одновременно со стендом глав.</p>
+        <p class="bridge">Перед заданиями стенд запускается и получает нагрузку. Нагрузка у всех одинаковая, поэтому числа в отчётах можно сравнивать.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Запуск и нагрузка</h2>
+        <p>Команды выполняются в папке <code>metrika-praktika</code>. Переключатель системы вверху страницы показывает команды для вашей операционной системы.</p>
+        <ol class="steps">
+          <li><b>Собрать образ и запустить оба контейнера.</b>
+            <figure class="code code--out"><figcaption><span>Терминал</span><span>папка metrika-praktika</span></figcaption><pre>docker compose up -d --build
+docker compose ps</pre></figure></li>
+          <li><b>Отправить нагрузку.</b> Скрипт отправляет 200 запросов к доставкам 1–200, 20 запросов к несуществующим доставкам 301–320, 30 заявок (north — 15, south — 10, center — 5) и 20 расчётов маршрута с длительностью от 40 до 1600 мс.
+            <div data-os="mac linux"><figure class="code code--out"><figcaption><span>macOS, Linux</span><span>bash, zsh</span></figcaption><pre>./nagruzka.sh</pre></figure></div>
+            <div data-os="win"><figure class="code code--out"><figcaption><span>Windows</span><span>PowerShell</span></figcaption><pre>powershell -ExecutionPolicy Bypass -File nagruzka.ps1</pre></figure></div></li>
+          <li><b>Подождать 20 секунд</b> — за это время Prometheus выполнит опрос — и открыть <code>http://localhost:9096</code>, меню <b>Status → Target health</b>. У задания <code>delivery</code> должно быть состояние UP.</li>
+        </ol>
+        <p>После каждой правки <code>app.py</code> стенд перезапускается с удалением данных Prometheus. Ключ <code>-v</code> удаляет старые ряды. Без него ряды прошлой версии останутся в базе. Страница TSDB status будет их учитывать, а запросы будут показывать их ещё до пяти минут (глава 3.1, §6).</p>
+        <div data-os="mac linux"><figure class="code code--out"><figcaption><span>Перезапуск после правки</span><span>macOS, Linux</span></figcaption><pre>docker compose down -v
+docker compose up -d --build
+./nagruzka.sh</pre></figure></div>
+        <div data-os="win"><figure class="code code--out"><figcaption><span>Перезапуск после правки</span><span>Windows PowerShell</span></figcaption><pre>docker compose down -v
+docker compose up -d --build
+powershell -ExecutionPolicy Bypass -File nagruzka.ps1</pre></figure></div>
+        <p class="bridge">Стенд запущен, нагрузка отправлена. Первое задание — разобраться, сколько рядов даёт единственная метрика сервиса.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Задание 1. Метка с лишними рядами</h2>
+        <p>Счётчик <code>http_requests_total</code> объявлен в <code>app.py</code> с тремя метками. После нагрузки у него рядов намного больше, чем сочетаний метода и кода ответа. Задание — найти метку, которая даёт ряды, и объяснить, откуда они берутся. Порядок поиска разобран в главе 3.7, §4.</p>
+        <ol class="steps">
+          <li><b>Число рядов.</b> В Prometheus выполнить запрос <code>count(http_requests_total)</code> и записать результат.</li>
+          <li><b>Метка-виновник.</b> Открыть <b>Status → TSDB status</b>. В таблице Top 10 label names with value count записать первую метку и число её значений. В таблице Top 10 series count by metric names проверить, какой метрике принадлежат ряды.</li>
+          <li><b>Размер ответа.</b> Узнать размер страницы <code>/metrics</code> в байтах.
+            <div data-os="mac linux"><figure class="code code--out"><figcaption><span>macOS, Linux</span><span>bash, zsh</span></figcaption><pre>curl -s -o /dev/null -w "%{size_download}\n" localhost:8033/metrics</pre></figure></div>
+            <div data-os="win"><figure class="code code--out"><figcaption><span>Windows</span><span>PowerShell</span></figcaption><pre>curl.exe -s -o NUL -w "%{size_download}" localhost:8033/metrics</pre></figure></div>
+            Параметр <code>-w "%{size_download}"</code> печатает число полученных байтов, <code>-o</code> отправляет сам текст в пустое место.</li>
+          <li><b>Причина.</b> Найти в <code>app.py</code> строку, где счётчик получает значения меток, и объяснить в одном-двух предложениях, почему рядов столько.</li>
+        </ol>
+        <p>Число в первом шаге связано с нагрузкой: его можно посчитать заранее по описанию скрипта в §2 и сверить с результатом.</p>
+        <p class="bridge">Метка найдена. Во втором задании она заменяется так, чтобы число рядов перестало зависеть от номеров доставок.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Задание 2. Шаблон адреса вместо пути</h2>
+        <p>В метку нужно записывать шаблон маршрута вместо пути из запроса, как на стенде глав (глава 3.7, §5). Метку называют <code>route</code>: название сообщает, что в ней шаблон. Изменить нужно две строки — список меток при объявлении и вызов <code>.labels(...)</code> в функции <code>count_requests</code>.</p>
+        <p>После правки стенд перезапускается командами из §2. Затем в Prometheus снова выполняется <code>count(http_requests_total)</code> и запрос <code>http_requests_total</code> на вкладке Table.</p>
+        <div class="checklist">
+          <p class="checklist__head">Задание выполнено, если</p>
+          <div class="checklist__item"><span><b>Метка</b>У рядов есть метка <code>route</code> со значениями вида <code>/deliveries/{delivery_id}</code>; метки <code>path</code> нет.</span></div>
+          <div class="checklist__item"><span><b>Число рядов</b>Рядов столько, сколько встретилось сочетаний метода, шаблона и кода ответа. Число не меняется, если повторить нагрузку.</span></div>
+          <div class="checklist__item"><span><b>Сумма</b>Сумма значений всех рядов равна числу запросов из §2: 270.</span></div>
+        </div>
+        <p class="bridge">Исправленный счётчик считает запросы. Вопрос о том, сколько заявок пришло в каждую зону, требует своей метрики.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Задание 3. Счётчик заявок</h2>
+        <p>Нужен счётчик созданных заявок с разделением по зоне доставки. Требования к метрике:</p>
+        <ul>
+          <li>имя в ответе <code>/metrics</code> — <code>deliveries_created_total</code>, тип counter;</li>
+          <li>одна метка <code>zone</code> со значениями <code>north</code>, <code>south</code>, <code>center</code>;</li>
+          <li>значение увеличивается в функции <code>create_delivery</code>, в месте с пометкой «ЗАДАНИЕ 3», только для принятой заявки.</li>
+        </ul>
+        <p>Объявление пишется рядом с <code>HTTP_REQUESTS</code>, как счётчик заказов на стенде глав (глава 3.4, §1). После перезапуска и нагрузки в ответе <code>/metrics</code> должны появиться три строки такого вида:</p>
+        <figure class="code code--out">
+          <figcaption><span>Какие строки ожидаются в /metrics</span><span>значения не показаны</span></figcaption>
+<pre># TYPE deliveries_created_total counter
+deliveries_created_total{zone="north"} …
+deliveries_created_total{zone="south"} …
+deliveries_created_total{zone="center"} …</pre>
+        </figure>
+        <div class="checklist">
+          <p class="checklist__head">Задание выполнено, если</p>
+          <div class="checklist__item"><span><b>Значения</b>Значения по зонам совпадают с числом заявок в <code>nagruzka.sh</code>.</span></div>
+          <div class="checklist__item"><span><b>Сумма</b>Сумма трёх рядов равна значению ряда <code>http_requests_total</code> с методом POST и кодом 200.</span></div>
+          <div class="checklist__item"><span><b>Имена</b><code>promtool check metrics</code> по ответу сервиса ничего не выводит и завершается с кодом 0 (команда — в README стенда и в главе 3.2, §4).</span></div>
+        </div>
+        <p class="bridge">Счётчик показывает, сколько заявок пришло. Сколько из них ещё ждёт курьера — это состояние, и для него нужен другой тип.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Задание 4. Заявки, которые ждут курьера</h2>
+        <p>Нужен gauge с числом заявок, которые ждут курьера. Имя — <code>deliveries_waiting</code>, меток нет. Значение увеличивается, когда заявка создана, и уменьшается, когда курьер её забрал. Оба места отмечены в <code>app.py</code> пометкой «ЗАДАНИЕ 4»: одно в <code>create_delivery</code>, другое в функции <code>courier</code>. Устройство такой пары разобрано на очереди заказов (глава 3.5, §2).</p>
+        <ol class="steps">
+          <li><b>Сразу после нагрузки</b> запросить <code>/metrics</code> и записать значение <code>deliveries_waiting</code>.</li>
+          <li><b>Через 70 секунд</b> запросить ещё раз. Курьер забирает заявку каждые 2 секунды, поэтому 30 заявок разбираются за минуту.</li>
+          <li><b>В Prometheus</b> выполнить <code>deliveries_waiting[2m]</code> на вкладке Table и записать отсчёты.</li>
+        </ol>
+        <div class="checklist">
+          <p class="checklist__head">Задание выполнено, если</p>
+          <div class="checklist__item"><span><b>Начало</b>Сразу после нагрузки значение больше 0.</span></div>
+          <div class="checklist__item"><span><b>Конец</b>Через 70 секунд значение равно 0 и не становится отрицательным.</span></div>
+          <div class="checklist__item"><span><b>Объяснение</b>В отчёте объяснено, почему в Prometheus за минуту четыре отсчёта, хотя значение менялось каждые 2 секунды.</span></div>
+        </div>
+        <p class="bridge">Последняя метрика описывает длительность — величину, для которой одного числа мало.</p>
+
+        <h2 id="s7"><span class="sec">§7</span>Задание 5. Гистограмма расчёта маршрута</h2>
+        <p>Требование к сервису: расчёт маршрута должен занимать не больше 0,3 секунды. Нужна гистограмма, по которой видно, какая доля расчётов в него укладывается. Требования к метрике:</p>
+        <ul>
+          <li>имя — <code>route_build_duration_seconds</code>, меток нет;</li>
+          <li>границы корзин — 0,1, 0,2, 0,3, 0,5, 1 и 2 секунды; граница 0,3 совпадает с требованием (глава 3.6, §5);</li>
+          <li>в функции <code>build_route</code> в месте «ЗАДАНИЕ 5» в гистограмму записывается уже посчитанная переменная <code>elapsed</code>.</li>
+        </ul>
+        <p>После перезапуска и нагрузки выполняется расчёт по ответу <code>/metrics</code> и запросам в Prometheus.</p>
+        <ol class="steps">
+          <li><b>Корзины.</b> Записать значения всех корзин, <code>_count</code> и <code>_sum</code>.</li>
+          <li><b>Доля.</b> Посчитать долю расчётов не дольше 0,3 с: значение корзины <code>le="0.3"</code>, делённое на <code>_count</code>.</li>
+          <li><b>Оценка p90.</b> Выполнить в Prometheus <code>histogram_quantile(0.9, route_build_duration_seconds_bucket)</code>.</li>
+          <li><b>Точный p90.</b> Посчитать p90 по двадцати длительностям из <code>nagruzka.sh</code> методом ближайшего ранга (глава 1.4) и объяснить, почему он отличается от оценки. Проверить расчёт можно интерактивом главы 3.6, §4.</li>
+        </ol>
+        <div class="checklist">
+          <p class="checklist__head">Задание выполнено, если</p>
+          <div class="checklist__item"><span><b>Корзины</b>Значения корзин только растут, <code>le="+Inf"</code> и <code>_count</code> равны 20.</span></div>
+          <div class="checklist__item"><span><b>Сумма</b><code>_sum</code> немного больше суммы заданных длительностей, 8,18 с: каждый расчёт длится чуть дольше заданного.</span></div>
+          <div class="checklist__item"><span><b>Расчёт</b>Доля и оценка p90 совпадают с расчётом по корзинам вручную.</span></div>
+        </div>
+        <p class="bridge">Все пять заданий проверены на стенде. Осталось оформить результаты.</p>
+
+        <h2 id="s8"><span class="sec">§8</span>Сдача работы</h2>
+        <p>Отчёт заполняется в файле <code>otchet.md</code> из архива: на месте каждого <code>___</code> записывается число, строка кода или объяснение. Вместе с отчётом сдаётся исправленный <code>app.py</code>.</p>
+        <div class="checklist">
+          <p class="checklist__head">В работе есть</p>
+          <div class="checklist__item"><span><b>app.py</b>Метка <code>route</code> вместо <code>path</code>; три новые метрики; <code>promtool check metrics</code> без замечаний.</span></div>
+          <div class="checklist__item"><span><b>otchet.md</b>Заполнены все поля пяти заданий и раздел об использовании ИИ.</span></div>
+          <div class="checklist__item"><span><b>Числа</b>Каждое число в отчёте получено на своём стенде после нагрузки из <code>nagruzka.sh</code>.</span></div>
+        </div>
+        <div class="sep" role="separator"></div>
+        <h3>Шпаргалка</h3>
+        <div class="cheat">
+          <div><b>Стенд</b><code>docker compose up -d --build
+docker compose down -v
+docker compose logs api</code><p>Ошибка в <code>app.py</code> видна в журнале контейнера api.</p></div>
+          <div><b>Адреса</b><code>localhost:8033/metrics
+localhost:9096/targets
+localhost:9096/tsdb-status</code><p>Внутри сети Compose сервис — <code>api:8000</code>.</p></div>
+          <div><b>Запросы</b><code>count(http_requests_total)
+deliveries_created_total
+deliveries_waiting[2m]
+histogram_quantile(0.9, route_build_duration_seconds_bucket)</code><p>Значения обновляются раз в 15 секунд.</p></div>
+          <div><b>Методы</b><code>Counter(...).labels(z).inc()
+Gauge(...).inc()  .dec()
+Histogram(..., buckets=(...)).observe(x)</code><p>Главы 3.4, 3.5 и 3.6.</p></div>
+        </div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>prometheus-client для Python: Counter, Gauge, Histogram — <a href="https://prometheus.github.io/client_python/instrumenting/" target="_blank" rel="noopener">prometheus.github.io/client_python/instrumenting</a></li>
+            <li>Prometheus. Instrumentation — <a href="https://prometheus.io/docs/practices/instrumentation/" target="_blank" rel="noopener">prometheus.io/docs/practices/instrumentation</a></li>
+            <li>Стенд практики: эталонное решение прогнано на Docker Desktop с Prometheus 3.5.0 26.10.2026</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="07-kardinalnost.html">← 3.7 Кардинальность и цена детализации</a><a href="09-itogi.html">3.9 Итоги модуля: главное коротко →</a></div>
+        <div class="colophon">
+          <span>Метрики и наблюдаемость · Модуль 3 · Метрика как данные</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../modul-02-prometheus/book.js"></script>
+  <script src="../modul-02-prometheus/algo.js"></script>
+  <script src="../modul-02-prometheus/prom.js"></script>
+  <script src="m3.js"></script>
+</body>
+</html>

@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#EEF1F5">
+  <meta name="description" content="Глава 3.9 модуля «Метрика как данные»: итоги модуля: главное коротко.">
+  <title>3.9 Итоги модуля: главное коротко · Метрика как данные</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&amp;family=Pixelify+Sans:wght@500;600;700&amp;family=Roboto+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../modul-02-prometheus/styles.css">
+  <link rel="stylesheet" href="../modul-02-prometheus/algo.css">
+  <link rel="stylesheet" href="../modul-02-prometheus/prom.css">
+  <link rel="stylesheet" href="m3.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 3 · Метрика как данные · Макаров М. Н.</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Модуль 3 · метрика как данные</a> · модель данных</p>
+          <p class="running__folio">Глава 3.9</p>
+        </div>
+        <header class="chapter-head">
+          <span class="chapter-num">3.9</span>
+          <h1>Итоги модуля:<br>главное коротко</h1>
+          <p class="lead">В этой главе собрано главное из глав модуля. На каждую главу отведён один раздел: несколько фраз о сути и один пример со стенда. Новых понятий здесь нет. Глава нужна, чтобы повторить модуль и быстро найти нужное место в подробных главах.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Повторение</dd></div>
+          <div><dt>Уровень</dt><dd>После глав 3.1–3.8</dd></div>
+          <div><dt>Опирается на</dt><dd>Весь модуль 3</dd></div>
+          <div><dt>Результат</dt><dd>Устройство отсчёта, ряда и трёх типов метрик — по памяти</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Отсчёт: время и значение</a></li>
+            <li><a href="#s2">Имя и единица</a></li>
+            <li><a href="#s3">Метки и ряд</a></li>
+            <li><a href="#s4">Counter</a></li>
+            <li><a href="#s5">Gauge</a></li>
+            <li><a href="#s6">Histogram</a></li>
+            <li><a href="#s7">Кардинальность</a></li>
+            <li><a href="#s8">Термины модуля одной строкой</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Отсчёт: время и значение</h2>
+        <p>Приложение меняет число в памяти при каждом событии. Prometheus читает его раз в интервал опроса и записывает отсчёт — пару из отметки времени и значения. Отметка — момент начала опроса в Unix-времени с миллисекундами, одна на все ряды опроса. Значение — число float64; текст в значение не записывают.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Пример: отсчёты одного ряда за минуту</span><span>стенд · время UTC</span></div>
+          <div class="pic__body">
+            <div class="tl tl--wide" style="--n:4">
+              <b>время</b><span class="t">15:36:06.827</span><span class="t">15:36:21.925</span><span class="t">15:36:36.869</span><span class="t">15:36:52.672</span>
+              <b>значение</b><span class="ok">10</span><span class="ok">10</span><span class="ok">10</span><span class="ok">10</span>
+            </div>
+          </div>
+        </div>
+        <p>Отсчёт пишется на каждом успешном опросе, даже если число не менялось. Мгновенный запрос берёт последний отсчёт не старше пяти минут, а в ответе ставит время запроса. Объём базы — число рядов, умноженное на число опросов: при 15 секундах это 5 760 отсчётов на ряд в сутки.</p>
+        <p class="bridge">Подробно: <a href="01-sample.html">глава 3.1</a>. О чём число, сообщает имя.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Имя и единица</h2>
+        <p>Имя идёт от общего к частному: префикс, что измеряется, единица, у счётчика — окончание <code>_total</code>. Единицы базовые: секунды, байты, доля от 0 до 1. Окончания <code>_total</code>, <code>_bucket</code>, <code>_sum</code>, <code>_count</code> библиотека дописывает сама.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Неудачное имя</th><th>Замечание promtool</th><th>Исправление</th></tr></thead>
+            <tbody>
+              <tr><td><code>report_build_milliseconds</code></td><td>use base unit "seconds"</td><td><code>report_build_seconds</code></td></tr>
+              <tr><td><code>queue_length_total</code></td><td>non-counter metrics should not have "_total" suffix</td><td><code>queue_length</code></td></tr>
+              <tr><td><code>disk_usage_percent</code></td><td>замечания нет</td><td><code>disk_usage_ratio</code>, значение 0,73</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Части одной величины записывают в метки, разные величины — в разные имена. Проверка: сумма рядов одного имени должна иметь смысл.</p>
+        <p class="bridge">Подробно: <a href="02-imya-i-edinica.html">глава 3.2</a>. Части величины различаются метками.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Метки и ряд</h2>
+        <p>Ряд определяется именем и всеми метками вместе; имя хранится как метка <code>__name__</code>. Новое сочетание значений меток — новый ряд, и его история начинается с первого события. Смена значения метки разрывает историю. Метки <code>job</code> и <code>instance</code> добавляет Prometheus, остальные — приложение.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Пример: три ряда счётчика запросов</span><span>стенд</span></div>
+          <div class="pic__body">
+            <div class="ser">
+              <div>http_requests_total <i>method="GET"</i> <i>route="/orders/{order_id}"</i> <i>status="200"</i> <b>10</b></div>
+              <div>http_requests_total <i>method="GET"</i> <i>route="/orders/{order_id}"</i> <i class="x">status="404"</i> <b>1</b></div>
+              <div>http_requests_total <i>method="POST"</i> <i>route="/orders"</i> <i>status="200"</i> <b>1</b></div>
+            </div>
+          </div>
+        </div>
+        <p>Селектор выбирает ряды по меткам знаками <code>=</code>, <code>!=</code>, <code>=~</code>, <code>!~</code>. Запрос к ряду, которого нет, возвращает пустой результат: на стенде так ответили <code>{status="500"}</code> и <code>{route="/orders/17"}</code>.</p>
+        <p class="bridge">Подробно: <a href="03-labels.html">глава 3.3</a>. Дальше три типа метрик.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Counter</h2>
+        <p>Счётчик считает события и только растёт; при перезапуске он сбрасывается в ноль. Смотрят его рост за промежуток. Prometheus находит сброс по уменьшению значения. Если после перезапуска до опроса пришло больше событий, чем было, сброс скрыт, и часть событий теряется.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Пример: видимый и скрытый сброс</span><span>стенд</span></div>
+          <div class="pic__body">
+            <div class="duo">
+              <div><b>Перезапуск, затем 10 запросов</b><div class="ser"><div>40 → <i class="x">10</i><em><code>resets</code> = 1, рост 30 + 10 = 40</em></div></div></div>
+              <div><b>Перезапуск, затем 60 запросов</b><div class="ser"><div>40 → <i>60</i><em><code>resets</code> = 0, рост 20 вместо 60</em></div></div></div>
+            </div>
+          </div>
+        </div>
+        <p>Перезапуск виден по <code>process_start_time_seconds</code>. Сервис в нескольких процессах uvicorn отдаёт числа разных процессов вперемешку: 6, 14, 6, 14 при 20 запросах.</p>
+        <p class="bridge">Подробно: <a href="04-counter.html">глава 3.4</a>. Величины, которые уменьшаются, — другой тип.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Gauge</h2>
+        <p>Gauge показывает текущее состояние и меняется в обе стороны: <code>inc</code>, <code>dec</code>, <code>set</code>, <code>track_inprogress</code>. У него смотрят само значение. Уменьшение ставят в <code>finally</code>, иначе после исключения gauge останется завышенным. В базу попадает значение в момент опроса, и всё, что было между опросами, пропадает.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Пример: очередь 10 → 0 за десять секунд</span><span>стенд</span></div>
+          <div class="pic__body">
+            <div class="duo">
+              <div><b>/metrics каждую секунду</b><div class="ser"><div>10 · 10 · 9 · 8 · 7 · … · 1 · 0</div></div></div>
+              <div><b>Отсчёты Prometheus</b><div class="ser"><div>0 · <i class="t">7</i> · 0 · 0</div></div></div>
+            </div>
+          </div>
+        </div>
+        <p>Тип выбирают по смыслу уменьшения: если оно означает обычное событие, это gauge; если не означает ничего, это counter. Рост за промежуток считают только у счётчика.</p>
+        <p class="bridge">Подробно: <a href="05-gauge.html">глава 3.5</a>. Для длительностей одного числа мало.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Histogram</h2>
+        <p>Гистограмма хранит накопительные корзины: сколько значений не больше каждой границы <code>le</code>. Корзина <code>+Inf</code> и <code>_count</code> считают все значения, <code>_sum</code> — их сумму; среднее — <code>_sum</code> / <code>_count</code>. Перцентиль <code>histogram_quantile</code> оценивает внутри корзины, считая значения в ней равномерными.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>20 отчётов стенда</th><th>Оценка по корзинам</th><th>Точное значение</th></tr></thead>
+            <tbody>
+              <tr><td>p50</td><td>0,2 с</td><td>0,18 с</td></tr>
+              <tr><td>p90</td><td>1 с</td><td>0,9 с</td></tr>
+              <tr><td>p99</td><td>2,5 с — граница последней конечной корзины</td><td>3,0 с</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Границы ставят там, где лежат длительности, и обязательно на целевом значении. Каждая граница — ещё один ряд на каждое сочетание остальных меток.</p>
+        <p class="bridge">Подробно: <a href="06-histogram.html">глава 3.6</a>. Ряды из меток умножаются, и это последняя тема модуля.</p>
+
+        <h2 id="s7"><span class="sec">§7</span>Кардинальность</h2>
+        <p>Наибольшее число рядов метрики — произведение числа значений её меток. Метка без ограничения значений — номер заказа, клиента, запроса — умножает всё остальное. Вместе с рядами растут ответ <code>/metrics</code>, число отсчётов и память Prometheus.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Пример: 2 000 запросов к заказам</span><span>стенд · BAD_LABELS=1</span></div>
+          <div class="pic__body">
+            <div class="bars">
+              <span>route, method, status</span><i class="m" style="--w:0.15%"></i><b>3 ряда</b>
+              <span>path, customer_id</span><i style="--w:100%"></i><b>2 001 ряд</b>
+            </div>
+          </div>
+        </div>
+        <p>Метку-виновника находят на странице Status → TSDB status: таблица меток с наибольшим числом значений и таблица метрик с наибольшим числом рядов. Номера и тексты хранят в логах и трассах, в метку пишут шаблон адреса. Предел <code>sample_limit</code> отклоняет опрос целиком: <code>sample limit exceeded</code>, <code>up</code> = 0.</p>
+        <p class="bridge">Подробно: <a href="07-kardinalnost.html">глава 3.7</a>; все типы метрик вместе — в практике <a href="08-praktika.html">главы 3.8</a>.</p>
+
+        <h2 id="s8"><span class="sec">§8</span>Термины модуля одной строкой</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Термин</th><th>Что это</th><th>Пример на стенде</th></tr></thead>
+            <tbody>
+              <tr><td>Отсчёт, sample</td><td>Пара «отметка времени — значение»</td><td><code>10 @ 1792769766.827</code></td></tr>
+              <tr><td>Отметка времени</td><td>Момент начала опроса, Unix-время в миллисекундах</td><td>15:36:06.827 UTC</td></tr>
+              <tr><td>Базовая единица</td><td>Единица без приставок: секунды, байты, доля</td><td><code>_seconds</code>, <code>_bytes</code></td></tr>
+              <tr><td>Идентичность ряда</td><td>Имя и все метки вместе</td><td><code>{__name__="http_requests_total", status="404", …}</code></td></tr>
+              <tr><td>Селектор</td><td>Условия на метки в запросе</td><td><code>{status=~"4.."}</code></td></tr>
+              <tr><td>Counter</td><td>Число событий, только растёт</td><td><code>orders_created_total</code></td></tr>
+              <tr><td>Сброс</td><td>Переход счётчика к нулю при перезапуске</td><td>40 → 10</td></tr>
+              <tr><td>Gauge</td><td>Текущее состояние, меняется в обе стороны</td><td><code>orders_queue_length</code></td></tr>
+              <tr><td>Histogram</td><td>Накопительные корзины, <code>_sum</code> и <code>_count</code></td><td><code>http_request_duration_seconds</code></td></tr>
+              <tr><td>Кардинальность</td><td>Число рядов метрики</td><td>3 и 2 001</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pager"><a href="08-praktika.html">← 3.8 Практика: метрики сервиса заказов</a><a href="../index.html">К справочнику →</a></div>
+        <div class="colophon">
+          <span>Метрики и наблюдаемость · Модуль 3 · Метрика как данные</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../modul-02-prometheus/book.js"></script>
+  <script src="../modul-02-prometheus/algo.js"></script>
+  <script src="../modul-02-prometheus/prom.js"></script>
+  <script src="m3.js"></script>
+</body>
+</html>
