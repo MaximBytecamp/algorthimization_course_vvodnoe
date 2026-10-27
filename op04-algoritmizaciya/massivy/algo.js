@@ -1749,7 +1749,13 @@ onmessage = async e => {
       if (scroll && p) p.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
     cards.forEach(c => c.addEventListener('click', () => select(c.dataset.mock, true)));
-    select(panels[0].id, false);
+    // Ссылка вида 06-mok-intervyu.html#task-pair открывает нужную задачу: так ведёт билет мок-интервью № 1.
+    const fromHash = panels.find(p => '#' + p.id === location.hash);
+    select(fromHash ? fromHash.id : panels[0].id, Boolean(fromHash));
+    window.addEventListener('hashchange', () => {
+      const p = panels.find(x => '#' + x.id === location.hash);
+      if (p) select(p.id, true);
+    });
   });
 
   document.querySelectorAll('.mock').forEach(root => {
@@ -1855,5 +1861,69 @@ onmessage = async e => {
       const on = box.classList.toggle('is-open');
       b.textContent = on ? 'Скрыть ответы' : 'Показать ответы';
     });
+  });
+})();
+
+/* ── 13. Билет мок-интервью № 1 ──────────────────────────────────── */
+/* .ticket берёт задачи из window.MOCK_POOL (pool.js модуля 16) и тянет
+   две: простую и чуть сложнее, из разных модулей. Секундомер — 60 минут,
+   по плану 25 на первую задачу и 35 на вторую. */
+(() => {
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const mm = sec => `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
+  const pick = xs => xs[Math.floor(Math.random() * xs.length)];
+  document.querySelectorAll('.ticket').forEach(root => {
+    const pool = window.MOCK_POOL || [];
+    if (!pool.length) { root.innerHTML = '<p style="padding:14px">Пул задач не загружен.</p>'; return; }
+    const easy = pool.filter(t => t.level === 'easy'), medium = pool.filter(t => t.level === 'medium');
+    const PLAN = [25, 35];
+    let pair = null, sec = 0, timer = null;
+    root.classList.add('widget');
+    root.innerHTML = `
+      <div class="widget__head"><b>Билет мок-интервью № 1</b><span>${easy.length} простых · ${medium.length} чуть сложнее</span></div>
+      <div class="widget__body">
+        <div class="btnrow">
+          <button class="btn btn--main" type="button" data-act="draw">Вытянуть билет</button>
+          <button class="btn" type="button" data-act="clock" disabled>▶ Старт 60 минут</button>
+          <b class="ticket__clock">00:00</b><span class="ticket__plan"></span>
+        </div>
+        <div class="ticket__tasks"></div>
+      </div>`;
+    const box = root.querySelector('.ticket__tasks'), clock = root.querySelector('.ticket__clock');
+    const plan = root.querySelector('.ticket__plan'), btnClock = root.querySelector('[data-act="clock"]');
+    function tick() {
+      clock.textContent = mm(sec);
+      clock.classList.toggle('is-over', sec >= 60 * 60);
+      plan.textContent = !pair ? '' : sec < PLAN[0] * 60 ? 'по плану: задача 1' : sec < 60 * 60 ? 'по плану: задача 2' : 'время секции вышло';
+    }
+    function stop() { clearInterval(timer); timer = null; btnClock.textContent = sec ? '▶ Продолжить' : '▶ Старт 60 минут'; }
+    function card(t, n) {
+      const src = t.url ? `<a href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.source)}</a>` : esc(t.source);
+      const where = t.chapter ? `разобрана в главе ${t.chapter}` : `разобрана только в тренажёре модуля ${t.module}`;
+      return `<article class="ticket__task">
+        <p class="ticket__meta"><b>Задача ${n} · ${n === 1 ? 'простая' : 'чуть сложнее'} · ${PLAN[n - 1]} минут</b><span>модуль ${t.module} · ${src}</span></p>
+        <h3>${esc(t.title)}</h3>
+        <p class="ticket__say">«${t.say}»</p>
+        <p class="ticket__foot">Задача ${where}. <a href="${esc(t.trainer)}">Пройти её по этапам в тренажёре →</a></p>
+      </article>`;
+    }
+    root.addEventListener('click', e => {
+      const b = e.target.closest('[data-act]'); if (!b) return;
+      if (b.dataset.act === 'draw') {
+        const first = pick(easy);
+        const second = pick(medium.filter(t => t.module !== first.module));
+        pair = [first, second];
+        stop(); sec = 0; tick();
+        box.innerHTML = card(first, 1) + card(second, 2);
+        b.textContent = '↻ Другой билет';
+        btnClock.disabled = false;
+      }
+      if (b.dataset.act === 'clock') {
+        if (timer) return stop();
+        timer = setInterval(() => { sec++; tick(); }, 1000);
+        btnClock.textContent = '⏸ Пауза';
+      }
+    });
+    tick();
   });
 })();
