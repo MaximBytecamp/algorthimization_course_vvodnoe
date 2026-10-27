@@ -16,7 +16,7 @@
       const cell = el('div', 'cell');
       (opts.cls && opts.cls(k)) && cell.classList.add(...opts.cls(k).split(' ').filter(Boolean));
       if (opts.flash && opts.flash.has(k)) cell.classList.add('is-flash');
-      const shown = typeof v === 'string' ? `'${esc(v)}'` : esc(v);
+      const shown = typeof v === 'string' ? `'${esc(v)}'` : Array.isArray(v) ? esc(JSON.stringify(v).replace(/,/g, ', ')) : esc(v);
       const t = (tags[k] || []).map(p => `<span class="tag tag--${p}">${p}</span>`).join('');
       cell.innerHTML = `<span class="cell__idx">${k}</span><span class="cell__val">${shown}</span><span class="cell__tags">${t}</span>`;
       box.appendChild(cell);
@@ -26,6 +26,90 @@
       cell.innerHTML = `<span class="cell__idx">${values.length}</span><span class="cell__val" style="border-style:dashed;opacity:.5">·</span><span class="cell__tags">${opts.tailTags.map(p => `<span class="tag tag--${p}">${p}</span>`).join('')}</span>`;
       box.appendChild(cell);
     }
+  }
+
+  /* Интервалы модуля 12 на оси времени: каждый интервал — полоса на своей дорожке.
+     lanes — [{name, bars: [{s, e, cls}]}], lo и hi — края оси.
+     Функции объявлены через function: прогон вызывает их раньше, чем
+     выполняются константы из разделов ниже. */
+  function ivSvg(lanes, lo, hi) {
+    const W = 760, L = 112, R = 18, RH = 30, TOP = 6;
+    const H = TOP + lanes.length * RH + 30;
+    const X = v => L + (v - lo) / Math.max(1, hi - lo) * (W - L - R);
+    const step = hi - lo <= 24 ? 1 : hi - lo <= 60 ? 5 : 10;
+    let g = '';
+    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+      g += `<line class="iv-grid" x1="${X(v)}" x2="${X(v)}" y1="${TOP}" y2="${H - 24}"/>`;
+      g += `<text x="${X(v)}" y="${H - 8}" text-anchor="middle">${v}</text>`;
+    }
+    g += `<line class="tl-axis" x1="${L}" x2="${W - R}" y1="${H - 24}" y2="${H - 24}"/>`;
+    lanes.forEach((lane, k) => {
+      const y = TOP + k * RH;
+      g += `<text class="iv-name" x="${L - 10}" y="${y + 19}" text-anchor="end">${esc(lane.name)}</text>`;
+      lane.bars.forEach(b => {
+        const x1 = X(b.s), x2 = X(b.e), w = Math.max(3, x2 - x1);
+        const txt = b.txt || `[${b.s}, ${b.e})`;
+        g += `<rect class="iv-bar ${b.cls || ''}" x="${x1}" y="${y + 4}" width="${w}" height="20"><title>${esc(txt)}</title></rect>`;
+        if (w >= txt.length * 7.4 + 8) g += `<text class="iv-txt ${b.cls || ''}" x="${x1 + w / 2}" y="${y + 18.5}" text-anchor="middle">${esc(txt)}</text>`;
+        else if (lane.bars.length === 1) g += `<text class="iv-txt iv-txt--out" x="${x2 + 6}" y="${y + 18.5}">${esc(txt)}</text>`;
+      });
+    });
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Интервалы на оси времени">${g}</svg>`;
+  }
+
+  function ivParse(s) {
+    if (typeof s !== 'string' || s[0] !== '[') return null;
+    try { const v = JSON.parse(s); return Array.isArray(v) ? v : null; } catch (_) { return null; }
+  }
+  const isPair = p => Array.isArray(p) && p.length === 2 && p.every(x => typeof x === 'number');
+  const isPairs = v => Array.isArray(v) && v.every(isPair);
+
+  /* Края оси для всего прогона: по всем интервалам во всех кадрах. */
+  function ivRange(t) {
+    let lo = Infinity, hi = -Infinity;
+    const take = p => { lo = Math.min(lo, p[0]); hi = Math.max(hi, p[1], p[0]); };
+    t.frames.forEach(f => {
+      if (isPairs(f.arr)) f.arr.forEach(take);
+      Object.values(f.vars).forEach(s => { const v = ivParse(s); if (v && isPairs(v)) v.forEach(take); else if (v && isPair(v)) take(v); });
+    });
+    if (lo === Infinity) { lo = 0; hi = 10; }
+    return [Math.floor(lo) - 1, Math.ceil(hi) + 1];
+  }
+
+  /* Кадр прогона в зонах intervals и pairs.
+     intervals — объединение и вставка: текущий интервал [start, end) подсвечен
+     на дорожке списка, внизу — списки merged, result или slots из переменных.
+     pairs — проверка конфликтов: ordered[i] сравнивается с ordered[i − 1]. */
+  function drawIvTrace(box, f, t, zone) {
+    if (!t._range) t._range = ivRange(t);
+    const [lo, hi] = t._range;
+    const vnum = n => (f.vars[n] !== undefined && /^-?\d+$/.test(f.vars[n])) ? Number(f.vars[n]) : null;
+    let rows = isPairs(f.arr) ? f.arr : null, rowName = t.arr_name;
+    if (!rows) {
+      const raw = ivParse(f.vars.intervals);
+      if (raw && isPairs(raw)) { rows = raw; rowName = 'intervals'; }
+    }
+    rows = rows || [];
+    const i = vnum('i'), cur = ivParse(f.vars.iv);
+    const s = vnum('start') !== null ? vnum('start') : isPair(cur) ? cur[0] : null;
+    const e = vnum('end') !== null ? vnum('end') : isPair(cur) ? cur[1] : null;
+    let hot = -1;
+    if (zone === 'pairs' && i !== null) hot = i;
+    else if (s !== null && e !== null) hot = rows.findIndex(p => p[0] === s && p[1] === e);
+    if (zone === 'intervals' && hot < 0 && i !== null && i < rows.length) hot = i;
+    const lanes = rows.map((p, k) => {
+      let cls = '';
+      if (zone === 'pairs' && i !== null) cls = k === i ? 'is-hot' : k === i - 1 ? 'is-prev' : k < i - 1 ? 'is-done' : '';
+      else if (k === hot) cls = 'is-hot';
+      return { name: `${rowName}[${k}]`, bars: [{ s: p[0], e: p[1], cls }] };
+    });
+    const same = s !== null && e !== null && rows.some(p => p[0] === s && p[1] === e);
+    if (zone === 'intervals' && !same && s !== null && e !== null && s <= e) lanes.push({ name: 'start, end', bars: [{ s, e, cls: 'is-new' }] });
+    ['merged', 'result', 'slots'].forEach(name => {
+      const v = ivParse(f.vars[name]);
+      if (v && isPairs(v)) lanes.push({ name, bars: v.map(p => ({ s: p[0], e: p[1], cls: 'is-merged' })) });
+    });
+    box.innerHTML = `<div class="ivtrace">${ivSvg(lanes, lo, hi)}</div>`;
   }
 
   /* ── 1. Пошаговый прогон ──────────────────────────────────────── */
@@ -39,7 +123,8 @@
      events — события во временном окне: левее l бледно, с l по r — окно;
      prefix — список prefix модуля 11 (см. ниже);
      prefix1 — то же для запроса [l, r] с включённым концом: prefix[l] и prefix[r + 1];
-     balance — левее i, сам i и правее i для равновесного индекса. */
+     balance — левее i, сам i и правее i для равновесного индекса;
+     intervals, pairs — интервалы модуля 12 на оси времени вместо ячеек (drawIvTrace). */
   document.querySelectorAll('.tracer[data-trace]').forEach(root => {
     const t = (window.TRACES || {})[root.dataset.trace];
     if (!t) { root.innerHTML = '<p style="padding:14px">Прогон не загружен.</p>'; return; }
@@ -102,7 +187,8 @@
       const r = zone === 'compress' ? num(f, 'start') : num(f, 'r');
       const flash = new Set();
       if (prev && prev.arr) arr.forEach((v, k) => { if (prev.arr[k] !== v) flash.add(k); });
-      drawCells(cells, arr, {
+      if (zone === 'intervals' || zone === 'pairs') drawIvTrace(cells, f, t, zone);
+      else drawCells(cells, arr, {
         tags, tailTags: tail, flash,
         cls: k => {
           if (zone === 'between' && i !== null && j !== null) return (k < i || k > j) ? 'is-out' : '';
@@ -1286,6 +1372,208 @@
       if (b.dataset.act === 'reset') reset();
     });
     input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); check(); } });
+    reset();
+  });
+
+  /* ── 9и. Интервалы на оси (без управления) ───────────────────── */
+  /* data-a — интервалы, data-name — подпись дорожек (по умолчанию intervals),
+     data-hot — индексы подсвеченных интервалов, data-merged — нижняя
+     дорожка с блоками, data-merged-name — её подпись. */
+  document.querySelectorAll('.ivshow').forEach(root => {
+    const a = json(root, 'a') || [];
+    const hot = json(root, 'hot') || [];
+    const merged = json(root, 'merged');
+    const name = root.dataset.name || 'intervals';
+    const all = a.flat().concat(merged ? merged.flat() : []);
+    const lanes = a.map((p, k) => ({ name: `${name}[${k}]`, bars: [{ s: p[0], e: p[1], cls: hot.includes(k) ? 'is-hot' : '' }] }));
+    if (merged) lanes.push({ name: root.dataset.mergedName || 'merged', bars: merged.map(p => ({ s: p[0], e: p[1], cls: 'is-merged' })) });
+    root.classList.add('widget');
+    root.innerHTML = `<div class="widget__head"><b>${esc(root.dataset.title || 'Интервалы на оси времени')}</b><span>интервал — [start, end)</span></div>
+      <div class="widget__body"><div class="ivtrace">${ivSvg(lanes, Math.min(...all) - 1, Math.max(...all) + 1)}</div></div>`;
+  });
+
+  /* ── 9й. Два интервала ────────────────────────────────────────── */
+  /* data-a и data-b — интервалы [start, end). A стоит на месте, B двигается
+     кнопками. Под осью — условие пересечения с подставленными числами
+     и что получилось: пересечение, касание, вложение или промежуток. */
+  document.querySelectorAll('.ivpair').forEach(root => {
+    const A = json(root, 'a') || [10, 14];
+    const B0 = json(root, 'b') || [5, 8];
+    let b;
+    root.classList.add('widget');
+    root.innerHTML = `
+      <div class="widget__head"><b>${esc(root.dataset.title || 'Когда два интервала пересекаются')}</b><span>интервал — полуинтервал [start, end)</span></div>
+      <div class="widget__body">
+        <div class="btnrow slide__kbar">
+          <span>B</span><button class="btn" data-act="left" aria-label="сдвинуть B влево">← сдвиг</button><button class="btn" data-act="right" aria-label="сдвинуть B вправо">сдвиг →</button>
+          <span style="margin-left:14px">длина B</span><button class="btn" data-act="shorter" aria-label="укоротить B">−</button><b class="slide__k"></b><button class="btn" data-act="longer" aria-label="удлинить B">+</button>
+        </div>
+        <div class="ivtrace"></div>
+        <p class="slide__sum" aria-live="polite"></p>
+        <div class="btnrow"><button class="btn" data-act="reset">↻ сначала</button></div>
+      </div>`;
+    const wrap = root.querySelector('.ivtrace'), say = root.querySelector('.slide__sum');
+    const lo = A[0] - 9, hi = A[1] + 9;
+    function draw() {
+      const [s1, e1] = A, [s2, e2] = b;
+      const c1 = s1 < e2, c2 = s2 < e1, cross = c1 && c2;
+      const lanes = [{ name: 'A', bars: [{ s: s1, e: e1, cls: 'is-prev' }] }, { name: 'B', bars: [{ s: s2, e: e2, cls: 'is-hot' }] }];
+      if (cross) lanes.push({ name: 'общая часть', bars: [{ s: Math.max(s1, s2), e: Math.min(e1, e2), cls: 'is-merged' }] });
+      wrap.innerHTML = ivSvg(lanes, lo, hi);
+      root.querySelector('.slide__k').textContent = e2 - s2;
+      root.querySelector('[data-act="left"]').disabled = s2 <= lo;
+      root.querySelector('[data-act="right"]').disabled = e2 >= hi;
+      root.querySelector('[data-act="shorter"]').disabled = e2 - s2 <= 1;
+      root.querySelector('[data-act="longer"]').disabled = e2 >= hi;
+      const cond = `a.start &lt; b.end and b.start &lt; a.end → ${s1} &lt; ${e2} and ${s2} &lt; ${e1} → <b>${c1 ? 'True' : 'False'} and ${c2 ? 'True' : 'False'}</b>. `;
+      let what;
+      if (cross) {
+        const ms = Math.max(s1, s2), me = Math.min(e1, e2);
+        what = s2 >= s1 && e2 <= e1 ? `B лежит внутри A. Общая часть совпадает с B: [${ms}, ${me}).`
+          : s1 >= s2 && e1 <= e2 ? `A лежит внутри B. Общая часть совпадает с A: [${ms}, ${me}).`
+          : `Интервалы пересекаются, общая часть [${ms}, ${me}) длиной ${me - ms}.`;
+      } else if (s2 === e1 || s1 === e2) {
+        const t = s2 === e1 ? e1 : e2;
+        what = `Интервалы касаются: один заканчивается в момент ${t}, другой в этот момент начинается. Общего времени нет, поэтому полуинтервалы не пересекаются. В записи с включённым концом, как в LeetCode 56, момент ${t} входит в оба интервала.`;
+      } else {
+        const gap = s2 > e1 ? s2 - e1 : s1 - e2;
+        what = `Интервалы не пересекаются, между ними свободный промежуток длиной ${gap}. Ложно условие ${c1 ? 'b.start &lt; a.end: B начинается после конца A' : 'a.start &lt; b.end: B заканчивается раньше начала A'}.`;
+      }
+      say.innerHTML = cond + what;
+    }
+    function reset() { b = B0.slice(); draw(); }
+    root.addEventListener('click', e => {
+      const btn = e.target.closest('[data-act]'); if (!btn) return;
+      const a = btn.dataset.act;
+      if (a === 'reset') return reset();
+      if (a === 'left' && b[0] > lo) { b[0]--; b[1]--; }
+      if (a === 'right' && b[1] < hi) { b[0]++; b[1]++; }
+      if (a === 'shorter' && b[1] - b[0] > 1) b[1]--;
+      if (a === 'longer' && b[1] < hi) b[1]++;
+      draw();
+    });
+    reset();
+  });
+
+  /* ── 9к. Интервалы вручную ────────────────────────────────────── */
+  /* data-a — интервалы в порядке заявок, data-goal — merge или conflict.
+     Сначала интервалы сортируются по началу кнопкой sorted. Затем
+     на каждом интервале решение принимает студент:
+     merge — продлить последний блок или начать новый;
+     conflict — есть ли конфликт с предыдущим интервалом.
+     Неверный ход не выполняется, вместо него — объяснение. */
+  document.querySelectorAll('.ivhand').forEach(root => {
+    const src = json(root, 'a') || [];
+    const goal = root.dataset.goal === 'conflict' ? 'conflict' : 'merge';
+    const sorted = src.slice().sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+    let ordered, k, merged, errors, done;
+    const all = src.flat();
+    const lo = Math.min(...all) - 1, hi = Math.max(...all) + 1;
+    root.classList.add('widget');
+    const choice = goal === 'merge'
+      ? '<button class="btn" data-act="join">Продлить последний блок</button><button class="btn" data-act="new">Начать новый блок</button>'
+      : '<button class="btn" data-act="clash">Конфликт с предыдущим</button><button class="btn" data-act="fine">Конфликта нет</button>';
+    root.innerHTML = `
+      <div class="widget__head"><b>${esc(root.dataset.title || (goal === 'merge' ? 'Объединение вручную' : 'Поиск конфликта вручную'))}</b><span>${goal === 'merge' ? 'сортировка и один проход' : 'сортировка и сравнение соседей'}</span></div>
+      <div class="widget__body">
+        <div class="ivtrace"></div>
+        <p class="rwg__now"></p>
+        <div class="btnrow" data-row="sort"><button class="btn btn--main" data-act="sort">sorted(intervals)</button></div>
+        <div class="btnrow" data-row="pick" hidden>${choice}</div>
+        <p class="hunt__msg" aria-live="polite"></p>
+        <div class="btnrow"><span style="flex:1"></span><button class="btn" data-act="reset">↻ заново</button></div>
+        <div class="legend"><span><i class="l-ivhot"></i>текущий интервал</span>${goal === 'merge' ? '<span><i class="l-ivmerged"></i>блоки merged</span>' : '<span><i class="l-ivprev"></i>предыдущий интервал</span>'}<span><i class="l-done"></i>пройден</span></div>
+      </div>`;
+    const wrap = root.querySelector('.ivtrace'), now = root.querySelector('.rwg__now'), msg = root.querySelector('.hunt__msg');
+    const rowSort = root.querySelector('[data-row="sort"]'), rowPick = root.querySelector('[data-row="pick"]');
+    const say = (t, kind = '') => { msg.className = 'hunt__msg' + (kind ? ' is-' + kind : ''); msg.innerHTML = t; };
+    const iv = p => `[${p[0]}, ${p[1]})`;
+    function reset() {
+      ordered = null; k = 0; merged = []; errors = 0; done = false;
+      say('Интервалы стоят в порядке заявок. В таком порядке пересекающиеся интервалы могут оказаться далеко друг от друга. Отсортируйте их по началу.');
+      draw();
+    }
+    function draw() {
+      const rows = ordered || src;
+      const name = ordered ? 'ordered' : 'intervals';
+      const lanes = rows.map((p, j) => {
+        let cls = '';
+        if (ordered && !done) cls = j === k ? 'is-hot' : (goal === 'conflict' && j === k - 1) ? 'is-prev' : j < k ? 'is-done' : '';
+        return { name: `${name}[${j}]`, bars: [{ s: p[0], e: p[1], cls }] };
+      });
+      if (goal === 'merge' && ordered) lanes.push({ name: 'merged', bars: merged.map(p => ({ s: p[0], e: p[1], cls: 'is-merged' })) });
+      wrap.innerHTML = ivSvg(lanes, lo, hi);
+      rowSort.hidden = Boolean(ordered);
+      rowPick.hidden = !ordered || done;
+      if (!ordered || done) now.innerHTML = '';
+      else if (goal === 'merge') now.innerHTML = `Интервал ${iv(ordered[k])}. Последний блок merged — ${iv(merged[merged.length - 1])}. Продлить его или начать новый?`;
+      else now.innerHTML = `Сравните ordered[${k}] = ${iv(ordered[k])} с предыдущим ordered[${k - 1}] = ${iv(ordered[k - 1])}.`;
+    }
+    function next() {
+      k++;
+      if (k === ordered.length) {
+        done = true;
+        if (goal === 'merge') say(`Готово: merged = ${JSON.stringify(merged).replace(/,/g, ', ')}. ${merged.length} ${plural(merged.length, 'блок', 'блока', 'блоков')} занятости из ${ordered.length} ${plural(ordered.length, 'интервала', 'интервалов', 'интервалов')}. Ошибок: ${errors}.`, 'ok');
+        else say(`Все соседние пары проверены, конфликтов нет: can_attend вернёт <b>True</b>. Ошибок: ${errors}.`, 'ok');
+      }
+    }
+    root.addEventListener('click', e => {
+      const b = e.target.closest('[data-act]'); if (!b) return;
+      const a = b.dataset.act;
+      if (a === 'reset') return reset();
+      if (a === 'sort') {
+        ordered = sorted.map(p => p.slice());
+        if (goal === 'merge') {
+          merged = [ordered[0].slice()]; k = 1;
+          say(`После сортировки начала идут по возрастанию. merged пуст, поэтому первый интервал ${iv(ordered[0])} начинает первый блок.`);
+        } else {
+          k = 1;
+          say('После сортировки начала идут по возрастанию. Конфликт, если он есть, найдётся у соседней пары: интервал сравнивают только с предыдущим.');
+        }
+        if (ordered.length < 2) { done = true; say(goal === 'merge' ? `Интервал один, merged = ${JSON.stringify(merged)}.` : 'Интервал один, конфликтов нет: True.', 'ok'); }
+        return draw();
+      }
+      if (!ordered || done) return;
+      const [s, en] = ordered[k];
+      if (goal === 'merge') {
+        const last = merged[merged.length - 1];
+        const joins = s <= last[1];
+        if (a === 'join' && joins) {
+          const old = last[1];
+          last[1] = Math.max(last[1], en);
+          say(en <= old
+            ? `Верно: ${s} ≤ ${old}, интервал ${s < old ? 'пересекает блок' : 'касается блока'}. Его конец ${en} не больше ${old}, блок не меняется: max(${old}, ${en}) = ${old}.`
+            : `Верно: ${s} ≤ ${old}, интервал ${s < old ? 'пересекает блок' : 'касается блока'}. Блок продлевается до max(${old}, ${en}) = ${en}.`);
+          next();
+        } else if (a === 'new' && !joins) {
+          merged.push([s, en]);
+          say(`Верно: ${s} &gt; ${last[1]}, между блоком и интервалом свободно ${s - last[1]}. Блок ${iv(last)} закрыт: начала следующих интервалов не меньше ${s}, ни один из них его не достанет.`);
+          next();
+        } else {
+          errors++;
+          say(joins
+            ? `Начало ${s} не больше конца блока ${last[1]}: интервал ${s < last[1] ? 'пересекает блок' : 'касается блока'}, свободного времени между ними нет. Это один блок занятости.`
+            : `Между концом блока ${last[1]} и началом ${s} свободно ${s - last[1]}. Если продлить блок, это время станет занятым.`, 'no');
+        }
+      } else {
+        const prev = ordered[k - 1];
+        const clash = s < prev[1];
+        if (a === 'clash' && clash) {
+          done = true;
+          say(`Верно: ${s} &lt; ${prev[1]}, интервал ${iv(ordered[k])} начинается до конца ${iv(prev)}. Конфликт найден, can_attend вернёт <b>False</b>. Остальные пары проверять не нужно. Ошибок: ${errors}.`, 'ok');
+        } else if (a === 'fine' && !clash) {
+          say(s === prev[1] ? `Верно: ${s} = ${prev[1]}, встречи касаются. Одна заканчивается в момент ${s}, другая в этот момент начинается — конфликта нет.` : `Верно: ${s} ≥ ${prev[1]}, интервал начинается после конца предыдущего.`);
+          next();
+        } else {
+          errors++;
+          say(clash
+            ? `${iv(ordered[k])} начинается в ${s}, а ${iv(prev)} заканчивается в ${prev[1]}: с ${s} до ${Math.min(prev[1], en)} заняты обе встречи.`
+            : s === prev[1] ? `Встречи касаются: ${iv(prev)} заканчивается в ${s}, и в этот момент начинается ${iv(ordered[k])}. В полуинтервале [start, end) момент end не входит, конфликта нет.`
+            : `${iv(ordered[k])} начинается в ${s}, это позже конца ${iv(prev)} в ${prev[1]}. Общего времени нет.`, 'no');
+        }
+      }
+      draw();
+    });
     reset();
   });
 

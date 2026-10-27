@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>12.4 Границы и ошибки · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 12 · Интервалы · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 12 · интервалы</p>
+          <p class="running__folio">Глава 12.4</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">12.4</span>
+          <h1>Границы<br>и ошибки</h1>
+          <p class="lead">Контроль занятия по КТП: «объяснить, зачем данные сортируются, по какому ключу и почему итоговая сложность решения O(n log n)». В этой главе — граничные входы двух функций модуля и ошибки, которые видны только на них, сводка ошибок по симптомам и схема объяснения решения интервьюеру.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Граничные входы</a></li>
+            <li><a href="#s2">Сводка ошибок по симптомам</a></li>
+            <li><a href="#s3">Исправьте функции</a></li>
+            <li><a href="#s4">Как объяснить решение</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Граничные входы</h2>
+        <p>У задач на интервалы граничные входы — касание, вложенный интервал, повтор, пустой список, конфликт в последней паре и сам входной список, который нельзя портить. Касание и вложение разобраны в главах 12.2 и 12.3. Ниже ещё четыре версии, в которых одна-две строки записаны иначе. Каждая запущена рядом с верной на том же входе. В первых двух ответ верный, а ошибка видна в строке «Список после вызова» под прогоном.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>Функции с изменёнными строками</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>intervals.sort()</button>
+            <button>merged.append(iv)</button>
+            <button>первый блок до цикла</button>
+            <button>range(1, len − 1)</button>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>merge_intervals</code> вместо <code>sorted</code> стоит метод <code>sort</code>. Вход — брони рампы в порядке заявок.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="var_sort_inplace" data-zone="intervals" data-title="intervals.sort()"></div>
+            <p class="demo__verdict"><b>Вход изменён</b>Ответ верный, <code>[[9, 12], [13, 18]]</code>. Но <code>sort</code> отсортировал список вызывающего: после вызова брони лежат по началу, порядок заявок потерян. Это нарушает контракт и карточку изменения условия из КТП: «сохранить исходный порядок».</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="merge" data-zone="intervals" data-title="ordered = sorted(intervals)"></div>
+            <p class="demo__verdict"><b>Вход цел</b>После вызова брони стоят в порядке заявок.</p>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>merge_intervals</code> новый блок — сам интервал из <code>ordered</code>: <code>merged.append(iv)</code>. Вход тот же.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="var_alias" data-zone="intervals" data-title="merged.append(iv)"></div>
+            <p class="demo__verdict"><b>Вход изменён</b>Ответ верный, но после вызова первая бронь стала <code>[13, 18]</code>. <code>sorted</code> создаёт новый список, а интервалы в нём те же объекты, что во входном списке. На шагах 14 и 17 продление блока меняет и бронь <code>[13, 15]</code> во входных данных.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="merge" data-zone="intervals" data-title="merged.append([start, end])"></div>
+            <p class="demo__verdict"><b>Вход цел</b>В <code>merged</code> кладётся новый список <code>[start, end]</code>, входные интервалы не меняются.</p>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>merge_intervals</code> первый блок берётся до цикла: <code>merged = [list(ordered[0])]</code>, цикл идёт по <code>ordered[1:]</code>. Вход — пустой список.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="var_first" data-zone="intervals" data-title="merged = [list(ordered[0])]"></div>
+            <p class="demo__verdict"><b>IndexError</b>На шаге 2 у пустого списка нет элемента с индексом 0. На любом непустом входе эта версия отвечает верно.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_first" data-zone="intervals" data-title="merged = []"></div>
+            <p class="demo__verdict"><b>[]</b>Цикл не выполняется ни разу, функция возвращает пустой список блоков.</p>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>can_attend</code> цикл записан как <code>range(1, len(ordered) - 1)</code>. Вход — <code>[[9, 11], [13, 15], [14, 16]]</code>, конфликт только в последней паре.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="var_last_pair" data-zone="pairs" data-title="range(1, len(ordered) - 1)"></div>
+            <p class="demo__verdict"><b>True</b>На шаге 4 цикл заканчивается, не дойдя до пары <code>[13, 15]</code> и <code>[14, 16]</code>. Ошибка на единицу в границе <code>range</code>: последняя пара не проверяется.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_last_pair" data-zone="pairs" data-title="range(1, len(ordered))"></div>
+            <p class="demo__verdict"><b>False</b>На шаге 5 найдено: 14 &lt; 15.</p>
+          </div>
+        </div>
+        <p>Первые две ошибки тесты на ответ не находят: ответ верный. Их находит только тест, который после вызова сравнивает входной список с копией, сделанной до вызова. Во второй ошибке список <code>ordered</code> новый, а интервалы в нём общие с входом. Копия <code>sorted</code> — неглубокая: копируется внешний список, а внутренние списки остаются общими.</p>
+        <details class="pyhint"><summary>Python в этой строке: <code>b[1] is a[0]</code></summary><div><p>Оператор <code>is</code> проверяет, один ли это объект в памяти. После <code>sorted</code> интервал <code>[13, 15]</code> в новом списке и во входном — один и тот же список. Метод <code>sort</code> меняет сам список и возвращает <code>None</code>.</p><pre>&gt;&gt;&gt; a = [[13, 15], [9, 12]]
+&gt;&gt;&gt; b = sorted(a)
+&gt;&gt;&gt; b[1] is a[0]
+True
+&gt;&gt;&gt; a.sort()
+&gt;&gt;&gt; a
+[[9, 12], [13, 15]]</pre></div></details>
+
+        <h2 id="s2"><span class="sec">§2</span>Сводка ошибок по симптомам</h2>
+        <p>Когда тест падает, первым видно неверный ответ, исключение или изменённый вход. По симптому в таблице находят строку кода, которую нужно проверить, и вход, на котором ошибку видно. В последнем столбце — где ошибка запущена по шагам.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Симптом</th><th>Где искать</th><th>Вход, который её показывает</th><th>Прогон</th></tr></thead>
+            <tbody>
+              <tr><td>Блоков больше верного, соседние блоки касаются</td><td><code>start &lt; merged[-1][1]</code> вместо <code>&lt;=</code></td><td><code>[[9, 11], [11, 12]]</code></td><td><a href="02-obedinenie.html#s6">12.2, §6</a></td></tr>
+              <tr><td>Блок короче верного</td><td><code>merged[-1][1] = end</code> без <code>max</code></td><td>Вложенный интервал: <code>[[1, 10], [2, 3]]</code></td><td><a href="02-obedinenie.html#s6">12.2, §6</a></td></tr>
+              <tr><td>Часть интервалов пропала из блоков</td><td>Нет сортировки или сортировка по концу</td><td>Неотсортированный вход; <code>[[1, 10], [2, 3], [4, 5]]</code></td><td><a href="02-obedinenie.html#s6">12.2, §6</a>; <a href="03-vstrechi-bez-konfliktov.html#s5">12.3, §5</a></td></tr>
+              <tr><td>Конфликт там, где встречи касаются</td><td><code>&lt;=</code> вместо <code>&lt;</code> в <code>can_attend</code></td><td><code>[[9, 11], [11, 12]]</code></td><td><a href="03-vstrechi-bez-konfliktov.html#s4">12.3, §4</a></td></tr>
+              <tr><td>Конфликт там, где его нет, встречи не касаются</td><td>Нет сортировки в <code>can_attend</code></td><td><code>[[13, 15], [9, 11]]</code></td><td><a href="03-vstrechi-bez-konfliktov.html#s4">12.3, §4</a></td></tr>
+              <tr><td>Конфликт пропущен</td><td>Граница <code>range</code></td><td>Конфликт только в последней паре</td><td><a href="#s1">12.4, §1</a></td></tr>
+              <tr><td><code>IndexError</code> на пустом списке</td><td>Первый элемент берётся до цикла</td><td><code>[]</code></td><td><a href="#s1">12.4, §1</a></td></tr>
+              <tr><td>После вызова изменился порядок интервалов</td><td><code>intervals.sort()</code></td><td>Неотсортированный вход и копия до вызова</td><td><a href="#s1">12.4, §1</a></td></tr>
+              <tr><td>После вызова изменились числа во входных интервалах</td><td><code>merged.append(iv)</code> и продление блока</td><td>Пересекающиеся интервалы и копия до вызова</td><td><a href="#s1">12.4, §1</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Ошибки таблицы делятся на три группы. Первая — знак сравнения: склейка допускает касание (<code>&lt;=</code>), конфликт — нет (<code>&lt;</code>). Вторая — порядок: правило «сравнить с последним блоком или с соседом» верно только после сортировки по началу. Третья — входной список: <code>sorted</code> вместо <code>sort</code> и новые списки для блоков. Пример с бронями рампы находит ошибки в <code>merge_intervals</code> из первых двух групп: в нём есть касание, вложенная бронь и неотсортированный порядок. Остальные ошибки находят пустой список, касание и конфликт в последней паре для <code>can_attend</code> и сравнение входа с копией.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Исправьте функции</h2>
+        <p>В окне ниже две функции модуля, в каждой по две ошибки. В <code>merge_intervals</code> касающиеся интервалы не склеиваются, а в <code>merged</code> кладутся сами входные интервалы. В <code>can_attend</code> касание считается конфликтом, а последняя пара не проверяется. Сначала запустите тесты и посмотрите, какие падают.</p>
+        <div class="sandbox" data-title="Исправьте merge_intervals и can_attend" data-call="print(merge_intervals([[9, 11], [11, 12]]), can_attend([[9, 11], [11, 12]]), can_attend([[9, 11], [13, 15], [14, 16]]))">
+<script type="text/plain" class="sandbox__start">
+def merge_intervals(intervals):
+    ordered = sorted(intervals)
+    merged = []
+    for iv in ordered:
+        if merged and iv[0] < merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], iv[1])
+        else:
+            merged.append(iv)
+    return merged
+
+
+def can_attend(intervals):
+    ordered = sorted(intervals)
+    for i in range(1, len(ordered) - 1):
+        if ordered[i][0] <= ordered[i - 1][1]:
+            return False
+    return True
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_merge_example():
+    """брони рампы"""
+    r = merge_intervals([[13, 15], [9, 12], [16, 18], [10, 11], [15, 16]])
+    assert r == [[9, 12], [13, 18]], f"ожидалось [[9, 12], [13, 18]], получено {r!r}"
+
+def test_merge_keeps_input():
+    """входные интервалы не меняются"""
+    data = [[9, 12], [10, 14]]
+    merge_intervals(data)
+    assert data == [[9, 12], [10, 14]], f"входной список изменился: {data!r}"
+
+def test_attend_touch():
+    """касание конфликтом не считается"""
+    r = can_attend([[9, 11], [11, 12]])
+    assert r is True, f"ожидалось True, получено {r!r}"
+
+def test_attend_last_pair():
+    """конфликт только в последней паре"""
+    r = can_attend([[9, 11], [13, 15], [14, 16]])
+    assert r is False, f"ожидалось False, получено {r!r}"
+
+def test_both_match_brute():
+    """200 случайных списков: обе функции совпадают с перебором"""
+    import random
+    rnd = random.Random(124)
+    for _ in range(200):
+        data = []
+        for _ in range(rnd.randint(0, 6)):
+            s = rnd.randint(0, 20)
+            data.append([s, s + rnd.randint(1, 5)])
+        busy = set()
+        for s, e in data:
+            busy.update(range(s, e))
+        want = []
+        for t in sorted(busy):
+            if want and t == want[-1][1]:
+                want[-1][1] = t + 1
+            else:
+                want.append([t, t + 1])
+        got = merge_intervals([iv[:] for iv in data])
+        assert got == want, f"merge_intervals({data}): ожидалось {want}, получено {got}"
+        ok = not any(a[0] < b[1] and b[0] < a[1] for k, a in enumerate(data) for b in data[k + 1:])
+        assert can_attend(data) == ok, f"can_attend({data}): ожидалось {ok}"
+</script>
+</div>
+
+        <h2 id="s4"><span class="sec">§4</span>Как объяснить решение</h2>
+        <p>Контроль КТП проверяет три вещи: зачем сортировать, по какому ключу и откуда O(n log n). На собеседовании ответ строится в том же порядке, от перебора к сортировке.</p>
+        <ol class="steps">
+          <li><b>Перебор и его цена.</b> «Без порядка любой интервал может пересечься с любым: сравниваю все пары, O(n²)». Перебор — эталон для тестов: на маленьких входах его ответы сравнивают с быстрым решением.</li>
+          <li><b>Зачем сортировка и по какому ключу.</b> Назвать ключ и то, что он даёт: «по началу — следующие интервалы начинаются не раньше текущего, поэтому закрытый блок больше не изменится и достаточно сравнить с последним блоком или соседом». Если ключ другой, сказать, почему: в задаче 1288 при равном начале первым нужен более длинный интервал.</li>
+          <li><b>Сложность и границы.</b> «Сортировка O(n log n), проход O(n), вместе O(n log n); память O(n) на копию». Затем назвать запись интервала, знак сравнения и граничные тесты: касание, вложенный интервал, пустой список, вход не изменился.</li>
+        </ol>
+        <div class="speech">
+          <div class="speech__item">
+            <p class="speech__said">«Перебор проверяет все пары броней, это O(n²). Сортирую копию по началу: тогда у следующей брони начало не меньше, и если она не задевает последний блок, блок закончен. Каждую бронь сравниваю только с последним блоком. Сортировка O(n log n), проход O(n), итог O(n log n)».</p>
+            <p class="speech__note"><b>Что показывает</b>Зачем сортировать, ключ и откуда итоговая сложность.</p>
+          </div>
+          <div class="speech__item">
+            <p class="speech__said">«Бронь — [start, end), касающиеся брони склеиваю, поэтому start &lt;= конец блока. Конец блока — max, потому что бронь может лежать внутри. Сортирую через sorted и кладу в ответ новые списки: вход не меняется. Тесты — касание, вложенная бронь, пустой список и сравнение входа с копией».</p>
+            <p class="speech__note"><b>Что показывает</b>Запись интервала, знак сравнения и граничные случаи.</p>
+          </div>
+        </div>
+
+        <div class="pager"><a href="03-vstrechi-bez-konfliktov.html">← 12.3 Встречи без конфликтов</a><a href="05-praktika-i-dz.html">12.5 Практика и ДЗ →</a></div>
+        <div class="colophon">
+          <span>Модуль 12 · Интервалы · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>

@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>12.2 Объединение пересекающихся интервалов · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 12 · Интервалы · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 12 · интервалы</p>
+          <p class="running__folio">Глава 12.2</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">12.2</span>
+          <h1>Объединение<br>пересекающихся интервалов</h1>
+          <p class="lead">Первая задача КТП — склеить пересекающиеся брони рампы в блоки занятости. В главе разобрано, почему без сортировки приходится сравнивать всё со всем и что меняет сортировка по началу. Затем ручной проход, код с пошаговым прогоном, оценка O(n log n) с замером и три изменённые версии кода.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Перебор и зачем сортировать</a></li>
+            <li><a href="#s2">Объединение вручную</a></li>
+            <li><a href="#s3">Сортировка в Python</a></li>
+            <li><a href="#s4">Код и пошаговый прогон</a></li>
+            <li><a href="#s5">Почему время O(n log n)</a></li>
+            <li><a href="#s6">Три изменённые версии</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Перебор и зачем сортировать</h2>
+        <p>Без порядка бронь может пересечься с любым из уже собранных блоков. Возьмём брони в порядке заявок: <code>[13, 15]</code>, <code>[9, 12]</code>, <code>[16, 18]</code>. Пока это три отдельных блока. Следующая бронь <code>[15, 16]</code> касается и первого блока, и третьего, и после неё эти два блока сливаются в один. Перебор поэтому устроен так: найти любую пару блоков, которые пересекаются или касаются, склеить её и искать снова. Одна проверка всех пар — O(n²) сравнений, а повторов бывает много.</p>
+        <p>Сортировка по началу меняет картину. Так склеивают куски ленты, разложенные на столе по месту, где начинается каждый: слева направо, и каждый следующий кусок прикладывают только к концу последнего склеенного, потому что остальные куски лежат левее и уже закончились. С бронями так же. После сортировки текущую бронь сравнивают с последним блоком в списке <code>merged</code>, и вариантов два.</p>
+        <ul>
+          <li><b>Начало брони не больше конца блока.</b> Бронь пересекает блок или касается его. Свободного времени между ними нет, блок продлевается до большего из двух концов.</li>
+          <li><b>Начало брони больше конца блока.</b> Между ними свободное время. Блок закончен: у всех следующих броней начало не меньше текущего, значит, тоже больше конца блока. Бронь начинает новый блок.</li>
+        </ul>
+        <p>Каждая бронь обрабатывается одним сравнением. Порядок, в котором это работает, даёт только сортировка: в списке заявок бронь <code>[9, 12]</code> идёт после <code>[13, 15]</code>, и правило «сравнить с последним блоком» ошибается. Это видно в §6.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Объединение вручную</h2>
+        <p>Отсортируйте брони и пройдите их сами. На каждой брони выберите: продлить последний блок или начать новый. Неверный ход не выполняется, вместо него появляется объяснение.</p>
+        <div class="ivhand" data-a="[[13,15],[9,12],[16,18],[10,11],[15,16]]" data-goal="merge" data-title="Брони рампы: объединение вручную"></div>
+        <p>Пять броней дали четыре решения, каждое — одно сравнение начала брони с концом последнего блока. На брони <code>[10, 11]</code> блок не изменился: она лежит внутри <code>[9, 12]</code>, и конец блока — большее из 12 и 11. На бронях <code>[15, 16]</code> и <code>[16, 18]</code> начало равно концу блока: брони касаются, и блок продлевается.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Сортировка в Python</h2>
+        <p>Функция <code>sorted</code> принимает список и возвращает новый, отсортированный. Исходный список не меняется. Списки из двух чисел Python сравнивает по первому числу, а при равных первых — по второму. Поэтому <code>sorted(intervals)</code> упорядочивает брони по началу, а брони с одинаковым началом — по концу. Для объединения этого достаточно.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; intervals = [[13, 15], [9, 12], [16, 18], [10, 11], [15, 16]]
+&gt;&gt;&gt; sorted(intervals)
+[[9, 12], [10, 11], [13, 15], [15, 16], [16, 18]]
+&gt;&gt;&gt; intervals
+[[13, 15], [9, 12], [16, 18], [10, 11], [15, 16]]
+&gt;&gt;&gt; [9, 12] &lt; [10, 11]
+True
+&gt;&gt;&gt; [9, 12] &lt; [9, 13]
+True</pre>
+        </figure>
+        <p>У списков есть и метод <code>sort</code>: <code>intervals.sort()</code> сортирует сам список и ничего не возвращает. По контракту из главы 12.1 входной список не меняется, поэтому в решении стоит <code>sorted</code>. Что происходит при <code>sort</code>, показано в главе 12.4.</p>
+        <p>Сортировка n элементов в Python стоит O(n log n) сравнений. На занятии это готовый инструмент: как устроены алгоритмы сортировки и откуда берётся n log n, разбирается на следующих занятиях по КТП.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Код и пошаговый прогон</h2>
+        <p>Функция — сортировка и один цикл с условием из §1. Напишите её сами. Тесты проверяют пример с бронями рампы, касание, вложенную бронь, пустой список, то, что входной список не изменился, и сравнивают ответ с перебором на двухстах случайных списках.</p>
+        <div class="sandbox" data-title="Напишите merge_intervals сами" data-call="print(merge_intervals([[13, 15], [9, 12], [16, 18], [10, 11], [15, 16]]))">
+<script type="text/plain" class="sandbox__start">
+def merge_intervals(intervals):
+    ordered = sorted(intervals)
+    merged = []
+    for start, end in ordered:
+        # Если merged не пуст и start не больше конца последнего блока — продлите блок.
+        # Иначе добавьте в merged новый блок [start, end].
+        pass
+    return merged
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """брони рампы"""
+    r = merge_intervals([[13, 15], [9, 12], [16, 18], [10, 11], [15, 16]])
+    assert r == [[9, 12], [13, 18]], f"ожидалось [[9, 12], [13, 18]], получено {r!r}"
+
+def test_touch():
+    """касающиеся брони склеиваются"""
+    r = merge_intervals([[9, 11], [11, 12]])
+    assert r == [[9, 12]], f"ожидалось [[9, 12]], получено {r!r}"
+
+def test_inside():
+    """бронь внутри другой"""
+    r = merge_intervals([[1, 10], [2, 3], [4, 5]])
+    assert r == [[1, 10]], f"ожидалось [[1, 10]], получено {r!r}"
+
+def test_empty():
+    """броней нет"""
+    r = merge_intervals([])
+    assert r == [], f"ожидалось [], получено {r!r}"
+
+def test_keeps_input():
+    """входной список и брони в нём не меняются"""
+    data = [[13, 15], [9, 12], [16, 18], [10, 11], [15, 16]]
+    merge_intervals(data)
+    assert data == [[13, 15], [9, 12], [16, 18], [10, 11], [15, 16]], f"входной список изменился: {data!r}"
+
+def test_matches_brute():
+    """200 случайных списков: ответ совпадает с перебором по часам"""
+    import random
+    rnd = random.Random(122)
+    for _ in range(200):
+        data = []
+        for _ in range(rnd.randint(0, 7)):
+            s = rnd.randint(0, 20)
+            data.append([s, s + rnd.randint(1, 5)])
+        busy = set()
+        for s, e in data:
+            busy.update(range(s, e))
+        want = []
+        for t in sorted(busy):
+            if want and t == want[-1][1]:
+                want[-1][1] = t + 1
+            else:
+                want.append([t, t + 1])
+        got = merge_intervals([iv[:] for iv in data])
+        assert got == want, f"intervals = {data}: ожидалось {want}, получено {got}"
+</script>
+</div>
+        <details class="pyhint"><summary>Python в этой строке: <code>if merged and start &lt;= merged[-1][1]:</code></summary><div><p>Пустой список в условии <code>if</code> считается ложным, непустой — истинным. Если <code>merged</code> пуст, <code>and</code> не вычисляет вторую часть, и обращения к <code>merged[-1]</code> не происходит. Индекс −1 — последний элемент списка, второй индекс <code>[1]</code> — конец этого блока.</p><pre>&gt;&gt;&gt; merged = []
+&gt;&gt;&gt; bool(merged)
+False
+&gt;&gt;&gt; merged = [[9, 12], [13, 15]]
+&gt;&gt;&gt; merged[-1]
+[13, 15]
+&gt;&gt;&gt; merged[-1][1]
+15</pre></div></details>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n log n) · память O(n)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">merge_intervals</span>(intervals):
+    ordered = <span class="k">sorted</span>(intervals)
+    merged = []
+    <span class="k">for</span> start, end <span class="k">in</span> ordered:
+        <span class="k">if</span> merged <span class="k">and</span> start &lt;= merged[<span class="n">-1</span>][<span class="n">1</span>]:
+            merged[<span class="n">-1</span>][<span class="n">1</span>] = <span class="k">max</span>(merged[<span class="n">-1</span>][<span class="n">1</span>], end)
+        <span class="k">else</span>:
+            merged.append([start, end])
+    <span class="k">return</span> merged</pre>
+        </figure>
+        <p>В строке 8 в <code>merged</code> кладётся новый список <code>[start, end]</code>. Строка 6 потом меняет конец блока. Если бы блок был тем же списком, что лежит во входных данных, изменился бы и вход. Этот случай разобран в главе 12.4.</p>
+        <p>Прогон ниже — на бронях рампы. На оси верхние дорожки — список <code>ordered</code>, текущая бронь подсвечена. Нижняя дорожка — блоки <code>merged</code>, она растёт по ходу прогона.</p>
+        <div class="tracer" data-trace="merge" data-zone="intervals" data-title="Объединение броней рампы"></div>
+        <p>Инвариант цикла: после обработки брони все блоки <code>merged</code>, кроме последнего, закончены и не пересекаются и не касаются ни одной брони, которая ещё впереди, а последний блок покрывает все пройденные брони, которые с ним пересекаются. Инвариант держится на сортировке: следующие брони начинаются не раньше текущей.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Почему время O(n log n)</h2>
+        <p>Сортировка стоит O(n log n). Цикл проходит n броней, на каждой — одно сравнение и одна запись: O(n). Вместе O(n log n + n) = O(n log n): слагаемое n при росте n отстаёт от n log n. Память — O(n): копия <code>ordered</code> и список блоков <code>merged</code>. Перебор из §1 только на одну проверку всех пар тратит O(n²).</p>
+        <p>Замер на ноутбуке автора, Python 3.12: n броней, которые не пересекаются и не касаются, в случайном порядке. Для перебора это худший случай: склеивать нечего, и проверяются все пары.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>n</th><th>Перебор, мс</th><th>Сортировка и проход, мс</th></tr></thead>
+            <tbody>
+              <tr><td>500</td><td>3,99</td><td>0,09</td></tr>
+              <tr><td>1&nbsp;000</td><td>16,86</td><td>0,19</td></tr>
+              <tr><td>2&nbsp;000</td><td>72,93</td><td>0,48</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Когда n удваивается, время перебора растёт примерно в 4 раза, время решения с сортировкой — чуть больше чем в 2. Это первый опыт скрипта <code>bench.py</code> из стартового набора, глава 12.5. Третий опыт того же скрипта показывает, что на входах от 20 000 до 80 000 броней около 70 % времени <code>merge_intervals</code> уходит на <code>sorted</code>, остальное — на проход. Каждое число — медиана пяти запусков.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Три изменённые версии</h2>
+        <p>В каждой версии изменена одна строка. Все три запущены на бронях рампы, исключений нет. Верный ответ — <code>[[9, 12], [13, 18]]</code>.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>merge_intervals(брони рампы)</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>start &lt; конец блока</button>
+            <button>конец блока = end</button>
+            <button>без сортировки</button>
+          </div>
+          <div class="demo__pane">
+            <p>Условие склейки записано со строгим знаком: <code>start &lt; merged[-1][1]</code>.</p>
+            <div class="tracer tracer--bug" data-trace="bug_touch" data-zone="intervals" data-title="start &lt; merged[-1][1]"></div>
+            <p class="demo__verdict"><b>[[9, 12], [13, 15], [15, 16], [16, 18]]</b>На шагах 13 и 16 брони касаются блока, и строгое условие ложно. Касающиеся брони остаются отдельными блоками, хотя рампа занята без перерыва с 13 до 18.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Конец блока заменяется концом брони: <code>merged[-1][1] = end</code>.</p>
+            <div class="tracer tracer--bug" data-trace="bug_end" data-zone="intervals" data-title="merged[-1][1] = end"></div>
+            <p class="demo__verdict"><b>[[9, 11], [13, 18]]</b>На шаге 8 бронь <code>[10, 11]</code> лежит внутри блока <code>[9, 12]</code>, и конец блока уменьшается до 11. Час с 11 до 12 пропадает из ответа. Ошибку видно только на вложенной брони: если каждая следующая бронь заканчивается позже блока, эта версия отвечает верно.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Строки с <code>sorted</code> нет, цикл идёт по <code>intervals</code> в порядке заявок.</p>
+            <div class="tracer tracer--bug" data-trace="bug_no_sort" data-zone="intervals" data-title="без сортировки"></div>
+            <p class="demo__verdict"><b>[[13, 15], [16, 18]]</b>На шаге 6 бронь <code>[9, 12]</code> вливается в блок <code>[13, 15]</code>: условие сравнивает её начало только с концом блока. Начало блока остаётся 13, и часы с 9 до 13 теряются. Правило «сравнить с последним блоком» верно только для отсортированного списка.</p>
+          </div>
+        </div>
+        <p>Первая ошибка видна только на касании, вторая — только на вложенной брони. Поэтому в тестах занятия есть оба случая: <code>[[9, 11], [11, 12]]</code> и <code>[[1, 10], [2, 3], [4, 5]]</code>. Третья ошибка видна на любом неотсортированном входе.</p>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>LeetCode 56 «Merge Intervals» — условие проверено по данным сайта 27.10.2026</li>
+            <li>Документация Python: Sorting Techniques — <a href="https://docs.python.org/3/howto/sorting.html" target="_blank" rel="noopener">docs.python.org/3/howto/sorting.html</a></li>
+            <li>КТП ОП.04, занятие 12</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="01-uznat-zadachu.html">← 12.1 Как узнать задачу</a><a href="03-vstrechi-bez-konfliktov.html">12.3 Встречи без конфликтов →</a></div>
+        <div class="colophon">
+          <span>Модуль 12 · Интервалы · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>

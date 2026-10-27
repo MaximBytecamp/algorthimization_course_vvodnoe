@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>12.3 Встречи без конфликтов: ключ сортировки · Алгоритмы на массивах</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../algo.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 12 · Интервалы · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на массивах</a> · модуль 12 · интервалы</p>
+          <p class="running__folio">Глава 12.3</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">12.3</span>
+          <h1>Встречи без конфликтов:<br>ключ сортировки</h1>
+          <p class="lead">Вторая задача КТП — проверить, можно ли провести все встречи в одной переговорной. В главе разобрано, почему после сортировки достаточно сравнить соседние встречи, код с прогоном и две ошибки. Затем — по какому ключу сортировать: по началу, по концу или по паре чисел. В конце — вставка интервала в уже отсортированный список, где сортировка не нужна.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Задача и перебор</a></li>
+            <li><a href="#s2">Почему достаточно соседей</a></li>
+            <li><a href="#s3">Код и пошаговый прогон</a></li>
+            <li><a href="#s4">Две изменённые версии</a></li>
+            <li><a href="#s5">По какому ключу сортировать</a></li>
+            <li><a href="#s6">Вход уже отсортирован: вставка интервала</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Задача и перебор</h2>
+        <p>Условие LeetCode 252 «Meeting Rooms»: дан список встреч, каждая — пара «начало, конец». Нужно выяснить, можно ли побывать на всех встречах, то есть нет ли двух встреч, которые пересекаются. Задача на LeetCode платная, поэтому условие здесь пересказано. В занятии та же задача звучит так: хватит ли одной переговорной на все встречи дня. Встреча записана полуинтервалом <code>[start, end)</code>, касание конфликтом не считается: одна встреча заканчивается в 11:00, следующая в 11:00 начинается.</p>
+        <p>Перебор сравнивает каждую пару встреч условием пересечения из главы 12.1: <code>a[0] &lt; b[1] and b[0] &lt; a[1]</code>. Пар n·(n − 1)/2, это O(n²). В замере <code>bench.py</code> на 4 000 встреч без конфликтов перебор тратит около 300 мс, решение с сортировкой — меньше 1 мс.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Почему достаточно соседей</h2>
+        <p>После сортировки по началу каждую встречу сравнивают только с предыдущей: <code>ordered[i][0] &lt; ordered[i - 1][1]</code>, то есть начинается ли встреча раньше, чем заканчивается предыдущая. Почему соседей достаточно, видно на трёх встречах.</p>
+        <div class="ivshow" data-a="[[9,13],[10,11],[12,14]]" data-name="ordered" data-hot="[0,2]" data-title="Конфликт через одну встречу"></div>
+        <p>Встречи <code>ordered[0] = [9, 13]</code> и <code>ordered[2] = [12, 14]</code> пересекаются, хотя в списке они не соседи. Между ними стоит <code>ordered[1] = [10, 11]</code>. После сортировки её начало лежит между началами соседей: 9 ≤ 10 ≤ 12. Встреча <code>[12, 14]</code> начинается раньше 13, конца первой встречи, а <code>[10, 11]</code> начинается ещё раньше. Значит, и она пересекает первую встречу. Так в любом отсортированном списке: если встреча пересекается с какой-то из предыдущих, то пересекается и одна из соседних пар между ними. Поэтому проверка соседей находит конфликт всегда, когда он есть.</p>
+        <p>Найдите конфликт сами. После сортировки сравните каждую встречу с предыдущей. Среди пар есть касания: их нужно отличить от конфликта.</p>
+        <div class="ivhand" data-a="[[13,15],[9,11],[15,16],[11,12],[14,17]]" data-goal="conflict" data-title="Встречи переговорной: поиск конфликта"></div>
+
+        <h2 id="s3"><span class="sec">§3</span>Код и пошаговый прогон</h2>
+        <p>Напишите функцию сами. Тесты проверяют встречи без конфликтов с касаниями, конфликт в последней паре, повтор одной встречи, пустой список и сравнивают ответ с перебором всех пар на двухстах случайных списках.</p>
+        <div class="sandbox" data-title="Напишите can_attend сами" data-call="print(can_attend([[13, 15], [9, 11], [15, 16], [11, 12]]))">
+<script type="text/plain" class="sandbox__start">
+def can_attend(intervals):
+    ordered = sorted(intervals)
+    # Для каждого i от 1: если встреча ordered[i] начинается раньше конца ordered[i - 1] — конфликт.
+    return True
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_free_day():
+    """встречи без конфликтов, есть касания"""
+    r = can_attend([[13, 15], [9, 11], [15, 16], [11, 12]])
+    assert r is True, f"ожидалось True, получено {r!r}"
+
+def test_last_pair():
+    """конфликт только в последней паре"""
+    r = can_attend([[9, 11], [13, 15], [14, 16]])
+    assert r is False, f"ожидалось False, получено {r!r}"
+
+def test_duplicate():
+    """одна встреча записана дважды"""
+    r = can_attend([[10, 11], [10, 11]])
+    assert r is False, f"ожидалось False, получено {r!r}"
+
+def test_empty():
+    """встреч нет"""
+    r = can_attend([])
+    assert r is True, f"ожидалось True, получено {r!r}"
+
+def test_matches_brute():
+    """200 случайных списков: ответ совпадает с перебором всех пар"""
+    import random
+    rnd = random.Random(123)
+    for _ in range(200):
+        data = []
+        for _ in range(rnd.randint(0, 6)):
+            s = rnd.randint(0, 30)
+            data.append([s, s + rnd.randint(1, 5)])
+        want = not any(a[0] < b[1] and b[0] < a[1]
+                       for k, a in enumerate(data) for b in data[k + 1:])
+        got = can_attend(data)
+        assert got == want, f"intervals = {data}: ожидалось {want}, получено {got}"
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n log n) · память O(n)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">can_attend</span>(intervals):
+    ordered = <span class="k">sorted</span>(intervals)
+    <span class="k">for</span> i <span class="k">in</span> <span class="k">range</span>(<span class="n">1</span>, <span class="k">len</span>(ordered)):
+        <span class="k">if</span> ordered[i][<span class="n">0</span>] &lt; ordered[i - <span class="n">1</span>][<span class="n">1</span>]:
+            <span class="k">return</span> <span class="k">False</span>
+    <span class="k">return</span> <span class="k">True</span></pre>
+        </figure>
+        <p>Цикл начинается с 1: у первой встречи нет предыдущей. Для пустого списка и списка из одной встречи <code>range(1, len(ordered))</code> пуст, и функция сразу возвращает <code>True</code>. В прогоне подсвечены текущая встреча и предыдущая. На шагах 3 и 7 встречи касаются, конфликта нет.</p>
+        <div class="tracer" data-trace="attend_free" data-zone="pairs" data-title="Встречи без конфликтов"></div>
+        <p>Время — O(n log n) на сортировку и O(n) на проход. Если конфликт найден рано, цикл заканчивается раньше, но сортировка всё равно проходит целиком. Память — O(n) на копию <code>ordered</code>.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Две изменённые версии</h2>
+        <p>Обе версии запущены на встречах из прогона. Встречи не пересекаются, верный ответ — <code>True</code>. Обе версии возвращают <code>False</code>.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>can_attend([[13, 15], [9, 11], [15, 16], [11, 12]])</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>&lt;= вместо &lt;</button>
+            <button>без сортировки</button>
+          </div>
+          <div class="demo__pane">
+            <p>Условие конфликта записано с нестрогим знаком: <code>ordered[i][0] &lt;= ordered[i - 1][1]</code>.</p>
+            <div class="tracer tracer--bug" data-trace="bug_attend_le" data-zone="pairs" data-title="&lt;= вместо &lt;"></div>
+            <p class="demo__verdict"><b>False</b>На шаге 3 встреча <code>[11, 12]</code> начинается в момент, когда заканчивается <code>[9, 11]</code>. Нестрогий знак считает касание конфликтом. В задаче 1 тот же знак <code>&lt;=</code> был верным: там касающиеся брони склеиваются.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Строка с сортировкой заменена на <code>ordered = intervals</code>.</p>
+            <div class="tracer tracer--bug" data-trace="bug_attend_nosort" data-zone="pairs" data-title="без сортировки"></div>
+            <p class="demo__verdict"><b>False</b>На шаге 3 встреча <code>[9, 11]</code> стоит после <code>[13, 15]</code>. Её начало 9 меньше конца 15, и условие сообщает о конфликте, хотя встреча заканчивается до начала <code>[13, 15]</code>.</p>
+          </div>
+        </div>
+        <p>Без сортировки функция ошибается только в одну сторону: находит конфликт там, где его нет. Конфликт она не пропускает. Если она вернула <code>True</code>, каждая встреча в списке начинается не раньше конца предыдущей, и встречи действительно идут одна за другой. Это проверено запуском на 20 000 случайных списков: пропусков 0, ложных конфликтов 3 174.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>По какому ключу сортировать</h2>
+        <p>Контроль занятия по КТП требует объяснить, по какому ключу сортируются данные. Ключ — то, по чему сравниваются элементы при сортировке. Его задают параметром <code>key</code>: это функция, которая для каждого элемента возвращает значение для сравнения.</p>
+        <details class="pyhint"><summary>Python в этой строке: <code>sorted(intervals, key=lambda iv: iv[1])</code></summary><div><p><code>lambda iv: iv[1]</code> — короткая функция без имени: она получает интервал <code>iv</code> и возвращает его конец. <code>sorted</code> вызывает её для каждого интервала и сортирует по полученным числам. Сами интервалы при этом не меняются.</p><pre>&gt;&gt;&gt; sorted([[1, 10], [2, 3], [4, 5]], key=lambda iv: iv[1])
+[[2, 3], [4, 5], [1, 10]]
+&gt;&gt;&gt; sorted([[1, 4], [3, 6], [1, 8]], key=lambda iv: (iv[0], -iv[1]))
+[[1, 8], [1, 4], [3, 6]]</pre></div></details>
+        <p><b>Для проверки конфликтов годится и сортировка по концу.</b> Если встречи упорядочены по концу и какая-то встреча пересекается с одной из предыдущих, она начинается раньше конца той встречи, а значит, и раньше конца своей соседки слева: у соседки конец не меньше. Сравнение соседей снова находит конфликт. На 20 000 случайных списков ответы обеих сортировок совпали.</p>
+        <p><b>Для объединения сортировка по концу не годится.</b> Объединение рассчитывает на то, что следующие интервалы начинаются не раньше текущего. При сортировке по концу длинный интервал с ранним началом окажется в конце списка. Обе версии ниже запущены на <code>[[1, 10], [2, 3], [4, 5]]</code>: все три интервала лежат внутри <code>[1, 10]</code>, ответ — один блок.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>merge_intervals([[1, 10], [2, 3], [4, 5]])</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>ключ — конец</button>
+            <button>ключ — начало</button>
+          </div>
+          <div class="demo__pane">
+            <span class="run-label">сортировка по концу</span>
+            <div class="tracer tracer--bug" data-trace="bug_end_key" data-zone="intervals" data-title="key=lambda iv: iv[1]"></div>
+            <p class="demo__verdict"><b>[[2, 3], [4, 10]]</b>На шаге 7 блок <code>[2, 3]</code> закрыт: следующий интервал начинается в 4. Но <code>[1, 10]</code> идёт последним и начинается в 1. На шаге 10 он вливается в блок <code>[4, 5]</code>, а блок <code>[2, 3]</code> остаётся отдельным.</p>
+          </div>
+          <div class="demo__pane">
+            <span class="run-label run-label--fix">сортировка по началу</span>
+            <div class="tracer" data-trace="fix_end_key" data-zone="intervals" data-title="sorted(intervals)"></div>
+            <p class="demo__verdict"><b>[[1, 10]]</b><code>[1, 10]</code> стоит первым, остальные интервалы лежат внутри него и блок не меняют.</p>
+          </div>
+        </div>
+        <p><b>Иногда ключ состоит из двух чисел.</b> Задача LeetCode 1288: сколько интервалов останется, если удалить те, что целиком лежат внутри другого. Интервалы сортируют по началу, а при равном начале — по убыванию конца: ключ <code>(iv[0], -iv[1])</code>. Тогда из интервалов с одним началом первым идёт самый длинный, и все остальные оказываются внутри уже пройденного. Дальше хватает одного прохода с переменной <code>reach</code> — самым дальним концом среди пройденных интервалов.</p>
+        <figure class="code">
+          <figcaption><span>LeetCode 1288</span><span>время O(n log n)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">remove_covered</span>(intervals):
+    ordered = <span class="k">sorted</span>(intervals, key=<span class="k">lambda</span> iv: (iv[<span class="n">0</span>], -iv[<span class="n">1</span>]))
+    count = <span class="n">0</span>
+    reach = <span class="n">0</span>
+    <span class="k">for</span> start, end <span class="k">in</span> ordered:
+        <span class="k">if</span> end &gt; reach:
+            count += <span class="n">1</span>
+            reach = end
+    <span class="k">return</span> count</pre>
+        </figure>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; remove_covered([[1, 4], [3, 6], [2, 8]])
+2
+&gt;&gt;&gt; remove_covered([[1, 4], [1, 8]])
+1</pre>
+        </figure>
+        <p>Во втором примере при сортировке только по началу <code>[1, 4]</code> шёл бы раньше <code>[1, 8]</code> и был бы посчитан как непокрытый: в момент его проверки <code>[1, 8]</code> ещё не пройден. Ключ с <code>-iv[1]</code> ставит <code>[1, 8]</code> первым, и ответ верный — 1.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Вход уже отсортирован: вставка интервала</h2>
+        <p>Задача LeetCode 57 из плана Top Interview 150: дан список блоков, отсортированный по началу, без пересечений, и новый интервал. Нужно вставить интервал и склеить его с блоками, которые он задевает. Такой список возвращает <code>merge_intervals</code>, поэтому задача отвечает на вопрос диспетчера «пришла ещё одна бронь — как теперь выглядят блоки занятости».</p>
+        <p>Можно добавить бронь в список и вызвать <code>merge_intervals</code> заново: O(n log n). Но список уже отсортирован, и сортировка не нужна. Проход делится на три части: блоки, которые целиком левее новой брони, переходят в ответ как есть; блоки, которые пересекаются с ней или касаются её, вливаются в неё; блоки правее переходят в ответ как есть. Время O(n).</p>
+        <figure class="code">
+          <figcaption><span>LeetCode 57</span><span>время O(n) · память O(n)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">insert_interval</span>(intervals, new):
+    start, end = new
+    result = []
+    i = <span class="n">0</span>
+    <span class="k">while</span> i &lt; <span class="k">len</span>(intervals) <span class="k">and</span> intervals[i][<span class="n">1</span>] &lt; start:
+        result.append(<span class="k">list</span>(intervals[i]))
+        i += <span class="n">1</span>
+    <span class="k">while</span> i &lt; <span class="k">len</span>(intervals) <span class="k">and</span> intervals[i][<span class="n">0</span>] &lt;= end:
+        start = <span class="k">min</span>(start, intervals[i][<span class="n">0</span>])
+        end = <span class="k">max</span>(end, intervals[i][<span class="n">1</span>])
+        i += <span class="n">1</span>
+    result.append([start, end])
+    <span class="k">while</span> i &lt; <span class="k">len</span>(intervals):
+        result.append(<span class="k">list</span>(intervals[i]))
+        i += <span class="n">1</span>
+    <span class="k">return</span> result</pre>
+        </figure>
+        <p>Прогон — на блоках рампы <code>[[9, 12], [13, 15], [16, 18]]</code> и новой брони <code>[11, 14]</code>. Пунктиром показана новая бронь после каждого слияния. Она задевает два блока и склеивает их: <code>[9, 15]</code>.</p>
+        <div class="tracer" data-trace="insert" data-zone="intervals" data-title="Вставка брони [11, 14]"></div>
+        <p>Это стартовая задача 3 занятия, расширение: <code>insert_interval</code> в <code>solution.py</code>. Её тесты сравнивают ответ с объединением всего списка заново.</p>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>LeetCode 252, 1288, 57 — условия проверены по данным сайта 27.10.2026; задача 252 платная, задача 57 — план Top Interview 150, раздел Intervals</li>
+            <li>КТП ОП.04, занятие 12</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="02-obedinenie.html">← 12.2 Объединение интервалов</a><a href="04-granicy-i-oshibki.html">12.4 Границы и ошибки →</a></div>
+        <div class="colophon">
+          <span>Модуль 12 · Интервалы · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../book.js"></script>
+  <script src="../algo.js"></script>
+</body>
+</html>
