@@ -91,7 +91,17 @@
             <p>Последняя корзина <code>le="+Inf"</code> считает все значения.</p>
           </div>
         </div>
-        <p>У гистограммы стенда семь границ, они заданы в коде: от 0,025 до 2,5 секунды. Ниже настоящий ответ <code>/metrics</code> после двадцати отчётов, строки адреса <code>/report</code>.</p>
+        <p>У гистограммы стенда семь границ, они заданы в коде: от 0,025 до 2,5 секунды.</p>
+        <figure class="code">
+          <figcaption><span>stand/app.py</span><span>объявление гистограммы</span></figcaption>
+<pre>HTTP_DURATION = Histogram(
+    <span class="s">"http_request_duration_seconds"</span>,
+    <span class="s">"Time spent handling an HTTP request"</span>,
+    [<span class="s">"route"</span>],
+    buckets=(<span class="n">0.025</span>, <span class="n">0.05</span>, <span class="n">0.1</span>, <span class="n">0.25</span>, <span class="n">0.5</span>, <span class="n">1.0</span>, <span class="n">2.5</span>),
+)</pre>
+        </figure>
+        <p>Параметр <code>buckets</code> перечисляет границы в секундах. Корзину <code>+Inf</code> библиотека добавляет сама. Метка <code>route</code> разделяет длительности по адресам. Ниже настоящий ответ <code>/metrics</code> после двадцати отчётов, строки адреса <code>/report</code>.</p>
         <figure class="code code--out">
           <figcaption><span>curl -s localhost:8031/metrics | grep 'route="/report"'</span><span>стенд модуля 3</span></figcaption>
 <pre>http_request_duration_seconds_bucket{le="0.025",route="/report"} 0.0
@@ -134,22 +144,15 @@ http_request_duration_seconds_sum{route="/report"} 8.990030834916979</pre>
           </div>
         </div>
         <p>В ответе стенда <code>_count</code> равен 20: построено двадцать отчётов. Он всегда равен корзине <code>+Inf</code>, потому что оба числа считают все значения. <code>_sum</code> равен 8,99 секунды — сумме длительностей. Средняя длительность: 8,99 / 20 = 0,4495 секунды. Запрос <code>http_request_duration_seconds_sum{route="/report"} / http_request_duration_seconds_count{route="/report"}</code> в Prometheus вернул то же число, <code>0.44950154174584894</code>.</p>
-        <p>Отчёты заказаны на 8,87 секунды, а <code>_sum</code> показывает 8,99. Разница — 0,12 секунды на двадцать запросов, около 6 мс на каждый. Это время, которое сервис тратит на запрос сверх заданной задержки: разбор запроса, ответ, работа промежуточной функции. Гистограмма записывает настоящую длительность обработки, которую измерил код.</p>
+        <p>Отчёты заказаны на 8,87 секунды, а <code>_sum</code> показывает 8,99. Разница — 0,12 секунды на двадцать запросов, около 6 мс на каждый. Это время, которое сервис тратит на запрос сверх заданной задержки: разбор запроса, ответ, работа промежуточной функции. Гистограмма записывает настоящую длительность обработки, которую измерил код. Измерение устроено так:</p>
         <figure class="code">
-          <figcaption><span>stand/app.py</span><span>объявление и запись длительности</span></figcaption>
-<pre>HTTP_DURATION = Histogram(
-    <span class="s">"http_request_duration_seconds"</span>,
-    <span class="s">"Time spent handling an HTTP request"</span>,
-    [<span class="s">"route"</span>],
-    buckets=(<span class="n">0.025</span>, <span class="n">0.05</span>, <span class="n">0.1</span>, <span class="n">0.25</span>, <span class="n">0.5</span>, <span class="n">1.0</span>, <span class="n">2.5</span>),
-)
-...
-start = time.perf_counter()
+          <figcaption><span>stand/app.py</span><span>запись длительности</span></figcaption>
+<pre>start = time.perf_counter()
 response = <span class="k">await</span> call_next(request)
 elapsed = time.perf_counter() - start
 HTTP_DURATION.labels(route).observe(elapsed)</pre>
         </figure>
-        <p>Параметр <code>buckets</code> перечисляет границы в секундах. Корзину <code>+Inf</code> библиотека добавляет сама. Функция <code>time.perf_counter()</code> возвращает время в секундах по часам, которые подходят для измерения промежутков; разность двух её вызовов — длительность обработки. Метод <code>.observe(elapsed)</code> записывает одно значение: увеличивает на 1 каждую корзину, граница которой не меньше значения, увеличивает <code>_count</code> на 1 и прибавляет значение к <code>_sum</code>. На схеме — что меняет один вызов для отчёта за 120 мс.</p>
+        <p>Функция <code>time.perf_counter()</code> возвращает время в секундах по часам, которые подходят для измерения промежутков; разность двух её вызовов — длительность обработки. Метод <code>.observe(elapsed)</code> записывает одно значение: увеличивает на 1 каждую корзину, граница которой не меньше значения, увеличивает <code>_count</code> на 1 и прибавляет значение к <code>_sum</code>. На схеме — что меняет один вызов для отчёта за 120 мс.</p>
         <div class="pic">
           <div class="pic__bar"><span>Один вызов observe(0.12)</span><span>корзины стенда</span></div>
           <div class="pic__body">
