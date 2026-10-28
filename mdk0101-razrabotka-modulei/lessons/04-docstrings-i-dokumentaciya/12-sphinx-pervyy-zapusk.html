@@ -24,444 +24,346 @@
         <header class="chapter-head">
           <span class="chapter-num">4.12</span>
           <h1>Sphinx: первый запуск<br>и состав папок</h1>
-          <p class="lead">В этой главе разобрано, что делает Sphinx и как получить первый сайт документации проекта «Отчёт кафе». Установка идёт в окружение проекта, заготовку папки <code>docs</code> создаёт мастер <code>sphinx-quickstart</code>, сайт собирает команда <code>sphinx-build</code>. Докстрингов на первом сайте ещё нет: их подключают в главе 4.13. В конце главы — задания, в которых сайт пересобирается после правок.</p>
+          <p class="lead">В этой главе Sphinx ставится в проект «Отчёт кафе» и собирает первый сайт. Порядок такой: установка, заготовка папки <code>docs</code> мастером, первая сборка и просмотр в браузере, правка главной страницы и повторная сборка, подготовка папки к репозиторию. Каждый шаг выполняется в VS Code и показан кадром. Описаний функций на первом сайте ещё нет — их подключает глава 4.13.</p>
         </header>
 
         <dl class="passport">
-          <div><dt>Категория</dt><dd>Теория и пошаговая работа</dd></div>
+          <div><dt>Категория</dt><dd>Пошаговая работа</dd></div>
           <div><dt>Время</dt><dd>Около 45 минут</dd></div>
           <div><dt>Инструмент</dt><dd>Sphinx <code>9.1.1</code></dd></div>
-          <div><dt>Результат</dt><dd>Папка <code>docs</code> и собранная главная страница</dd></div>
+          <div><dt>Результат</dt><dd>Папка <code>docs</code> и своя главная страница сайта</dd></div>
         </dl>
 
         <nav class="contents">
           <b>В этой главе</b>
           <ol>
             <li><a href="#s1">Что делает Sphinx</a></li>
-            <li><a href="#s2">Проект и окружение</a></li>
-            <li><a href="#s3">Мастер sphinx-quickstart по шагам</a></li>
-            <li><a href="#s4">Состав папки docs</a></li>
+            <li><a href="#s2">Подготовка</a></li>
+            <li><a href="#s3">Установка Sphinx</a></li>
+            <li><a href="#s4">Заготовка папки docs</a></li>
             <li><a href="#s5">Первая сборка</a></li>
-            <li><a href="#s6">Повторная сборка</a></li>
-            <li><a href="#s7">Что из docs попадает в репозиторий</a></li>
-            <li><a href="#s8">Соберите сами</a></li>
+            <li><a href="#s6">Правка главной страницы</a></li>
+            <li><a href="#s7">Папка docs и репозиторий</a></li>
+            <li><a href="#s8">Попробуйте сами</a></li>
             <li><a href="#s9">Проверьте себя</a></li>
           </ol>
         </nav>
 
         <div class="lang-note">
           <b>Только ветка Python</b>
-          <p>Модуль про Sphinx относится к Python. В ветке Go сайт документации строит pkgsite без настройки — он разобран в главе 4.6. Если переключатель языка стоял на Go, главы 4.12–4.16 всё равно показываются в варианте Python.</p>
+          <p>Главы 4.12–4.16 относятся к Python. В ветке Go сайт документации строит pkgsite без настройки — он разобран в главе 4.6.</p>
         </div>
 
-        <p class="part">Часть 1 · Программа и проект</p>
         <h2 id="s1"><span class="sec">§1</span>Что делает Sphinx</h2>
-        <p>В главах 4.6–4.11 докстринги проекта прочитаны тремя способами: в подсказке редактора, через <code>help()</code> в терминале и в файле <code>docs/help.txt</code>. Все три способа требуют, чтобы у читателя был открыт проект или запущен Python. Для человека, который вызывает модуль из другой команды или только знакомится с проектом, удобнее сайт: оглавление, страница на каждый пакет, поиск по всем описаниям.</p>
-        <p><span class="term">Sphinx</span> — программа, которая собирает такой сайт. На вход она получает текстовые файлы в разметке reStructuredText (расширение <code>.rst</code>) и, через расширение autodoc, докстринги из модулей проекта. На выходе — папка с HTML-страницами, которые открываются в любом браузере без сервера. Sphinx написан на Python и ставится через <code>pip</code>, как Ruff и mypy.</p>
-
+        <p>В главах 4.6–4.11 докстринги проекта читались тремя способами: в подсказке редактора, через <code>help()</code> в терминале и в файле <code>docs/help.txt</code>. Для каждого нужен открытый проект или запущенный Python. Тому, кто только знакомится с проектом или вызывает его модули из другой команды, удобнее сайт: оглавление, страница на каждый пакет, поиск по всем описаниям.</p>
+        <p><span class="term">Sphinx</span> — программа, которая собирает такой сайт. Она читает текстовые файлы в разметке reStructuredText (расширение <code>.rst</code>) и докстринги модулей проекта и записывает папку HTML-страниц. Страницы открываются в браузере прямо с диска, сервер для них не нужен. Sphinx написан на Python и ставится через <code>pip</code>, как Ruff и mypy. На нём собрана, например, документация самого Python на <code>docs.python.org</code>.</p>
         <div class="analogy">
           <p class="analogy__head">Ассоциация: вёрстка книги</p>
           <div class="analogy__pair">
             <div class="analogy__side">
               <b>В жизни</b>
-              <p>Автор пишет главы в текстовом редакторе. Верстальщик берёт рукопись, добавляет оглавление, колонтитулы, предметный указатель и выпускает книгу. Если в рукописи исправили абзац, книгу верстают заново по тем же правилам.</p>
+              <p>Автор пишет главы, верстальщик по правилам издательства собирает из них книгу: оглавление, колонтитулы, указатель. Исправили абзац — книгу верстают заново по тем же правилам.</p>
             </div>
             <div class="analogy__side">
               <b>В проекте</b>
-              <p>Рукопись — файлы <code>.rst</code> и докстринги в модулях. Правила вёрстки записаны в <code>conf.py</code>. Команда <code>sphinx-build</code> выпускает сайт: оглавление, страницы модулей, алфавитный указатель и поиск. После правки докстринга сайт собирают той же командой.</p>
+              <p>Главы — файлы <code>.rst</code> и докстринги. Правила вёрстки — файл <code>conf.py</code>. Верстальщик — команда <code>sphinx-build</code>: после правки докстринга сайт собирают той же командой.</p>
             </div>
           </div>
-          <p class="analogy__limit"><b>Где не совпадает</b>Верстальщик правит текст по своему усмотрению. Sphinx переносит текст докстринга как есть: пропущенное в коде условие на сайте тоже будет пропущено.</p>
+          <p class="analogy__limit"><b>Где не совпадает</b>Верстальщик может поправить текст. Sphinx переносит докстринг как есть: если условие пропущено в коде, его не будет и на сайте.</p>
         </div>
-
-        <p>Так собирается, например, документация самого Python на <code>docs.python.org</code>, документация библиотек Requests, Flask и pytest. Путь от кода до страницы состоит из четырёх шагов; в этой главе пройдены первый, третий и четвёртый, шаг с докстрингами — в главе 4.13.</p>
-
         <div class="flowline" data-play>
           <p class="flowline__head">Путь от исходников до сайта</p>
           <div class="flowline__track">
             <div class="flowline__step">
               <b>1 · Файлы .rst</b>
               <span>Главная страница и разделы, написанные вручную.</span>
-              <em>docs/source</em>
+              <em>эта глава</em>
             </div>
             <div class="flowline__step">
               <b>2 · Докстринги</b>
-              <span>Описания из модулей <code>app/</code>, их забирает autodoc.</span>
+              <span>Описания из модулей <code>app/</code>.</span>
               <em>глава 4.13</em>
             </div>
             <div class="flowline__step">
               <b>3 · sphinx-build</b>
-              <span>Читает настройки, файлы и модули, собирает страницы.</span>
-              <em>одна команда</em>
+              <span>Читает настройки и исходники, собирает страницы.</span>
+              <em>эта глава</em>
             </div>
             <div class="flowline__step">
               <b>4 · HTML</b>
               <span>Папка со страницами, оглавлением и поиском.</span>
-              <em>docs/build/html</em>
+              <em>эта глава</em>
             </div>
           </div>
-          <p class="flowline__foot">Шаг <code>2</code> на первом сайте пропущен: страница собирается из одного файла <code>index.rst</code>, модули проекта Sphinx пока не читает.</p>
+          <p class="flowline__foot">В этой главе пройдены шаги <code>1</code>, <code>3</code> и <code>4</code>: сайт собирается из одного файла <code>index.rst</code>. Шаг <code>2</code> добавляется в главе 4.13.</p>
         </div>
 
-        <h2 id="s2"><span class="sec">§2</span>Проект и окружение</h2>
-        <p>Работа идёт на третьем архиве темы — «Отчёт кафе» с аннотациями и докстрингами в формате Google. Это тот же проект, который получается после практики главы 4.11. Если практика сделана, можно работать в своей папке; Sphinx соберёт сайт из ваших описаний.</p>
+        <h2 id="s2"><span class="sec">§2</span>Подготовка</h2>
+        <p>Нужен третий архив темы — «Отчёт кафе» с аннотациями и докстрингами в формате Google, такой же проект получается после практики главы 4.11. Распакуйте архив, откройте папку <code>otchet-kafe-dokumentirovan</code> в VS Code, создайте окружение <code>.venv</code> и установите зависимости из <code>requirements.txt</code>, как в главе 4.1. Если практика 4.11 сделана, можно работать в своей папке.</p>
         <div class="downloads">
           <a class="download" href="materials/otchet-kafe-dokumentirovan.zip" download>
             <span>↓</span>
             <b>3 · С аннотациями и описаниями<small>ZIP · с ним работают в главах 4.12–4.16</small></b>
           </a>
-          <a class="download" href="materials/otchet-kafe-sphinx.zip" download>
-            <span>↓</span>
-            <b>4 · С собранной документацией<small>ZIP · эталон папки docs для сверки в главе 4.16</small></b>
-          </a>
         </div>
-        <div class="walk">
-          <div class="walk__step">
-            <p class="walk__head"><span>Распакуйте проект и откройте его в VS Code</span></p>
-            <div class="walk__body">
-              <p>Распакуйте третий архив в папку с проектами курса и откройте папку <code>otchet-kafe-dokumentirovan</code> командой <b>File → Open Folder</b>. Откройте терминал: <b>Terminal → New Terminal</b>. Приглашение терминала должно заканчиваться именем папки проекта — так все команды главы выполняются из его корня.</p>
-            </div>
-          </div>
-          <div class="walk__step">
-            <p class="walk__head"><span>Создайте окружение и установите зависимости проекта</span></p>
-            <div class="walk__body">
-              <p><code data-os="mac linux">python3 -m venv .venv</code><code data-os="win">py -m venv .venv</code>, затем <code data-os="mac linux">.venv/bin/pip install -r requirements.txt</code><code data-os="win">.venv\Scripts\pip install -r requirements.txt</code>. Sphinx импортирует модули проекта, чтобы прочитать их докстринги. Поэтому он ставится в то же окружение, где лежат зависимости проекта.</p>
-            </div>
-          </div>
-          <div class="walk__step">
-            <p class="walk__head"><span>Установите Sphinx</span></p>
-            <div class="walk__body">
-              <p><code data-os="mac linux">.venv/bin/pip install sphinx</code><code data-os="win">.venv\Scripts\pip install sphinx</code>. Вместе со Sphinx ставятся docutils (разбор reStructuredText), Jinja2 (шаблоны страниц), Pygments (подсветка кода) и несколько служебных пакетов.</p>
-              <p>Проверьте версию: <code data-os="mac linux">.venv/bin/sphinx-build --version</code><code data-os="win">.venv\Scripts\sphinx-build --version</code>.</p>
-              <figure class="code code--out">
-                <figcaption><span>Терминал</span><span>версия</span></figcaption>
-<pre>sphinx-build 9.1.1</pre>
-              </figure>
-              <p>Все выводы в главах 4.12–4.16 получены на версии <code>9.1.1</code>. У более новой версии отдельные строки вывода могут отличаться, порядок работы тот же.</p>
-            </div>
-          </div>
-        </div>
-        <div class="margin-note margin-note--steel">
-          <b>На полях: язык вывода</b>
-          <p>Sphinx печатает сообщения на языке системы. Выводы в книге сняты в терминале с русским языком, поэтому в них стоит «сборка успешна». На системе с английским языком та же строка выглядит как <code>build succeeded</code>, а предупреждение начинается словом <code>WARNING</code> в обоих случаях. Часть строк переведена не полностью: <code>pickling environment</code> и <code>dumping search index</code> печатаются по-английски на любом языке.</p>
-        </div>
+        <p>Все команды главы выполняются в терминале VS Code (<b>Terminal → New Terminal</b>) из корня проекта: приглашение терминала заканчивается именем папки проекта. Команды записаны с путём к окружению, как в главе 4.3.</p>
 
-        <p class="part">Часть 2 · Заготовка и первая сборка</p>
-        <h2 id="s3"><span class="sec">§3</span>Мастер sphinx-quickstart по шагам</h2>
-        <p>Заготовку папки документации создаёт мастер <code>sphinx-quickstart</code>. Он задаёт несколько вопросов, по ответам пишет файл настроек <code>conf.py</code>, главную страницу <code>index.rst</code> и два файла для запуска сборки. Мастер запускается один раз на проект; дальше файлы правят руками.</p>
+        <h2 id="s3"><span class="sec">§3</span>Установка Sphinx</h2>
+        <p>Sphinx ставится в окружение проекта. Чтобы прочитать докстринги, он импортирует модули проекта, а импорт проходит только там, где установлены все зависимости проекта. Два шага: установка и проверка версии.</p>
         <div class="walk">
           <div class="walk__step">
-            <p class="walk__head"><span>Запустите мастер с именем папки docs</span></p>
+            <p class="walk__head"><span>Установите Sphinx в .venv</span></p>
             <div class="walk__body">
-              <p><code data-os="mac linux">.venv/bin/sphinx-quickstart docs</code><code data-os="win">.venv\Scripts\sphinx-quickstart docs</code>. Слово <code>docs</code> в конце — папка, в которой мастер создаст файлы. Без него файлы окажутся прямо в корне проекта, рядом с <code>main.py</code>.</p>
-              <p>Мастер печатает приветствие и строку <code>Выбранный корневой путь: docs</code>, затем задаёт вопросы по одному. Строка вопроса начинается со знака <code>&gt;</code>, ответ по умолчанию стоит в квадратных скобках: он принимается, если нажать <kbd>Enter</kbd> без ответа.</p>
-            </div>
-          </div>
-          <div class="walk__step">
-            <p class="walk__head"><span>Разделите исходники и результат: ответ y</span></p>
-            <div class="walk__body">
-              <p>Первый вопрос — <code>Разделить каталоги исходных файлов и результатов сборки (y/n) [n]</code>. Ответ <code>y</code> создаёт две папки: <code>docs/source</code> для того, что пишут руками, и <code>docs/build</code> для того, что собирает Sphinx. Тогда собранные страницы не смешиваются с исходниками, и папку сборки целиком исключают из репозитория одной строкой.</p>
-              <p>При ответе <code>n</code> исходники лежат прямо в <code>docs</code>, а результат — во вложенной папке <code>docs/_build</code>. Так тоже работает, но в курсе принят вариант с <code>source</code> и <code>build</code>, и пути во всех следующих главах записаны под него.</p>
-            </div>
-          </div>
-          <div class="walk__step">
-            <p class="walk__head"><span>Укажите название, автора и номер выпуска</span></p>
-            <div class="walk__body">
-              <p><code>Название проекта</code> — «Отчёт кафе»: оно появится в заголовке вкладки браузера и в шапке каждой страницы. <code>Имя(ена) автора(ов)</code> — ваша фамилия и инициалы, они попадут в строку об авторских правах внизу страниц. <code>Релиз проекта</code> — <code>1.0</code>: номер выпуска, который показывается рядом с названием в некоторых темах оформления.</p>
-            </div>
-          </div>
-          <div class="walk__step">
-            <p class="walk__head"><span>Выберите язык ru</span></p>
-            <div class="walk__body">
-              <p>Последний вопрос — <code>Язык проекта [en]</code>. Ответ <code>ru</code> переводит на русский всё, что Sphinx пишет на страницах сам: «Навигация», «Поиск», «Алфавитный указатель», подписи «Параметры» и «Результат» у функций. Текст докстрингов от этой настройки не зависит — он переносится как написан.</p>
+              <p>Выполните <code data-os="mac linux">.venv/bin/pip install sphinx</code><code data-os="win">.venv\Scripts\pip install sphinx</code>. Установка занимает полминуты: вместе со Sphinx скачивается два десятка пакетов.</p>
               <figure class="shot">
-                <img src="img/vscode-sphinx-qs-2.png" alt="Терминал VS Code: ответы на вопросы sphinx-quickstart и строки о созданных файлах conf.py, index.rst, Makefile, make.bat">
-                <figcaption>Мастер отработал. Вопросы выделены цветом, после каждого — введённый ответ: <code>y</code>, название, автор, <code>1.0</code>, <code>ru</code>. Ниже — четыре строки <code>Создание файла</code> и итог <code>Завершено: Исходная структура каталогов создана.</code> В проводнике слева появилась папка <code>docs</code>.</figcaption>
+                <img src="img/vscode-sphinx-12-install.png" alt="Терминал VS Code: конец вывода pip install sphinx, строка Successfully installed со списком пакетов">
+                <figcaption>Конец вывода установки. Главная строка — <code>Successfully installed</code>: за ней перечислены установленные пакеты, среди них <code>sphinx-9.1.1</code>, <code>docutils</code> (разбор reStructuredText), <code>Jinja2</code> (шаблоны страниц) и <code>Pygments</code> (подсветка кода). На кадре команда дополнена <code>| tail -4</code>, чтобы показать только последние строки; у вас выше будет длинный список <code>Collecting</code> и <code>Downloading</code>.</figcaption>
               </figure>
             </div>
           </div>
-        </div>
-        <p>Последний абзац вывода советует собирать документацию командой <code>make</code>. Этот способ разобран в конце §5; в книге используется команда <code>sphinx-build</code>, потому что она одинаково записывается в Windows, macOS и Linux.</p>
-
-        <h2 id="s4"><span class="sec">§4</span>Состав папки docs</h2>
-        <p>Мастер создал шесть объектов. Из них руками правят два — <code>conf.py</code> и <code>index.rst</code>; остальные нужны для запуска и для будущих расширений.</p>
-        <div class="tree">
-          <p class="tree__head">docs/ после sphinx-quickstart</p>
-          <div class="tree__body">
-            <div class="tree__row"><span>docs/</span><em>вся документация проекта</em></div>
-            <div class="tree__row"><span>├── Makefile</span><em>запуск сборки командой <code>make html</code> в macOS и Linux</em></div>
-            <div class="tree__row"><span>├── make.bat</span><em>то же для Windows: <code>make.bat html</code></em></div>
-            <div class="tree__row"><span>├── build/</span><em>пока пустая; сюда пишет результат <code>sphinx-build</code></em></div>
-            <div class="tree__row"><span>└── source/</span><em>всё, что пишут руками</em></div>
-            <div class="tree__row tree__row--hi"><span>    ├── conf.py</span><em>настройки сборки: название, язык, расширения, тема</em></div>
-            <div class="tree__row tree__row--hi"><span>    ├── index.rst</span><em>главная страница и корневое оглавление</em></div>
-            <div class="tree__row"><span>    ├── _static/</span><em>свои картинки и стили, которые копируются на сайт</em></div>
-            <div class="tree__row"><span>    └── _templates/</span><em>свои шаблоны страниц; в курсе не используются</em></div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Проверьте версию</span></p>
+            <div class="walk__body">
+              <p>Выполните <code data-os="mac linux">.venv/bin/sphinx-build --version</code><code data-os="win">.venv\Scripts\sphinx-build --version</code>.</p>
+              <figure class="shot">
+                <img src="img/vscode-sphinx-12-version.png" alt="Терминал: команда sphinx-build --version и ответ sphinx-build 9.1.1">
+                <figcaption>Ответ <code>sphinx-build 9.1.1</code>. Если вместо него <code>No such file or directory</code> или <code>не является внутренней командой</code>, Sphinx установлен в другое окружение: повторите первый шаг с путём <code>.venv</code>.</figcaption>
+              </figure>
+              <p>Все выводы в главах 4.12–4.16 получены на версии <code>9.1.1</code>. Sphinx печатает сообщения на языке системы; кадры сняты в терминале с русским языком. На английской системе вместо «сборка успешна» будет <code>build succeeded</code>, а предупреждение в обоих случаях начинается словом <code>WARNING</code>.</p>
+            </div>
           </div>
-          <p class="tree__foot">Подчёркивание в начале имени <code>_static</code> и <code>_templates</code> отделяет служебные папки от страниц: Sphinx не ищет в них файлы <code>.rst</code>.</p>
         </div>
-        <figure class="shot">
-          <img src="img/vscode-sphinx-tree-conf.png" alt="VS Code: в проводнике раскрыты docs и docs/source, открыт файл conf.py с настройками project, author, release, extensions, language, html_theme">
-          <figcaption>Файл <code>docs/source/conf.py</code> сразу после мастера. Строки <code>9</code>–<code>12</code> — ответы на вопросы о проекте, строка <code>22</code> — язык. Список <code>extensions</code> в строке <code>17</code> пуст: модули проекта Sphinx пока не читает. Строка <code>27</code> выбирает тему оформления <code>alabaster</code>, она встроена в Sphinx.</figcaption>
-        </figure>
-        <p><code>conf.py</code> — обычный файл Python. Sphinx выполняет его в начале каждой сборки и берёт из него значения переменных. Поэтому в нём работают импорты и вычисления, а ошибка синтаксиса в нём останавливает сборку. Подробно файл разобран в главе 4.13.</p>
-        <p>Второй файл — главная страница:</p>
-        <figure class="code">
-          <figcaption><span>docs/source/index.rst</span><span>после мастера</span></figcaption>
-<pre><span class="c">.. Отчёт кафе documentation master file, created by
-   sphinx-quickstart on Wed Oct 28 23:03:28 2026.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.</span>
 
-Отчёт кафе documentation
-========================
-
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText &lt;https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html&gt;`_
-documentation for details.
-
-
-<span class="k">.. toctree::</span>
-   <span class="f">:maxdepth:</span> 2
-   <span class="f">:caption:</span> Contents:</pre>
-        </figure>
-        <p>Разбор по строкам:</p>
-        <ul>
-          <li>Первые четыре строки начинаются с двух точек и пробела, после которых нет имени директивы. В reStructuredText это комментарий: на страницу он не попадает.</li>
-          <li><code>Отчёт кафе documentation</code> с чертой из знаков <code>=</code> под ним — заголовок страницы. Черта должна быть не короче текста заголовка.</li>
-          <li>Абзац <code>Add your content…</code> — обычный текст. Двойные обратные кавычки <code>``…``</code> выделяют код, конструкция <code>`текст &lt;адрес&gt;`_</code> — ссылка.</li>
-          <li><code>.. toctree::</code> — директива оглавления. Под ней с отступом в три пробела идут параметры: глубина <code>:maxdepth: 2</code> и подпись <code>:caption:</code>. Ниже параметров, после пустой строки, перечисляют имена страниц. Сейчас список пуст.</li>
-        </ul>
-        <p>Разметка reStructuredText подробно разобрана в главе 4.14. Для первой сборки достаточно знать, где заголовок и где оглавление.</p>
+        <h2 id="s4"><span class="sec">§4</span>Заготовка папки docs</h2>
+        <p>Файлы, из которых собирается сайт, создаёт мастер <code>sphinx-quickstart</code>. Он задаёт пять вопросов и по ответам пишет файл настроек и главную страницу. Мастер запускают один раз на проект. Четыре шага: запуск, ответы, файл настроек, главная страница.</p>
+        <div class="walk">
+          <div class="walk__step">
+            <p class="walk__head"><span>Запустите мастер</span></p>
+            <div class="walk__body">
+              <p>Выполните <code data-os="mac linux">.venv/bin/sphinx-quickstart docs</code><code data-os="win">.venv\Scripts\sphinx-quickstart docs</code>. Слово <code>docs</code> в конце — папка, в которую мастер положит файлы.</p>
+              <figure class="shot">
+                <img src="img/vscode-sphinx-12-qs-first.png" alt="Терминал: приветствие sphinx-quickstart и первый вопрос Разделить каталоги исходных файлов и результатов сборки (y/n) [n]">
+                <figcaption>Мастер напечатал приветствие, строку <code>Выбранный корневой путь: docs</code> и первый вопрос. Вопрос выделен цветом и начинается со знака <code>&gt;</code>. В квадратных скобках — ответ по умолчанию: он принимается, если нажать <kbd>Enter</kbd> без ответа. Курсор ждёт ввода.</figcaption>
+              </figure>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Ответьте на вопросы</span></p>
+            <div class="walk__body">
+              <p>Вводите ответы по одному и после каждого нажимайте <kbd>Enter</kbd>:</p>
+              <ol>
+                <li><b>Разделить каталоги…</b> — <code>y</code>. Будут две папки: <code>docs/source</code> для того, что пишут руками, и <code>docs/build</code> для того, что собирает Sphinx. Так результат сборки не смешивается с исходниками.</li>
+                <li><b>Название проекта</b> — <code>Отчёт кафе</code>. Оно встанет в шапку страниц и заголовок вкладки браузера.</li>
+                <li><b>Имя(ена) автора(ов)</b> — ваша фамилия и инициалы, для строки об авторе внизу страниц.</li>
+                <li><b>Релиз проекта</b> — <code>1.0</code>, номер выпуска.</li>
+                <li><b>Язык проекта</b> — <code>ru</code>. Надписи, которые Sphinx пишет на страницах от себя («Навигация», «Поиск», «Параметры»), будут на русском.</li>
+              </ol>
+              <figure class="shot">
+                <img src="img/vscode-sphinx-12-qs-done.png" alt="Терминал: вопросы мастера с ответами y, Отчёт кафе, Макаров М. Н., 1.0, ru и строки Создание файла conf.py, index.rst, Makefile, make.bat">
+                <figcaption>После каждого вопроса виден ответ. Ниже — четыре строки <code>Создание файла</code>: <code>conf.py</code> и <code>index.rst</code> в <code>docs/source</code>, <code>Makefile</code> и <code>make.bat</code> в <code>docs</code>. Итог — <code>Завершено: Исходная структура каталогов создана.</code> Последний абзац советует команду <code>make</code>; в курсе вместо неё используется <code>sphinx-build</code>, она одинаково записывается во всех системах.</figcaption>
+              </figure>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Откройте conf.py</span></p>
+            <div class="walk__body">
+              <p>В проводнике раскройте <code>docs</code> → <code>source</code> и откройте <code>conf.py</code>.</p>
+              <figure class="shot">
+                <img src="img/vscode-sphinx-12-conf.png" alt="VS Code: в проводнике раскрыты docs и source, открыт conf.py с переменными project, author, release, extensions, language, html_theme">
+                <figcaption>Слева — что создал мастер: в <code>docs</code> папки <code>build</code> и <code>source</code>, файлы <code>make.bat</code> и <code>Makefile</code>; в <code>source</code> — папки <code>_static</code> и <code>_templates</code>, файлы <code>conf.py</code> и <code>index.rst</code>. Справа — <code>conf.py</code>: ответы мастера в строках <code>project</code>, <code>author</code>, <code>release</code> и <code>language</code>. Список <code>extensions</code> пуст. Последние строки выбирают тему оформления <code>alabaster</code>, встроенную в Sphinx.</figcaption>
+              </figure>
+              <p><code>conf.py</code> — обычный файл Python. Sphinx выполняет его в начале каждой сборки и берёт из него значения переменных. В главе 4.13 сюда добавятся путь к проекту и расширения.</p>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Откройте index.rst</span></p>
+            <div class="walk__body">
+              <figure class="shot">
+                <img src="img/vscode-sphinx-12-index.png" alt="VS Code: открыт index.rst — комментарий мастера, заголовок Отчёт кафе documentation с чертой, абзац на английском, директива toctree">
+                <figcaption><code>index.rst</code> — главная страница сайта. Строки <code>1</code>–<code>4</code> — комментарий мастера, на страницу он не попадает. Строки <code>6</code>–<code>7</code> — заголовок и черта из знаков <code>=</code> под ним. Строки <code>9</code>–<code>11</code> — абзац на английском. Строки <code>14</code>–<code>16</code> — директива оглавления <code>toctree</code>.</figcaption>
+              </figure>
+              <p>Две детали разметки понадобятся уже в этой главе. Черта под заголовком должна быть не короче текста заголовка. <code>.. toctree::</code> — оглавление сайта: под ним с отступом в три пробела стоят параметры, а ниже, после пустой строки, перечисляют страницы. Сейчас страниц в нём нет.</p>
+            </div>
+          </div>
+        </div>
 
         <h2 id="s5"><span class="sec">§5</span>Первая сборка</h2>
+        <p>Заготовка готова, из неё можно собрать сайт. Три шага: сборка, папка с результатом, просмотр в браузере.</p>
         <div class="walk">
           <div class="walk__step">
-            <p class="walk__head"><span>Запустите сборку</span></p>
+            <p class="walk__head"><span>Соберите сайт</span></p>
             <div class="walk__body">
-              <p><code data-os="mac linux">.venv/bin/sphinx-build -M html docs/source docs/build</code><code data-os="win">.venv\Scripts\sphinx-build -M html docs/source docs/build</code>. Команда читается так: собрать вид <code>html</code> (ключ <code>-M</code> выбирает вид результата) из исходников в <code>docs/source</code> в папку <code>docs/build</code>.</p>
+              <p>Выполните <code data-os="mac linux">.venv/bin/sphinx-build -M html docs/source docs/build</code><code data-os="win">.venv\Scripts\sphinx-build -M html docs/source docs/build</code>. Команда читается так: собрать вид <code>html</code> (ключ <code>-M</code>) из исходников <code>docs/source</code> в папку <code>docs/build</code>.</p>
               <figure class="shot">
-                <img src="img/vscode-sphinx-build.png" alt="Терминал VS Code: вывод sphinx-build, строки чтения, записи и итог сборка успешна, Страницы HTML находятся в docs/build/html">
-                <figcaption>Вывод первой сборки. Жирным набраны названия этапов, после них — результат этапа. Строки <code>Запись результатов обработки шаблона</code> — служебные: Sphinx копирует стили и скрипты темы. Последние строки — итог <code>сборка успешна.</code> и адрес готовых страниц.</figcaption>
+                <img src="img/vscode-sphinx-12-build.png" alt="Терминал: вывод первой сборки sphinx-build и итог сборка успешна, Страницы HTML находятся в docs/build/html">
+                <figcaption>Жирным набраны этапы сборки, после двоеточия — их результат. Ключевые строки: <code>цели для 1 не обновлённых исходных файлов</code> — найден один файл для сборки, <code>index.rst</code>; <code>чтение исходных файлов…[100%] index</code> — он разобран; <code>запись вывода…[100%] index</code> — записан <code>index.html</code>. Строки <code>Запись результатов обработки шаблона</code> — копирование стилей темы. Итог: <code>сборка успешна.</code> и адрес страниц <code>docs/build/html</code>.</figcaption>
               </figure>
             </div>
           </div>
           <div class="walk__step">
-            <p class="walk__head"><span>Прочитайте вывод по этапам</span></p>
+            <p class="walk__head"><span>Найдите результат в проводнике</span></p>
             <div class="walk__body">
-              <p>Сборка идёт в два прохода. Первый — чтение: Sphinx находит исходники, разбирает разметку и запоминает результат во внутреннем хранилище — окружении. Второй — запись: по окружению строятся HTML-страницы, указатель и поиск.</p>
-              <div class="table-scroll">
-                <table>
-                  <thead><tr><th>Строка вывода</th><th>Что произошло</th></tr></thead>
-                  <tbody>
-                    <tr><td><code>загрузка переводов [ru]</code></td><td>Подключён перевод интерфейса на язык из <code>conf.py</code></td></tr>
-                    <tr><td><code>сборка [html]: цели для 1 не обновлённых исходных файлов</code></td><td>Найден один файл, который нужно собрать: <code>index.rst</code></td></tr>
-                    <tr><td><code>чтение исходных файлов...[100%] index</code></td><td>Первый проход: файл разобран</td></tr>
-                    <tr><td><code>pickling environment</code></td><td>Результат разбора записан на диск в <code>docs/build/doctrees</code>, чтобы следующая сборка взяла его оттуда</td></tr>
-                    <tr><td><code>запись вывода...[100%] index</code></td><td>Второй проход: записан <code>index.html</code></td></tr>
-                    <tr><td><code>генерация индексов... genindex</code></td><td>Построена страница алфавитного указателя</td></tr>
-                    <tr><td><code>запись дополнительных страниц... search</code></td><td>Построена страница поиска</td></tr>
-                    <tr><td><code>dumping search index in Russian</code></td><td>Записан поисковый индекс с учётом русских окончаний</td></tr>
-                    <tr><td><code>сборка успешна.</code></td><td>Ошибок и предупреждений нет. Если они есть, здесь стоит их число</td></tr>
-                  </tbody>
-                </table>
-              </div>
+              <p>Раскройте в проводнике <code>docs</code> → <code>build</code> → <code>html</code>.</p>
+              <figure class="shot">
+                <img src="img/vscode-sphinx-12-build-tree.png" alt="Проводник VS Code: раскрыта папка docs/build/html с файлами genindex.html, index.html, objects.inv, search.html, searchindex.js и папками _sources, _static">
+                <figcaption>В <code>docs/build</code> две папки. <code>html</code> — готовый сайт: <code>index.html</code> — главная, <code>genindex.html</code> — алфавитный указатель, <code>search.html</code> и <code>searchindex.js</code> — поиск, <code>_static</code> — стили темы. <code>doctrees</code> — служебная: Sphinx хранит там разобранные исходники для следующей сборки.</figcaption>
+              </figure>
             </div>
           </div>
           <div class="walk__step">
             <p class="walk__head"><span>Откройте сайт в браузере</span></p>
             <div class="walk__body">
-              <p><code data-os="mac">open docs/build/html/index.html</code><code data-os="linux">xdg-open docs/build/html/index.html</code><code data-os="win">start docs\build\html\index.html</code>. Можно и через проводник VS Code: правая кнопка на файле <code>index.html</code> → <b>Reveal in Finder</b> (в Windows — <b>Reveal in File Explorer</b>), затем двойной щелчок по файлу.</p>
+              <p>Выполните <code data-os="mac">open docs/build/html/index.html</code><code data-os="linux">xdg-open docs/build/html/index.html</code><code data-os="win">start docs\build\html\index.html</code>. Другой способ — правая кнопка на <code>index.html</code> в проводнике → <b data-os="mac">Reveal in Finder</b><b data-os="win">Reveal in File Explorer</b><b data-os="linux">Open Containing Folder</b>, затем двойной щелчок по файлу.</p>
               <figure class="shot">
-                <img src="img/site-12-empty.png" alt="Первая страница сайта Sphinx в теме alabaster: заголовок Отчёт кафе documentation, абзац на английском, слева поле поиска и Навигация">
-                <figcaption>Главная страница первой сборки. Заголовок и абзац перенесены из <code>index.rst</code>. Слева — колонка темы: название проекта, поле поиска, раздел «Навигация» с пустым оглавлением. Внизу — строка об авторе и ссылка <b>Page source</b> на исходный текст страницы.</figcaption>
+                <img src="img/site-12-empty.png" alt="Первая страница сайта в теме alabaster: заголовок Отчёт кафе documentation, абзац на английском, слева поле поиска и Навигация">
+                <figcaption>Главная страница первой сборки. Заголовок и абзац взяты из <code>index.rst</code>. Слева — колонка темы: название проекта из <code>conf.py</code>, поле поиска, «Навигация». Оглавление пустое, потому что в <code>toctree</code> нет страниц.</figcaption>
               </figure>
-              <p>Адрес в браузере начинается с <code>file://</code>: страница открыта прямо с диска. Сервер не нужен, поиск тоже работает — его индекс лежит в файле <code>searchindex.js</code> рядом со страницами.</p>
             </div>
           </div>
         </div>
-        <p>Что появилось в папке сборки:</p>
-        <div class="tree">
-          <p class="tree__head">docs/build/ после первой сборки</p>
-          <div class="tree__body">
-            <div class="tree__row"><span>build/</span><em></em></div>
-            <div class="tree__row"><span>├── doctrees/</span><em>окружение: разобранные исходники для следующей сборки</em></div>
-            <div class="tree__row tree__row--hi"><span>└── html/</span><em>готовый сайт — эту папку выкладывают в интернет</em></div>
-            <div class="tree__row"><span>    ├── index.html</span><em>главная страница</em></div>
-            <div class="tree__row"><span>    ├── genindex.html</span><em>алфавитный указатель</em></div>
-            <div class="tree__row"><span>    ├── search.html</span><em>страница поиска</em></div>
-            <div class="tree__row"><span>    ├── searchindex.js</span><em>поисковый индекс</em></div>
-            <div class="tree__row"><span>    ├── objects.inv</span><em>перечень описанных объектов для ссылок из других проектов</em></div>
-            <div class="tree__row"><span>    ├── _sources/</span><em>копии исходников: на них ведёт ссылка Page source</em></div>
-            <div class="tree__row"><span>    └── _static/</span><em>стили, скрипты и шрифты темы</em></div>
+
+        <h2 id="s6"><span class="sec">§6</span>Правка главной страницы</h2>
+        <p>Сайт собирают заново после каждой правки. Четыре шага показывают, как Sphinx выбирает, что пересобрать: сборка без изменений, правка файла, сборка после правки, проверка в браузере.</p>
+        <div class="walk">
+          <div class="walk__step">
+            <p class="walk__head"><span>Соберите ещё раз без изменений</span></p>
+            <div class="walk__body">
+              <p>Повторите ту же команду сборки.</p>
+              <figure class="shot">
+                <img src="img/vscode-sphinx-12-build-again.png" alt="Терминал: повторная сборка — загрузка фиксированного окружения, цели для 0 не обновлённых исходных файлов, нет устаревших целей">
+                <figcaption>Строка <code>загрузка фиксированного окружения</code> — Sphinx взял результат прошлого разбора из <code>doctrees</code>. Дальше <code>цели для 0</code> и <code>нет устаревших целей.</code>: изменённых файлов нет, страницы не переписаны.</figcaption>
+              </figure>
+              <p>Такая сборка называется <span class="term">инкрементной</span>: пересобирается только то, что изменилось. Полную пересборку включает ключ <code>-E</code> в конце команды. Он понадобится в главах 4.13–4.14: предупреждения в файлах, которые не менялись, инкрементная сборка не повторяет.</p>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Замените заголовок и абзац в index.rst</span></p>
+            <div class="walk__body">
+              <p>Заголовок — <code>Отчёт кафе</code>, черта под ним — десять знаков <code>=</code>, по длине заголовка. Абзац из трёх строк замените своим описанием проекта. В оглавлении замените <code>Contents:</code> на <code>Содержание:</code>. Сохраните файл.</p>
+              <figure class="shot">
+                <img src="img/vscode-sphinx-12-index-edited.png" alt="VS Code: index.rst после правки — заголовок Отчёт кафе, черта из десяти знаков равенства, абзац о программе, caption Содержание">
+                <figcaption><code>index.rst</code> после правки. Строки <code>6</code>–<code>7</code> — новый заголовок с чертой той же длины, строки <code>9</code>–<code>10</code> — абзац о программе, строка <code>15</code> — подпись оглавления «Содержание:».</figcaption>
+              </figure>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Соберите после правки</span></p>
+            <div class="walk__body">
+              <figure class="shot">
+                <img src="img/vscode-sphinx-12-build-edited.png" alt="Терминал: сборка после правки — 0 добавлено, 1 изменено, чтение исходных файлов index, запись вывода index, сборка успешна">
+                <figcaption>Теперь <code>цели для 1</code> и <code>обновление окружения: 0 добавлено, 1 изменено, 0 удалено</code> — Sphinx нашёл изменённый <code>index.rst</code>, перечитал и переписал только его.</figcaption>
+              </figure>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Обновите страницу в браузере</span></p>
+            <div class="walk__body">
+              <p>Вкладка с сайтом уже открыта — обновите её: <kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>R</kbd>.</p>
+              <figure class="shot">
+                <img src="img/site-12-edited.png" alt="Главная страница после правки: заголовок Отчёт кафе и абзац о программе">
+                <figcaption>Новый заголовок и абзац. Так выглядит каждый цикл работы с документацией: правка, сборка, обновление страницы.</figcaption>
+              </figure>
+            </div>
           </div>
         </div>
-        <div class="margin-note">
-          <b>На полях: make html</b>
-          <p>Файлы <code>Makefile</code> и <code>make.bat</code> вызывают ту же команду <code>sphinx-build -M</code> с путями <code>source</code> и <code>build</code>. Запускают их из папки <code>docs</code>: <code data-os="mac linux">cd docs</code><code data-os="win">cd docs</code>, затем <code data-os="mac linux">make html</code><code data-os="win">.\make.bat html</code>. Перед этим окружение должно быть активировано: внутри файлов команда записана без пути <code>.venv</code>. В Windows программа <code>make</code> обычно не установлена, поэтому для неё и создан <code>make.bat</code>.</p>
-        </div>
 
-        <h2 id="s6"><span class="sec">§6</span>Повторная сборка</h2>
-        <p>Если запустить ту же команду ещё раз без правок, вывод будет короче:</p>
-        <figure class="code code--out">
-          <figcaption><span>Терминал</span><span>сборка без изменений, начало</span></figcaption>
-<pre>Запуск Sphinx v9.1.1
-загрузка переводов [ru]... готово
-загрузка фиксированного окружения... готово
-сборка [mo]:цели для 0 файлов PO устарели
-запись вывода...
-сборка [html]: цели для 0 не обновлённых исходных файлов
-обновление окружения:0 добавлено, 0 изменено, 0 удалено
-чтение исходных файлов...
-ищем файлы, устаревшие на данный момент... ничего не найдено
-нет устаревших целей.</pre>
-        </figure>
-        <p>Строка <code>загрузка фиксированного окружения</code> означает, что Sphinx взял результат прошлого разбора из <code>docs/build/doctrees</code>. Дальше он сравнил время изменения исходников с временем сборки и не нашёл изменённых: <code>цели для 0</code> и <code>нет устаревших целей</code>. Страницы не переписаны.</p>
-        <p>Такая сборка называется <span class="term">инкрементной</span>: пересобираются только изменённые файлы. На проекте из одной страницы разницы не видно, на сотне страниц она сокращает сборку с минут до секунд. У инкрементной сборки есть особенность, которая понадобится в главах 4.13–4.14: предупреждения в неизменённых файлах при повторе не печатаются, потому что эти файлы не перечитываются. Полную пересборку включает ключ <code>-E</code>: <code>sphinx-build -M html docs/source docs/build -E</code>.</p>
-        <div class="table-scroll">
-          <table>
-            <thead><tr><th>Что изменилось</th><th>Что пересоберёт Sphinx</th></tr></thead>
-            <tbody>
-              <tr><td>Ничего</td><td>Ничего: <code>цели для 0</code></td></tr>
-              <tr><td>Один файл <code>.rst</code></td><td>Этот файл и страницы, где стоит ссылка на него</td></tr>
-              <tr><td><code>conf.py</code></td><td>Всё: строка <code>[новая конфигурация]</code> в выводе</td></tr>
-              <tr><td>Только докстринг в модуле</td><td>Страницы, на которых этот модуль описан (с главы 4.13)</td></tr>
-              <tr><td>Запуск с ключом <code>-E</code></td><td>Всё, независимо от изменений</td></tr>
-            </tbody>
-          </table>
+        <h2 id="s7"><span class="sec">§7</span>Папка docs и репозиторий</h2>
+        <p>Перед первым коммитом нужно решить, что из <code>docs</code> попадёт в Git. <code>docs/source</code>, <code>Makefile</code> и <code>make.bat</code> пишутся руками — их хранят. <code>docs/build</code> получается из них одной командой — её в Git не кладут: каждая сборка меняет в ней десятки файлов. Два шага.</p>
+        <div class="walk">
+          <div class="walk__step">
+            <p class="walk__head"><span>Проверьте .gitignore</span></p>
+            <div class="walk__body">
+              <p>Откройте <code>.gitignore</code> в корне проекта.</p>
+              <figure class="shot">
+                <img src="img/vscode-sphinx-12-gitignore.png" alt="VS Code: файл .gitignore, последняя строка docs/build/">
+                <figcaption>Последняя строка — <code>docs/build/</code>: в третьем архиве она уже есть. Если вы работаете в своей папке, допишите её.</figcaption>
+              </figure>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Положите .gitkeep в _static</span></p>
+            <div class="walk__body">
+              <p>Папка <code>docs/source/_static</code> пуста, а пустые папки Git не хранит. В копии проекта, скачанной из репозитория, её не будет, и сборка напечатает <code>WARNING: элемент html_static_path '_static' не существует</code>. Чтобы папка попала в репозиторий, в неё кладут пустой файл: правая кнопка на <code>_static</code> → <b>New File</b> → <code>.gitkeep</code>.</p>
+              <figure class="shot">
+                <img src="img/vscode-sphinx-12-gitkeep.png" alt="VS Code: в проводнике в папке docs/source/_static появился файл .gitkeep, он открыт и пуст">
+                <figcaption>В <code>_static</code> появился пустой <code>.gitkeep</code>. Для Git имя ничего не значит; это соглашение: файл держит папку в репозитории.</figcaption>
+              </figure>
+            </div>
+          </div>
         </div>
-
-        <h2 id="s7"><span class="sec">§7</span>Что из docs попадает в репозиторий</h2>
-        <p>Папка <code>docs/build</code> получается из исходников одной командой, поэтому в Git её не кладут: каждая сборка меняет в ней десятки файлов, и история репозитория заполнилась бы изменениями, которые никто не писал. В <code>.gitignore</code> третьего архива уже есть строка для неё; если вы работаете в своей папке, добавьте её:</p>
-        <figure class="code">
-          <figcaption><span>.gitignore</span><span>последняя строка</span></figcaption>
-<pre>.venv/
-__pycache__/
-docs/build/</pre>
-        </figure>
-        <p>В репозиторий идут <code>docs/source</code> целиком, <code>Makefile</code> и <code>make.bat</code>. Есть одна тонкость: пустые папки Git не хранит. Папка <code>_static</code> после мастера пуста, и в копии репозитория, скачанной с GitHub, её не будет. Тогда сборка печатает <code>WARNING: элемент html_static_path '_static' не существует</code>, а сборка, в которой предупреждения считаются ошибками, на этом останавливается. Чтобы папка попала в репозиторий, в неё кладут пустой файл с именем <code>.gitkeep</code>: в проводнике VS Code правая кнопка на <code>docs/source/_static</code> → <b>New File</b> → <code>.gitkeep</code>. Имя ничего не значит для Git, это соглашение: файл держит папку в репозитории.</p>
 
         <div class="milestone">
-          <b>Итог части 2 · сайт собирается</b>
-          <p>В проекте есть папка <code>docs</code>, команда <code>sphinx-build -M html docs/source docs/build</code> отвечает <code>сборка успешна.</code>, главная страница открывается в браузере.</p>
-          <p>На сайте пока только текст из <code>index.rst</code>, докстрингов проекта на нём нет. Их подключает расширение autodoc в главе 4.13.</p>
+          <b>Итог главы · сайт собирается</b>
+          <p>В проекте есть папка <code>docs</code>. Команда <code>sphinx-build -M html docs/source docs/build</code> отвечает <code>сборка успешна.</code>, главная страница со своим текстом открывается в браузере. <code>docs/build</code> исключена из Git, в <code>_static</code> лежит <code>.gitkeep</code>.</p>
         </div>
 
-        <h2 id="s8"><span class="sec">§8</span>Соберите сами</h2>
-        <p>Задания выполняются в той же папке проекта. Каждое заканчивается сборкой и проверкой в браузере: после сборки страницу в браузере нужно обновить (<kbd><span data-os="win linux">Ctrl</span><span data-os="mac">Cmd</span></kbd> + <kbd>R</kbd>). Команды ниже записаны коротко — в терминале с активированным окружением: <code data-os="mac linux">source .venv/bin/activate</code><span data-os="win"><code>.venv\Scripts\Activate.ps1</code> в PowerShell</span>.</p>
+        <h2 id="s8"><span class="sec">§8</span>Попробуйте сами</h2>
+        <p>Два опыта на том же проекте. Каждый показывает, как Sphinx сообщает о том, что изменилось.</p>
         <div class="lab">
-          <p class="lab__head">Соберите сами · главная страница</p>
-          <p class="lab__intro">Четыре опыта: своя главная страница, ошибка разметки, язык интерфейса и полная пересборка. Ожидаемые результаты сняты на третьем архиве.</p>
-          <div class="lab__task">
-            <h4>Своя главная страница</h4>
-            <ol>
-              <li>Откройте <code>docs/source/index.rst</code>.</li>
-              <li>Замените заголовок <code>Отчёт кафе documentation</code> на <code>Отчёт кафе</code> и укоротите черту под ним до длины заголовка — десять знаков <code>=</code>.</li>
-              <li>Абзац <code>Add your content…</code> из трёх строк замените своим описанием проекта в одну-две фразы.</li>
-              <li>В оглавлении замените <code>:caption: Contents:</code> на <code>:caption: Содержание:</code>.</li>
-              <li>Сохраните файл и выполните <code>sphinx-build -M html docs/source docs/build</code>.</li>
-            </ol>
-            <figure class="code">
-              <figcaption><span>docs/source/index.rst</span><span>после правки, без комментария</span></figcaption>
-<pre>Отчёт кафе
-==========
-
-Программа читает файл смены кафе, считает выручку по официантам
-и печатает отчёт.
-
-
-<span class="k">.. toctree::</span>
-   <span class="f">:maxdepth:</span> 2
-   <span class="f">:caption:</span> Содержание:</pre>
-            </figure>
-            <div class="lab__expect">
-              <b>Что должно получиться</b>
-              <p>В выводе — <code>цели для 1 не обновлённых исходных файлов</code> и <code>запись вывода...[100%] index</code>: пересобрана одна страница. После обновления браузера заголовок и абзац новые.</p>
-            </div>
-            <figure class="shot">
-              <img src="img/site-12-edited.png" alt="Главная страница после правки: заголовок Отчёт кафе и абзац о программе">
-              <figcaption>Главная страница после правки <code>index.rst</code>.</figcaption>
-            </figure>
-          </div>
+          <p class="lab__head">Попробуйте сами · главная страница</p>
           <div class="lab__task">
             <h4>Черта короче заголовка</h4>
             <ol>
-              <li>Укоротите черту под заголовком до пяти знаков: <code>=====</code>.</li>
-              <li>Соберите сайт.</li>
+              <li>В <code>index.rst</code> укоротите черту под заголовком до пяти знаков <code>=====</code> и сохраните.</li>
+              <li>Соберите сайт той же командой.</li>
               <li>Верните черту длиной в заголовок и соберите ещё раз.</li>
             </ol>
+            <figure class="shot">
+              <img src="img/vscode-sphinx-12-underline-short.png" alt="VS Code: index.rst, под заголовком Отчёт кафе черта из пяти знаков равенства">
+              <figcaption>Черта в строке <code>7</code> короче заголовка.</figcaption>
+            </figure>
             <div class="lab__expect">
               <b>Что должно получиться</b>
-              <p>Сборка проходит, но итог меняется на <code>сборка успешна, 1 предупреждение.</code>, а в конце вывода стоит само предупреждение:</p>
+              <p>Сборка проходит, но в выводе появляется красная строка предупреждения, а итог меняется на <code>сборка успешна, 1 предупреждение.</code></p>
             </div>
-            <figure class="code code--out">
-              <figcaption><span>Терминал</span><span>конец вывода</span></figcaption>
-<pre>сборка успешна, 1 предупреждение.
-
-Страницы HTML находятся в docs/build/html.
-…/docs/source/index.rst:7: WARNING: Title underline too short.
-
-Отчёт кафе
-===== [docutils]</pre>
+            <figure class="shot">
+              <img src="img/vscode-sphinx-12-build-underline.png" alt="Терминал: строка index.rst:7: WARNING: Title underline too short, фрагмент заголовка и итог сборка успешна, 1 предупреждение">
+              <figcaption>Предупреждение читается слева направо: файл и строка <code>index.rst:7</code>, уровень <code>WARNING</code>, текст «черта заголовка слишком короткая». Ниже — фрагмент исходника, в скобках — источник замечания <code>docutils</code>, библиотека разбора reStructuredText. После возврата черты предупреждение пропадает.</figcaption>
             </figure>
-            <p>Строка предупреждения читается слева направо: файл, номер строки <code>7</code> (черта), уровень <code>WARNING</code>, текст «черта заголовка слишком короткая», ниже — фрагмент исходника, в квадратных скобках — источник замечания: <code>docutils</code>, библиотека разбора reStructuredText. Многоточие в начале пути — сокращение в книге, у вас там будет полный путь к папке проекта. После возврата черты предупреждение пропадает.</p>
           </div>
           <div class="lab__task">
             <h4>Язык интерфейса</h4>
             <ol>
-              <li>В <code>docs/source/conf.py</code> замените <code>language = 'ru'</code> на <code>language = 'en'</code>.</li>
-              <li>Соберите сайт и обновите страницу в браузере.</li>
+              <li>В <code>conf.py</code> замените <code>language = 'ru'</code> на <code>language = 'en'</code>, соберите и обновите страницу.</li>
               <li>Верните <code>'ru'</code> и соберите с ключом <code>-E</code>.</li>
             </ol>
             <div class="lab__expect">
               <b>Что должно получиться</b>
-              <p>В выводе первой сборки после правки стоит строка <code>сборка [html]: несоответствие build_info, копирование .buildinfo в .buildinfo.bak</code>: Sphinx заметил, что изменились настройки, и пересобрал всё. На странице «Навигация» сменилась на <b>Navigation</b>, кнопка поиска — на <b>Go</b>. Текст, написанный в <code>index.rst</code>, остался русским.</p>
+              <p>После смены языка в выводе есть строка <code>несоответствие build_info</code>: настройки изменились, и Sphinx пересобрал всё. На странице «Навигация» сменилась на <b>Navigation</b>, кнопка поиска — на <b>Go</b>. Текст из <code>index.rst</code> остался русским: язык меняет только надписи темы.</p>
             </div>
             <figure class="shot">
               <img src="img/site-12-en.png" alt="Та же страница с language en: слева Navigation и кнопка Go, основной текст на русском">
-              <figcaption>Страница с <code>language = 'en'</code>: переведены только подписи темы.</figcaption>
+              <figcaption>Страница с <code>language = 'en'</code>.</figcaption>
             </figure>
-          </div>
-          <div class="lab__task">
-            <h4>Сборка с нуля</h4>
-            <ol>
-              <li>Выполните сборку два раза подряд без правок и сравните начало вывода.</li>
-              <li>Удалите папку <code>docs/build</code> целиком: <code data-os="mac linux">rm -rf docs/build</code><code data-os="win">Remove-Item -Recurse docs\build</code>.</li>
-              <li>Соберите ещё раз и откройте сайт.</li>
-            </ol>
-            <div class="lab__expect">
-              <b>Что должно получиться</b>
-              <p>Вторая сборка без правок печатает <code>цели для 0</code> и <code>нет устаревших целей.</code> После удаления папки вывод снова начинается со строки <code>создание целевого каталога... готово</code>, сайт открывается как прежде. Из этого опыта видно, что папку <code>build</code> можно удалить в любой момент: всё в ней восстанавливается из <code>source</code>.</p>
-            </div>
           </div>
         </div>
 
         <h2 id="s9"><span class="sec">§9</span>Проверьте себя</h2>
         <details>
           <summary>Почему Sphinx ставят в окружение проекта?</summary>
-          <p>Чтобы прочитать докстринги, Sphinx импортирует модули проекта. Импорт пройдёт, только если рядом установлены все зависимости проекта, то есть в его окружении.</p>
+          <p>Чтобы прочитать докстринги, Sphinx импортирует модули проекта. Импорт проходит только там, где установлены зависимости проекта, — в его окружении.</p>
         </details>
         <details>
           <summary>Какие два файла из docs правят руками?</summary>
-          <p><code>docs/source/conf.py</code> — настройки сборки и <code>docs/source/index.rst</code> — главная страница с корневым оглавлением. Дальше к ним добавляются свои файлы <code>.rst</code>.</p>
+          <p><code>docs/source/conf.py</code> — настройки сборки и <code>docs/source/index.rst</code> — главная страница с оглавлением.</p>
         </details>
         <details>
-          <summary>Что означают три части команды sphinx-build -M html docs/source docs/build?</summary>
-          <p><code>-M html</code> — вид результата, <code>docs/source</code> — откуда брать исходники и <code>conf.py</code>, <code>docs/build</code> — куда писать. Готовый сайт окажется в <code>docs/build/html</code>.</p>
+          <summary>Что означают части команды sphinx-build -M html docs/source docs/build?</summary>
+          <p><code>-M html</code> — вид результата, <code>docs/source</code> — исходники и <code>conf.py</code>, <code>docs/build</code> — папка результата. Сайт окажется в <code>docs/build/html</code>.</p>
         </details>
         <details>
-          <summary>Почему папку docs/build не добавляют в репозиторий?</summary>
-          <p>Всё в ней получается из <code>docs/source</code> и кода проекта одной командой. Хранить её в Git — значит при каждой сборке получать десятки изменённых файлов, которых никто не писал.</p>
+          <summary>Что напечатает сборка, если ни один файл не менялся?</summary>
+          <p><code>цели для 0 не обновлённых исходных файлов</code> и <code>нет устаревших целей.</code> Страницы не переписываются. Пересобрать всё заставляет ключ <code>-E</code>.</p>
         </details>
         <details>
-          <summary>Когда нужен ключ -E?</summary>
-          <p>Когда нужно пересобрать всё и увидеть все предупреждения. Без ключа Sphinx перечитывает только изменённые файлы и предупреждения в остальных не повторяет.</p>
+          <summary>Зачем в пустой папке _static файл .gitkeep?</summary>
+          <p>Git не хранит пустые папки. Без файла папки не будет в репозитории, и сборка из скачанной копии напечатает предупреждение о <code>_static</code>.</p>
         </details>
 
         <div class="cheat">
           <div>
             <b>Установка</b>
-            <code>pip install sphinx</code>
+            <code>.venv/bin/pip install sphinx</code>
             <code>sphinx-build --version</code>
           </div>
           <div>
@@ -477,7 +379,6 @@ docs/build/</pre>
           <div>
             <b>Результат</b>
             <code>docs/build/html/index.html</code>
-            <code>открывается без сервера</code>
           </div>
           <div>
             <b>Правят руками</b>
@@ -485,21 +386,22 @@ docs/build/</pre>
             <code>docs/source/index.rst</code>
           </div>
           <div>
-            <b>В .gitignore</b>
-            <code>docs/build/</code>
+            <b>Для Git</b>
+            <code>docs/build/ в .gitignore</code>
+            <code>_static/.gitkeep</code>
           </div>
         </div>
 
         <h3>Итог главы</h3>
-        <p>Sphinx собирает сайт документации из файлов reStructuredText и докстрингов проекта. Его ставят в окружение проекта, потому что для чтения докстрингов он импортирует модули. Заготовку создаёт мастер <code>sphinx-quickstart docs</code>: при ответе <code>y</code> на первый вопрос исходники лежат в <code>docs/source</code>, результат — в <code>docs/build</code>. Руками правят <code>conf.py</code> с настройками и <code>index.rst</code> с главной страницей и оглавлением. Сборка запускается командой <code>sphinx-build -M html docs/source docs/build</code>, готовый сайт открывается из <code>docs/build/html/index.html</code> без сервера. Повторная сборка пересобирает только изменённые файлы, ключ <code>-E</code> пересобирает всё. Папка <code>docs/build</code> в репозиторий не попадает. На первом сайте нет описаний функций: их подключает глава 4.13.</p>
+        <p>Sphinx собирает сайт документации из файлов reStructuredText и докстрингов и ставится в окружение проекта. Мастер <code>sphinx-quickstart docs</code> создаёт папки <code>docs/source</code> и <code>docs/build</code>, файл настроек <code>conf.py</code> и главную страницу <code>index.rst</code>. Команда <code>sphinx-build -M html docs/source docs/build</code> собирает сайт в <code>docs/build/html</code>, он открывается в браузере с диска. Повторная сборка пересобирает только изменённые файлы, ключ <code>-E</code> — все. В репозиторий идут исходники документации: <code>docs/build</code> исключена в <code>.gitignore</code>, пустую <code>_static</code> держит файл <code>.gitkeep</code>. В главе 4.13 на сайт выводятся докстринги модулей.</p>
 
         <div class="sources">
           <b>Откуда взяты факты</b>
           <ol>
             <li>Установка, мастер и первая сборка — <a href="https://www.sphinx-doc.org/en/master/usage/quickstart.html">Sphinx, Getting started</a>.</li>
-            <li>Ключи команды сборки, в том числе <code>-M</code> и <code>-E</code> — <a href="https://www.sphinx-doc.org/en/master/man/sphinx-build.html">sphinx-build</a>.</li>
+            <li>Ключи <code>-M</code> и <code>-E</code> — <a href="https://www.sphinx-doc.org/en/master/man/sphinx-build.html">sphinx-build</a>.</li>
             <li>Настройка <code>language</code> — <a href="https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-language">Sphinx, Configuration</a>.</li>
-            <li>Все выводы и кадры сайта получены на Sphinx 9.1.1 сценарием <code>shots/sphinx_run.py</code> на третьем архиве темы.</li>
+            <li>Кадры сняты в VS Code на третьем архиве сценарием <code>shots/shoot_sphinx.py</code>, страницы сайта — <code>shots/sphinx_run.py</code>, Sphinx 9.1.1.</li>
           </ol>
         </div>
 

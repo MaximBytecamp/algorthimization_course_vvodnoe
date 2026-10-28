@@ -114,15 +114,9 @@
             <p class="walk__head"><span>Проверьте ссылки строгим режимом</span></p>
             <div class="walk__body">
               <p>Соберите с ключом <code>-n</code>: <code>sphinx-build -M html docs/source docs/build -q -E -n</code>.</p>
-              <figure class="code code--out">
-                <figcaption><span>Терминал</span><span>sphinx-build … -q -E -n</span></figcaption>
-<pre>&lt;unknown&gt;:1: WARNING: py:class цель перекрёстной ссылки не найдена: datetime.date [ref.class]
-&lt;unknown&gt;:1: WARNING: py:class цель перекрёстной ссылки не найдена: pathlib.Path [ref.class]
-&lt;unknown&gt;:1: WARNING: py:class цель перекрёстной ссылки не найдена: collections.abc.Iterator [ref.class]
-&lt;unknown&gt;:1: WARNING: py:class цель перекрёстной ссылки не найдена: pathlib.Path [ref.class]
-&lt;unknown&gt;:1: WARNING: py:class цель перекрёстной ссылки не найдена: pathlib.Path [ref.class]
-…/app/utils/formatter.py:docstring of app.utils.formatter.format_kopeks:: WARNING: py:class цель перекрёстной ссылки не найдена: Строка вида «1 250 [ref.class]
-…/app/utils/formatter.py:docstring of app.utils.formatter.format_kopeks:: WARNING: py:class цель перекрёстной ссылки не найдена: 00 ₽» [ref.class]</pre>
+              <figure class="shot">
+                <img src="img/vscode-sphinx-16-nitpicky.png" alt="Терминал: сборка с -n — пять строк о типах стандартной библиотеки и две строки о format_kopeks: Строка вида «1 250 и 00 ₽»">
+                <figcaption>Семь строк. Пять с <code>&lt;unknown&gt;</code> в начале — типы <code>datetime.date</code>, <code>pathlib.Path</code>, <code>collections.abc.Iterator</code> из аннотаций. Две последние начинаются с <code>formatter.py:docstring of app.utils.formatter.format_kopeks</code> и заканчиваются странными именами классов: «Строка вида «1 250» и «00 ₽»».</figcaption>
               </figure>
               <p>Первые пять строк — типы стандартной библиотеки из аннотаций, они описаны в документации Python (глава 4.14, §3). Две последние относятся к докстрингу <code>format_kopeks</code>: Sphinx ищет класс с именем «Строка вида «1 250» и класс «00 ₽»». Откройте на сайте страницу пакета <code>app.utils</code> и найдите эту функцию.</p>
               <figure class="shot shot--narrow">
@@ -135,24 +129,29 @@
             <p class="walk__head"><span>Найдите причину и исправьте докстринг</span></p>
             <div class="walk__body">
               <p>Исходный текст раздела:</p>
-              <figure class="code">
-                <figcaption><span>app/utils/formatter.py</span><span>как написано</span></figcaption>
-<pre>    Returns:
-        Строка вида «1 250,00 ₽»: пробел разделяет тысячи, запятая
-        отделяет копейки.</pre>
+              <figure class="shot">
+                <img src="img/vscode-sphinx-16-formatter-before.png" alt="VS Code: formatter.py, функция format_kopeks, в разделе Returns строка Строка вида «1 250,00 ₽»: пробел разделяет тысячи, запятая">
+                <figcaption><code>app/utils/formatter.py</code>, функция <code>format_kopeks</code>. Строка <code>10</code> — <code>Returns:</code>, строка <code>11</code> — <code>Строка вида «1 250,00 ₽»: пробел разделяет тысячи, запятая</code>. Двоеточие стоит в середине первой строки раздела.</figcaption>
               </figure>
               <p>В формате Google раздел <code>Returns:</code> может начинаться с типа результата: <code>str: Строка вида…</code>. Napoleon считает типом всё, что стоит в первой строке раздела до двоеточия. Здесь двоеточие стоит внутри фразы, и napoleon разрезал её. Запятая внутри «1 250,00» разделила мнимый тип ещё на два «класса» — отсюда две строки в выводе. Ruff это место не отмечает: по его правилам раздел оформлен верно. В подсказке редактора и в <code>help()</code> текст тоже выглядит правильно, потому что там его никто не разбирает.</p>
               <p>Исправление — убрать двоеточие из первой строки раздела:</p>
-              <figure class="code">
-                <figcaption><span>app/utils/formatter.py</span><span>исправлено</span></figcaption>
-<pre>    Returns:
-        Строка вида «1 250,00 ₽», в которой пробел разделяет тысячи,
-        а запятая отделяет копейки.</pre>
+              <figure class="shot">
+                <img src="img/vscode-sphinx-16-formatter-after.png" alt="VS Code: formatter.py, раздел Returns: Строка вида «1 250,00 ₽», в которой пробел разделяет тысячи, а запятая отделяет копейки">
+                <figcaption>Строки <code>11</code>–<code>12</code> после правки: двоеточия в первой строке раздела нет, смысл фразы прежний.</figcaption>
               </figure>
-              <p>Соберите с <code>-q -E -n</code> ещё раз: остались пять строк о стандартной библиотеке, строк о <code>format_kopeks</code> нет. На сайте поле «Тип результата» пропало, «Результат» содержит всю фразу.</p>
+              <p>Соберите с <code>-q -E -n</code> ещё раз.</p>
+              <figure class="shot">
+                <img src="img/vscode-sphinx-16-nitpicky-fixed.png" alt="Терминал: сборка с -n после исправления — пять строк о datetime.date, pathlib.Path и collections.abc.Iterator, строк о format_kopeks нет">
+                <figcaption>Остались пять строк о стандартной библиотеке, строк о <code>format_kopeks</code> нет.</figcaption>
+              </figure>
+              <p>Проверьте, что правка не сломала остальное: Ruff, примеры из докстринга и тесты.</p>
+              <figure class="shot">
+                <img src="img/vscode-sphinx-16-checks.png" alt="Терминал: ruff check app — All checks passed, doctest без вывода, pytest — 12 passed">
+                <figcaption><code>All checks passed!</code> от Ruff; <code>doctest</code> молчит — оба примера из <code>Examples:</code> совпали; <code>12 passed</code> от pytest.</figcaption>
+              </figure>
               <figure class="shot shot--narrow">
                 <img src="img/site-15-format-kopeks-fixed.png" alt="Описание format_kopeks после исправления: поле Результат содержит полную фразу, поля Тип результата нет">
-                <figcaption>Тот же докстринг после исправления, в теме Furo из главы 4.15. Проверьте <code>ruff check app</code> и <code>python -m doctest app/utils/formatter.py</code>: правка не должна сломать ни проверку, ни примеры.</figcaption>
+                <figcaption>На сайте поле «Тип результата» пропало, «Результат» содержит всю фразу. Кадр снят в теме Furo, которая подключается на следующем шаге.</figcaption>
               </figure>
             </div>
           </div>

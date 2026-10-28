@@ -1,13 +1,21 @@
-"""Кадры VS Code для глав 4.12–4.16 (Sphinx).
+"""Кадры VS Code для глав 4.12–4.16 (Sphinx): весь путь шаг за шагом.
 
-    python3 shoot_sphinx.py prepare        третий архив, окружение со Sphinx, редактор
-    python3 shoot_sphinx.py <стадия> […]   quickstart tree build
-    python3 shoot_sphinx.py crop           кадры в ../img/vscode-sphinx-*.png
+    python3 shoot_sphinx.py prepare           третий архив, .venv без Sphinx, редактор
+    python3 shoot_sphinx.py ch12 ch13 ch14 ch15 ch16
+    python3 shoot_sphinx.py crop              кадры в ../img/vscode-sphinx-*.png
+
+Стадии идут строго по порядку: каждая продолжает проект с того места, где
+закончилась предыдущая, как у студента, который читает главы подряд. Правки
+файлов пишутся на диск этим скриптом (как будто набраны), редактор их
+подхватывает; команды выполняются в терминале VS Code.
 
 Съёмка фоновая, через `cdp.py`, как в `shoot_py.py`. Профиль —
-/private/tmp/vsc-sphinx без расширений: в кадрах только проводник, файлы
-и терминал. Язык терминала русский (LANG в настройках профиля), поэтому
-вывод Sphinx совпадает с выводами в raw/sphinx, которые пишет sphinx_run.py.
+/private/tmp/vsc-sphinx без расширений, светлая тема, bash --norc,
+LANG=ru_RU.UTF-8 (в настройках профиля): вывод Sphinx совпадает с выводами
+в raw/sphinx, которые пишет sphinx_run.py.
+
+Кадры терминала снимаются с развёрнутой панелью и обрезаются по её границам
+(`term`), кадры редактора — окно целиком (`win`).
 """
 import asyncio
 import shutil
@@ -18,15 +26,19 @@ from pathlib import Path
 
 import cdp
 import shoot_py as sp
+import sphinx_run as sr
 from cdp import Editor, launch
 
 cdp.PROFILE = "/private/tmp/vsc-sphinx"
 MATERIALS = Path(__file__).resolve().parent.parent / "materials"
 STUDENT = Path("/private/tmp/student-sphinx-vsc")
 NAME = "otchet-kafe-dokumentirovan"
-RAW = Path(__file__).resolve().parent / "raw"
+RAW = Path(__file__).resolve().parent / "raw" / "vsc"
+IMG = Path(__file__).resolve().parent.parent / "img"
 P = STUDENT / NAME
 ANSWERS = ["y", "Отчёт кафе", "Макаров М. Н.", "1.0", "ru"]
+BUILD = ".venv/bin/sphinx-build -M html docs/source docs/build"
+APIDOC = "SPHINX_APIDOC_OPTIONS=members .venv/bin/sphinx-apidoc -f -M -o docs/source/api app"
 
 
 def prepare() -> None:
@@ -35,50 +47,221 @@ def prepare() -> None:
     with zipfile.ZipFile(MATERIALS / f"{NAME}.zip") as zf:
         zf.extractall(STUDENT)
     subprocess.run([sys.executable, "-m", "venv", str(P / ".venv")], check=True)
-    subprocess.run([str(P / ".venv/bin/pip"), "-q", "install", "-r", "requirements.txt", "sphinx==9.1.1"],
-                   cwd=P, check=True)
+    subprocess.run([str(P / ".venv/bin/pip"), "-q", "install", "-r", "requirements.txt"], cwd=P, check=True)
     launch(str(P))
 
 
-async def maximize_panel(e: Editor) -> None:
-    await e.palette("View: Toggle Maximized Panel", 1.0)
+def edit(rel: str, old: str, new: str) -> None:
+    path = P / rel
+    text = path.read_text(encoding="utf-8")
+    if old not in text:
+        raise SystemExit(f"в {rel} нет «{old}»")
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
 
 
-async def st_quickstart(e: Editor) -> None:
-    """4.12 §3: ответы на вопросы sphinx-quickstart в терминале."""
+def write(rel: str, text: str) -> None:
+    (P / rel).parent.mkdir(parents=True, exist_ok=True)
+    (P / rel).write_text(text, encoding="utf-8")
+
+
+def line_of(rel: str, fragment: str) -> int:
+    for n, text in enumerate((P / rel).read_text(encoding="utf-8").splitlines(), 1):
+        if fragment in text:
+            return n
+    raise SystemExit(f"в {rel} нет «{fragment}»")
+
+
+async def win(e: Editor, name: str) -> None:
+    await sp.park(e)
+    await e.shot(f"{RAW}/{name}.png")
+
+
+async def term(e: Editor, name: str, command: str, wait: float = 8.0) -> None:
+    """Команда в свежем терминале; кадр — только развёрнутая панель."""
+    await sp.terminal(e, command, wait)
+    await e.palette("View: Toggle Maximized Panel", 1.2)
+    await sp.park(e)
+    r = await e.rect(".part.panel")
+    await e.shot(f"{RAW}/{name}.png", clip=r)
+    await e.palette("View: Toggle Maximized Panel", 0.8)
+
+
+async def show(e: Editor, rel: str, name: str, line: int | None = None, reveal: bool = True) -> None:
+    """Файл открыт в редакторе и найден в проводнике."""
+    await sp.reset(e)
+    await sp.open_file(e, rel, 3.0)
+    if line:
+        await sp.goto(e, line)
+    if reveal:
+        await e.palette("File: Reveal Active File in Explorer View", 1.2)
+    await e.palette("View: Focus Active Editor Group", 0.5)
+    await win(e, name)
+
+
+# ── 4.12 ────────────────────────────────────────────────────────────────
+async def st_ch12(e: Editor) -> None:
     shutil.rmtree(P / "docs", ignore_errors=True)
     await sp.reset(e)
+    await term(e, "12-install", ".venv/bin/pip install sphinx 2>&1 | tail -4", 50.0)
+    await term(e, "12-version", ".venv/bin/sphinx-build --version", 4.0)
+    # Мастер: первый вопрос и итог.
+    await sp.reset(e)
     await sp.terminal(e, ".venv/bin/sphinx-quickstart docs", 4.0)
-    await maximize_panel(e)
-    await e.shot(f"{RAW}/sphinx-qs-1.png")
+    await e.palette("View: Toggle Maximized Panel", 1.2)
+    r = await e.rect(".part.panel")
+    await e.shot(f"{RAW}/12-qs-first.png", clip=r)
     for answer in ANSWERS:
         await e.paste(answer, 0.4)
         await e.key("Enter", 1.5)
     await asyncio.sleep(2.0)
-    await e.shot(f"{RAW}/sphinx-qs-2.png")
-    await maximize_panel(e)
-
-
-async def st_tree(e: Editor) -> None:
-    """4.12 §4: дерево docs/ в проводнике и открытый conf.py."""
-    await sp.reset(e)
-    await sp.open_file(e, "docs/source/conf.py", 3.0)
-    await e.palette("File: Reveal Active File in Explorer View", 1.5)
     await sp.park(e)
-    await e.shot(f"{RAW}/sphinx-tree-conf.png")
-    await sp.open_file(e, "docs/source/index.rst", 3.0)
-    await sp.park(e)
-    await e.shot(f"{RAW}/sphinx-tree-index.png")
+    await e.shot(f"{RAW}/12-qs-done.png", clip=r)
+    await e.palette("View: Toggle Maximized Panel", 0.8)
+    await show(e, "docs/source/conf.py", "12-conf")
+    await show(e, "docs/source/index.rst", "12-index")
+    await term(e, "12-build", BUILD, 10.0)
+    await show(e, "docs/build/html/index.html", "12-build-tree-open")
+    await e.palette("View: Close All Editors", 0.8)
+    await win(e, "12-build-tree")
+    await term(e, "12-build-again", BUILD, 8.0)
+    # Своя главная страница.
+    edit("docs/source/index.rst", "Отчёт кафе documentation\n========================\n\n"
+         "Add your content using ``reStructuredText`` syntax. See the\n"
+         "`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_\n"
+         "documentation for details.\n",
+         "Отчёт кафе\n==========\n\n"
+         "Программа читает файл смены кафе, считает выручку по официантам\n"
+         "и печатает отчёт.\n")
+    edit("docs/source/index.rst", ":caption: Contents:", ":caption: Содержание:")
+    await show(e, "docs/source/index.rst", "12-index-edited")
+    await term(e, "12-build-edited", BUILD, 8.0)
+    # Опыт: короткая черта.
+    edit("docs/source/index.rst", "Отчёт кафе\n==========\n", "Отчёт кафе\n=====\n")
+    await show(e, "docs/source/index.rst", "12-underline-short")
+    await term(e, "12-build-underline", BUILD, 8.0)
+    edit("docs/source/index.rst", "Отчёт кафе\n=====\n", "Отчёт кафе\n==========\n")
+    # .gitignore и .gitkeep.
+    await show(e, ".gitignore", "12-gitignore")
+    write("docs/source/_static/.gitkeep", "")
+    await show(e, "docs/source/_static/.gitkeep", "12-gitkeep")
 
 
-async def st_build(e: Editor) -> None:
-    """4.12 §5: первая сборка, конец вывода."""
-    shutil.rmtree(P / "docs" / "build", ignore_errors=True)
-    await sp.reset(e)
-    await sp.terminal(e, ".venv/bin/sphinx-build -M html docs/source docs/build", 10.0)
-    await maximize_panel(e)
-    await e.shot(f"{RAW}/sphinx-build.png")
-    await maximize_panel(e)
+# ── 4.13 ────────────────────────────────────────────────────────────────
+async def st_ch13(e: Editor) -> None:
+    write("docs/source/orders.rst", sr.ORDERS_RST)
+    await show(e, "docs/source/orders.rst", "13-orders-rst")
+    edit("docs/source/index.rst", ":caption: Содержание:\n", ":caption: Содержание:\n\n   orders\n")
+    await show(e, "docs/source/index.rst", "13-index-orders")
+    await term(e, "13-err-directive", BUILD + " -q", 8.0)
+    edit("docs/source/conf.py", "extensions = []", "extensions = [\n    'sphinx.ext.autodoc',\n]")
+    await show(e, "docs/source/conf.py", "13-conf-autodoc", line_of("docs/source/conf.py", "extensions"))
+    await term(e, "13-err-import", BUILD + " -q", 8.0)
+    edit("docs/source/conf.py", "# -- Project information",
+         "import sys\nfrom pathlib import Path\n\n"
+         "# Корень проекта — на две папки выше conf.py: docs/source → docs → проект.\n"
+         "sys.path.insert(0, str(Path(__file__).resolve().parents[2]))\n\n# -- Project information")
+    await show(e, "docs/source/conf.py", "13-conf-path", 9)
+    await term(e, "13-err-indent", BUILD + " -q", 8.0)
+    edit("docs/source/conf.py", "    'sphinx.ext.autodoc',\n]",
+         "    'sphinx.ext.autodoc',\n    'sphinx.ext.napoleon',\n]\n\n"
+         "napoleon_google_docstring = True\nnapoleon_numpy_docstring = False")
+    await show(e, "docs/source/conf.py", "13-conf-napoleon", line_of("docs/source/conf.py", "extensions"))
+    await term(e, "13-build-napoleon", BUILD + " -q", 8.0)
+    # Звёздочка в докстринге.
+    rel = "app/services/orders.py"
+    original = (P / rel).read_text(encoding="utf-8")
+    edit(rel, "            означает, что возвращаются все.", "            означает, что возвращаются все, *3 — три лучших.")
+    await show(e, rel, "13-orders-star", line_of(rel, "*3"))
+    await term(e, "13-ruff-star", f".venv/bin/ruff check {rel}", 5.0)
+    await term(e, "13-warn-star", BUILD + " -q -E", 9.0)
+    await term(e, "13-warn-W", BUILD + " -q -E -W --keep-going; echo \"код завершения: $?\"", 9.0)
+    (P / rel).write_text(original, encoding="utf-8")
+    await term(e, "13-clean-W", BUILD + " -q -E -W --keep-going; echo \"код завершения: $?\"", 9.0)
+    edit("docs/source/conf.py", "    'sphinx.ext.napoleon',\n]", "    'sphinx.ext.napoleon',\n    'sphinx.ext.viewcode',\n]")
+    await show(e, "docs/source/conf.py", "13-conf-viewcode", line_of("docs/source/conf.py", "extensions"))
+    await term(e, "13-build-viewcode", BUILD + " -q", 9.0)
+
+
+# ── 4.14 ────────────────────────────────────────────────────────────────
+async def st_ch14(e: Editor) -> None:
+    write("docs/source/usage.rst", sr.USAGE_RST)
+    await show(e, "docs/source/usage.rst", "14-usage-rst")
+    await term(e, "14-warn-orphan", BUILD + " -q", 8.0)
+    edit("docs/source/index.rst", "   orders\n", "   usage\n   orders\n")
+    await show(e, "docs/source/index.rst", "14-index-usage")
+    await term(e, "14-build-usage", BUILD + " -q", 8.0)
+    await term(e, "14-apidoc-default", ".venv/bin/sphinx-apidoc -o docs/source/api app", 5.0)
+    await show(e, "docs/source/api/app.services.rst", "14-apidoc-file")
+    edit("docs/source/index.rst", "   orders\n", "   api/modules\n")
+    (P / "docs/source/orders.rst").unlink()
+    await show(e, "docs/source/index.rst", "14-index-api")
+    await term(e, "14-warn-dup", BUILD + " -q -E", 10.0)
+    edit("docs/source/conf.py", "napoleon_numpy_docstring = False",
+         "napoleon_numpy_docstring = False\nnapoleon_use_ivar = True")
+    await show(e, "docs/source/conf.py", "14-conf-ivar", line_of("docs/source/conf.py", "napoleon_use_ivar"))
+    await term(e, "14-build-ivar", BUILD + " -q -E", 10.0)
+    await term(e, "14-apidoc-members", APIDOC, 5.0)
+    await show(e, "docs/source/api/app.services.rst", "14-apidoc-file-members")
+    await term(e, "14-build-members", BUILD + " -q -E", 10.0)
+    # Попробуйте сами: новый модуль без apidoc и с ним.
+    write("app/utils/percent.py", PERCENT)
+    await show(e, "app/utils/percent.py", "14-percent")
+    await term(e, "14-ruff-percent", ".venv/bin/ruff check app/utils/percent.py", 5.0)
+    await term(e, "14-apidoc-percent", APIDOC + " && grep -n percent docs/source/api/app.utils.rst", 6.0)
+    (P / "app/utils/percent.py").unlink()
+    await term(e, "14-stale", ".venv/bin/sphinx-apidoc -o docs/source/api app && " + BUILD + " -q -E", 12.0)
+    await term(e, "14-stale-fixed", APIDOC + " && " + BUILD + " -q -E", 12.0)
+
+
+PERCENT = '''"""Проценты от суммы."""
+
+
+def share(part: int, total: int) -> float:
+    """Считает долю части от целого в процентах.
+
+    Args:
+        part: Часть, в копейках.
+        total: Целое, в копейках, больше нуля.
+
+    Returns:
+        Доля в процентах, округлённая до одного знака.
+    """
+    return round(part * 100 / total, 1)
+
+
+def rounded(value: float) -> int:
+    return round(value)
+'''
+
+
+# ── 4.15 ────────────────────────────────────────────────────────────────
+async def st_ch15(e: Editor) -> None:
+    await term(e, "15-install-furo", ".venv/bin/pip install furo 2>&1 | tail -4", 35.0)
+    edit("docs/source/conf.py", "html_theme = 'alabaster'", "html_theme = 'furo'")
+    edit("docs/source/conf.py", "html_static_path = ['_static']",
+         "html_static_path = ['_static']\nhtml_title = 'Отчёт кафе 1.0'")
+    await show(e, "docs/source/conf.py", "15-conf-furo", line_of("docs/source/conf.py", "html_theme"))
+    await term(e, "15-build-furo", BUILD + " -E", 12.0)
+    await term(e, "15-pip-show", ".venv/bin/pip show sphinx furo | grep -E '^(Name|Version)'", 5.0)
+    write("docs/requirements.txt", "sphinx==9.1.1\nfuro==2025.12.19\n")
+    await show(e, "docs/requirements.txt", "15-docs-req")
+    write(".github/workflows/docs.yml", sr.WORKFLOW)
+    await show(e, ".github/workflows/docs.yml", "15-workflow")
+    await term(e, "15-strict", BUILD + " -E -W --keep-going 2>&1 | tail -4", 14.0)
+
+
+# ── 4.16 ────────────────────────────────────────────────────────────────
+async def st_ch16(e: Editor) -> None:
+    """Ошибка в format_kopeks: вывод -n, файл до и после, повтор -n."""
+    rel = "app/utils/formatter.py"
+    await term(e, "16-nitpicky", BUILD + " -q -E -n", 12.0)
+    await show(e, rel, "16-formatter-before", line_of(rel, "Returns:"))
+    edit(rel, "        Строка вида «1 250,00 ₽»: пробел разделяет тысячи, запятая\n        отделяет копейки.",
+         "        Строка вида «1 250,00 ₽», в которой пробел разделяет тысячи,\n        а запятая отделяет копейки.")
+    await show(e, rel, "16-formatter-after", line_of(rel, "Returns:"))
+    await term(e, "16-nitpicky-fixed", BUILD + " -q -E -n", 12.0)
+    await term(e, "16-checks", ".venv/bin/ruff check app && .venv/bin/python -m doctest app/utils/formatter.py"
+               " && .venv/bin/python -m pytest -q", 10.0)
 
 
 STAGES = {name[3:]: fn for name, fn in globals().items() if name.startswith("st_")}
@@ -88,23 +271,32 @@ async def run(names: list[str]) -> None:
     for name in names:
         print(f"── {name}")
         async with Editor() as e:
+            await e.send("Emulation.setFocusEmulationEnabled", enabled=True)
             await STAGES[name](e)
 
 
-FRAMES = ["qs-2", "tree-conf", "build"]
-
-
 def crop() -> None:
-    """Кадры в книгу: ширина 1600, как у остальных кадров VS Code темы."""
-    from PIL import Image
-    for name in FRAMES:
-        im = Image.open(RAW / f"sphinx-{name}.png")
-        im = im.resize((1600, round(im.height * 1600 / im.width)), Image.LANCZOS)
-        im.save(RAW.parent.parent / "img" / f"vscode-sphinx-{name}.png", optimize=True)
+    """Кадры в книгу: ширина не больше 1600, как у остальных кадров VS Code темы."""
+    from PIL import Image, ImageChops
+    for raw in sorted(RAW.glob("*.png")):
+        if raw.stem.endswith("-open"):  # промежуточный кадр, в книгу не идёт
+            continue
+        im = Image.open(raw).convert("RGB")
+        # Кадр терминала — развёрнутая панель без строки состояния: снизу
+        # пустое поле, обрезаем его по последней строке текста.
+        body = im.crop((0, 0, im.width - 40, im.height))
+        bg = Image.new("RGB", body.size, body.getpixel((body.width - 5, body.height - 5)))
+        box = ImageChops.difference(body, bg).convert("L").point(lambda v: 255 if v > 40 else 0).getbbox()
+        if box and im.height - box[3] > 120:
+            im = im.crop((0, 0, im.width, min(im.height, box[3] + 36)))
+        if im.width > 1600:
+            im = im.resize((1600, round(im.height * 1600 / im.width)), Image.LANCZOS)
+        im.save(IMG / f"vscode-sphinx-{raw.stem}.png", optimize=True)
+        print(raw.stem, im.size)
 
 
 def main() -> None:
-    RAW.mkdir(exist_ok=True)
+    RAW.mkdir(parents=True, exist_ok=True)
     if sys.argv[1] == "prepare":
         prepare()
         return
