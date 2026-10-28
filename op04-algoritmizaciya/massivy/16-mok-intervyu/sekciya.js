@@ -10,7 +10,14 @@
   const STORE = 'op04-mok1:session', STORE_CODE = 'op04-mok1:code';
   const POOL = window.MOCK_POOL || [];
   const BY_KEY = Object.fromEntries(POOL.map(t => [t.key, t]));
-  const PLAN = [25, 35];
+  // Секция — две задачи за 60 минут (КТП, занятие 16). Экзамен — четыре задачи за 180 минут, без подсказок.
+  // plan — ориентир по минутам на каждую задачу; по истечении общего времени таймер только краснеет.
+  const FORMATS = {
+    section: { name: 'Секция', minutes: 60, plan: [25, 35], levels: ['easy', 'medium'] },
+    exam: { name: 'Экзамен', minutes: 180, plan: [35, 35, 55, 55], levels: ['easy', 'easy', 'medium', 'medium'] },
+  };
+  const LEVEL = { easy: 'простая', medium: 'чуть сложнее' };
+  const fmt = () => FORMATS[(S && S.format) || 'section'];
   const STAGES = [
     ['retell', 'Условие'], ['clarify', 'Уточнения'], ['examples', 'Примеры'], ['idea', 'Перебор и идея'],
     ['complexity', 'Сложность'], ['code', 'Код'], ['check', 'Проверка'],
@@ -35,13 +42,24 @@
   let busy = false;
 
   /* ── 1. Билет и состояние ─────────────────────────────────────── */
-  function drawTicket() {
-    const q = new URLSearchParams(location.search).get('t');
-    const fromUrl = (q || '').split(',').filter(k => BY_KEY[k]);
-    if (fromUrl.length === 2) return fromUrl;
-    const easy = POOL.filter(t => t.level === 'easy'), medium = POOL.filter(t => t.level === 'medium');
-    const first = pick(easy);
-    return [first.key, pick(medium.filter(t => t.module !== first.module)).key];
+  function urlFormat() {
+    const q = new URLSearchParams(location.search);
+    const n = (q.get('t') || '').split(',').filter(k => BY_KEY[k]).length;
+    return q.get('f') === 'exam' || n === 4 ? 'exam' : 'section';
+  }
+  // Задачи билета — каждая из своего модуля, пока модулей хватает.
+  function drawTicket(format) {
+    const levels = FORMATS[format].levels;
+    const fromUrl = (new URLSearchParams(location.search).get('t') || '').split(',').filter(k => BY_KEY[k]);
+    if (fromUrl.length === levels.length) return fromUrl;
+    const used = new Set(), keys = [];
+    for (const level of levels) {
+      const all = POOL.filter(t => t.level === level && !keys.includes(t.key));
+      const fresh = all.filter(t => !used.has(t.module));
+      const t = pick(fresh.length ? fresh : all);
+      used.add(t.module); keys.push(t.key);
+    }
+    return keys;
   }
   const newTask = key => ({ key, messages: [], stage: 'retell', clarified: [], hints: [], code: BY_KEY[key].signature, examples: [{ args: '', answer: '', verdict: '' }], tests: null, startedAt: null, finishedAt: null });
   const task = () => S.tasks[S.idx];
@@ -187,8 +205,15 @@ onmessage = async e => {
 
   function renderStart() {
     show('start');
-    const ticket = S && S.draft ? S.draft : drawTicket();
-    S = { draft: ticket };
+    const format = (S && S.draftFormat) || urlFormat();
+    const ticket = S && S.draft && S.draft.length === FORMATS[format].levels.length ? S.draft : drawTicket(format);
+    S = { draft: ticket, draftFormat: format };
+    document.querySelector(`input[name="mk-format"][value="${format}"]`).checked = true;
+    const exam = format === 'exam';
+    const training = document.querySelector('input[name="mk-mode"][value="training"]');
+    training.disabled = exam;
+    if (exam) document.querySelector('input[name="mk-mode"][value="exam"]').checked = true;
+    $('#mk-mode-note').hidden = !exam;
     const st = $('#mk-server');
     st.className = 'mk-server ' + (server.ready ? 'is-ok' : 'is-no');
     st.textContent = server.ready ? 'ИИ-интервьюер подключён.' : (server.error || 'ИИ-интервьюер не настроен на сервере: секцию можно пройти в парах, порядок — в главе 16, §7.');
@@ -196,16 +221,18 @@ onmessage = async e => {
     $('#mk-code').value = store.get(STORE_CODE) || '';
     $('#mk-ticket').innerHTML = ticket.map((k, i) => {
       const t = BY_KEY[k];
-      return `<article class="ticket__task"><p class="ticket__meta"><b>Задача ${i + 1} · ${i ? 'чуть сложнее' : 'простая'} · ${PLAN[i]} минут</b><span>модуль ${t.module}</span></p><h3>${esc(t.title)}</h3></article>`;
+      return `<article class="ticket__task"><p class="ticket__meta"><b>Задача ${i + 1} · ${LEVEL[t.level]} · около ${FORMATS[format].plan[i]} минут</b><span>модуль ${t.module}</span></p><h3>${esc(t.title)}</h3></article>`;
     }).join('');
+    $('#mk-ticket-head').textContent = `${ticket.length} задачи · ${FORMATS[format].minutes} минут`;
+    $('#mk-go').textContent = `Начать: ${FORMATS[format].name.toLowerCase()}, ${FORMATS[format].minutes} минут`;
     $('#mk-go').disabled = !server.ready;
   }
 
   function renderRoom() {
     show('room');
     const t = task(), p = BY_KEY[t.key];
-    $('#mk-title').innerHTML = `Задача ${S.idx + 1} из 2 · ${S.idx ? 'чуть сложнее' : 'простая'} · <span>${esc(p.title)}</span>`;
-    $('#mk-mode').textContent = S.mode === 'training' ? 'тренировка: подсказки по просьбе' : 'экзамен: без подсказок';
+    $('#mk-title').innerHTML = `${fmt().name} · задача ${S.idx + 1} из ${S.tasks.length} · ${LEVEL[p.level]} · <span>${esc(p.title)}</span>`;
+    $('#mk-mode').textContent = S.mode === 'training' ? 'тренировка: подсказки по кнопке' : 'без подсказок';
     const at = STAGES.findIndex(s => s[0] === t.stage);
     $('#mk-stages').innerHTML = STAGES.map(([id, name], i) => `<li class="${t.stage === 'done' || i < at ? 'is-past' : i === at ? 'is-now' : ''}">${name}</li>`).join('');
     $('#mk-say').innerHTML = `«${p.say}»`;
@@ -218,7 +245,7 @@ onmessage = async e => {
     renderExamples();
     renderTests();
     renderChat(busy);
-    $('#mk-finish').textContent = S.idx === 0 ? 'Закончить задачу → задача 2' : 'Закончить секцию';
+    $('#mk-finish').textContent = S.idx < S.tasks.length - 1 ? `Закончить задачу → задача ${S.idx + 2}` : `Закончить ${S.format === 'exam' ? 'экзамен' : 'секцию'}`;
   }
 
   function renderChat(waiting) {
@@ -305,8 +332,8 @@ onmessage = async e => {
     if (t.stage !== 'done' && !confirm('Интервьюер ещё не закрыл задачу. Закончить её сейчас?')) return;
     t.code = $('#mk-editor').value;
     t.finishedAt = Date.now();
-    if (S.idx === 0) {
-      S.idx = 1; task().startedAt = Date.now(); save(); renderRoom(); ask();
+    if (S.idx < S.tasks.length - 1) {
+      S.idx += 1; task().startedAt = Date.now(); save(); renderRoom(); ask();
     } else { S.phase = 'self'; save(); renderSelf(); }
   }
 
@@ -353,7 +380,7 @@ onmessage = async e => {
     $('#mk-sheet-rows').innerHTML = sh.criteria.map(c => `<tr><td><b>${esc(c.name)}</b><br><small>${c.weight} %</small></td><td>${S.self[c.id]}</td><td>${c.score}</td><td>${esc(c.comment)}${c.quote ? `<q>${esc(c.quote)}</q>` : ''}</td></tr>`).join('');
     $('#mk-tasks').innerHTML = S.tasks.map((t, i) => {
       const p = BY_KEY[t.key], r = t.tests;
-      return `<tr><td>${i + 1}. ${esc(p.title)}</td><td>${minutes(t)} из ${PLAN[i]}</td><td>${r && !r.fatal ? `${r.passed} из ${r.total}` : 'не запускались'}</td><td>${t.hints.length ? t.hints.map(h => h.level).join(', ') : 'нет'}</td><td>${t.stage === 'done' ? 'закрыта' : 'не закрыта'}</td></tr>`;
+      return `<tr><td>${i + 1}. ${esc(p.title)}</td><td>${minutes(t)} из ${fmt().plan[i]}</td><td>${r && !r.fatal ? `${r.passed} из ${r.total}` : 'не запускались'}</td><td>${t.hints.length ? t.hints.map(h => h.level).join(', ') : 'нет'}</td><td>${t.stage === 'done' ? 'закрыта' : 'не закрыта'}</td></tr>`;
     }).join('');
     $('#mk-strengths').innerHTML = sh.strengths.map(s => `<li>${esc(s)}</li>`).join('');
     $('#mk-improve').innerHTML = sh.improve.map(s => `<li>${esc(s)}</li>`).join('');
@@ -361,19 +388,19 @@ onmessage = async e => {
     const rep = repeatList();
     $('#mk-repeat').innerHTML = rep.length
       ? rep.map(p => `<li>${esc(p.title)}: ${p.chapter ? `глава ${p.chapter}, ` : ''}<a href="${esc(p.trainer)}">тренажёр модуля ${p.module}</a></li>`).join('')
-      : '<li>Обе задачи закрыты без подсказок и со всеми тестами. Следующий шаг — новый билет в режиме «экзамен».</li>';
+      : '<li>Все задачи закрыты без подсказок и со всеми тестами. Следующий шаг — экзамен на 180 минут без подсказок.</li>';
   }
 
   function markdown() {
     const sh = S.sheet, date = new Date().toLocaleDateString('ru-RU');
-    const L = [`# Мок-интервью № 1 · ОП.04 · ${date}`, '', `Режим: ${S.mode === 'training' ? 'тренировка' : 'экзамен'}. Итог: ${sh.total} % (самооценка ${selfTotal()} %).`, '', '## Лист обратной связи', '',
+    const L = [`# Мок-интервью № 1 · ОП.04 · ${date}`, '', `Формат: ${fmt().name.toLowerCase()}, ${S.tasks.length} задачи, ${fmt().minutes} минут. Режим: ${S.mode === 'training' ? 'тренировка' : 'без подсказок'}. Итог: ${sh.total} % (самооценка ${selfTotal()} %).`, '', '## Лист обратной связи', '',
       '| Критерий | Вес | Самооценка | Интервьюер | Комментарий |', '|---|---|---|---|---|',
       ...sh.criteria.map(c => `| ${c.name} | ${c.weight} % | ${S.self[c.id]} | ${c.score} | ${(c.comment + (c.quote ? ` «${c.quote}»` : '')).replace(/\|/g, '/').replace(/\s*\n\s*/g, ' ')} |`),
       '', '### Что получилось', ...sh.strengths.map(s => `- ${s}`), '', '### Что сделать к следующей секции', ...sh.improve.map(s => `- ${s}`), '', sh.summary, '',
       '## Ретроспектива', '', '- Что сделано хорошо:', '- Где ушло больше времени, чем по плану:', '- Что изменить в следующий раз:', ''];
     S.tasks.forEach((t, i) => {
       const p = BY_KEY[t.key], r = t.tests;
-      L.push(`## Задача ${i + 1}. ${p.title}`, '', `Время: ${minutes(t)} мин из ${PLAN[i]}. Тесты: ${r && !r.fatal ? `${r.passed} из ${r.total}` : 'не запускались'}. Подсказки: ${t.hints.length ? t.hints.map(h => 'ступень ' + h.level).join(', ') : 'нет'}.`, '',
+      L.push(`## Задача ${i + 1}. ${p.title}`, '', `Время: ${minutes(t)} мин, ориентир ${fmt().plan[i]}. Тесты: ${r && !r.fatal ? `${r.passed} из ${r.total}` : 'не запускались'}. Подсказки: ${t.hints.length ? t.hints.map(h => 'ступень ' + h.level).join(', ') : 'нет'}.`, '',
         '```python', t.code.trim(), '```', '', '### Разговор', '');
       for (const m of t.messages) {
         if (m.role === 'assistant') L.push(`**Интервьюер:** ${m.content}`, '');
@@ -388,12 +415,13 @@ onmessage = async e => {
   document.addEventListener('click', e => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const act = b.dataset.act;
-    if (act === 'redraw') { S = null; renderStart(); }
+    if (act === 'redraw') { S = { draftFormat: S && S.draftFormat }; renderStart(); }
     if (act === 'go') {
       const code = $('#mk-code').value.trim();
       if (server.needCode) store.set(STORE_CODE, code);
-      const ticket = S.draft;
-      S = { mode: document.querySelector('input[name="mk-mode"]:checked').value, idx: 0, tasks: ticket.map(newTask), self: null, sheet: null };
+      const ticket = S.draft, format = S.draftFormat;
+      const mode = format === 'exam' ? 'exam' : document.querySelector('input[name="mk-mode"]:checked').value;
+      S = { format, mode, idx: 0, tasks: ticket.map(newTask), self: null, sheet: null };
       task().startedAt = Date.now(); save(); renderRoom(); ask();
     }
     if (act === 'retry') { task().messages.splice(Number(b.dataset.i), 1); ask(); }
@@ -410,7 +438,12 @@ onmessage = async e => {
       a.download = `mok-intervyu-1_${new Date().toISOString().slice(0, 10)}.md`;
       a.click();
     }
-    if (act === 'restart' && confirm('Начать новую секцию? Текущий разговор и лист будут удалены из браузера.')) { store.del(STORE); S = null; renderStart(); }
+    if (act === 'restart' && confirm('Начать заново? Текущий разговор и лист будут удалены из браузера.')) { store.del(STORE); S = null; renderStart(); }
+  });
+
+  document.addEventListener('change', e => {
+    if (e.target.name !== 'mk-format' || !S || S.tasks) return;
+    S = { draftFormat: e.target.value }; renderStart();
   });
 
   $('#mk-form').addEventListener('submit', e => {
@@ -440,8 +473,9 @@ onmessage = async e => {
     const own = t.startedAt ? Math.floor((Date.now() - t.startedAt) / 1000) : 0;
     const clock = $('#mk-clock');
     clock.textContent = mm(sec);
-    clock.classList.toggle('is-over', sec >= 60 * 60);
-    $('#mk-plan').textContent = `задача ${S.idx + 1}: ${mm(own)} из ${PLAN[S.idx]}:00`;
+    const total = fmt().minutes;
+    clock.classList.toggle('is-over', sec >= total * 60);
+    $('#mk-plan').textContent = `из ${total}:00${sec >= total * 60 ? ' — время вышло, можно закончить начатое' : ''} · задача ${S.idx + 1}: ${mm(own)}, ориентир ${fmt().plan[S.idx]} мин`;
   }, 1000);
 
   /* ── 7. Запуск ──────────────────────────────────────────────────── */
