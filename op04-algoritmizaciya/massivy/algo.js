@@ -1907,6 +1907,7 @@ onmessage = async e => {
         <p class="ticket__foot">Задача ${where}. <a href="${esc(t.trainer)}">Пройти её по этапам в тренажёре →</a></p>
       </article>`;
     }
+    const liveLink = () => pair ? `<p class="ticket__foot" style="margin-top:4px"><a class="btn btn--main" href="sekciya.html?t=${pair[0].key},${pair[1].key}">Пройти этот билет с ИИ-интервьюером →</a></p>` : '';
     root.addEventListener('click', e => {
       const b = e.target.closest('[data-act]'); if (!b) return;
       if (b.dataset.act === 'draw') {
@@ -1914,7 +1915,7 @@ onmessage = async e => {
         const second = pick(medium.filter(t => t.module !== first.module));
         pair = [first, second];
         stop(); sec = 0; tick();
-        box.innerHTML = card(first, 1) + card(second, 2);
+        box.innerHTML = card(first, 1) + card(second, 2) + liveLink();
         b.textContent = '↻ Другой билет';
         btnClock.disabled = false;
       }
