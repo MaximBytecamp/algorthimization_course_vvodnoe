@@ -53,5 +53,13 @@ for card in check.CARDS.values():
 if (HERE / 'cards.json').exists():
     errors.append('cards.json снова лежит в открытой папке')
 
+# Python-функция на Vercel берёт в сборку весь проект: каждая папка корня, кроме api, должна быть в excludeFiles.
+exclude = json.loads((ROOT / 'vercel.json').read_text(encoding='utf-8'))['functions']['api/mock-check.py']['excludeFiles']
+import subprocess
+tracked = subprocess.run(['git', 'ls-tree', '-d', '--name-only', 'HEAD'], cwd=ROOT, capture_output=True, text=True).stdout.split()
+for d in sorted(x for x in tracked if x != 'api'):
+    if f'{d}/**' not in exclude and not (ROOT / '.vercelignore').read_text().count(d):
+        errors.append(f'папка {d} не исключена из сборки api/mock-check.py (vercel.json → excludeFiles)')
+
 print('\n'.join(errors) or f'всё сходится: задач {len(check.CARDS)}, тестов {sum(len(c["cases"]) for c in check.CARDS.values())}')
 raise SystemExit(1 if errors else 0)
