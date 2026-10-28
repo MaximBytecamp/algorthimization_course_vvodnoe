@@ -68,7 +68,20 @@
       t.messages.push({ role: 'assistant', content: out.reply });
       if (out.stage && out.stage !== t.stage) { t.stage = out.stage; }
       for (const f of out.clarified || []) if (!t.clarified.includes(f)) t.clarified.push(f);
-      if (out.hint_level > 0) t.hints.push({ level: out.hint_level, stage: t.stage, text: out.reply });
+    } catch (e) {
+      t.messages.push({ role: 'error', content: e.message });
+    }
+    busy = false; save(); renderRoom();
+  }
+
+  async function askHint() {
+    const t = task();
+    if (busy) return;
+    busy = true; renderChat(true);
+    try {
+      const out = await post(API_CHAT, { action: 'hint', key: t.key, hints: t.hints.length, messages: t.messages });
+      t.messages.push({ role: 'assistant', content: `Подсказка, ступень ${out.ladder}: ${out.text}` });
+      if (out.level > t.hints.length) t.hints.push({ level: out.ladder, stage: t.stage, text: out.text });
     } catch (e) {
       t.messages.push({ role: 'error', content: e.message });
     }
@@ -219,6 +232,10 @@ onmessage = async e => {
     }).join('') + (waiting ? '<p class="chat__note mk-typing">интервьюер пишет…</p>' : '');
     body.scrollTop = body.scrollHeight;
     $('#mk-send').disabled = waiting;
+    const hb = $('#mk-hint');
+    hb.hidden = S.mode !== 'training';
+    hb.disabled = waiting;
+    hb.textContent = `Подсказка · ступень ${Math.min(t.hints.length + 1, 4)}`;
   }
 
   function renderExamples() {
@@ -384,6 +401,7 @@ onmessage = async e => {
     if (act === 'ex-del') { task().examples.splice(Number(b.dataset.i), 1); if (!task().examples.length) task().examples.push({ args: '', answer: '', verdict: '' }); save(); renderExamples(); }
     if (act === 'ex-check') checkExamples();
     if (act === 'run') runTests();
+    if (act === 'hint') askHint();
     if (act === 'finish') finishTask();
     if (act === 'sheet') makeSheet();
     if (act === 'download') {

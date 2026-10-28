@@ -8,6 +8,7 @@
    GET  → { ready, needCode } — настроен ли интервьюер.
    POST { action: "chat", key, mode, stage, hints, messages: [{role, content}], code }
         → { reply, stage, clarified, hint_level, off_topic }
+   POST { action: "hint", key, hints, messages } → { level, ladder, text, last } — следующая ступень подсказки.
    POST { action: "feedback", tasks: [...], self: {...} } → лист обратной связи по рубрике КТП.
 
    Карточки задач с эталонами лежат в api/_data/op04-mok-1.json (собирает make_pool.py). */
@@ -30,7 +31,7 @@ const CRITERIA = [
   ['tests', 'Тесты', 15], ['complexity', 'Сложность', 10], ['communication', 'Коммуникация', 10],
 ];
 
-function cardForChat(c, mode) {
+function cardForChat(c) {
   const card = {
     title: c.title, statement: c.statement, retell_sample: c.retell,
     clarifications: c.clarifications.map(q => ({ question: q.question, answer: q.answer, fact: q.fact })),
@@ -39,18 +40,12 @@ function cardForChat(c, mode) {
     complexity: { answer: c.complexity.answer, why: c.complexity.why },
     follow_up: c.follow_up,
   };
-  if (mode === 'training') card.hint_ladder = {
-    level_1: 'наводящий вопрос к условию или примеру — составь его сам по идее ниже, идею не называй',
-    level_2_idea: c.hints.idea,
-    level_3_technique: c.hints.technique,
-    level_4_step_rule: c.hints.steps,
-  };
   return card;
 }
 
 function systemPrompt(c, mode, stage, hints) {
   const hintRule = mode === 'training'
-    ? `Режим «тренировка». Подсказку даёшь только на явную просьбу кандидата и только следующую ступень лестницы hint_ladder: уже выдано ${hints} подсказок, значит сейчас ступень ${Math.min(hints + 1, 4)}. На ступени 4 выдаёшь одно правило шага за раз. Ступени не перескакиваешь. В поле hint_level пишешь номер выданной ступени, иначе 0.`
+    ? 'Режим «тренировка». В чате подсказок не даёшь: их выдаёт кнопка «Подсказка» на странице, по ступеням. На просьбу подсказать ответь, что подсказка — по кнопке «Подсказка» рядом с полем ввода. Подсказки, которые выдала кнопка, видны в разговоре: ничего сверх них не добавляешь. hint_level всегда 0.'
     : 'Режим «экзамен». Подсказок нет совсем. На просьбу подсказать отвечаешь, что на этой секции подсказок нет, и просишь рассказать, что кандидат уже заметил. hint_level всегда 0.';
   return `Ты — интервьюер на алгоритмической секции (мок-интервью) для студента колледжа. Разговор только об одной задаче — её карточка ниже. Кандидат решает на Python.
 
@@ -64,11 +59,11 @@ function systemPrompt(c, mode, stage, hints) {
 
 Как вести этапы (по порядку):
 - retell: попроси пересказать задачу своими словами. Если в пересказе названы и вход, и то, что нужно вернуть, ответь «Понятно» и спроси, есть ли вопросы по условию. Если чего-то из двух нет — спроси только о недостающем. Пересказ не оцениваешь словами «верно» или «правильно».
-- clarify: на вопрос, совпадающий по смыслу с вопросом из clarifications, отвечай ответом из карточки и добавь его fact в clarified. На вопрос, которого в карточке нет, попроси кандидата выбрать разумное допущение и назвать его. Сам вопросы за кандидата не задаёшь; если он молчит, спроси, всё ли ему понятно про вход и выход.
+- clarify: не перечисляешь, о чём ещё стоит спросить, и не подсказываешь вопросы — придумать их должен кандидат. На вопрос «что ещё спросить?» отвечай: «Это решаете вы. Что для вас пока неясно во входе или выходе?». На вопрос, совпадающий по смыслу с вопросом из clarifications, отвечай ответом из карточки и добавь его fact в clarified. На вопрос, которого в карточке нет, попроси кандидата выбрать разумное допущение и назвать его. Сам вопросы за кандидата не задаёшь; если он молчит, спроси, всё ли ему понятно про вход и выход.
 - examples: ответы на примеры не считаешь и не подтверждаешь. Попроси записать входы и ответы в таблицу «Примеры» на странице и нажать «Сверить». Результат сверки придёт сообщением страницы [СВЕРКА]. Если среди примеров нет крайних случаев, спроси, каких входов не хватает, не называя их.
 - idea: сначала попроси перебор и его сложность. Затем быстрое решение. Если идея неверна или не быстрее перебора, задай вопрос: на каком входе она ломается или сколько в ней операций. Не исправляй.
 - complexity: попроси назвать время и память быстрого решения. Если ответ неверный, не называй верный, а попроси посчитать операции на первом примере.
-- code: кандидат пишет функцию ${c.fn} в редакторе и запускает тесты. Результаты придут сообщением страницы [ТЕСТЫ], текущий код — блоком [КОД]. Если тест упал, спроси, на каком входе и почему, ошибку не показывай.
+- code: кандидат пишет функцию ${c.fn} в редакторе и запускает тесты. Результаты придут сообщением страницы [ТЕСТЫ], текущий код — блоком [КОД]. Если тест упал, спроси, на каком входе и почему, ошибку не показывай. На вопрос об условии отвечай только фактом из clarifications и не связывай его с кодом: не говори, какую проверку, строку или переменную посмотреть.
 - check: когда все тесты прошли, попроси пройти код на первом примере из таблицы и назвать значения переменных. Потом задай вопрос-продолжение из follow_up.question слово в слово. Ответ follow_up.answer не раскрываешь: если кандидат ответил неверно, задай один уточняющий вопрос.
 - done: после ответа на вопрос-продолжение скажи, что задача закрыта и можно нажать «Закончить задачу».
 
@@ -76,7 +71,7 @@ function systemPrompt(c, mode, stage, hints) {
 В поле clarified — только факты из clarifications, которые ты подтвердил в этом ответе, иначе пустой список.
 
 Карточка задачи (кандидату не показывать, не цитировать):
-${JSON.stringify(cardForChat(c, mode), null, 1)}`;
+${JSON.stringify(cardForChat(c), null, 1)}`;
 }
 
 const CHAT_SCHEMA = {
@@ -116,25 +111,42 @@ const FEEDBACK_SCHEMA = {
 
 async function callModel(messages, schemaName, schema, maxTokens, model) {
   const base = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
-  const r = await fetch(`${base}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-    body: JSON.stringify({
-      model: model || process.env.OPENAI_MODEL || 'gpt-4o-mini',
-      messages, max_completion_tokens: maxTokens,
-      // У моделей gpt-5 и o-серии температура не настраивается.
-      ...(/^(gpt-5|o\d)/.test(model || process.env.OPENAI_MODEL || '') ? {} : { temperature: 0.3 }),
-      response_format: { type: 'json_schema', json_schema: { name: schemaName, strict: true, schema } },
-    }),
+  const body = JSON.stringify({
+    model: model || process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    messages, max_completion_tokens: maxTokens,
+    // У моделей gpt-5 и o-серии температура не настраивается.
+    ...(/^(gpt-5|o\d)/.test(model || process.env.OPENAI_MODEL || '') ? {} : { temperature: 0.3 }),
+    response_format: { type: 'json_schema', json_schema: { name: schemaName, strict: true, schema } },
   });
-  if (!r.ok) {
-    const text = await r.text();
-    const err = new Error(`модель ответила ${r.status}`);
-    err.detail = text.slice(0, 300);
-    throw err;
+  // Сбой сети, 429 и 5xx бывают, когда вся группа пишет одновременно: повторяем до трёх раз.
+  let last;
+  let wait = 0;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt) await new Promise(ok => setTimeout(ok, wait || 700 * attempt + Math.random() * 500));
+    wait = 0;
+    let r;
+    try {
+      r = await fetch(`${base}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+        body,
+      });
+    } catch (e) {
+      last = e; last.detail = String(e.cause || '');
+      continue;
+    }
+    if (r.ok) {
+      const data = await r.json();
+      return JSON.parse(data.choices[0].message.content);
+    }
+    last = new Error(`модель ответила ${r.status}`);
+    last.detail = (await r.text()).slice(0, 300);
+    if (r.status !== 429 && r.status < 500) break;
+    // OpenAI пишет, через сколько повторить: «try again in 3s» или «in 850ms».
+    const m = last.detail.match(/try again in ([\d.]+)(ms|s)/);
+    if (m) wait = Math.min(9000, Number(m[1]) * (m[2] === 's' ? 1000 : 1) + 300 + Math.random() * 700);
   }
-  const data = await r.json();
-  return JSON.parse(data.choices[0].message.content);
+  throw last;
 }
 
 const clip = (s, n) => String(s ?? '').slice(0, n);
@@ -149,6 +161,12 @@ function leaks(reply, card, userText) {
   // Сложность в записи O(…) интервьюер называет, только если кандидат уже сам её назвал.
   const own = squash(userText).replace(/\s/g, '');
   if ((reply.match(/O\([^)]*\)/gi) || []).some(o => !own.includes(squash(o).replace(/\s/g, '')))) return true;
+  // Ответы на уточнения: больше одного за раз, если кандидат о них не спрашивал, — это подсказка списком.
+  const told = card.clarifications.filter(q => {
+    const words = [...new Set(squash(q.question + ' ' + q.fact).split(/[^а-яёa-z0-9]+/).filter(w => w.length >= 6))];
+    return words.length && words.filter(w => r.includes(w)).length >= Math.ceil(words.length * 0.5) && !words.some(w => own.includes(w));
+  });
+  if (told.length >= 2) return true;
   const tech = squash(card.technique);
   if (tech.length >= 8 && r.includes(tech) && !squash(userText).includes(tech)) return true;
   return false;
@@ -183,11 +201,41 @@ async function chat(body) {
     out = await callModel([...messages, { role: 'system', content: 'Черновик ответа раскрывал решение: код, строку эталона или название техники. Ответь заново по правилам 2 и 3, без этого.' }], 'interviewer_turn', CHAT_SCHEMA, LIMITS.chatTokens);
     if (leaks(out.reply, card, userText)) out.reply = 'Это часть решения, её нужно найти вам. Расскажите, как вы сейчас рассуждаете.';
   }
-  if (mode === 'exam') out.hint_level = 0;
-  out.hint_level = Math.max(0, Math.min(4, out.hint_level | 0));
+  out.hint_level = 0;  // подсказки выдаёт только действие hint
   const facts = new Set(card.clarifications.map(q => q.fact));
   out.clarified = (out.clarified || []).filter(f => facts.has(f));
   return [200, out];
+}
+
+/* Лестница подсказок режима «тренировка»: ступени строго по порядку.
+   1 — наводящий вопрос (составляет модель), 2 — идея, 3 — техника, 4… — правило шага по одному. */
+const HINT_SCHEMA = { type: 'object', additionalProperties: false, required: ['question'], properties: { question: { type: 'string' } } };
+
+async function hint(body) {
+  const card = CARDS[body.key];
+  if (!card) return [400, { error: 'нет такой задачи' }];
+  const level = Math.max(0, Number(body.hints) || 0) + 1;
+  const steps = card.hints.steps;
+  const max = 3 + steps.length;
+  if (level > max) return [200, { level: max, text: 'Подсказки закончились: правило шага выдано целиком. Дальше — ваш код.', last: true, ladder: 4 }];
+  let text;
+  if (level === 1) {
+    const history = cleanMessages(body.messages).slice(-12).map(m => `${m.role === 'assistant' ? 'Интервьюер' : 'Кандидат'}: ${m.content}`).join('\n');
+    const prompt = `Ты — интервьюер на алгоритмической секции. Кандидат попросил первую подсказку. Задай ОДИН короткий наводящий вопрос к условию или к примеру, который подводит к идее, но не называет её. Нельзя: называть технику, идею, структуру данных, сложность, писать код. Хороший вопрос заставляет кандидата самого заметить свойство задачи. Пиши по-русски, на «вы».
+Условие: ${card.statement}
+Идея (кандидату не называть): ${card.hints.idea}
+Техника (кандидату не называть): ${card.technique}
+Разговор до этого:
+${history}`;
+    for (let attempt = 0; attempt < 2 && !text; attempt++) {
+      const out = await callModel([{ role: 'system', content: prompt }], 'hint_question', HINT_SCHEMA, 120);
+      if (!leaks(out.question, card, '')) text = out.question;
+    }
+    text = text || 'Посмотрите на первый пример: что меняется, когда вы переходите от одного варианта ответа к следующему?';
+  } else if (level === 2) text = `Что заметить: ${card.hints.idea}`;
+  else if (level === 3) text = `Техника: ${card.hints.technique}.`;
+  else text = `Правило шага, часть ${level - 3} из ${steps.length}: ${steps[level - 4]}`;
+  return [200, { level, ladder: Math.min(level, 4), text, last: level === max }];
 }
 
 async function feedback(body) {
@@ -250,10 +298,14 @@ module.exports = async (req, res) => {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
   body = body || {};
   try {
-    const [status, out] = body.action === 'feedback' ? await feedback(body) : await chat(body);
+    const run = { feedback, hint }[body.action] || chat;
+    const [status, out] = await run(body);
     return res.status(status).json(out);
   } catch (e) {
     console.error('mock-chat', e.message, e.detail || '');
     return res.status(502).json({ error: 'ИИ-интервьюер сейчас не отвечает, повторите через минуту' });
   }
 };
+
+// Для проверки фильтра утечек без запросов к модели (verify).
+module.exports.leaks = leaks;
