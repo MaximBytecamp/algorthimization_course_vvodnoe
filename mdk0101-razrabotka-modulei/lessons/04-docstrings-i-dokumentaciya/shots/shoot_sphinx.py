@@ -37,8 +37,8 @@ RAW = Path(__file__).resolve().parent / "raw" / "vsc"
 IMG = Path(__file__).resolve().parent.parent / "img"
 P = STUDENT / NAME
 ANSWERS = ["y", "Отчёт кафе", "Макаров М. Н.", "1.0", "ru"]
-BUILD = ".venv/bin/sphinx-build -M html docs/source docs/build"
-APIDOC = "SPHINX_APIDOC_OPTIONS=members .venv/bin/sphinx-apidoc -f -M -o docs/source/api app"
+BUILD = "sphinx-build -M html docs/source docs/build"
+APIDOC = "SPHINX_APIDOC_OPTIONS=members sphinx-apidoc -f -M -o docs/source/api app"
 
 
 def prepare() -> None:
@@ -76,9 +76,24 @@ async def win(e: Editor, name: str) -> None:
     await e.shot(f"{RAW}/{name}.png")
 
 
-async def term(e: Editor, name: str, command: str, wait: float = 8.0) -> None:
+async def vterm(e: Editor, command: str, wait: float = 8.0, clear: bool = True) -> None:
+    """Свежий терминал с активированным окружением, как у студента после главы 4.12, §3.
+
+    Активация и очистка экрана идут одной строкой, поэтому на кадре видна
+    только команда шага, а приглашение начинается с (.venv).
+    """
+    await e.palette("Terminal: Kill All Terminals", 1.2)
+    await e.palette("Terminal: Create New Terminal", 3.0)
+    await e.paste("source .venv/bin/activate" + (" && clear" if clear else ""), 0.2)
+    await e.key("Enter", 1.0)
+    if command:
+        await e.paste(command, 0.3)
+        await e.key("Enter", wait)
+
+
+async def term(e: Editor, name: str, command: str, wait: float = 8.0, clear: bool = True) -> None:
     """Команда в свежем терминале; кадр — только развёрнутая панель."""
-    await sp.terminal(e, command, wait)
+    await vterm(e, command, wait, clear)
     await e.palette("View: Toggle Maximized Panel", 1.2)
     await sp.park(e)
     r = await e.rect(".part.panel")
@@ -102,11 +117,22 @@ async def show(e: Editor, rel: str, name: str, line: int | None = None, reveal: 
 async def st_ch12(e: Editor) -> None:
     shutil.rmtree(P / "docs", ignore_errors=True)
     await sp.reset(e)
-    await term(e, "12-install", ".venv/bin/pip install sphinx 2>&1 | tail -4", 50.0)
-    await term(e, "12-version", ".venv/bin/sphinx-build --version", 4.0)
+    await sp.reset(e)
+    await e.palette("Terminal: Kill All Terminals", 1.2)
+    await e.palette("Terminal: Create New Terminal", 3.0)
+    await e.paste("clear", 0.2)
+    await e.key("Enter", 0.6)
+    await e.paste("source .venv/bin/activate", 0.3)
+    await e.key("Enter", 1.5)
+    await e.palette("View: Toggle Maximized Panel", 1.2)
+    await sp.park(e)
+    await e.shot(f"{RAW}/12-activate.png", clip=await e.rect(".part.panel"))
+    await e.palette("View: Toggle Maximized Panel", 0.8)
+    await term(e, "12-install", "pip install sphinx 2>&1 | tail -4", 50.0)
+    await term(e, "12-version", "sphinx-build --version", 4.0)
     # Мастер: первый вопрос и итог.
     await sp.reset(e)
-    await sp.terminal(e, ".venv/bin/sphinx-quickstart docs", 4.0)
+    await vterm(e, "sphinx-quickstart docs", 4.0)
     await e.palette("View: Toggle Maximized Panel", 1.2)
     r = await e.rect(".part.panel")
     await e.shot(f"{RAW}/12-qs-first.png", clip=r)
@@ -167,7 +193,7 @@ async def st_ch13(e: Editor) -> None:
     original = (P / rel).read_text(encoding="utf-8")
     edit(rel, "            означает, что возвращаются все.", "            означает, что возвращаются все, *3 — три лучших.")
     await show(e, rel, "13-orders-star", line_of(rel, "*3"))
-    await term(e, "13-ruff-star", f".venv/bin/ruff check {rel}", 5.0)
+    await term(e, "13-ruff-star", f"ruff check {rel}", 5.0)
     await term(e, "13-warn-star", BUILD + " -q -E", 9.0)
     await term(e, "13-warn-W", BUILD + " -q -E -W --keep-going; echo \"код завершения: $?\"", 9.0)
     (P / rel).write_text(original, encoding="utf-8")
@@ -185,7 +211,7 @@ async def st_ch14(e: Editor) -> None:
     edit("docs/source/index.rst", "   orders\n", "   usage\n   orders\n")
     await show(e, "docs/source/index.rst", "14-index-usage")
     await term(e, "14-build-usage", BUILD + " -q", 8.0)
-    await term(e, "14-apidoc-default", ".venv/bin/sphinx-apidoc -o docs/source/api app", 5.0)
+    await term(e, "14-apidoc-default", "sphinx-apidoc -o docs/source/api app", 5.0)
     await show(e, "docs/source/api/app.services.rst", "14-apidoc-file")
     edit("docs/source/index.rst", "   orders\n", "   api/modules\n")
     (P / "docs/source/orders.rst").unlink()
@@ -201,10 +227,10 @@ async def st_ch14(e: Editor) -> None:
     # Попробуйте сами: новый модуль без apidoc и с ним.
     write("app/utils/percent.py", PERCENT)
     await show(e, "app/utils/percent.py", "14-percent")
-    await term(e, "14-ruff-percent", ".venv/bin/ruff check app/utils/percent.py", 5.0)
+    await term(e, "14-ruff-percent", "ruff check app/utils/percent.py", 5.0)
     await term(e, "14-apidoc-percent", APIDOC + " && grep -n percent docs/source/api/app.utils.rst", 6.0)
     (P / "app/utils/percent.py").unlink()
-    await term(e, "14-stale", ".venv/bin/sphinx-apidoc -o docs/source/api app && " + BUILD + " -q -E", 12.0)
+    await term(e, "14-stale", "sphinx-apidoc -o docs/source/api app && " + BUILD + " -q -E", 12.0)
     await term(e, "14-stale-fixed", APIDOC + " && " + BUILD + " -q -E", 12.0)
 
 
@@ -231,13 +257,13 @@ def rounded(value: float) -> int:
 
 # ── 4.15 ────────────────────────────────────────────────────────────────
 async def st_ch15(e: Editor) -> None:
-    await term(e, "15-install-furo", ".venv/bin/pip install furo 2>&1 | tail -4", 35.0)
+    await term(e, "15-install-furo", "pip install furo 2>&1 | tail -4", 35.0)
     edit("docs/source/conf.py", "html_theme = 'alabaster'", "html_theme = 'furo'")
     edit("docs/source/conf.py", "html_static_path = ['_static']",
          "html_static_path = ['_static']\nhtml_title = 'Отчёт кафе 1.0'")
     await show(e, "docs/source/conf.py", "15-conf-furo", line_of("docs/source/conf.py", "html_theme"))
     await term(e, "15-build-furo", BUILD + " -E", 12.0)
-    await term(e, "15-pip-show", ".venv/bin/pip show sphinx furo | grep -E '^(Name|Version)'", 5.0)
+    await term(e, "15-pip-show", "pip show sphinx furo | grep -E '^(Name|Version)'", 5.0)
     write("docs/requirements.txt", "sphinx==9.1.1\nfuro==2025.12.19\n")
     await show(e, "docs/requirements.txt", "15-docs-req")
     write(".github/workflows/docs.yml", sr.WORKFLOW)
@@ -255,8 +281,8 @@ async def st_ch16(e: Editor) -> None:
          "        Строка вида «1 250,00 ₽», в которой пробел разделяет тысячи,\n        а запятая отделяет копейки.")
     await show(e, rel, "16-formatter-after", line_of(rel, "Returns:"))
     await term(e, "16-nitpicky-fixed", BUILD + " -q -E -n", 12.0)
-    await term(e, "16-checks", ".venv/bin/ruff check app && .venv/bin/python -m doctest app/utils/formatter.py"
-               " && .venv/bin/python -m pytest -q", 10.0)
+    await term(e, "16-checks", "ruff check app && python -m doctest app/utils/formatter.py"
+               " && python -m pytest -q", 10.0)
 
 
 STAGES = {name[3:]: fn for name, fn in globals().items() if name.startswith("st_")}
