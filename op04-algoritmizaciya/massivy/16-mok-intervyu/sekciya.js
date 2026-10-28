@@ -27,6 +27,17 @@
     ['retell', 'Условие'], ['clarify', 'Уточнения'], ['examples', 'Примеры'], ['idea', 'Перебор и идея'],
     ['complexity', 'Сложность'], ['code', 'Код'], ['check', 'Проверка'],
   ];
+  // Что делать на каждом этапе: строка «Сейчас» под полосой этапов.
+  const TODO = {
+    retell: 'Перескажите условие своими словами в чате: что подаётся на вход и что нужно вернуть.',
+    clarify: 'Задайте в чате вопросы о том, чего нет в условии: границы, повторы, пустой вход, формат ответа.',
+    examples: 'Впишите 3–5 входов со своими ответами в таблицу «Примеры», включая крайние случаи, и нажмите «Сверить».',
+    idea: 'Опишите в чате перебор и его сложность, затем идею быстрого решения.',
+    complexity: 'Назовите в чате время и память быстрого решения — до кода.',
+    code: 'Напишите функцию в редакторе и нажмите «Запустить тесты».',
+    check: 'Пройдите код на первом примере в чате и ответьте на вопрос-продолжение интервьюера.',
+    done: 'Задача закрыта. Нажмите «Закончить задачу» внизу справа.',
+  };
   const CRITERIA = [
     ['clarify', 'Уточнение', 15], ['algorithm', 'Алгоритм', 25], ['code', 'Код', 25],
     ['tests', 'Тесты', 15], ['complexity', 'Сложность', 10], ['communication', 'Коммуникация', 10],
@@ -104,7 +115,9 @@
     try {
       const out = await post(API_CHAT, { action: 'chat', key: t.key, mode: S.mode, stage: t.stage, hints: t.hints.length, messages: t.messages, code: t.code === BY_KEY[t.key].signature ? '' : t.code });
       t.messages.push({ role: 'assistant', content: out.reply });
-      if (out.stage && out.stage !== t.stage) { t.stage = out.stage; }
+      // Этап двигается только вперёд: назад интервьюер его не возвращает.
+      const order = [...STAGES.map(x => x[0]), 'done'];
+      if (out.stage && order.indexOf(out.stage) > order.indexOf(t.stage)) t.stage = out.stage;
       for (const f of out.clarified || []) if (!t.clarified.includes(f)) t.clarified.push(f);
     } catch (e) {
       t.messages.push({ role: 'error', content: e.message });
@@ -290,6 +303,12 @@ onmessage = async e => {
     $('#mk-mode').textContent = S.mode === 'training' ? 'тренировка: подсказки по кнопке' : 'без подсказок';
     const at = STAGES.findIndex(s => s[0] === t.stage);
     $('#mk-stages').innerHTML = STAGES.map(([id, name], i) => `<li class="${t.stage === 'done' || i < at ? 'is-past' : i === at ? 'is-now' : ''}">${name}</li>`).join('');
+    $('#mk-now').textContent = TODO[t.stage] || '';
+    const nextStage = t.stage === 'done' ? null : (STAGES[at + 1] || ['done', 'задача закрыта']);
+    const nb = $('#mk-next');
+    nb.hidden = !nextStage;
+    if (nextStage) { nb.dataset.to = nextStage[0]; nb.textContent = nextStage[0] === 'done' ? 'Закрыть задачу ✓' : `Дальше: ${nextStage[1]} →`; }
+    nb.disabled = busy;
     $('#mk-say').innerHTML = `«${p.say}»`;
     $('#mk-facts').innerHTML = t.clarified.length ? t.clarified.map(f => `<li>${esc(f)}</li>`).join('') : '<li class="is-empty">Пока ничего. Факты появятся здесь, когда интервьюер ответит на ваши вопросы.</li>';
     $('#mk-hints').hidden = !t.hints.length;
@@ -314,6 +333,7 @@ onmessage = async e => {
     }).join('') + (waiting ? '<p class="chat__note mk-typing">интервьюер пишет…</p>' : '');
     body.scrollTop = body.scrollHeight;
     $('#mk-send').disabled = waiting;
+    if ($('#mk-next')) $('#mk-next').disabled = waiting;
     const hb = $('#mk-hint');
     hb.hidden = S.mode !== 'training';
     hb.disabled = waiting;
@@ -342,8 +362,15 @@ onmessage = async e => {
   }
 
   /* ── 5. Действия ───────────────────────────────────────────────── */
+  // Сверка примеров и запуск тестов сами переводят на свой этап, если студент ещё позади.
+  function reach(stage) {
+    const order = [...STAGES.map(x => x[0]), 'done'], t = task();
+    if (order.indexOf(stage) > order.indexOf(t.stage)) { t.stage = stage; save(); renderRoom(); }
+  }
+
   async function checkExamples() {
     const t = task(), p = BY_KEY[t.key];
+    reach('examples');
     const rows = t.examples.filter(r => r.args.trim() || r.answer.trim());
     if (!rows.length) return;
     try {
@@ -357,6 +384,7 @@ onmessage = async e => {
   }
 
   async function runTests() {
+    reach('code');
     const t = task(), p = BY_KEY[t.key], btn = $('#mk-run');
     t.code = $('#mk-editor').value;
     btn.disabled = true;
@@ -493,6 +521,12 @@ onmessage = async e => {
     if (act === 'ex-check') checkExamples();
     if (act === 'run') runTests();
     if (act === 'hint') askHint();
+    if (act === 'next-stage' && !busy) {
+      const t = task(), to = b.dataset.to;
+      const name = to === 'done' ? 'задача закрыта' : STAGES.find(x => x[0] === to)[1];
+      t.stage = to; save(); renderRoom();
+      event(`[ПЕРЕХОД] Кандидат сам перешёл к этапу «${name}». Начни этот этап по правилам.`);
+    }
     if (act === 'finish') finishTask();
     if (act === 'sheet') makeSheet();
     if (act === 'download') {
