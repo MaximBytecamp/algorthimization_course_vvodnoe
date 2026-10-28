@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>Алгоритмы на строках · ОП.04</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../massivy/styles.css">
+  <link rel="stylesheet" href="../massivy/algo.css">
+  <link rel="stylesheet" href="stroki.css">
+  <style>
+    .cover { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(260px, .8fr); gap: clamp(24px, 4vw, 56px); align-items: start; }
+    .cover h1 { margin: 12px 0 10px; font-family: var(--display); font-size: clamp(34px, 5.2vw, 68px); line-height: 1.02; letter-spacing: -.5px; }
+    .cover__sub { margin: 0 0 22px; font-family: var(--display); font-size: clamp(17px, 1.8vw, 26px); color: var(--fire-deep); }
+    .cover__meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0 0; }
+    .cover__meta span { padding: 8px 12px; border: 2px solid var(--ink); background: #fff; font: 600 11px/1 var(--mono); letter-spacing: .6px; }
+
+    .hint { border: 3px solid var(--ink); background: var(--page); box-shadow: 7px 7px 0 var(--ink); overflow: hidden; }
+    .hint__bar { display: flex; align-items: center; gap: 8px; padding: 9px 13px; background: var(--ink); color: var(--fire-pale); font: 600 10px/1.4 var(--pixel); letter-spacing: 1.2px; text-transform: uppercase; }
+    .hint__bar b { margin-left: auto; padding: 2px 7px; background: var(--fire); color: var(--ink); font-family: var(--mono); }
+    .hint .cells { padding: 16px 14px 4px; justify-content: center; }
+    .hint .cell, .hint .cell__val { min-width: 50px; }
+    .hint .cell__val { height: 44px; font-size: 18px; }
+    .hint .cell__tags { flex-direction: column; align-items: center; gap: 2px; min-height: 40px; }
+    .hint .cell__tags i { font: 600 11px/1.2 var(--mono); font-style: normal; color: var(--ink-soft); }
+    .hint .cell__tags em { font: 500 10px/1.2 var(--mono); font-style: normal; color: var(--fire-deep); }
+    .hint__foot { padding: 10px 14px; border-top: 3px solid var(--ink); background: var(--fire-pale); font: 500 12.5px/1.5 var(--mono); color: var(--fire-deep); }
+
+    .modules { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(330px, 100%), 1fr)); gap: 16px; margin-top: 22px; }
+    .module { display: grid; grid-template-columns: 40px minmax(0, 1fr); border: 3px solid var(--ink); background: var(--page); box-shadow: 6px 6px 0 var(--ink); }
+    .module--stub { box-shadow: 6px 6px 0 var(--ink-faint); border-color: var(--ink-soft); }
+    .module__spine { background: var(--ink); color: var(--fire); display: flex; align-items: center; justify-content: center; }
+    .module--stub .module__spine { background: var(--ink-soft); color: var(--fire-pale); }
+    .module__spine b { writing-mode: vertical-rl; transform: rotate(180deg); font: 700 12px/1 var(--mono); letter-spacing: 2px; }
+    .module__body { padding: 18px 20px 16px; }
+    .module__num { display: inline-block; margin-bottom: 8px; padding: 3px 8px; background: var(--ink); color: var(--fire); font: 700 11px/1.3 var(--mono); letter-spacing: 1px; }
+    .module--stub .module__num { background: var(--ink-faint); color: #fff; }
+    .module h3 { margin: 0 0 6px; font-family: var(--display); font-size: 19px; }
+    .module > .module__body > p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.45; color: var(--ink-soft); }
+    .toc { margin: 0; padding: 0; list-style: none; border-top: 2px solid var(--rule); }
+    .toc li { border-bottom: 2px solid var(--rule); margin: 0; }
+    .toc li:last-child { border-bottom: 0; }
+    .toc a, .toc s { display: flex; align-items: baseline; gap: 10px; padding: 8px 0; text-decoration: none; font-size: 14.5px; }
+    .toc a { color: var(--ink); font-weight: 600; }
+    .toc a:hover { color: var(--fire-deep); }
+    .toc s { color: var(--ink-faint); text-decoration: none; }
+    .toc i { flex: 0 0 auto; font-style: normal; font: 600 12px/1.4 var(--mono); color: var(--ink-faint); min-width: 34px; }
+    .toc span { flex: 1 1 auto; min-width: 0; line-height: 1.35; hyphens: auto; overflow-wrap: anywhere; }
+    .toc em { flex: 0 0 auto; margin-left: auto; font: 600 10px/1 var(--pixel); letter-spacing: 1px; text-transform: uppercase; font-style: normal; color: var(--fire-deep); }
+    .toc s em { color: var(--ink-faint); }
+    @media (max-width: 860px) { .cover { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Алгоритмы на строках · ОП.04 · Макаров М. Н.</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">ОП.04 · основы алгоритмизации и программирования</a> · раздел 2 · строки</p>
+          <p class="running__folio">4 модуля</p>
+        </div>
+
+        <section class="cover">
+          <div>
+            <h1>Алгоритмы<br>на строках</h1>
+            <p class="cover__sub">Символы, кодировки, нормализация<br>и строковые задачи с собеседований</p>
+            <p>Занятия 13–15 раздела 2 по КТП посвящены строкам: нормализация и частоты, палиндромы, сжатие и разбор строки по формату. Книга продолжает «Алгоритмы на массивах»: номер модуля совпадает с номером занятия.</p>
+            <p>Модуль 0 — теория, на которой держатся все три занятия: как строка хранится в Python, что такое номер символа и UTF-8, какие строки считать одинаковыми и сколько стоят операции со строкой. Каждый механизм показан интерактивной схемой. Модули 13–15 устроены как модули книги о массивах: как узнать задачу, алгоритм на задачах КТП, границы и ошибки, практика с домашним заданием и тренажёр собеседования.</p>
+            <p>Весь код в книге — Python 3.12. Вывод программ и замеры получены запуском.</p>
+            <div class="cover__meta">
+              <span>Python 3.12</span><span>Unicode</span><span>UTF-8</span><span>интерактивные схемы</span><span>замеры</span><span>LeetCode</span>
+            </div>
+          </div>
+
+          <aside class="hint strhint">
+            <div class="hint__bar"><span>Модуль 0 · строка 'ёлка'</span><b>len 4</b></div>
+            <div class="cells">
+              <div class="cell"><span class="cell__idx">0</span><span class="cell__val">ё</span><span class="cell__tags"><i>1105</i><em>D1 91</em></span></div>
+              <div class="cell"><span class="cell__idx">1</span><span class="cell__val">л</span><span class="cell__tags"><i>1083</i><em>D0 BB</em></span></div>
+              <div class="cell"><span class="cell__idx">2</span><span class="cell__val">к</span><span class="cell__tags"><i>1082</i><em>D0 BA</em></span></div>
+              <div class="cell"><span class="cell__idx">3</span><span class="cell__val">а</span><span class="cell__tags"><i>1072</i><em>D0 B0</em></span></div>
+            </div>
+            <div class="hint__foot">ord сверху, байты UTF-8 снизу · 4 символа, 8 байт · 'ё' &gt; 'я', потому что 1105 &gt; 1103</div>
+          </aside>
+        </section>
+
+        <h2><span class="sec">План</span>Модули</h2>
+        <p>Модуль 0 готов целиком. Модули 13–15 пока представлены планом глав, главы будут добавляться по порядку занятий. После модуля 15 идёт мок-интервью № 1 — занятие 16, его билет собран в книге о массивах.</p>
+
+        <div class="modules">
+          <article class="module">
+            <div class="module__spine"><b>ТЕОРИЯ</b></div>
+            <div class="module__body">
+              <span class="module__num">модуль 0 · 5 глав</span>
+              <h3>Строка изнутри</h3>
+              <p>Индексы и срезы, неизменяемая строка, номер символа и таблица Unicode, байты UTF-8, нормализация ввода, стоимость операций и сборка строки, обзор задач занятий 13–15.</p>
+              <ul class="toc">
+                <li><a href="00-stroka-iznutri/01-simvoly-indeksy-srezy.html"><i>0.1</i><span>Строка: символы, индексы, срезы</span><em>читать</em></a></li>
+                <li><a href="00-stroka-iznutri/02-simvol-i-nomer.html"><i>0.2</i><span>Символ и его номер: Unicode и UTF-8</span><em>читать</em></a></li>
+                <li><a href="00-stroka-iznutri/03-normalizaciya.html"><i>0.3</i><span>Нормализация: какие строки считать одинаковыми</span><em>читать</em></a></li>
+                <li><a href="00-stroka-iznutri/04-stoimost-operaciy.html"><i>0.4</i><span>Стоимость операций со строкой</span><em>читать</em></a></li>
+                <li><a href="00-stroka-iznutri/05-tri-vida-zadach.html"><i>0.5</i><span>Три вида строковых задач</span><em>читать</em></a></li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="module module--stub">
+            <div class="module__spine"><b>ЧАСТОТЫ</b></div>
+            <div class="module__body">
+              <span class="module__num">занятие 13 · план</span>
+              <h3>Нормализация, частоты и кодировки</h3>
+              <p>Правила нормализации до кода, анаграммы сортировкой и частотным словарём, первая уникальная буква, кириллица, повторы и пустая строка.</p>
+              <ul class="toc">
+                <li><s><i>13.1</i><span>Частоты: как узнать задачу</span><em>план</em></s></li>
+                <li><s><i>13.2</i><span>Анаграммы: сортировка и частотный словарь</span><em>план</em></s></li>
+                <li><s><i>13.3</i><span>Первая уникальная буква и нормализация ввода</span><em>план</em></s></li>
+                <li><s><i>13.4</i><span>Границы и ошибки</span><em>план</em></s></li>
+                <li><s><i>13.5</i><span>Практика и домашнее задание</span><em>план</em></s></li>
+                <li><s><i>13.6</i><span>Мок-интервью по задачам модуля</span><em>план</em></s></li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="module module--stub">
+            <div class="module__spine"><b>СИММЕТРИЯ</b></div>
+            <div class="module__body">
+              <span class="module__num">занятие 14 · план</span>
+              <h3>Палиндромы и симметричные проверки</h3>
+              <p>Два указателя по строке, пропуск символов, которые не буква и не цифра, почти-палиндром с одним удалением и восстановление ответа.</p>
+              <ul class="toc">
+                <li><s><i>14.1</i><span>Симметрия: как узнать задачу</span><em>план</em></s></li>
+                <li><s><i>14.2</i><span>Палиндром с пропуском символов</span><em>план</em></s></li>
+                <li><s><i>14.3</i><span>Почти-палиндром: одно удаление</span><em>план</em></s></li>
+                <li><s><i>14.4</i><span>Границы и ошибки</span><em>план</em></s></li>
+                <li><s><i>14.5</i><span>Практика и домашнее задание</span><em>план</em></s></li>
+                <li><s><i>14.6</i><span>Мок-интервью по задачам модуля</span><em>план</em></s></li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="module module--stub">
+            <div class="module__spine"><b>РАЗБОР</b></div>
+            <div class="module__body">
+              <span class="module__num">занятие 15 · план</span>
+              <h3>Сжатие, разбор и построение строк</h3>
+              <p>Сжатие серий, сборка результата через join, разбор строки событий в словарь, повреждённый ввод: пустые поля, поле без разделителя, повтор ключа.</p>
+              <ul class="toc">
+                <li><s><i>15.1</i><span>Разбор строки: как узнать задачу</span><em>план</em></s></li>
+                <li><s><i>15.2</i><span>Сжатие серий и сборка через join</span><em>план</em></s></li>
+                <li><s><i>15.3</i><span>Разбор строки событий и повреждённый ввод</span><em>план</em></s></li>
+                <li><s><i>15.4</i><span>Границы и ошибки</span><em>план</em></s></li>
+                <li><s><i>15.5</i><span>Практика и домашнее задание</span><em>план</em></s></li>
+                <li><s><i>15.6</i><span>Мок-интервью по задачам модуля</span><em>план</em></s></li>
+              </ul>
+            </div>
+          </article>
+        </div>
+
+        <h2><span class="sec">Устройство</span>Интерактивные схемы модуля 0</h2>
+        <p>Схемы работают прямо на странице. В большинстве из них есть поле ввода: схема перестраивается под строку, которую вы впишете.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Схема</th><th>Глава</th><th>Что показывает</th></tr></thead>
+            <tbody>
+              <tr><td>Строка по ячейкам</td><td>0.1</td><td>Индексы от начала и от конца, символ <code>s[i]</code> и срез <code>s[a:b:c]</code> по правилам Python</td></tr>
+              <tr><td>Имена и объекты</td><td>0.1</td><td>Что происходит в памяти, когда строку «меняют», и чем от неё отличается список</td></tr>
+              <tr><td>Сравнение строк</td><td>0.1</td><td>Посимвольное сравнение до первого различия с номерами символов</td></tr>
+              <tr><td>Карта кодов и состав строки</td><td>0.2</td><td>Где в таблице Unicode стоят буквы, номер и байты UTF-8 каждого символа</td></tr>
+              <tr><td>Нормализация</td><td>0.3</td><td>Как шаги нормализации сводят разные записи города к одному ключу</td></tr>
+              <tr><td>Сборка строки и замер</td><td>0.4</td><td>Сколько символов копирует сборка через <code>+</code> и через <code>join</code></td></tr>
+              <tr><td>Частоты, палиндром, разбор</td><td>0.5</td><td>Три вида задач занятий 13–15 на примерах КТП</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pager"><a href="../massivy/index.html">← Алгоритмы на массивах</a><a href="00-stroka-iznutri/01-simvoly-indeksy-srezy.html">Начать с главы 0.1 →</a></div>
+        <div class="colophon">
+          <span>Алгоритмы на строках · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../massivy/book.js"></script>
+</body>
+</html>

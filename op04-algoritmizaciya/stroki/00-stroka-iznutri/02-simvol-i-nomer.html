@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>0.2 Символ и его номер · Алгоритмы на строках</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../stroki.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 0 · Строка изнутри · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на строках</a> · модуль 0 · теория</p>
+          <p class="running__folio">Глава 0.2</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">0.2</span>
+          <h1>Символ и его номер:<br>Unicode и UTF-8</h1>
+          <p class="lead">В главе 0.1 строки сравнивались по номерам символов. В этой главе разобрано, откуда берутся номера, где в таблице стоят русские буквы, как работают заглавные и строчные буквы и как символы превращаются в байты при записи в файл.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Номер символа: ord и chr</a></li>
+            <li><a href="#s2">Где в таблице русские буквы</a></li>
+            <li><a href="#s3">Заглавные и строчные</a></li>
+            <li><a href="#s4">Байты и кодировка UTF-8</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Номер символа: ord и chr</h2>
+        <p>В каталоге магазина у каждого товара есть артикул, и по артикулу товар находят однозначно, как бы его ни называли. С символами так же. <span class="term">Unicode</span> — общий каталог символов всех письменностей: латиницы, кириллицы, китайских иероглифов, математических знаков, эмодзи. Каждому символу в нём присвоен номер — <span class="term">кодовая точка</span>. Номер записывают в шестнадцатеричной системе с приставкой <code>U+</code>: буква <code>я</code> — это <code>U+044F</code>, в десятичной записи 1103.</p>
+        <p>Строка в Python хранит номера символов. Функция <code>ord</code> возвращает номер символа, функция <code>chr</code> — символ по номеру. Сравнение строк из главы 0.1 сравнивает эти числа.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; ord('a'), ord('A'), ord('я'), ord('Я'), ord('ё'), ord('е')
+(97, 65, 1103, 1071, 1105, 1077)
+&gt;&gt;&gt; chr(1103)
+'я'
+&gt;&gt;&gt; hex(ord('я'))
+'0x44f'</pre>
+        </figure>
+        <p>Номер символа нужен в задачах на частоты. Если в строке только строчные латинские буквы, частоты хранят в списке из 26 счётчиков, и номер ячейки для буквы <code>ch</code> равен <code>ord(ch) − ord('a')</code>. Этот приём разобран в модуле 13.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Где в таблице русские буквы</h2>
+        <p>Ниже — две части таблицы Unicode. Слева символы с номерами 32–126: цифры, латинские буквы и знаки. Это ASCII — старая таблица на 128 символов, Unicode начинается с неё. Справа блок кириллицы, номера 1024–1119. Номер символа равен числу слева от строки таблицы плюс номер столбца, от 0 до 15. Впишите в поле слово: его символы подсветятся, а под таблицей появится их порядок по номерам.</p>
+        <div class="cmap" data-s="ёжик" data-title="Карта кодов: ASCII и кириллица"></div>
+        <p>В таблице видны три правила, которые объясняют результаты сравнения из главы 0.1. Цифры стоят раньше латинских букв, а латиница — раньше кириллицы. Заглавные буквы стоят раньше строчных: <code>А</code>–<code>Я</code> занимают номера 1040–1071, <code>а</code>–<code>я</code> — 1072–1103, поэтому любая заглавная меньше любой строчной. Буква <code>Ё</code> стоит отдельно перед <code>А</code>, номер 1025, а <code>ё</code> — сразу после <code>я</code>, номер 1105.</p>
+        <p>Отсюда расхождение сортировки с алфавитом. <code>sorted</code> упорядочивает строки по номерам символов, поэтому слова на <code>ё</code> уходят в конец, а слова с заглавной буквы — в начало.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; sorted(['ёж', 'жук', 'яма', 'еда'])
+['еда', 'жук', 'яма', 'ёж']
+&gt;&gt;&gt; sorted(['Яблоко', 'арбуз', 'Банан'])
+['Банан', 'Яблоко', 'арбуз']
+&gt;&gt;&gt; sorted(['Яблоко', 'арбуз', 'Банан'], key=str.lower)
+['арбуз', 'Банан', 'Яблоко']</pre>
+        </figure>
+        <p>Аргумент <code>key=str.lower</code> сравнивает слова после перевода в строчные буквы, и порядок становится алфавитным для всех букв, кроме <code>ё</code>. В задачах на собеседовании порядок обычно задаёт условие или номера символов. Если условие требует алфавитного порядка для русского текста, это уточняют до кода.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Заглавные и строчные</h2>
+        <p>Методы <code>lower</code> и <code>upper</code> переводят буквы в строчные и заглавные. Для кириллицы и латиницы перевод однозначный: у каждой буквы одна пара. Метод <code>casefold</code> делает то же, что <code>lower</code>, и дополнительно приводит к общему виду буквы, у которых строчных форм несколько. Пример — немецкая <code>ß</code>: её заглавная форма записывается двумя буквами <code>SS</code>, и <code>casefold</code> превращает <code>ß</code> в <code>ss</code>.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; 'ЁЛКА'.lower()
+'ёлка'
+&gt;&gt;&gt; 'Straße'.upper()
+'STRASSE'
+&gt;&gt;&gt; 'Straße'.lower(), 'Straße'.casefold()
+('straße', 'strasse')</pre>
+        </figure>
+        <p>Строка <code>'Straße'.upper()</code> длиннее исходной на один символ. Поэтому длина строки после смены регистра в общем случае может измениться. Документация Python описывает <code>casefold</code> как способ сравнивать строки без учёта регистра. Для всех букв блока кириллицы и латинского алфавита <code>lower</code> и <code>casefold</code> дают одинаковый результат.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Байты и кодировка UTF-8</h2>
+        <p>В памяти Python строка — последовательность номеров. В файл, в сеть и в базу данных уходят байты, то есть числа от 0 до 255. Номер 1103 в один байт не помещается, поэтому нужно правило, по которому номер записывается байтами. Такое правило называют <span class="term">кодировкой</span>. Сравнение из жизни — запись телефонного номера: номер один, а записать его можно по-разному, и читать запись нужно по тому же правилу, по которому её сделали.</p>
+        <p>Самая распространённая кодировка — <span class="term">UTF-8</span>. Символы ASCII она записывает одним байтом, кириллицу — двумя, большую часть остальных символов — тремя, эмодзи — четырьмя. Метод <code>encode</code> переводит строку в байты.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; 'a'.encode('utf-8'), 'я'.encode('utf-8')
+(b'a', b'\xd1\x8f')
+&gt;&gt;&gt; '€'.encode('utf-8'), '😀'.encode('utf-8')
+(b'\xe2\x82\xac', b'\xf0\x9f\x98\x80')
+&gt;&gt;&gt; len('Привет'), len('Привет'.encode('utf-8'))
+(6, 12)</pre>
+        </figure>
+        <p>В блоке ниже каждый символ строки разобран отдельно: номер, байты UTF-8 и вид символа. Кнопки над таблицей подставляют примеры, на каждом из них видно отдельное свойство строк.</p>
+        <div class="codes" data-s="Ёлка" data-title="Из чего состоит строка"
+          data-presets='[["Ёлка","Ёлка"],["€ и 😀","€ и 😀"],["Москва и Mосква","Москва Mосква"],["й из двух символов","й"],["семья 👨‍👩‍👧","👨‍👩‍👧"]]'></div>
+        <p>Пример «Москва и Mосква» показывает два слова, которые на экране выглядят одинаково. Во втором первая буква — латинская <code>M</code> с номером 77, и строки не равны. Таблица выделяет такую букву цветом. Пример «й из двух символов» показывает, что один видимый знак может храниться двумя кодовыми точками: буква <code>и</code> и знак <code>◌̆</code> над ней. Пример «семья» — пять кодовых точек: три эмодзи и два невидимых символа-связки между ними. Функция <code>len</code> считает кодовые точки. Байты считает <code>len(s.encode())</code>, а число видимых знаков может быть меньше длины строки.</p>
+        <p>Если байты прочитать не той кодировкой, текст превращается в набор чужих букв. Так выглядит слово «Привет», записанное в UTF-8 и прочитанное в кодировке Windows-1251:</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; 'Привет'.encode('utf-8').decode('cp1251')
+'РџСЂРёРІРµС‚'
+&gt;&gt;&gt; 'Привет'.encode('cp1251').decode('utf-8')
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xcf in position 0: invalid continuation byte</pre>
+        </figure>
+        <p>В задачах на собеседовании строка обычно уже прочитана, и байты не видны. Кодировка становится важна в двух случаях: при чтении файла, где её указывают явно — <code>open(path, encoding='utf-8')</code>, — и при ограничениях в байтах. Поле базы данных на 20 байт вмещает 20 латинских букв, но только 10 русских. Как из видимых различий в записи получить одинаковые строки, разобрано в главе 0.3.</p>
+
+        <div class="quiz"><p class="quiz__q"><b>Проверьте себя</b>Что вернёт <code>len('Ёлка'.encode('utf-8'))</code>?</p><ul class="quiz__opts">
+          <li><button><code>4</code></button><p class="quiz__why">4 — это <code>len('Ёлка')</code>, число кодовых точек. После <code>encode</code> считаются байты, а каждая буква кириллицы в UTF-8 занимает два байта.</p></li>
+          <li><button><code>5</code></button><p class="quiz__why">Буква <code>Ё</code> стоит в блоке кириллицы, как и остальные три, и тоже занимает два байта.</p></li>
+          <li data-ok><button><code>8</code></button><p class="quiz__why">Верно. Четыре буквы кириллицы, по два байта на каждую.</p></li>
+          <li><button><code>16</code></button><p class="quiz__why">Четыре байта UTF-8 тратит на эмодзи и другие символы с номерами больше 65 535. Кириллице хватает двух.</p></li>
+        </ul></div>
+
+        <div class="quiz"><p class="quiz__q"><b>Проверьте себя</b>Почему <code>'ёж' &lt; 'жук'</code> даёт <code>False</code>?</p><ul class="quiz__opts">
+          <li><button>Python сравнивает строки по длине</button><p class="quiz__why">Длина влияет на результат, только когда короткая строка совпадает с началом длинной. Здесь различие уже в первом символе.</p></li>
+          <li data-ok><button>Номер <code>ё</code> — 1105, номер <code>ж</code> — 1078, а сравниваются номера</button><p class="quiz__why">Верно. Буква <code>ё</code> стоит в таблице после <code>я</code>, поэтому она больше любой другой строчной буквы кириллицы.</p></li>
+          <li><button><code>ё</code> состоит из двух кодовых точек</button><p class="quiz__why">Строка <code>'ёж'</code>, набранная с клавиатуры, хранит <code>ё</code> одной кодовой точкой с номером 1105. Запись из двух точек бывает, она разобрана в главе 0.3, но сравнение дало бы тот же ответ.</p></li>
+          <li><button>Строчные буквы больше заглавных</button><p class="quiz__why">Это верно для номеров, но в обеих строках буквы строчные.</p></li>
+        </ul></div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Документация Python: Unicode HOWTO — <a href="https://docs.python.org/3/howto/unicode.html" target="_blank" rel="noopener">docs.python.org/3/howto/unicode.html</a></li>
+            <li>Документация Python: str.casefold — <a href="https://docs.python.org/3/library/stdtypes.html#str.casefold" target="_blank" rel="noopener">docs.python.org/3/library/stdtypes.html#str.casefold</a></li>
+            <li>The Unicode Standard, блок Cyrillic U+0400–U+04FF — <a href="https://www.unicode.org/charts/PDF/U0400.pdf" target="_blank" rel="noopener">unicode.org/charts/PDF/U0400.pdf</a></li>
+            <li>Вывод всех примеров получен в Python 3.12.12</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="01-simvoly-indeksy-srezy.html">← 0.1 Символы, индексы, срезы</a><a href="03-normalizaciya.html">0.3 Нормализация →</a></div>
+        <div class="colophon">
+          <span>Модуль 0 · Строка изнутри · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../stroki.js"></script>
+</body>
+</html>

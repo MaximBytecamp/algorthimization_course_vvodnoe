@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>0.4 Стоимость операций со строкой · Алгоритмы на строках</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../stroki.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 0 · Строка изнутри · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на строках</a> · модуль 0 · теория</p>
+          <p class="running__folio">Глава 0.4</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">0.4</span>
+          <h1>Стоимость операций<br>со строкой</h1>
+          <p class="lead">В этой главе разобрано, как строка хранится в памяти Python и сколько стоят операции с ней. Отдельно — сборка строки по частям и вызов метода в цикле: в обоих случаях короткий код незаметно даёт O(n²). Оба случая проверены замером.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Как строка лежит в памяти</a></li>
+            <li><a href="#s2">Таблица стоимости операций</a></li>
+            <li><a href="#s3">Сборка строки по частям</a></li>
+            <li><a href="#s4">Метод строки внутри цикла</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Как строка лежит в памяти</h2>
+        <p>В занятии 7 массив хранился ячейками одинакового размера, и адрес ячейки по индексу вычислялся одной формулой. Строка в Python, в реализации CPython, хранится так же. Для каждой строки выбирается ширина ячейки — 1, 2 или 4 байта — по самому большому номеру символа в ней. Строка из латиницы и цифр занимает 1 байт на символ, строка с кириллицей — 2, строка с эмодзи — 4. Ширина одна для всех символов строки.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска · sys.getsizeof — размер объекта в байтах</span></figcaption>
+<pre>&gt;&gt;&gt; import sys
+&gt;&gt;&gt; sys.getsizeof('a' * 100), sys.getsizeof('я' * 100), sys.getsizeof('😀' * 100)
+(141, 258, 460)
+&gt;&gt;&gt; sys.getsizeof('a' * 99 + 'я')
+258</pre>
+        </figure>
+        <p>Строка из ста латинских букв занимает 141 байт: 41 байт служебных данных и по байту на символ. Сто букв <code>я</code> — 258 байт, по два на символ. Последняя строка вывода показывает, что одной буквы <code>я</code> среди 99 латинских достаточно, чтобы вся строка перешла на ячейки по два байта. Это внутренний формат Python, он не совпадает с UTF-8 из главы 0.2: там ширина у каждого символа своя.</p>
+        <p>Из одинаковой ширины ячеек следуют две оценки. Символ по индексу <code>s[i]</code> вычисляется по адресу за O(1), как элемент списка. Длина хранится в объекте строки, и <code>len(s)</code> тоже стоит O(1).</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Таблица стоимости операций</h2>
+        <p>Строку нельзя изменить, поэтому любая операция, которая возвращает строку, создаёт новую и копирует в неё символы. Её стоимость не меньше длины результата. Операции, которые ищут или сравнивают, в худшем случае просматривают всю строку. В таблице n — длина строки <code>s</code>, m — длина <code>t</code>.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Операция</th><th>Время</th><th>Что происходит</th></tr></thead>
+            <tbody>
+              <tr><td><code>len(s)</code>, <code>s[i]</code></td><td>O(1)</td><td>Длина записана в объекте, адрес символа вычисляется по индексу</td></tr>
+              <tr><td><code>s[a:b]</code></td><td>O(b − a)</td><td>Новая строка, в неё копируются символы среза</td></tr>
+              <tr><td><code>s + t</code></td><td>O(n + m)</td><td>Новая строка, копируются обе</td></tr>
+              <tr><td><code>s == t</code></td><td>O(min(n, m))</td><td>Сравнение до первого различия; строки разной длины Python считает неравными сразу</td></tr>
+              <tr><td><code>t in s</code>, <code>s.find(t)</code>, <code>s.count(t)</code></td><td>O(n·m) в простой оценке</td><td>Поиск подстроки; для длинных образцов CPython с версии 3.10 использует алгоритм с линейной оценкой</td></tr>
+              <tr><td><code>s.lower()</code>, <code>s.replace(...)</code>, <code>s.strip()</code></td><td>O(n)</td><td>Проход по строке и новая строка</td></tr>
+              <tr><td><code>s.split()</code>, <code>sep.join(parts)</code></td><td>O(n)</td><td>n — общая длина всех частей</td></tr>
+              <tr><td><code>set(s)</code>, <code>Counter(s)</code></td><td>O(n)</td><td>Один проход, словарь или множество символов</td></tr>
+              <tr><td><code>sorted(s)</code></td><td>O(n log n)</td><td>Список символов, упорядоченный по номерам</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>По отдельности каждая операция дешёвая. Квадратичное время появляется, когда операция стоимостью O(n) выполняется на каждом из n шагов цикла. Ниже разобраны два таких случая.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Сборка строки по частям</h2>
+        <p>Результат задачи часто строят по символу: сжатую строку, строку без лишних пробелов, ответ из частей. Прямая запись — <code>s = s + ch</code> в цикле. Строку нельзя дописать, поэтому каждый шаг создаёт новую строку и копирует в неё все прежние символы. Второй способ — складывать части в список и один раз в конце соединить их методом <code>join</code>. В блоке ниже строка <code>'склад'</code> собирается обоими способами, под каждым — сколько символов скопировано.</p>
+        <div class="build" data-s="склад" data-title="Сборка строки 'склад' по символу"></div>
+        <p>Для строки из 5 символов разница — 15 копирований против 5. Для строки длины n первый способ копирует 1 + 2 + … + n = n(n + 1)/2 символов, это O(n²). Второй копирует каждый символ один раз: O(n) на добавление в список и O(n) на <code>join</code>.</p>
+        <p>Замер показывает, что в CPython есть исключение. Если на строку указывает только одно имя, CPython дописывает символ в ту же строку без копирования прежних символов, и сборка через <code>s += ch</code> занимает O(n). Это оптимизация конкретной реализации. Она перестаёт работать, как только на строку указывает второе имя: строка сохранена в другой переменной, лежит в списке или передана в функцию. Во втором опыте замера в цикл добавлена одна строка <code>prev = s</code>.</p>
+        <figure class="code">
+          <figcaption><span>bench_concat.py</span><span>три способа собрать строку из n символов</span></figcaption>
+<pre><span class="k">def</span> <span class="f">plus</span>(n):
+    s = <span class="s">''</span>
+    <span class="k">for</span> _ <span class="k">in</span> <span class="k">range</span>(n):
+        s += <span class="s">'x'</span>
+    <span class="k">return</span> s
+
+<span class="k">def</span> <span class="f">plus_alias</span>(n):
+    s = <span class="s">''</span>
+    <span class="k">for</span> _ <span class="k">in</span> <span class="k">range</span>(n):
+        prev = s          <span class="c"># вторая ссылка на ту же строку</span>
+        s += <span class="s">'x'</span>
+    <span class="k">return</span> s
+
+<span class="k">def</span> <span class="f">join</span>(n):
+    parts = []
+    <span class="k">for</span> _ <span class="k">in</span> <span class="k">range</span>(n):
+        parts.append(<span class="s">'x'</span>)
+    <span class="k">return</span> <span class="s">''</span>.join(parts)</pre>
+        </figure>
+        <div class="bench" data-title="Сборка строки из n символов" data-xlabel="длина строки n"
+          data-series='[{"name":"s += ch, вторая ссылка","color":"#B3261E","pts":[[40000,15.38],[80000,103.83],[160000,449.19],[320000,1372.99]]},{"name":"s += ch","color":"#2D7FC1","pts":[[40000,1.67],[80000,3.17],[160000,7.86],[320000,17.01]]},{"name":"список и join","color":"#2F7D4F","pts":[[40000,0.75],[80000,1.69],[160000,3.34],[320000,6.38]]}]'></div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>n</th><th><code>s += ch</code>, мс</th><th><code>s += ch</code> со второй ссылкой, мс</th><th>список и <code>join</code>, мс</th></tr></thead>
+            <tbody>
+              <tr><td>40&nbsp;000</td><td>1,67</td><td>15,38</td><td>0,75</td></tr>
+              <tr><td>80&nbsp;000</td><td>3,17</td><td>103,83</td><td>1,69</td></tr>
+              <tr><td>160&nbsp;000</td><td>7,86</td><td>449,19</td><td>3,34</td></tr>
+              <tr><td>320&nbsp;000</td><td>17,01</td><td>1&nbsp;372,99</td><td>6,38</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Замер выполнен на ноутбуке автора, Python 3.12.12, процессор Apple M4. Каждое число — медиана трёх запусков скрипта, в каждом запуске — медиана семи повторов. Когда n удваивается, время <code>join</code> и обычного <code>+=</code> растёт в 2–2,5 раза, время <code>+=</code> со второй ссылкой — в 3–7 раз. При n = 320 000 эта версия работает больше секунды, <code>join</code> — 6 мс. Руководство по стилю Python PEP 8 по этой причине рекомендует в коде, где важна скорость, собирать строку через <code>''.join()</code> и не полагаться на оптимизацию <code>+=</code>.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Метод строки внутри цикла</h2>
+        <p>Второй случай квадратичного времени выглядит ещё короче. Задача занятия 13 — найти первую букву, которая встречается в строке один раз. Прямое решение для каждой буквы вызывает <code>s.count(ch)</code>. Строка в этом коде не копируется, но <code>count</code> просматривает всю строку, то есть стоит O(n), и вызывается до n раз. Второе решение один раз считает частоты всех букв словарём <code>Counter</code> за O(n), а потом проходит строку ещё раз и берёт частоту из словаря за O(1).</p>
+        <figure class="code">
+          <figcaption><span>bench_unique.py</span><span>два решения одной задачи</span></figcaption>
+<pre><span class="k">from</span> collections <span class="k">import</span> Counter
+
+<span class="k">def</span> <span class="f">first_unique_count</span>(s):          <span class="c"># O(n²)</span>
+    <span class="k">for</span> i, ch <span class="k">in</span> <span class="k">enumerate</span>(s):
+        <span class="k">if</span> s.count(ch) == <span class="n">1</span>:
+            <span class="k">return</span> i
+    <span class="k">return</span> <span class="n">-1</span>
+
+<span class="k">def</span> <span class="f">first_unique_counter</span>(s):        <span class="c"># O(n)</span>
+    freq = Counter(s)
+    <span class="k">for</span> i, ch <span class="k">in</span> <span class="k">enumerate</span>(s):
+        <span class="k">if</span> freq[ch] == <span class="n">1</span>:
+            <span class="k">return</span> i
+    <span class="k">return</span> <span class="n">-1</span></pre>
+        </figure>
+        <p>Для замера взяты строки из случайных русских букв, в которых каждая буква встречается чётное число раз. Уникальной буквы нет, и оба решения проходят строку до конца — это худший случай.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>n</th><th><code>s.count</code> в цикле, мс</th><th><code>Counter</code>, мс</th></tr></thead>
+            <tbody>
+              <tr><td>2&nbsp;000</td><td>2,00</td><td>0,18</td></tr>
+              <tr><td>4&nbsp;000</td><td>7,41</td><td>0,34</td></tr>
+              <tr><td>8&nbsp;000</td><td>29,81</td><td>0,72</td></tr>
+              <tr><td>16&nbsp;000</td><td>116,09</td><td>1,46</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>При удвоении n время первого решения растёт примерно в 4 раза, второго — в 2. При n = 16 000 разница — около 80 раз. Условия замера те же, что в §3: медиана трёх запусков по семь повторов. Из обоих опытов следует правило для задач на строки: внутри цикла по строке не вызывают операции, которые сами проходят всю строку, — <code>count</code>, <code>in</code>, <code>find</code>, срез, <code>+</code> со строкой-результатом. Нужные данные считают один раз до цикла. Дальше, в главе 0.5, — три вида задач занятий 13–15, где это правило применяется.</p>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Сколько стоит такой цикл для строки длины n?<pre>result = ''
+for ch in s:
+    if ch != ' ':
+        result = result + ch
+        history.append(result)</pre></div><ul class="quiz__opts">
+          <li><button>O(n): CPython дописывает строку на месте</button><p class="quiz__why">Дописывание на месте работает, только когда на строку указывает одно имя. Здесь каждая промежуточная строка сохраняется в списке <code>history</code>, и на каждом шаге копируется весь <code>result</code>.</p></li>
+          <li data-ok><button>O(n²) по времени</button><p class="quiz__why">Верно. Строка <code>result</code> лежит в списке, поэтому каждое сложение создаёт новую строку и копирует все прежние символы: 1 + 2 + … + n. Память тоже O(n²): в списке хранятся все промежуточные строки.</p></li>
+          <li><button>O(n log n)</button><p class="quiz__why">В цикле нет сортировки и деления пополам. Каждый шаг копирует строку растущей длины, сумма копирований — порядка n²/2.</p></li>
+          <li><button>O(1): условие отбрасывает пробелы</button><p class="quiz__why">Условие уменьшает число сложений, но цикл всё равно проходит все n символов, а в худшем случае пробелов в строке нет.</p></li>
+        </ul></div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>PEP 393 «Flexible String Representation» — <a href="https://peps.python.org/pep-0393/" target="_blank" rel="noopener">peps.python.org/pep-0393</a></li>
+            <li>PEP 8, раздел Programming Recommendations — <a href="https://peps.python.org/pep-0008/#programming-recommendations" target="_blank" rel="noopener">peps.python.org/pep-0008</a></li>
+            <li>What’s New In Python 3.10, раздел Optimizations: поиск подстроки алгоритмом Two-Way — <a href="https://docs.python.org/3/whatsnew/3.10.html#optimizations" target="_blank" rel="noopener">docs.python.org/3/whatsnew/3.10.html</a></li>
+            <li>Замеры: Python 3.12.12, Apple M4, 28.10.2026; скрипты bench_concat.py и bench_unique.py приведены в главе</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="03-normalizaciya.html">← 0.3 Нормализация</a><a href="05-tri-vida-zadach.html">0.5 Три вида строковых задач →</a></div>
+        <div class="colophon">
+          <span>Модуль 0 · Строка изнутри · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../stroki.js"></script>
+</body>
+</html>
