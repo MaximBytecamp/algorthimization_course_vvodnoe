@@ -25,14 +25,20 @@ _FUNCS = {}
 def load(cards_json):
     CARDS.clear()
     _FUNCS.clear()
+    load_more(cards_json)
+
+
+def load_more(cards_json):
     CARDS.update({c['key']: c for c in json.loads(cards_json)})
 
 
-# Под Pyodide файла модуля нет: карточки передаёт api/mock-check.js через load().
-_DATA = os.path.join(os.path.dirname(os.path.abspath(globals().get('__file__', '.'))), '..', '_data', 'op04-mok-1.json')
-if '__file__' in globals() and os.path.exists(_DATA):
-    with open(_DATA, encoding='utf-8') as fh:
-        load(fh.read())
+# Пул мок-интервью и экзамен. Под Pyodide файла модуля нет: карточки передаёт api/mock-check.js через load_more().
+_DIR = os.path.join(os.path.dirname(os.path.abspath(globals().get('__file__', '.'))), '..', '_data')
+if '__file__' in globals():
+    for _name in ('op04-mok-1.json', 'op04-exam-1.json'):
+        if os.path.exists(os.path.join(_DIR, _name)):
+            with open(os.path.join(_DIR, _name), encoding='utf-8') as fh:
+                load_more(fh.read())
 
 
 def norm(x):
@@ -54,7 +60,8 @@ def reference(card):
     if card['key'] not in _FUNCS:
         ns = {}
         exec(card['reference_code'], ns)
-        _FUNCS[card['key']] = ns[card['fn']]
+        # У задач экзамена своё имя функции для студента, эталон зовётся по исходному (ref_fn).
+        _FUNCS[card['key']] = ns[card.get('ref_fn', card['fn'])]
     return _FUNCS[card['key']]
 
 

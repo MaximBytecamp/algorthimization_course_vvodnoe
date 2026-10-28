@@ -22,14 +22,23 @@ js = (HERE / 'sekciya.js').read_text(encoding='utf-8')
 runner = re.search(r'/\*RUNNER\*/const RUNNER = `(.*?)`;/\*/RUNNER\*/', js, re.S).group(1).replace('\\\\', '\\')
 ns = {}
 exec(runner, ns)
-pool = json.loads(re.search(r'window\.MOCK_POOL = (.*);\s*$', (HERE / 'pool.js').read_text(encoding='utf-8'), re.S).group(1))
+def read_pool(name, var):
+    return json.loads(re.search(rf'window\.{var} = (.*);\s*$', (HERE / name).read_text(encoding='utf-8'), re.S).group(1))
+
+
+import ast
+pool = read_pool('pool.js', 'MOCK_POOL') + read_pool('exam-pool.js', 'EXAM_POOL')
 
 errors = []
 for key, card in check.CARDS.items():
     p = next(x for x in pool if x['key'] == key)
     assert p['cases'] == card['cases'], key
-    for label, code, want_all in (('эталон', card['reference_code'], True), ('заготовка', p['signature'], False)):
-        run = json.loads(ns['_run'](code, card['fn'], json.dumps(card['cases'])))
+    ref_fn = card.get('ref_fn', card['fn'])
+    arity = lambda src: len(ast.parse(src).body[0].args.args)
+    if arity(card['reference_code']) != arity(p['signature']):
+        errors.append(f'{key}: у заготовки {p["signature"].splitlines()[0]} другое число параметров, чем у эталона')
+    for label, code, fn_name, want_all in (('эталон', card['reference_code'], ref_fn, True), ('заготовка', p['signature'], p['fn'], False)):
+        run = json.loads(ns['_run'](code, fn_name, json.dumps(card['cases'])))
         if 'fatal' in run:
             errors.append(f'{key} {label}: {run["fatal"]}')
             continue
@@ -45,7 +54,7 @@ for key, card in check.CARDS.items():
     if check.process({'action': 'examples', 'key': key, 'rows': [{'args': rows[0]['args'], 'answer': '"не тот ответ"'}]})['verdicts'] != ['bad']:
         errors.append(f'{key}: неверный ответ примера засчитан')
 
-public = (HERE / 'pool.js').read_text(encoding='utf-8')
+public = (HERE / 'pool.js').read_text(encoding='utf-8') + (HERE / 'exam-pool.js').read_text(encoding='utf-8')
 for card in check.CARDS.values():
     body = card['reference_code'].split('\n', 1)[1].strip().splitlines()
     if any(line.strip() and len(line.strip()) > 12 and line.strip() in public for line in body):

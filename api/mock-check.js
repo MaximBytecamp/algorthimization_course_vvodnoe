@@ -13,7 +13,7 @@ function boot() {
     ready = (async () => {
       const py = await loadPyodide();
       py.runPython(fs.readFileSync(path.join(__dirname, '_lib', 'mock_check.py'), 'utf8'));
-      py.globals.get('load')(fs.readFileSync(path.join(__dirname, '_data', 'op04-mok-1.json'), 'utf8'));
+      for (const name of ['op04-mok-1.json', 'op04-exam-1.json']) py.globals.get('load_more')(fs.readFileSync(path.join(__dirname, '_data', name), 'utf8'));
       return py.globals.get('process_json');
     })();
     ready.catch(() => { ready = null; });

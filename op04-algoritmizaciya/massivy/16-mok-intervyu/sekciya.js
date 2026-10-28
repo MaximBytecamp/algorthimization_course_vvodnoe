@@ -7,8 +7,13 @@
    5. Самооценка и лист обратной связи по рубрике КТП, выгрузка в .md. */
 (() => {
   const API_CHAT = '/api/mock-chat', API_CHECK = '/api/mock-check';
-  const STORE = 'op04-mok1:session', STORE_CODE = 'op04-mok1:code';
-  const POOL = window.MOCK_POOL || [];
+  // Та же механика работает на странице экзамена (ekzamen.html): вход по ФИО и паролю, вариант,
+  // три смены варианта. Вариант вычисляется из ФИО и номера попытки, поэтому очистка браузера
+  // не даёт новых вариантов: на одно ФИО их всегда четыре одних и тех же.
+  const EXAM_PAGE = Boolean(window.EXAM_PAGE);
+  const REROLLS = 3;
+  const STORE = EXAM_PAGE ? 'op04-exam1:session' : 'op04-mok1:session', STORE_CODE = 'op04-mok1:code';
+  const POOL = (EXAM_PAGE ? window.EXAM_POOL : window.MOCK_POOL) || [];
   const BY_KEY = Object.fromEntries(POOL.map(t => [t.key, t]));
   // Секция — две задачи за 60 минут (КТП, занятие 16). Экзамен — четыре задачи за 180 минут, без подсказок.
   // plan — ориентир по минутам на каждую задачу; по истечении общего времени таймер только краснеет.
@@ -48,19 +53,34 @@
     return q.get('f') === 'exam' || n === 4 ? 'exam' : 'section';
   }
   // Задачи билета — каждая из своего модуля, пока модулей хватает.
-  function drawTicket(format) {
+  function drawTicket(format, rnd) {
     const levels = FORMATS[format].levels;
-    const fromUrl = (new URLSearchParams(location.search).get('t') || '').split(',').filter(k => BY_KEY[k]);
+    const choose = rnd ? xs => xs[Math.floor(rnd() * xs.length)] : pick;
+    const fromUrl = rnd ? [] : (new URLSearchParams(location.search).get('t') || '').split(',').filter(k => BY_KEY[k]);
     if (fromUrl.length === levels.length) return fromUrl;
     const used = new Set(), keys = [];
     for (const level of levels) {
       const all = POOL.filter(t => t.level === level && !keys.includes(t.key));
       const fresh = all.filter(t => !used.has(t.module));
-      const t = pick(fresh.length ? fresh : all);
+      const t = choose(fresh.length ? fresh : all);
       used.add(t.module); keys.push(t.key);
     }
     return keys;
   }
+  // Генератор случайных чисел с зерном: один и тот же текст зерна даёт один и тот же вариант.
+  function seeded(text) {
+    let h = 2166136261;
+    for (const ch of text) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619); }
+    return () => {
+      h = (h + 0x6D2B79F5) | 0;
+      let t = Math.imul(h ^ (h >>> 15), 1 | h);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const normName = name => name.toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/g, ' ').trim();
+  const variantOf = (name, attempt) => drawTicket('exam', seeded(`${normName(name)}|${(store.get(STORE_CODE) || '').trim()}|${attempt}`));
+
   const newTask = key => ({ key, messages: [], stage: 'retell', clarified: [], hints: [], code: BY_KEY[key].signature, examples: [{ args: '', answer: '', verdict: '' }], tests: null, startedAt: null, finishedAt: null });
   const task = () => S.tasks[S.idx];
   const save = () => store.set(STORE, S);
@@ -69,7 +89,7 @@
   async function post(url, body) {
     const r = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-mock-code': store.get(STORE_CODE) || '' },
+      headers: { 'Content-Type': 'application/json', 'x-mock-code': encodeURIComponent(store.get(STORE_CODE) || '') },
       body: JSON.stringify(body),
     });
     let data = {};
@@ -200,7 +220,42 @@ onmessage = async e => {
 
   /* ── 4. Отрисовка ──────────────────────────────────────────────── */
   function show(id) {
-    for (const s of ['start', 'room', 'self', 'sheet']) $('#mk-' + s).hidden = s !== id;
+    for (const s of ['start', 'login', 'room', 'self', 'sheet']) { const el = $('#mk-' + s); if (el) el.hidden = s !== id; }
+  }
+
+  /* Экран экзамена: вход, вариант, смены варианта. */
+  function renderLogin() {
+    show('login');
+    const st = $('#mk-server');
+    st.className = 'mk-server ' + (server.ready ? 'is-ok' : 'is-no');
+    st.textContent = server.ready ? 'ИИ-интервьюер подключён.' : (server.error || 'ИИ-интервьюер не настроен на сервере. Сообщите преподавателю.');
+    const L = S && S.login;
+    $('#mk-login-form').hidden = Boolean(L);
+    $('#mk-variant').hidden = !L;
+    if (!L) { $('#mk-name').value = ''; return; }
+    const keys = variantOf(L.name, L.attempt), left = REROLLS - L.attempt;
+    $('#mk-who').textContent = `${L.name} · вариант ${L.attempt + 1}`;
+    $('#mk-ticket').innerHTML = keys.map((k, i) => {
+      const t = BY_KEY[k];
+      return `<article class="ticket__task"><p class="ticket__meta"><b>Задача ${i + 1} · ${LEVEL[t.level]} · около ${FORMATS.exam.plan[i]} минут</b></p><h3>${esc(t.title)}</h3><p class="ticket__say">«${esc(t.say)}»</p></article>`;
+    }).join('');
+    const rr = $('#mk-reroll');
+    rr.disabled = left <= 0;
+    rr.textContent = left > 0 ? `↻ Сменить вариант (осталось ${left})` : 'Смены варианта закончились';
+    $('#mk-go').disabled = !server.ready;
+  }
+
+  async function login() {
+    const name = $('#mk-name').value.trim().replace(/\s+/g, ' '), code = $('#mk-code').value.trim();
+    const msg = $('#mk-login-msg');
+    if (normName(name).split(' ').length < 2) { msg.textContent = 'Впишите фамилию и имя полностью.'; return; }
+    if (!code) { msg.textContent = 'Впишите пароль, который назвал преподаватель.'; return; }
+    store.set(STORE_CODE, code);
+    msg.textContent = 'Проверяю пароль…';
+    try { await post(API_CHAT, { action: 'login' }); }
+    catch (e) { msg.textContent = e.message === 'неверный код доступа' ? 'Пароль не подошёл. Проверьте раскладку и пробелы.' : e.message; return; }
+    msg.textContent = '';
+    S = { login: { name, attempt: 0 } }; save(); renderLogin();
   }
 
   function renderStart() {
@@ -376,6 +431,7 @@ onmessage = async e => {
   function renderSheet() {
     show('sheet');
     const sh = S.sheet;
+    if ($('#mk-sheet-who')) $('#mk-sheet-who').textContent = S.student ? `${S.student} · вариант ${S.variant} · смен варианта: ${S.rerolls} из ${REROLLS}` : '';
     $('#mk-total').innerHTML = `<b>${sh.total} %</b><span>оценка интервьюера</span><b>${selfTotal()} %</b><span>ваша самооценка</span>`;
     $('#mk-sheet-rows').innerHTML = sh.criteria.map(c => `<tr><td><b>${esc(c.name)}</b><br><small>${c.weight} %</small></td><td>${S.self[c.id]}</td><td>${c.score}</td><td>${esc(c.comment)}${c.quote ? `<q>${esc(c.quote)}</q>` : ''}</td></tr>`).join('');
     $('#mk-tasks').innerHTML = S.tasks.map((t, i) => {
@@ -393,7 +449,7 @@ onmessage = async e => {
 
   function markdown() {
     const sh = S.sheet, date = new Date().toLocaleDateString('ru-RU');
-    const L = [`# Мок-интервью № 1 · ОП.04 · ${date}`, '', `Формат: ${fmt().name.toLowerCase()}, ${S.tasks.length} задачи, ${fmt().minutes} минут. Режим: ${S.mode === 'training' ? 'тренировка' : 'без подсказок'}. Итог: ${sh.total} % (самооценка ${selfTotal()} %).`, '', '## Лист обратной связи', '',
+    const L = [`# ${S.student ? 'Экзамен' : 'Мок-интервью № 1'} · ОП.04 · ${date}`, '', ...(S.student ? [`Студент: ${S.student}. Вариант ${S.variant}, смен варианта: ${S.rerolls} из ${REROLLS}.`, ''] : []), `Формат: ${fmt().name.toLowerCase()}, ${S.tasks.length} задачи, ${fmt().minutes} минут. Режим: ${S.mode === 'training' ? 'тренировка' : 'без подсказок'}. Итог: ${sh.total} % (самооценка ${selfTotal()} %).`, '', '## Лист обратной связи', '',
       '| Критерий | Вес | Самооценка | Интервьюер | Комментарий |', '|---|---|---|---|---|',
       ...sh.criteria.map(c => `| ${c.name} | ${c.weight} % | ${S.self[c.id]} | ${c.score} | ${(c.comment + (c.quote ? ` «${c.quote}»` : '')).replace(/\|/g, '/').replace(/\s*\n\s*/g, ' ')} |`),
       '', '### Что получилось', ...sh.strengths.map(s => `- ${s}`), '', '### Что сделать к следующей секции', ...sh.improve.map(s => `- ${s}`), '', sh.summary, '',
@@ -415,6 +471,13 @@ onmessage = async e => {
   document.addEventListener('click', e => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const act = b.dataset.act;
+    if (act === 'login') login();
+    if (act === 'reroll' && S.login && S.login.attempt < REROLLS && confirm('Сменить вариант? Вернуться к этому варианту будет нельзя.')) { S.login.attempt += 1; save(); renderLogin(); }
+    if (act === 'exam-go') {
+      const L = S.login;
+      S = { format: 'exam', mode: 'exam', student: L.name, variant: L.attempt + 1, rerolls: L.attempt, login: L, idx: 0, tasks: variantOf(L.name, L.attempt).map(newTask), self: null, sheet: null };
+      task().startedAt = Date.now(); save(); renderRoom(); ask();
+    }
     if (act === 'redraw') { S = { draftFormat: S && S.draftFormat }; renderStart(); }
     if (act === 'go') {
       const code = $('#mk-code').value.trim();
@@ -435,10 +498,10 @@ onmessage = async e => {
     if (act === 'download') {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([markdown()], { type: 'text/markdown;charset=utf-8' }));
-      a.download = `mok-intervyu-1_${new Date().toISOString().slice(0, 10)}.md`;
+      a.download = S.student ? `ekzamen_${normName(S.student).replace(/ /g, '-')}_v${S.variant}.md` : `mok-intervyu-1_${new Date().toISOString().slice(0, 10)}.md`;
       a.click();
     }
-    if (act === 'restart' && confirm('Начать заново? Текущий разговор и лист будут удалены из браузера.')) { store.del(STORE); S = null; renderStart(); }
+    if (act === 'restart' && confirm('Начать заново? Текущий разговор и лист будут удалены из браузера.')) { store.del(STORE); S = null; EXAM_PAGE ? renderLogin() : renderStart(); }
   });
 
   document.addEventListener('change', e => {
@@ -484,6 +547,6 @@ onmessage = async e => {
       if (S && S.sheet) renderSheet();
       else if (S && S.tasks && S.phase === 'self') renderSelf();
       else if (S && S.tasks) renderRoom();
-      else renderStart();
+      else EXAM_PAGE ? renderLogin() : renderStart();
     });
 })();

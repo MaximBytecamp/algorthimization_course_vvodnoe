@@ -12,7 +12,8 @@
    POST { action: "feedback", tasks: [...], self: {...} } → лист обратной связи по рубрике КТП.
 
    Карточки задач с эталонами лежат в api/_data/op04-mok-1.json (собирает make_pool.py). */
-const CARDS = Object.fromEntries(require('./_data/op04-mok-1.json').map(c => [c.key, c]));
+// Пул мок-интервью и экзамен (у экзамена ключи E-…, свои сюжеты и имена функций).
+const CARDS = Object.fromEntries([...require('./_data/op04-mok-1.json'), ...require('./_data/op04-exam-1.json')].map(c => [c.key, c]));
 
 const STAGES = ['retell', 'clarify', 'examples', 'idea', 'complexity', 'code', 'check', 'done'];
 const STAGE_NAMES = {
@@ -293,11 +294,16 @@ module.exports = async (req, res) => {
   if (req.method === 'GET') return res.status(200).json({ ready, needCode });
   if (req.method !== 'POST') return res.status(405).json({ error: 'нужен POST' });
   if (!ready) return res.status(503).json({ error: 'ИИ-интервьюер не настроен: на сервере нет ключа модели' });
-  if (needCode && req.headers['x-mock-code'] !== process.env.MOCK_ACCESS_CODE) return res.status(401).json({ error: 'неверный код доступа' });
+  // Код приходит через encodeURIComponent: в заголовке нельзя передать кириллицу как есть.
+  let code = String(req.headers['x-mock-code'] || '');
+  try { code = decodeURIComponent(code); } catch { /* код как есть */ }
+  if (needCode && code.trim() !== process.env.MOCK_ACCESS_CODE.trim()) return res.status(401).json({ error: 'неверный код доступа' });
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
   body = body || {};
   try {
+    // login — только проверка пароля: до этой строки запрос уже прошёл сверку кода доступа.
+    if (body.action === 'login') return res.status(200).json({ ok: true });
     const run = { feedback, hint }[body.action] || chat;
     const [status, out] = await run(body);
     return res.status(status).json(out);
