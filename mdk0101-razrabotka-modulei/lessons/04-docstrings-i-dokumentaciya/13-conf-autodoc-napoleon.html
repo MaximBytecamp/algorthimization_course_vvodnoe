@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>4.13 conf.py, autodoc и napoleon · Аннотации типов и документация</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Тема 04 · Аннотации типов и документация кода</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Аннотации типов и документация кода</a> · МДК.01.01 · разработка программных модулей</p>
+          <p class="running__folio">Глава 4.13</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">4.13</span>
+          <h1>conf.py, autodoc<br>и napoleon</h1>
+          <p class="lead">В этой главе на сайт из главы 4.12 выводятся докстринги модуля <code>app/services/orders.py</code>. Разбор идёт по тем ошибкам, которые встречаются по дороге: неизвестная директива, модуль не найден, разделы Google, показанные простым текстом. Каждую ошибку закрывает одна строка в <code>conf.py</code>. Дальше — где показывать типы, как читать предупреждения о разметке докстринга и как превратить их в ошибку сборки. В конце — задания на своей копии проекта.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Пошаговая работа</dd></div>
+          <div><dt>Время</dt><dd>Около 60 минут</dd></div>
+          <div><dt>Расширения</dt><dd><code>autodoc</code>, <code>napoleon</code>, <code>viewcode</code></dd></div>
+          <div><dt>Результат</dt><dd>Страница модуля с разделами Google на сайте</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">conf.py — программа на Python</a></li>
+            <li><a href="#s2">Страница для модуля: директива automodule</a></li>
+            <li><a href="#s3">Расширение autodoc</a></li>
+            <li><a href="#s4">Путь к проекту в sys.path</a></li>
+            <li><a href="#s5">Расширение napoleon: разделы Google</a></li>
+            <li><a href="#s6">Где показывать типы</a></li>
+            <li><a href="#s7">Предупреждения о разметке докстринга</a></li>
+            <li><a href="#s8">Расширение viewcode: ссылка на исходник</a></li>
+            <li><a href="#s9">Соберите сами</a></li>
+            <li><a href="#s10">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <p class="part">Часть 1 · Настройки и первый модуль</p>
+        <h2 id="s1"><span class="sec">§1</span>conf.py — программа на Python</h2>
+        <p>В главе 4.12 файл <code>docs/source/conf.py</code> создал мастер. Sphinx выполняет его в начале каждой сборки как обычный модуль Python и после выполнения читает значения переменных с заранее известными именами: <code>project</code>, <code>language</code>, <code>extensions</code> и другими. Переменная с незнакомым именем ничего не меняет и ошибки не вызывает, поэтому имя настройки проверяют по документации Sphinx.</p>
+        <p>Из того, что <code>conf.py</code> — программа, следуют два свойства. В нём работают импорты и вычисления: в §4 так задаётся путь к проекту. И ошибка в нём останавливает сборку до чтения страниц: если в нём импортируется несуществующий модуль, сборка останавливается с сообщением <code>Configuration error!</code>, сведениями о версиях и путём к файлу журнала с подробностями.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Раздел файла</th><th>Переменные</th><th>Что задают</th></tr></thead>
+            <tbody>
+              <tr><td>Project information</td><td><code>project</code>, <code>author</code>, <code>copyright</code>, <code>release</code></td><td>Название, автор и номер выпуска: шапка и подвал страниц</td></tr>
+              <tr><td>General configuration</td><td><code>extensions</code>, <code>templates_path</code>, <code>exclude_patterns</code>, <code>language</code></td><td>Подключённые расширения, служебные папки, язык интерфейса</td></tr>
+              <tr><td>Options for HTML output</td><td><code>html_theme</code>, <code>html_static_path</code></td><td>Тема оформления и папка своих файлов для сайта</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>В этой главе в файл добавляются три вещи: путь к проекту, расширения в список <code>extensions</code> и настройки этих расширений. Сначала нужна страница, на которую выводятся докстринги.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Страница для модуля: директива automodule</h2>
+        <p>Докстринги на сайт выводятся директивой. <span class="term">Директива</span> в reStructuredText — команда сборщику внутри текста страницы: строка вида <code>.. имя:: аргумент</code>, под ней с отступом параметры. Оглавление <code>.. toctree::</code> из главы 4.12 — тоже директива. Для модуля Python нужна директива <code>automodule</code>: она импортирует модуль, берёт его докстринг и докстринги его функций и классов и вставляет их в страницу.</p>
+        <div class="walk">
+          <div class="walk__step">
+            <p class="walk__head"><span>Создайте файл docs/source/orders.rst</span></p>
+            <div class="walk__body">
+              <p>В проводнике VS Code щёлкните правой кнопкой по папке <code>docs/source</code> → <b>New File</b>, имя — <code>orders.rst</code>. Содержимое:</p>
+              <figure class="code">
+                <figcaption><span>docs/source/orders.rst</span><span>новый файл</span></figcaption>
+<pre>Заказы смены
+============
+
+<span class="k">.. automodule::</span> app.services.orders
+   <span class="f">:members:</span></pre>
+              </figure>
+              <p>Заголовок станет заголовком страницы и пунктом оглавления. В директиве аргумент <code>app.services.orders</code> — модуль в той записи, в какой его импортируют в коде. Параметр <code>:members:</code> выводит, кроме докстринга модуля, все его функции и классы с докстрингами; без него на странице окажется один абзац о модуле.</p>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Добавьте страницу в оглавление</span></p>
+            <div class="walk__body">
+              <p>В <code>index.rst</code> под параметрами <code>toctree</code> оставьте пустую строку и впишите имя файла без расширения, с тем же отступом в три пробела:</p>
+              <figure class="code">
+                <figcaption><span>docs/source/index.rst</span><span>оглавление</span></figcaption>
+<pre><span class="k">.. toctree::</span>
+   <span class="f">:maxdepth:</span> 2
+   <span class="f">:caption:</span> Содержание:
+
+   orders</pre>
+              </figure>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Соберите и прочитайте ошибку</span></p>
+            <div class="walk__body">
+              <p><code data-os="mac linux">.venv/bin/sphinx-build -M html docs/source docs/build -q</code><code data-os="win">.venv\Scripts\sphinx-build -M html docs/source docs/build -q</code>. Ключ <code>-q</code> убирает строки об этапах и оставляет только предупреждения и ошибки — так их легче читать.</p>
+              <figure class="code code--out">
+                <figcaption><span>Терминал</span><span>вывод с -q</span></figcaption>
+<pre>…/docs/source/orders.rst:4: ERROR: Unknown directive type "automodule".
+
+.. automodule:: app.services.orders
+   :members: [docutils]</pre>
+              </figure>
+              <p>Ошибка в строке <code>4</code> файла <code>orders.rst</code>: директива <code>automodule</code> неизвестна. Директиву добавляет расширение autodoc, а список <code>extensions</code> в <code>conf.py</code> пуст. Сборка при этом не остановилась: страница <code>orders.html</code> создана с одним заголовком, а директива пропущена. Так Sphinx ведёт себя с большинством ошибок в страницах — сообщает и продолжает.</p>
+            </div>
+          </div>
+        </div>
+
+        <h2 id="s3"><span class="sec">§3</span>Расширение autodoc</h2>
+        <p><span class="term">Расширение</span> Sphinx — модуль Python, который добавляет директивы, настройки или этапы сборки. Часть расширений входит в сам Sphinx, их имена начинаются с <code>sphinx.ext.</code>. Подключают расширение строкой с его именем в списке <code>extensions</code>.</p>
+        <p><code>sphinx.ext.autodoc</code> добавляет директивы <code>automodule</code>, <code>autoclass</code>, <code>autofunction</code>. Чтобы вывести докстринги, autodoc импортирует модуль тем же механизмом, что инструкция <code>import</code>, и читает атрибут <code>__doc__</code> — тот самый, что разобран в главе 4.7.</p>
+        <div class="walk">
+          <div class="walk__step">
+            <p class="walk__head"><span>Подключите autodoc</span></p>
+            <div class="walk__body">
+              <p>В <code>conf.py</code> замените строку <code>extensions = []</code>:</p>
+              <figure class="code">
+                <figcaption><span>docs/source/conf.py</span><span>список расширений</span></figcaption>
+<pre>extensions = [
+    <span class="s">'sphinx.ext.autodoc'</span>,
+]</pre>
+              </figure>
+              <p>Запятая после последнего элемента не обязательна. С ней следующее расширение добавляется новой строкой, и предыдущую строку трогать не нужно.</p>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Соберите ещё раз</span></p>
+            <div class="walk__body">
+              <figure class="code code--out">
+                <figcaption><span>Терминал</span><span>вывод с -q</span></figcaption>
+<pre>WARNING: autodoc: failed to import 'services.orders' from module 'app'; the following exception was raised:
+Traceback (most recent call last):
+  File "…/sphinx/ext/autodoc/_dynamic/_importer.py", line 131, in _import_from_module_and_path
+    module = _import_module(module_name, try_reload=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "…/sphinx/ext/autodoc/_dynamic/_importer.py", line 218, in _import_module
+    raise ModuleNotFoundError(msg, name=modname)  # NoQA: TRY301
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'app'
+ [autodoc.import_object]</pre>
+              </figure>
+              <p>Директива теперь известна, но autodoc не смог импортировать модуль. Трассировку читают с конца: последняя строка <code>ModuleNotFoundError: No module named 'app'</code> — пакета <code>app</code> Python не нашёл. Строки <code>File …</code> выше относятся к коду самого Sphinx, в них искать ошибку не нужно. В квадратных скобках в конце — вид предупреждения, <code>autodoc.import_object</code>.</p>
+            </div>
+          </div>
+        </div>
+
+        <h2 id="s4"><span class="sec">§4</span>Путь к проекту в sys.path</h2>
+        <p>Когда в терминале выполняют <code>python main.py</code>, Python ищет импортируемые модули в папке, где лежит запускаемый файл, — в корне проекта. Там лежит <code>app/</code>, и <code>import app</code> проходит. Команда <code>sphinx-build</code> — программа из папки <code>.venv</code>, и папки проекта в её списке поиска нет. Этот список хранится в переменной <code>sys.path</code>: Python перебирает папки из него по порядку, пока не найдёт модуль с нужным именем.</p>
+
+        <div class="analogy">
+          <p class="analogy__head">Ассоциация: список адресов у курьера</p>
+          <div class="analogy__pair">
+            <div class="analogy__side">
+              <b>В жизни</b>
+              <p>У курьера список складов, где можно забрать посылку. Он объезжает их по порядку и забирает посылку на первом складе, где она есть. Если нужного склада нет в списке, курьер вернётся с ответом «не найдено», даже если посылка лежит в соседнем доме.</p>
+            </div>
+            <div class="analogy__side">
+              <b>В Python</b>
+              <p><code>sys.path</code> — список папок. Инструкция <code>import app</code> проверяет их по порядку. Корня проекта в списке у <code>sphinx-build</code> нет, поэтому <code>app</code> не найден, хотя лежит рядом с <code>docs</code>. Решение — добавить корень проекта в начало списка.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="walk">
+          <div class="walk__step">
+            <p class="walk__head"><span>Добавьте корень проекта в начало sys.path</span></p>
+            <div class="walk__body">
+              <p>В начало <code>conf.py</code>, перед разделом <code>Project information</code>, вставьте:</p>
+              <figure class="code">
+                <figcaption><span>docs/source/conf.py</span><span>перед настройками проекта</span></figcaption>
+<pre><span class="k">import</span> sys
+<span class="k">from</span> pathlib <span class="k">import</span> Path
+
+<span class="c"># Корень проекта — на две папки выше conf.py: docs/source → docs → проект.</span>
+sys.path.insert(<span class="n">0</span>, <span class="k">str</span>(Path(__file__).resolve().parents[<span class="n">2</span>]))</pre>
+              </figure>
+              <p>Разбор строки справа налево:</p>
+              <ul>
+                <li><code>__file__</code> — путь к самому <code>conf.py</code>. Sphinx задаёт эту переменную, когда выполняет файл.</li>
+                <li><code>Path(…).resolve()</code> — объект пути из модуля <code>pathlib</code>, приведённый к полному виду от корня диска.</li>
+                <li><code>.parents[2]</code> — папка на два уровня выше папки файла. Индексы считаются так: <code>parents[0]</code> — <code>docs/source</code>, <code>parents[1]</code> — <code>docs</code>, <code>parents[2]</code> — корень проекта.</li>
+                <li><code>str(…)</code> — путь как строка: в <code>sys.path</code> хранят строки.</li>
+                <li><code>sys.path.insert(0, …)</code> — вставка в начало списка. Так папка проекта проверяется раньше остальных, и пакет <code>app</code> берётся из проекта, даже если пакет с таким именем установлен в окружение.</li>
+              </ul>
+              <p>Путь вычисляется от файла <code>conf.py</code>, поэтому строка работает из любой папки, откуда запущена сборка, и на любой системе. В документации Sphinx и в чужих проектах встречается старая запись <code>sys.path.insert(0, os.path.abspath('../..'))</code>: она даёт тот же результат и опирается на то, что Sphinx выполняет <code>conf.py</code> из его собственной папки.</p>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Соберите и посмотрите на страницу</span></p>
+            <div class="walk__body">
+              <figure class="code code--out">
+                <figcaption><span>Терминал</span><span>вывод с -q</span></figcaption>
+<pre>…/app/services/orders.py:docstring of app.services.orders.revenue_by_waiter:6: ERROR: Unexpected indentation. [docutils]</pre>
+              </figure>
+              <p>Модуль импортирован, сообщение о нём пропало. Осталась одна ошибка: в докстринге <code>revenue_by_waiter</code>, в строке <code>6</code> от начала докстринга, неожиданный отступ. Строка <code>6</code> — продолжение описания параметра <code>top</code> с отступом в восемь пробелов. Откройте страницу «Заказы смены» в браузере.</p>
+              <figure class="shot">
+                <img src="img/site-13-autodoc.png" alt="Страница Заказы смены после autodoc без napoleon: разделы Args, Returns, Raises показаны обычным текстом, описания параметров слиты в абзац">
+                <figcaption>Докстринги на месте, подписи функций с типами — тоже. Разделы <b>Args:</b>, <b>Returns:</b> и <b>Raises:</b> показаны обычным текстом: описания двух исключений у <code>load_orders</code> слились в один абзац, а у <code>revenue_by_waiter</code> продолжение описания <code>top</code> вынесено отдельным абзацем с отступом. Этому абзацу соответствует ошибка <code>Unexpected indentation</code>.</figcaption>
+              </figure>
+            </div>
+          </div>
+        </div>
+        <p>Причина в формате. autodoc вставляет докстринг в страницу как текст reStructuredText. Разделы <code>Args:</code> и <code>Returns:</code> — разметка формата Google из главы 4.8, для reStructuredText это обычные строки, а отступ в продолжении строки — ошибка. Описания параметров в разметке Sphinx записываются полями <code>:param orders:</code> и <code>:returns:</code> — так выглядит формат reStructuredText из той же главы 4.8. Переписывать докстринги не нужно: перевод из Google в поля делает расширение napoleon.</p>
+
+        <p class="part">Часть 2 · Формат Google и типы</p>
+        <h2 id="s5"><span class="sec">§5</span>Расширение napoleon: разделы Google</h2>
+        <p><code>sphinx.ext.napoleon</code> перехватывает докстринг до того, как его разберёт reStructuredText, находит разделы Google и NumPy и переписывает их полями Sphinx. В файле проекта ничего не меняется: преобразование идёт в памяти во время сборки.</p>
+        <div class="swap">
+          <div class="swap__row">
+            <div class="swap__old"><b>В докстринге, формат Google</b>
+              <p><code>Args:<br>&nbsp;&nbsp;&nbsp;&nbsp;top: Сколько официантов оставить…<br>Returns:<br>&nbsp;&nbsp;&nbsp;&nbsp;Выручка в копейках…<br>Raises:<br>&nbsp;&nbsp;&nbsp;&nbsp;ValueError: Если список заказов пуст.</code></p>
+            </div>
+            <div class="swap__arrow">→</div>
+            <div class="swap__new"><b>Что получает Sphinx после napoleon</b>
+              <p><code>:param top: Сколько официантов оставить…<br>:returns: Выручка в копейках…<br>:raises ValueError: Если список заказов пуст.</code></p>
+            </div>
+          </div>
+        </div>
+        <div class="walk">
+          <div class="walk__step">
+            <p class="walk__head"><span>Подключите napoleon и выберите формат</span></p>
+            <div class="walk__body">
+              <figure class="code">
+                <figcaption><span>docs/source/conf.py</span><span>расширения и их настройки</span></figcaption>
+<pre>extensions = [
+    <span class="s">'sphinx.ext.autodoc'</span>,
+    <span class="s">'sphinx.ext.napoleon'</span>,
+]
+
+napoleon_google_docstring = <span class="k">True</span>
+napoleon_numpy_docstring = <span class="k">False</span></pre>
+              </figure>
+              <p>По умолчанию napoleon распознаёт оба формата. В проекте курса принят Google (глава 4.8), поэтому разбор NumPy выключен: раздел, случайно записанный в стиле NumPy, останется на странице как есть, и это будет видно при проверке.</p>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Соберите и сравните страницу</span></p>
+            <div class="walk__body">
+              <p>Вывод с ключом <code>-q</code> пуст: ошибок нет. Изменение <code>conf.py</code> пересобирает все страницы, поэтому <code>-E</code> здесь не нужен.</p>
+              <figure class="shot">
+                <img src="img/site-13-napoleon.png" alt="Страница Заказы смены после napoleon: у функций поля Параметры, Результат, Исключение, у sort_orders_in_place блок Примечание">
+                <figcaption>Те же докстринги после napoleon. <b>Args</b> стал полем «Параметры» с именами параметров жирным, <b>Returns</b> — «Результат», <b>Raises</b> — «Исключение» со списком классов. Описание <code>top</code> собрано в один пункт. Раздел <b>Note</b> у <code>sort_orders_in_place</code> стал блоком «Примечание» внизу.</figcaption>
+              </figure>
+            </div>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Раздел Google в докстринге</th><th>Подпись на странице при language = 'ru'</th></tr></thead>
+            <tbody>
+              <tr><td><code>Args:</code></td><td>Параметры</td></tr>
+              <tr><td><code>Returns:</code></td><td>Результат</td></tr>
+              <tr><td><code>Yields:</code></td><td>Yields — эта подпись в Sphinx 9.1.1 не переведена</td></tr>
+              <tr><td><code>Raises:</code></td><td>Исключение</td></tr>
+              <tr><td><code>Attributes:</code></td><td>отдельные атрибуты класса; поле «Переменные» с настройкой <code>napoleon_use_ivar</code>, глава 4.14</td></tr>
+              <tr><td><code>Note:</code></td><td>Блок «Примечание» в рамке</td></tr>
+              <tr><td><code>Example:</code></td><td>Подзаголовок «Пример» и текст под ним</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s6"><span class="sec">§6</span>Где показывать типы</h2>
+        <p>Типы параметров и результата autodoc берёт из аннотаций — тех, что расставлены в главах 4.1–4.5. По умолчанию они стоят в подписи функции, как в коде: <code>revenue_by_waiter(orders: list[Order], top: int = 0) → dict[str, int]</code>. Настройка <code>autodoc_typehints</code> переносит их в поля под описанием.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Значение</th><th>Где типы на странице</th></tr></thead>
+            <tbody>
+              <tr><td><code>'signature'</code> (по умолчанию)</td><td>В подписи функции</td></tr>
+              <tr><td><code>'description'</code></td><td>Подпись без типов; тип в скобках после имени параметра и отдельное поле «Тип результата»</td></tr>
+              <tr><td><code>'both'</code></td><td>И там и там</td></tr>
+              <tr><td><code>'none'</code></td><td>Нигде</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <figure class="shot">
+          <img src="img/site-13-typehints.png" alt="Та же страница с autodoc_typehints description: подписи без типов, типы в скобках у параметров и поле Тип результата">
+          <figcaption><code>autodoc_typehints = 'description'</code>. Подпись короче: <code>revenue_by_waiter(orders, top=0)</code>. Тип <code>list[Order]</code> стоит в скобках после <code>orders</code>, внизу добавлено поле «Тип результата». Сравните с кадром в §5, где типы в подписи.</figcaption>
+        </figure>
+        <p>В курсе оставлено значение по умолчанию: подпись на сайте совпадает с подписью в коде и в подсказке редактора, и функция во всех трёх местах записана одинаково. Вариант <code>'description'</code> удобен для функций с длинными типами, когда подпись перестаёт помещаться в строку. В обоих случаях типы на сайт приходят из аннотаций, и повторять их в разделе <code>Args:</code> не нужно — это правило главы 4.8 здесь видно на странице.</p>
+
+        <h2 id="s7"><span class="sec">§7</span>Предупреждения о разметке докстринга</h2>
+        <p>Докстринг на сайте разбирается как reStructuredText, и некоторые знаки в нём служат разметкой. Звёздочка начинает выделение курсивом (<code>*текст*</code>), две звёздочки — жирным, обратная кавычка — ссылку или код. Если в описании встречается одиночный такой знак, Sphinx ищет пару, не находит её и печатает предупреждение. Ruff такие места не отмечает: он проверяет наличие и оформление разделов, разметку текста он не разбирает.</p>
+        <div class="walk">
+          <div class="walk__step">
+            <p class="walk__head"><span>Добавьте в описание одиночную звёздочку</span></p>
+            <div class="walk__body">
+              <p>В докстринге <code>revenue_by_waiter</code> допишите к описанию <code>top</code> пример:</p>
+              <figure class="code">
+                <figcaption><span>app/services/orders.py</span><span>фрагмент докстринга</span></figcaption>
+<pre>        top: Сколько официантов оставить в результате. Значение 0
+            означает, что возвращаются все, *3 — три лучших.</pre>
+              </figure>
+              <p>Проверьте файл Ruff: <code>ruff check app/services/orders.py</code> отвечает <code>All checks passed!</code>.</p>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Соберите с ключом -E</span></p>
+            <div class="walk__body">
+              <p>Правка в модуле, страница <code>orders.rst</code> не менялась. Чтобы Sphinx наверняка перечитал докстринг, соберите всё: <code>sphinx-build -M html docs/source docs/build -q -E</code>.</p>
+              <figure class="code code--out">
+                <figcaption><span>Терминал</span><span>вывод с -q -E</span></figcaption>
+<pre>…/app/services/orders.py:docstring of app.services.orders.revenue_by_waiter:4: WARNING: Inline emphasis start-string without end-string. [docutils]</pre>
+              </figure>
+              <p>Сообщение: «начало выделения без конца» в строке <code>4</code> докстринга <code>revenue_by_waiter</code>. Номер строки считается от начала докстринга после обработки napoleon, поэтому он не совпадает с номером строки в файле: ищут по имени функции и тексту.</p>
+              <figure class="shot">
+                <img src="img/site-13-bad-docstring.png" alt="Страница с ошибкой разметки: у параметра top звёздочка перед 3 подчёркнута как ссылка на сообщение об ошибке">
+                <figcaption>На странице звёздочка перед <code>3</code> стала ссылкой: так Sphinx помечает место с ошибкой разметки. Сайт собран, но текст выглядит не так, как написан.</figcaption>
+              </figure>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Сделайте предупреждение ошибкой сборки</span></p>
+            <div class="walk__body">
+              <p>Без настроек сборка с предупреждениями завершается успешно, и в длинном выводе их легко пропустить. Ключ <code>-W</code> превращает каждое предупреждение в ошибку, <code>--keep-going</code> при этом дособирает сайт до конца и показывает все предупреждения сразу: <code>sphinx-build -M html docs/source docs/build -q -E -W --keep-going</code>.</p>
+              <p>Вывод тот же, но команда завершается с кодом <code>1</code>. Проверьте код сразу после сборки: <code data-os="mac linux">echo $?</code><code data-os="win">$LASTEXITCODE</code>. Ответ <code>1</code> — ошибка, <code>0</code> — успех. По этому коду проверка в репозитории (глава 4.15) отличает сломанную документацию от исправной.</p>
+            </div>
+          </div>
+          <div class="walk__step">
+            <p class="walk__head"><span>Исправьте описание</span></p>
+            <div class="walk__body">
+              <p>Есть два способа. Первый — записать пример словами: <code>значение 3 — три лучших</code>. Второй — оформить знак как код двойными обратными кавычками: <code>``*3``</code>, тогда звёздочка выводится моноширинным шрифтом и разметкой не считается. Для описания параметра подходит первый способ. Соберите с <code>-W --keep-going</code> ещё раз: вывод пуст, <code data-os="mac linux">echo $?</code><code data-os="win">$LASTEXITCODE</code> отвечает <code>0</code>.</p>
+            </div>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Что написано в докстринге</th><th>Что ответит Sphinx</th><th>Как исправить</th></tr></thead>
+            <tbody>
+              <tr><td>Одиночная <code>*</code> или <code>**</code>, например <code>**kwargs</code></td><td><code>Inline emphasis start-string without end-string</code> или <code>Inline strong start-string…</code></td><td>Взять в <code>``…``</code></td></tr>
+              <tr><td>Список без пустой строки перед ним</td><td>Предупреждения нет: пункты слиты с предыдущим абзацем в одну строку</td><td>Пустая строка перед первым пунктом</td></tr>
+              <tr><td>Одиночная обратная кавычка <code>`</code></td><td><code>Inline interpreted text or phrase reference start-string without end-string</code></td><td>Двойные обратные кавычки для кода</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s8"><span class="sec">§8</span>Расширение viewcode: ссылка на исходник</h2>
+        <p>Описание отвечает на вопрос «что делает функция». Чтобы посмотреть, как она это делает, читателю сайта нужен код. Расширение <code>sphinx.ext.viewcode</code> копирует исходники описанных модулей на сайт в виде страниц с подсветкой и ставит у каждой функции ссылку на её код.</p>
+        <figure class="code">
+          <figcaption><span>docs/source/conf.py</span><span>третье расширение</span></figcaption>
+<pre>extensions = [
+    <span class="s">'sphinx.ext.autodoc'</span>,
+    <span class="s">'sphinx.ext.napoleon'</span>,
+    <span class="s">'sphinx.ext.viewcode'</span>,
+]</pre>
+        </figure>
+        <figure class="shot">
+          <img src="img/site-13-viewcode.png" alt="Страница Заказы смены: справа у каждой функции ссылка исходный код">
+          <figcaption>После сборки справа от подписи каждой функции стоит ссылка <b>[исходный код]</b>.</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="img/site-13-viewcode-source.png" alt="Страница Исходный код app.services.orders с подсветкой синтаксиса и ссылкой документация у функции">
+          <figcaption>По ссылке открывается страница модуля с подсветкой. У каждой функции в коде стоит обратная ссылка <b>[документация]</b>. Страницы исходников лежат в <code>docs/build/html/_modules/</code>.</figcaption>
+        </figure>
+
+        <div class="milestone">
+          <b>Итог части 2 · модуль на сайте</b>
+          <p>В <code>conf.py</code> добавлены путь к проекту и три расширения. Страница «Заказы смены» показывает докстринг модуля и три функции с полями «Параметры», «Результат», «Исключение» и ссылками на исходный код. Сборка с <code>-W --keep-going</code> проходит без предупреждений.</p>
+          <p>Пока на сайте один модуль из десяти, и его страница написана руками. В главе 4.14 страницы для всех модулей создаёт <code>sphinx-apidoc</code>.</p>
+        </div>
+
+        <figure class="code">
+          <figcaption><span>docs/source/conf.py</span><span>к концу главы, без комментариев мастера</span></figcaption>
+<pre><span class="k">import</span> sys
+<span class="k">from</span> pathlib <span class="k">import</span> Path
+
+<span class="c"># Корень проекта — на две папки выше conf.py: docs/source → docs → проект.</span>
+sys.path.insert(<span class="n">0</span>, <span class="k">str</span>(Path(__file__).resolve().parents[<span class="n">2</span>]))
+
+project = <span class="s">'Отчёт кафе'</span>
+copyright = <span class="s">'2026, Макаров М. Н.'</span>
+author = <span class="s">'Макаров М. Н.'</span>
+release = <span class="s">'1.0'</span>
+
+extensions = [
+    <span class="s">'sphinx.ext.autodoc'</span>,
+    <span class="s">'sphinx.ext.napoleon'</span>,
+    <span class="s">'sphinx.ext.viewcode'</span>,
+]
+
+napoleon_google_docstring = <span class="k">True</span>
+napoleon_numpy_docstring = <span class="k">False</span>
+
+templates_path = [<span class="s">'_templates'</span>]
+exclude_patterns = []
+
+language = <span class="s">'ru'</span>
+
+html_theme = <span class="s">'alabaster'</span>
+html_static_path = [<span class="s">'_static'</span>]</pre>
+        </figure>
+
+        <h2 id="s9"><span class="sec">§9</span>Соберите сами</h2>
+        <p>Команды записаны коротко, для терминала с активированным окружением. Если в задании меняется только модуль в <code>app/</code>, собирайте с <code>-E</code>: так Sphinx перечитает все докстринги.</p>
+        <div class="lab">
+          <p class="lab__head">Соберите сами · модули на сайте</p>
+          <p class="lab__intro">Пять опытов: страница второго модуля, сломанный путь, сборка без napoleon, типы в описании и проверка своего докстринга. Ожидаемые результаты сняты на третьем архиве.</p>
+          <div class="lab__task">
+            <h4>Страница модуля calculator</h4>
+            <ol>
+              <li>Создайте <code>docs/source/calculator.rst</code> по образцу <code>orders.rst</code>: заголовок «Расчёты по оценкам», директива <code>automodule</code> для <code>app.services.calculator</code> с параметром <code>:members:</code>.</li>
+              <li>Добавьте <code>calculator</code> в оглавление <code>index.rst</code> строкой под <code>orders</code>.</li>
+              <li>Соберите: <code>sphinx-build -M html docs/source docs/build -q</code>.</li>
+            </ol>
+            <div class="lab__expect">
+              <b>Что должно получиться</b>
+              <p>Вывод пуст. В колонке «Навигация» два пункта. На новой странице — функции <code>calculate_average</code> и <code>grade_bounds</code>, у обеих поле «Исключение» с <code>ValueError</code>. У <code>grade_bounds</code> в поле «Результат» — «Пара «минимум, максимум» именно в этом порядке.», тип <code>tuple[int, int]</code> — в подписи.</p>
+            </div>
+            <details>
+              <summary>Если вместо функций на странице только заголовок</summary>
+              <p>Проверьте имя модуля в директиве: оно пишется через точки, как в <code>import</code>, без <code>.py</code> на конце. Затем — отступ параметра <code>:members:</code>: три пробела, как у директивы <code>toctree</code>. Если имя модуля неверное, в выводе будет <code>failed to import</code> с последней строкой <code>No module named …</code>.</p>
+            </details>
+          </div>
+          <div class="lab__task">
+            <h4>Сломанный путь</h4>
+            <ol>
+              <li>Закомментируйте строку <code>sys.path.insert(…)</code> в <code>conf.py</code> — поставьте <code>#</code> в её начале.</li>
+              <li>Соберите с <code>-q -E</code>.</li>
+              <li>Уберите <code>#</code> и соберите ещё раз.</li>
+            </ol>
+            <div class="lab__expect">
+              <b>Что должно получиться</b>
+              <p>Два предупреждения <code>autodoc: failed to import</code> — для <code>orders</code> и для <code>calculator</code>, каждое с последней строкой <code>ModuleNotFoundError: No module named 'app'</code>. На сайте у обеих страниц остались только заголовки. После возврата строки предупреждения пропадают.</p>
+            </div>
+          </div>
+          <div class="lab__task">
+            <h4>Сборка без napoleon</h4>
+            <ol>
+              <li>Закомментируйте строку <code>'sphinx.ext.napoleon',</code> в списке расширений.</li>
+              <li>Соберите с <code>-q -E</code> и откройте страницу «Заказы смены».</li>
+              <li>Верните строку.</li>
+            </ol>
+            <div class="lab__expect">
+              <b>Что должно получиться</b>
+              <p>Ошибка <code>Unexpected indentation</code> в докстринге <code>revenue_by_waiter</code>, как в §4, а на странице — разделы <b>Args:</b> и <b>Returns:</b> простым текстом. Настройки <code>napoleon_google_docstring</code> и <code>napoleon_numpy_docstring</code> при выключенном расширении ничего не делают и ошибки не вызывают: это переменные с незнакомыми для Sphinx именами (§1).</p>
+            </div>
+          </div>
+          <div class="lab__task">
+            <h4>Типы в описании</h4>
+            <ol>
+              <li>Добавьте в <code>conf.py</code> строку <code>autodoc_typehints = 'description'</code>.</li>
+              <li>Соберите и сравните страницу с кадром в §6.</li>
+              <li>Удалите строку, чтобы вернуть типы в подпись.</li>
+            </ol>
+            <div class="lab__expect">
+              <b>Что должно получиться</b>
+              <p>Подписи без типов: <code>load_orders(path)</code>, <code>revenue_by_waiter(orders, top=0)</code>. Тип <code>Path</code> — в скобках после <code>path</code>, у каждой функции появилось поле «Тип результата».</p>
+            </div>
+          </div>
+          <div class="lab__task">
+            <h4>Проверка своего докстринга</h4>
+            <ol>
+              <li>Выберите функцию в <code>app/utils/formatter.py</code> и допишите в её описание фразу со звёздочкой, например <code>Знак * в заголовок не попадает.</code></li>
+              <li>Добавьте страницу для <code>app.utils.formatter</code> и соберите с <code>-q -E -W --keep-going</code>.</li>
+              <li>Проверьте код завершения, исправьте описание по таблице из §7 и соберите ещё раз.</li>
+            </ol>
+            <div class="lab__expect">
+              <b>Что должно получиться</b>
+              <p>Одиночная звёздочка, после которой стоит пробел, разметкой не считается: предупреждения не будет. Предупреждение <code>Inline emphasis start-string without end-string</code> появляется, когда после звёздочки сразу идёт буква или цифра, как в <code>*3</code>. Если предупреждение есть, код завершения — <code>1</code>; после исправления — <code>0</code> и пустой вывод.</p>
+            </div>
+          </div>
+        </div>
+
+        <h2 id="s10"><span class="sec">§10</span>Проверьте себя</h2>
+        <details>
+          <summary>Почему директива automodule неизвестна в свежем проекте Sphinx?</summary>
+          <p>Её добавляет расширение <code>sphinx.ext.autodoc</code>, а после мастера список <code>extensions</code> в <code>conf.py</code> пуст.</p>
+        </details>
+        <details>
+          <summary>Почему autodoc не находит пакет app, хотя он лежит рядом с docs?</summary>
+          <p>Python ищет модули в папках из <code>sys.path</code>. Команда <code>sphinx-build</code> запускается из <code>.venv</code>, корня проекта в этом списке нет. Строка <code>sys.path.insert(0, …)</code> в <code>conf.py</code> добавляет его в начало.</p>
+        </details>
+        <details>
+          <summary>Чему равны parents[0], parents[1] и parents[2] для пути docs/source/conf.py?</summary>
+          <p><code>docs/source</code>, <code>docs</code> и корень проекта.</p>
+        </details>
+        <details>
+          <summary>Что делает napoleon с докстрингом в файле проекта?</summary>
+          <p>Ничего: файл не меняется. Napoleon переписывает разделы Google в поля Sphinx в памяти, во время сборки.</p>
+        </details>
+        <details>
+          <summary>Ruff отвечает All checks passed, а Sphinx печатает предупреждение. Как такое возможно?</summary>
+          <p>Ruff проверяет, что докстринг есть и разделы оформлены по правилам. Sphinx разбирает текст докстринга как reStructuredText и находит ошибки разметки: одиночные <code>*</code>, обратные кавычки, отступы. Это разные проверки, и в проекте нужны обе.</p>
+        </details>
+
+        <div class="cheat">
+          <div>
+            <b>Страница модуля</b>
+            <code>.. automodule:: app.services.orders</code>
+            <code>   :members:</code>
+          </div>
+          <div>
+            <b>Путь к проекту</b>
+            <code>sys.path.insert(0, str(</code>
+            <code>  Path(__file__).resolve().parents[2]))</code>
+          </div>
+          <div>
+            <b>Расширения</b>
+            <code>sphinx.ext.autodoc</code>
+            <code>sphinx.ext.napoleon</code>
+            <code>sphinx.ext.viewcode</code>
+          </div>
+          <div>
+            <b>Формат Google</b>
+            <code>napoleon_google_docstring = True</code>
+            <code>napoleon_numpy_docstring = False</code>
+          </div>
+          <div>
+            <b>Типы</b>
+            <code>autodoc_typehints = 'signature'</code>
+            <code>'description' — в поля</code>
+          </div>
+          <div>
+            <b>Строгая сборка</b>
+            <code>-q -E -W --keep-going</code>
+            <code>код 1 — есть предупреждения</code>
+          </div>
+        </div>
+
+        <h3>Итог главы</h3>
+        <p><code>conf.py</code> — программа на Python, которую Sphinx выполняет перед сборкой. Докстринги на страницу выводит директива <code>automodule</code> с параметром <code>:members:</code>; её добавляет расширение autodoc. Чтобы autodoc импортировал пакет <code>app</code>, корень проекта добавляют в начало <code>sys.path</code> строкой с <code>Path(__file__).resolve().parents[2]</code>. Разделы Google переводит в поля Sphinx расширение napoleon, формат NumPy в курсе выключен. Типы на сайт приходят из аннотаций и по умолчанию стоят в подписи; <code>autodoc_typehints = 'description'</code> переносит их в поля. Докстринг на сайте разбирается как reStructuredText, поэтому одиночные <code>*</code> и обратные кавычки дают предупреждения, которых Ruff не показывает. Ключи <code>-W --keep-going</code> делают такие предупреждения ошибкой сборки с кодом <code>1</code>. Расширение viewcode добавляет ссылки на исходный код. Следующая глава — разметка reStructuredText, оглавление и страницы для всех модулей сразу.</p>
+
+        <div class="sources">
+          <b>Откуда взяты факты</b>
+          <ol>
+            <li>Директивы и настройки autodoc, в том числе <code>autodoc_typehints</code> — <a href="https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html">sphinx.ext.autodoc</a>.</li>
+            <li>Разделы Google и настройки napoleon — <a href="https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html">sphinx.ext.napoleon</a>.</li>
+            <li>Ссылки на исходники — <a href="https://www.sphinx-doc.org/en/master/usage/extensions/viewcode.html">sphinx.ext.viewcode</a>.</li>
+            <li>Ключи <code>-q</code>, <code>-E</code>, <code>-W</code>, <code>--keep-going</code> — <a href="https://www.sphinx-doc.org/en/master/man/sphinx-build.html">sphinx-build</a>.</li>
+            <li>Поиск модулей по <code>sys.path</code> — <a href="https://docs.python.org/3/library/sys.html#sys.path">документация Python, sys.path</a>.</li>
+            <li>Выводы и кадры получены на Sphinx 9.1.1 сценарием <code>shots/sphinx_run.py</code> на третьем архиве темы.</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="12-sphinx-pervyy-zapusk.html">← 4.12 Sphinx: первый запуск</a><a href="14-rst-i-apidoc.html">4.14 Файлы .rst, automodule и sphinx-apidoc →</a></div>
+
+        <div class="colophon">
+          <span>Глава 4.13 · conf.py, autodoc и napoleon · МДК.01.01</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="book.js"></script>
+</body>
+</html>
