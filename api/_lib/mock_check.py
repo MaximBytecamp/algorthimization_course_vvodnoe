@@ -1,28 +1,38 @@
 """Сверка для мок-интервью № 1 ОП.04 (страница op04-algoritmizaciya/massivy/16-mok-intervyu/sekciya.html).
 
-Сервер запускает только эталонные решения из api/_data/op04-mok-1.json. Код студента сюда
+Модуль запускает только эталонные решения из api/_data/op04-mok-1.json. Код студента сюда
 не приходит: его выполняет браузер, а сюда отправляет результаты. Поэтому ответы тестов
-и эталон на страницу не попадают.
+и эталон на страницу не попадают. На сервере модуль выполняет Pyodide внутри api/mock-check.js.
 
-Два действия (POST, JSON):
+Два действия:
   {"action": "tests", "key": "08-pair", "outputs": [{"ret": ..., "args": ...}, ...]}
       — результаты кода студента на входах cards[key].cases → [true/false, ...];
   {"action": "examples", "key": "08-pair", "rows": [{"args": "[1, 2], 3", "answer": "(0, 1)"}]}
       — примеры, которые студент посчитал сам → "ok" / "bad" / "parse" по каждой строке.
 
-Локально: echo '{...}' | python api/mock-check.py
+Локально: echo '{...}' | python api/_lib/mock_check.py
 """
 import ast
 import copy
 import json
 import os
 import sys
-from http.server import BaseHTTPRequestHandler
 
-DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), '_data', 'op04-mok-1.json')
-with open(DATA, encoding='utf-8') as fh:
-    CARDS = {c['key']: c for c in json.load(fh)}
+CARDS = {}
 _FUNCS = {}
+
+
+def load(cards_json):
+    CARDS.clear()
+    _FUNCS.clear()
+    CARDS.update({c['key']: c for c in json.loads(cards_json)})
+
+
+# Под Pyodide файла модуля нет: карточки передаёт api/mock-check.js через load().
+_DATA = os.path.join(os.path.dirname(os.path.abspath(globals().get('__file__', '.'))), '..', '_data', 'op04-mok-1.json')
+if '__file__' in globals() and os.path.exists(_DATA):
+    with open(_DATA, encoding='utf-8') as fh:
+        load(fh.read())
 
 
 def norm(x):
@@ -115,6 +125,10 @@ def check_examples(card, rows):
     return {'verdicts': verdicts}
 
 
+def process_json(text):
+    return json.dumps(process(json.loads(text)), ensure_ascii=False)
+
+
 def process(payload):
     card = CARDS.get(str(payload.get('key', '')))
     if not card:
@@ -126,30 +140,5 @@ def process(payload):
     return {'error': 'неизвестное действие'}
 
 
-class handler(BaseHTTPRequestHandler):
-    def _send(self, code, body):
-        data = json.dumps(body, ensure_ascii=False).encode('utf-8')
-        self.send_response(code)
-        self.send_header('Content-Type', 'application/json; charset=utf-8')
-        self.send_header('Cache-Control', 'no-store')
-        self.send_header('Content-Length', str(len(data)))
-        self.end_headers()
-        self.wfile.write(data)
-
-    def do_POST(self):
-        size = int(self.headers.get('Content-Length') or 0)
-        if size > 200_000:
-            return self._send(413, {'error': 'слишком большой запрос'})
-        try:
-            payload = json.loads(self.rfile.read(size) or b'{}')
-        except Exception:
-            return self._send(400, {'error': 'запрос не в формате JSON'})
-        out = process(payload if isinstance(payload, dict) else {})
-        self._send(400 if 'error' in out else 200, out)
-
-    def do_GET(self):
-        self._send(200, {'ready': True, 'tasks': len(CARDS)})
-
-
-if __name__ == '__main__':
+if __name__ == '__main__' and '__file__' in globals():
     print(json.dumps(process(json.load(sys.stdin)), ensure_ascii=False))

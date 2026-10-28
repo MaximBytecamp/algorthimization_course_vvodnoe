@@ -1,7 +1,7 @@
 """Проверка сверки секции с ИИ-интервьюером (sekciya.html) без браузера и без модели.
 
 1. Эталон каждой задачи, запущенный тем же кодом, что браузер (RUNNER из sekciya.js),
-   проходит все тесты сервера (api/mock-check.py).
+   проходит все тесты сервера (api/_lib/mock_check.py).
 2. Заготовка с pass проходит не все тесты: тесты что-то проверяют.
 3. Примеры карточки с ответами эталона на сервере «сходятся», а с чужим ответом — нет.
 4. В pool.js (он открыт на сайте) нет эталонов и ответов.
@@ -14,7 +14,7 @@ import re
 
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
-spec = importlib.util.spec_from_file_location('mock_check', ROOT / 'api' / 'mock-check.py')
+spec = importlib.util.spec_from_file_location('mock_check', ROOT / 'api' / '_lib' / 'mock_check.py')
 check = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(check)
 
@@ -52,14 +52,6 @@ for card in check.CARDS.values():
         errors.append(f'{card["key"]}: строка эталона есть в pool.js')
 if (HERE / 'cards.json').exists():
     errors.append('cards.json снова лежит в открытой папке')
-
-# Python-функция на Vercel берёт в сборку весь проект: каждая папка корня, кроме api, должна быть в excludeFiles.
-exclude = json.loads((ROOT / 'vercel.json').read_text(encoding='utf-8'))['functions']['api/mock-check.py']['excludeFiles']
-import subprocess
-tracked = subprocess.run(['git', 'ls-tree', '-d', '--name-only', 'HEAD'], cwd=ROOT, capture_output=True, text=True).stdout.split()
-for d in sorted(x for x in tracked if x != 'api'):
-    if f'{d}/**' not in exclude and not (ROOT / '.vercelignore').read_text().count(d):
-        errors.append(f'папка {d} не исключена из сборки api/mock-check.py (vercel.json → excludeFiles)')
 
 print('\n'.join(errors) or f'всё сходится: задач {len(check.CARDS)}, тестов {sum(len(c["cases"]) for c in check.CARDS.values())}')
 raise SystemExit(1 if errors else 0)
