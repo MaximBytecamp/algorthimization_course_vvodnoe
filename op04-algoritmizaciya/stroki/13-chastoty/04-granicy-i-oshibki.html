@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>13.4 Границы и ошибки · Алгоритмы на строках</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../stroki.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 13 · Частоты · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на строках</a> · модуль 13 · нормализация и частоты</p>
+          <p class="running__folio">Глава 13.4</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">13.4</span>
+          <h1>Границы<br>и ошибки</h1>
+          <p class="lead">Контроль занятия по КТП: «Проверка кириллицы, повторов и пустой строки. Сравнить сортировку и частотный словарь». В этой главе — граничные входы трёх функций модуля и ошибки, которые видны только на них, сводка ошибок по симптомам и схема объяснения решения интервьюеру.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Граничные входы</a></li>
+            <li><a href="#s2">Сводка ошибок по симптомам</a></li>
+            <li><a href="#s3">Исправьте функции</a></li>
+            <li><a href="#s4">Как объяснить решение</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Граничные входы</h2>
+        <p>У строковых задач занятия граничные входы — повтор буквы, одна буква в двух регистрах, знаки и пробелы, несколько пробелов подряд, пустая строка и строка без букв. Регистр и повторы при множестве разобраны в главах 13.2 и 13.3. Ниже ещё четыре версии, в которых одна-две строки записаны иначе. Каждая запущена рядом с верной на том же входе.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>Функции с изменёнными строками</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>без сравнения длин</button>
+            <button>без isalpha</button>
+            <button>split(' ')</button>
+            <button>capitalize слова</button>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>is_anagram</code> нет строк <code>if len(a) != len(b): return False</code>. Вход — «папа» и «пап».</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_no_len" data-label="список a после letters" data-title="без сравнения длин"></div>
+            <p class="demo__verdict"><b>True</b>Второй цикл проверяет только, что у каждого символа <code>b</code> есть пара в <code>a</code>. На шаге 22 в <code>count</code> остаётся <code>{'а': 1}</code>: у буквы из <code>a</code> пары нет, но этот цикл такого не замечает. Если поменять строки местами, «пап» и «папа», версия ответит верно: лишняя буква окажется в <code>b</code>.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_set" data-label="список a после letters" data-title="if len(a) != len(b)"></div>
+            <p class="demo__verdict"><b>False</b>На шаге 3 длины 4 и 3 разные, подсчёт не нужен.</p>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>first_unique</code> во втором проходе нет проверки <code>ch.isalpha()</code>. Вход — <code>'Тот, кто'</code>.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_alpha" data-label="строка text" data-title="if count[ch.casefold()] == 1"></div>
+            <p class="demo__verdict"><b>3</b>Запятая встречается один раз, и на шаге 34 она принята за ответ. Ошибку видно, только если знак или пробел стоит раньше уникальной буквы и сам встречается один раз.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_alpha" data-label="строка text" data-title="if ch.isalpha() and ..."></div>
+            <p class="demo__verdict"><b>5</b>Запятая и пробел пропущены на шагах 34 и 36, ответ — буква <code>к</code>.</p>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>normalize_name</code> строка делится методом <code>split(' ')</code>. Вход — <code>'  салтыков-щедрин   михаил '</code>.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_split_space" data-label="список words" data-title="split(' ')"></div>
+            <p class="demo__verdict"><b>'  Салтыков-Щедрин   Михаил '</b>На шаге 1 в <code>words</code> семь элементов, пять из них — пустые строки. Пустые слова проходят через цикл без изменений, и <code>join</code> возвращает пробелы на место. С неразрывным пробелом эта версия не делит слова вовсе: <code>split(' ')</code> его не считает разделителем, глава 0.3.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="name" data-label="список words" data-title="split()"></div>
+            <p class="demo__verdict"><b>'Салтыков-Щедрин Михаил'</b><code>split()</code> без аргумента не возвращает пустых слов.</p>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>normalize_name</code> слово оформляется целиком: <code>result.append(word.capitalize())</code>. Вход тот же.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_hyphen" data-label="список words" data-title="word.capitalize()"></div>
+            <p class="demo__verdict"><b>'Салтыков-щедрин Михаил'</b>На шаге 4 <code>capitalize</code> делает заглавной только первую букву слова, вторая часть двойной фамилии остаётся строчной. На ФИО без дефиса эта версия отвечает верно.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="name" data-label="список words" data-title="части по дефису"></div>
+            <p class="demo__verdict"><b>'Салтыков-Щедрин Михаил'</b>Слово делится по дефису, каждая часть оформляется отдельно.</p>
+          </div>
+        </div>
+        <p>У всех четырёх ошибок одна общая черта: на обычном входе ответ верный. «Листок» и «слиток» одной длины, в «Казак» нет знаков, у «Иван Петров» нет двойных пробелов и дефиса. Поэтому тесты к строковым задачам пишут по списку граничных входов: примеры из условия эти ошибки не находят.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Сводка ошибок по симптомам</h2>
+        <p>Когда тест падает, первым видно неверный ответ. По симптому в таблице находят строку кода, которую нужно проверить, и вход, на котором ошибку видно. В последнем столбце — где ошибка запущена по шагам.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Симптом</th><th>Где искать</th><th>Вход, который её показывает</th><th>Прогон</th></tr></thead>
+            <tbody>
+              <tr><td>Анаграммы там, где одна строка длиннее</td><td>Нет сравнения длин или <code>set</code> вместо словаря</td><td><code>'папа'</code>, <code>'пап'</code></td><td><a href="02-anagrammy.html#s5">13.2, §5</a>; <a href="#s1">13.4, §1</a></td></tr>
+              <tr><td>Анаграммы там, где частоты разные, а длины равны</td><td><code>set</code> вместо словаря</td><td><code>'аб'</code>, <code>'аа'</code></td><td><a href="02-anagrammy.html#s5">13.2, §5</a></td></tr>
+              <tr><td>Не анаграммы, хотя отличается только регистр или знаки</td><td>Нет <code>letters</code> перед подсчётом или сортировкой</td><td><code>'Апельсин'</code>, <code>'спаниель'</code></td><td><a href="02-anagrammy.html#s5">13.2, §5</a></td></tr>
+              <tr><td>Анаграммы для <code>ё</code> и <code>е</code></td><td>Лишняя замена <code>ё</code> на <code>е</code>, контракт её не требует</td><td><code>'ёж'</code>, <code>'еж'</code></td><td>—</td></tr>
+              <tr><td>Не анаграммы для одной буквы в NFC и NFD</td><td>Нет <code>unicodedata.normalize('NFC', …)</code></td><td><code>NFD('йод')</code>, <code>'дой'</code></td><td>глава 0.3</td></tr>
+              <tr><td>Уникальной считается буква, которая есть в другом регистре</td><td>Ключ словаря без <code>casefold</code></td><td><code>'Казак'</code>, <code>'аА'</code></td><td><a href="03-pervaya-unikalnaya.html#s3">13.3, §3</a></td></tr>
+              <tr><td>Ответ — индекс знака или пробела</td><td>Нет <code>isalpha</code> во втором проходе</td><td><code>'Тот, кто'</code></td><td><a href="#s1">13.4, §1</a></td></tr>
+              <tr><td>В ФИО остались лишние пробелы</td><td><code>split(' ')</code> или <code>strip</code> вместо <code>split()</code></td><td>Двойные пробелы, <code>'\xa0'</code></td><td><a href="#s1">13.4, §1</a></td></tr>
+              <tr><td>Вторая часть двойной фамилии строчная</td><td><code>capitalize</code> всего слова</td><td><code>'салтыков-щедрин'</code></td><td><a href="#s1">13.4, §1</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Ошибки таблицы делятся на две группы. Первая — нормализация: регистр, знаки, NFC и <code>ё</code> обрабатываются не так, как записано в контракте. Вторая — подсчёт: потеряна частота (<code>set</code>) или не проверено, что лишних символов нет (длины). Ошибки первой группы находят тесты с кириллицей, разным регистром и знаками, ошибки второй — тесты с повторами букв. Контроль КТП называет их же: кириллица, повторы и пустая строка.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Исправьте функции</h2>
+        <p>В окне ниже три функции модуля, в каждой по одной ошибке из таблицы. Сначала запустите тесты и посмотрите, какие падают. Затем по симптому найдите строку и исправьте её.</p>
+        <div class="sandbox" data-title="Исправьте is_anagram, first_unique и normalize_name" data-call="print(is_anagram('папа', 'пап'), first_unique('Казак'), repr(normalize_name('салтыков-щедрин')))">
+<script type="text/plain" class="sandbox__start">
+import unicodedata
+
+def letters(text):
+    text = unicodedata.normalize('NFC', text).casefold()
+    return [ch for ch in text if ch.isalnum()]
+
+def is_anagram(a, b):
+    return set(letters(a)) == set(letters(b))
+
+def first_unique(text):
+    count = {}
+    for ch in text:
+        count[ch] = count.get(ch, 0) + 1
+    for i, ch in enumerate(text):
+        if ch.isalpha() and count[ch] == 1:
+            return i
+    return -1
+
+def normalize_name(text):
+    words = unicodedata.normalize('NFC', text).split()
+    result = []
+    for word in words:
+        result.append(word.capitalize())
+    return ' '.join(result)
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_anagram_repeats():
+    """повторы букв"""
+    assert is_anagram('папа', 'пап') is False, "'папа' и 'пап' — не анаграммы"
+    assert is_anagram('аб', 'аа') is False, "'аб' и 'аа' — не анаграммы"
+
+def test_anagram_case():
+    """регистр и знаки"""
+    assert is_anagram('А роза упала', 'Ау, пала роза!') is True
+
+def test_unique_case():
+    """'К' и 'к' — одна буква"""
+    r = first_unique('Казак')
+    assert r == 2, f"ожидалось 2, получено {r!r}"
+
+def test_unique_marks():
+    """знаки не рассматриваются"""
+    r = first_unique('Тот, кто')
+    assert r == 5, f"ожидалось 5, получено {r!r}"
+
+def test_name_hyphen():
+    """двойная фамилия"""
+    r = normalize_name('  салтыков-щедрин   михаил ')
+    assert r == 'Салтыков-Щедрин Михаил', f"получено {r!r}"
+
+def test_name_blank():
+    """пустой ввод"""
+    assert normalize_name('   ') == ''
+</script>
+</div>
+
+        <h2 id="s4"><span class="sec">§4</span>Как объяснить решение</h2>
+        <p>Контроль КТП проверяет три вещи: какие символы значимы и кто это решил, как устроен подсчёт и чем словарь лучше сортировки. Контрольный вопрос занятия — «Какие символы считаются значимыми и кто принимает это решение?». На собеседовании ответ строится в том же порядке.</p>
+        <ol class="steps">
+          <li><b>Правила нормализации.</b> Назвать, что значимо, и сослаться на уточнение: «регистр, пробелы и знаки не важны, ё и е разные — так ответил интервьюер». Правила задаёт условие задачи. Нормализация выполняется до подсчёта, NFC — первым шагом.</li>
+          <li><b>Что хранится между итерациями.</b> «В count — сколько раз каждый символ a ещё не нашёл пары в b». Для первой уникальной буквы: «после первого прохода в count частоты всех букв, второй проход только читает словарь».</li>
+          <li><b>Сложность и сравнение со сортировкой.</b> «Словарь — O(n) по времени и O(k) по памяти, сортировка — O(n log n) и O(n). По замеру словарь быстрее в 1,8 раза при n = 400 000, Counter — ещё на 15 %». Затем назвать граничные тесты: кириллица, разный регистр, повторы, пустая строка, строка без букв.</li>
+        </ol>
+        <div class="speech">
+          <div class="speech__item">
+            <p class="speech__said">«Значимы буквы и цифры без учёта регистра, ё и е разные — это я уточнил до кода. Обе строки привожу к списку значимых символов: NFC, casefold, isalnum. Если длины разные — False. Иначе считаю частоты первой строки и по второй строке забираю по единице: если забирать нечего, False. Время O(n + m), память O(k)».</p>
+            <p class="speech__note"><b>Что показывает</b>Правила нормализации, источник правил и инвариант словаря.</p>
+          </div>
+          <div class="speech__item">
+            <p class="speech__said">«Сортировка тоже даёт ответ, но за O(n log n) и с двумя копиями строк. В замере словарь быстрее сортировки почти вдвое. Тесты: «папа» и «пап» — длины, «аб» и «аа» — повторы, «Апельсин» и «спаниель» — регистр, «ёж» и «еж», пустые строки и строка в NFD».</p>
+            <p class="speech__note"><b>Что показывает</b>Сравнение способов по оценке и по замеру, граничные тесты.</p>
+          </div>
+        </div>
+
+        <div class="pager"><a href="03-pervaya-unikalnaya.html">← 13.3 Первая уникальная буква</a><a href="05-praktika-i-dz.html">13.5 Практика и ДЗ →</a></div>
+        <div class="colophon">
+          <span>Модуль 13 · Нормализация и частоты · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../stroki.js"></script>
+</body>
+</html>

@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>13.2 Анаграммы: сортировка и частотный словарь · Алгоритмы на строках</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../stroki.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 13 · Частоты · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на строках</a> · модуль 13 · нормализация и частоты</p>
+          <p class="running__folio">Глава 13.2</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">13.2</span>
+          <h1>Анаграммы: сортировка<br>и частотный словарь</h1>
+          <p class="lead">Первая задача КТП — проверить, что две строки составлены из одних и тех же букв. В главе разобраны перебор и два быстрых способа: сортировка символов и частотный словарь. Затем нормализация из контракта, код со словарём и пошаговым прогоном, замер трёх способов и версия с множеством, которая ошибается на повторах.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Перебор и два способа быстрее</a></li>
+            <li><a href="#s2">Значимые символы: функция letters</a></li>
+            <li><a href="#s3">Код и пошаговый прогон</a></li>
+            <li><a href="#s4">Сортировка или словарь: замер</a></li>
+            <li><a href="#s5">Версия с множеством</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Перебор и два способа быстрее</h2>
+        <p>Прямое решение повторяет то, что делают руками с карточками букв. Для каждой буквы первой строки ищут такую же карточку во второй и откладывают её. Если карточка не нашлась, строки не анаграммы. Если в конце во второй строке не осталось лишних карточек, анаграммы. В Python это цикл по <code>a</code> и вызов <code>b.remove(ch)</code> для копии второй строки списком. Поиск в списке стоит O(m), он выполняется n раз: перебор — O(n·m).</p>
+        <p>Перебор тратит время на повторный поиск. Его убирают двумя способами. Первый — <b>сортировка</b>: если разложить карточки обеих строк по алфавиту, у анаграмм получатся одинаковые ряды. Сортировка двух строк стоит O(n log n), сравнение рядов — O(n). Второй — <b>частотный словарь</b> из главы 13.1: посчитать, сколько раз встречается каждая буква в <code>a</code>, затем пройти <code>b</code> и для каждой буквы забрать одну единицу из счётчика. Каждый символ обрабатывается один раз, время O(n + m).</p>
+        <p>В блоке ниже оба способа показаны на одной паре строк. Столбики — частоты, под ними — строки после <code>sorted</code>. Отметьте «Сначала привести к ключу»: заглавная <code>А</code> станет строчной, и частоты совпадут.</p>
+        <div class="freq" data-a="Апельсин" data-b="спаниель" data-title="Апельсин и спаниель"></div>
+        <p>Без приведения к ключу строки не анаграммы: в «Апельсин» заглавная <code>А</code>, в «спаниель» — строчная, а для Python это разные символы. Правила приведения записаны в контракте из главы 13.1, их выполняет функция <code>letters</code>.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Значимые символы: функция letters</h2>
+        <p>По контракту регистр, пробелы и знаки не важны, а строка может прийти в форме NFD. Все три правила выполняются до подсчёта, в отдельной функции. Она возвращает список значимых символов: подсчёт и сортировка работают с ним одинаково.</p>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(n)</span></figcaption>
+<pre><span class="k">import</span> unicodedata
+
+
+<span class="k">def</span> <span class="f">letters</span>(text):
+    text = unicodedata.normalize(<span class="s">'NFC'</span>, text).casefold()
+    <span class="k">return</span> [ch <span class="k">for</span> ch <span class="k">in</span> text <span class="k">if</span> ch.isalnum()]</pre>
+        </figure>
+        <p>Первая строка тела выполняет NFC и убирает регистр, порядок шагов взят из главы 0.3: NFC идёт первым. Вторая строка оставляет только буквы и цифры. Буква <code>ё</code> не заменяется: по ответу интервьюера <code>ё</code> и <code>е</code> — разные буквы.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; letters('А роза упала!')
+['а', 'р', 'о', 'з', 'а', 'у', 'п', 'а', 'л', 'а']
+&gt;&gt;&gt; 'Ё'.casefold(), '5'.isalnum(), '_'.isalnum(), ' '.isalnum()
+('ё', True, False, False)</pre>
+        </figure>
+        <details class="pyhint"><summary>Python в этой строке: <code>[ch for ch in text if ch.isalnum()]</code></summary><div><p>Генератор списка строит новый список за один проход. Запись читается так: «каждый <code>ch</code> из <code>text</code>, для которого <code>ch.isalnum()</code> истинно». Это короткая форма цикла с <code>append</code>.</p><pre>&gt;&gt;&gt; [ch for ch in 'Ау, пала!' if ch.isalnum()]
+['А', 'у', 'п', 'а', 'л', 'а']</pre></div></details>
+
+        <h2 id="s3"><span class="sec">§3</span>Код и пошаговый прогон</h2>
+        <p>Функция на частотном словаре состоит из трёх частей. Сначала обе строки приводятся к спискам значимых символов, и сравниваются длины: у анаграмм они равны. Затем первый цикл считает частоты символов <code>a</code>. Второй цикл идёт по <code>b</code> и для каждого символа забирает единицу из счётчика. Если счётчик уже 0, у символа <code>b</code> нет пары в <code>a</code>. Напишите функцию сами: тесты проверяют пять ответов интервьюера из главы 13.1 и сравнивают результат с сортировкой на трёхстах случайных парах.</p>
+        <div class="sandbox" data-title="Напишите is_anagram сами" data-call="print(is_anagram('Апельсин', 'спаниель'), is_anagram('ёж', 'еж'))">
+<script type="text/plain" class="sandbox__start">
+import unicodedata
+
+def letters(text):
+    text = unicodedata.normalize('NFC', text).casefold()
+    return [ch for ch in text if ch.isalnum()]
+
+def is_anagram(a, b):
+    a = letters(a)
+    b = letters(b)
+    if len(a) != len(b):
+        return False
+    count = {}
+    # Первый цикл: частоты символов a.
+    # Второй цикл: для каждого символа b забрать единицу; если забирать нечего — False.
+    return True
+</script>
+<script type="text/plain" class="sandbox__tests">
+import unicodedata
+
+def test_case():
+    """регистр не важен"""
+    assert is_anagram('Апельсин', 'спаниель') is True
+
+def test_marks():
+    """пробелы и знаки не учитываются"""
+    assert is_anagram('А роза упала', 'Ау, пала роза!') is True
+
+def test_yo():
+    """ё и е — разные буквы"""
+    assert is_anagram('ёж', 'еж') is False
+
+def test_same_length():
+    """длины равны, частоты разные"""
+    r = is_anagram('аб', 'аа')
+    assert r is False, f"ожидалось False, получено {r!r}"
+
+def test_empty():
+    """пустые строки и строка без букв"""
+    assert is_anagram('', '') is True
+    assert is_anagram('!!!', '') is True
+
+def test_nfd():
+    """й из двух кодовых точек"""
+    assert is_anagram(unicodedata.normalize('NFD', 'йод'), 'дой') is True
+
+def test_matches_sorted():
+    """300 случайных пар: ответ совпадает с сортировкой"""
+    import random
+    rnd = random.Random(132)
+    for _ in range(300):
+        a = ''.join(rnd.choice('абвгАБ !') for _ in range(rnd.randint(0, 8)))
+        b = list(a) if rnd.random() < 0.5 else [rnd.choice('абвгВ ,') for _ in range(rnd.randint(0, 8))]
+        rnd.shuffle(b)
+        b = ''.join(b)
+        want = sorted(letters(a)) == sorted(letters(b))
+        assert is_anagram(a, b) == want, f"is_anagram({a!r}, {b!r}): ожидалось {want}"
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n + m) · память O(k)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">is_anagram</span>(a, b):
+    a = letters(a)
+    b = letters(b)
+    <span class="k">if</span> <span class="k">len</span>(a) != <span class="k">len</span>(b):
+        <span class="k">return</span> <span class="k">False</span>
+    count = {}
+    <span class="k">for</span> ch <span class="k">in</span> a:
+        count[ch] = count.get(ch, <span class="n">0</span>) + <span class="n">1</span>
+    <span class="k">for</span> ch <span class="k">in</span> b:
+        <span class="k">if</span> count.get(ch, <span class="n">0</span>) == <span class="n">0</span>:
+            <span class="k">return</span> <span class="k">False</span>
+        count[ch] -= <span class="n">1</span>
+    <span class="k">return</span> <span class="k">True</span></pre>
+        </figure>
+        <p>Прогон ниже — на строках «Апельсин» и «спаниель». Лента — список <code>a</code> после <code>letters</code>, в таблице справа — словарь <code>count</code> на каждом шаге. Смотрите, как на шагах 5–20 счётчики растут, а на шагах 22–45 убывают до нуля.</p>
+        <div class="tracer" data-trace="anagram" data-label="список a после letters" data-title="Апельсин и спаниель"></div>
+        <p>Инвариант второго цикла: <code>count[ch]</code> — сколько символов <code>ch</code> из <code>a</code> ещё не нашли пары среди пройденных символов <code>b</code>. Если для символа <code>b</code> счётчик равен 0, в <code>b</code> этого символа больше, чем в <code>a</code>, и ответ False. Если второй цикл дошёл до конца, каждый символ <code>b</code> нашёл пару. Лишних символов в <code>a</code> тоже нет: длины равны, а пар столько же, сколько символов в <code>b</code>. Без проверки длин этот вывод неверен, такая версия разобрана в главе 13.4.</p>
+        <p>Память: словарь хранит по ключу на каждый разный символ, это O(k), где k — число разных символов. Для русских слов k не больше 33 плюс цифры. Списки, которые возвращает <code>letters</code>, добавляют O(n + m). Если хранить их не нужно, подсчёт можно вести сразу по строке, проверяя символы в том же цикле.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Сортировка или словарь: замер</h2>
+        <p>Контроль занятия по КТП требует сравнить сортировку и частотный словарь. Оба способа и третий, с <code>Counter</code>, записываются через ту же функцию <code>letters</code>.</p>
+        <figure class="code">
+          <figcaption><span>bench.py</span><span>два способа для сравнения</span></figcaption>
+<pre><span class="k">def</span> <span class="f">anagram_sorted</span>(a, b):          <span class="c"># O(n log n)</span>
+    <span class="k">return</span> <span class="k">sorted</span>(letters(a)) == <span class="k">sorted</span>(letters(b))
+
+
+<span class="k">def</span> <span class="f">anagram_counter</span>(a, b):         <span class="c"># O(n)</span>
+    <span class="k">return</span> Counter(letters(a)) == Counter(letters(b))</pre>
+        </figure>
+        <p>По оценке словарь лучше: O(n) против O(n log n). Замер проверяет, как это выглядит на деле. Строки — анаграммы из случайных русских букв, поэтому все три способа проходят их до конца.</p>
+        <div class="bench" data-title="Анаграммы длины n: три способа" data-xlabel="длина строки n"
+          data-series='[{"name":"sorted","color":"#B3261E","pts":[[50000,11.5],[100000,22.8],[200000,58.4],[400000,118.3]]},{"name":"словарь в цикле","color":"#2D7FC1","pts":[[50000,7.7],[100000,16.0],[200000,31.9],[400000,65.4]]},{"name":"Counter","color":"#2F7D4F","pts":[[50000,6.0],[100000,12.5],[200000,26.8],[400000,55.3]]}]'></div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>n</th><th>словарь в цикле, мс</th><th><code>sorted</code>, мс</th><th><code>Counter</code>, мс</th></tr></thead>
+            <tbody>
+              <tr><td>50&nbsp;000</td><td>7,7</td><td>11,5</td><td>6,0</td></tr>
+              <tr><td>100&nbsp;000</td><td>16,0</td><td>22,8</td><td>12,5</td></tr>
+              <tr><td>200&nbsp;000</td><td>31,9</td><td>58,4</td><td>26,8</td></tr>
+              <tr><td>400&nbsp;000</td><td>65,4</td><td>118,3</td><td>55,3</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Замер выполнен на ноутбуке автора, Python 3.12.12, Apple M4. Каждое число — медиана трёх запусков <code>bench.py</code> из стартового набора, в каждом запуске — медиана пяти повторов. Во все три времени входит <code>letters</code>, около 11 мс при n = 400 000.</p>
+        <p>При удвоении n все три времени растут примерно вдвое. Множитель log n у сортировки на этих длинах почти не виден: от 50 000 до 400 000 он вырастает с 15,6 до 18,6, то есть на 19 %. Разница — в постоянном множителе: <code>sorted</code> медленнее словаря в 1,8 раза при n = 400 000. <code>Counter</code> быстрее словаря в цикле, потому что подсчёт в нём выполняется кодом на C, а цикл <code>for</code> — интерпретатором Python. Выбор на собеседовании: словарь — O(n) по времени и O(k) по дополнительной памяти, сортировка — O(n log n) по времени и O(n) по памяти на два отсортированных списка. Сортировку берут, когда её код заметно короче, а n небольшое.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Версия с множеством</h2>
+        <p>Короткая запись <code>set(letters(a)) == set(letters(b))</code> проверяет, что в строках одни и те же буквы. Множество хранит каждый символ один раз, поэтому частоты теряются. Ниже обе версии запущены на строках «папа» и «пап».</p>
+        <span class="run-label">изменённая версия</span>
+        <div class="tracer tracer--bug" data-trace="bug_set" data-label="список a" data-title="set(letters(a)) == set(letters(b))"></div>
+        <span class="run-label run-label--fix">верная версия</span>
+        <div class="tracer" data-trace="fix_set" data-label="список a после letters" data-title="частотный словарь"></div>
+        <p>У «папа» и «пап» множества букв равны, <code>{'п', 'а'}</code>, и версия с <code>set</code> отвечает True. Верная версия останавливается на шаге 3: длины 4 и 3 разные. Ошибку видно только на строках, где буква повторяется разное число раз. На «листок» и «слиток» обе версии отвечают верно, поэтому в тестах занятия есть пары «папа» — «пап» и «аб» — «аа».</p>
+        <p>Вторая похожая ошибка — сортировка без <code>letters</code>: <code>sorted('Апельсин') == sorted('спаниель')</code> даёт False, потому что заглавная <code>'А'</code> после сортировки стоит в начале, а строчная <code>'а'</code> — на её месте во второй строке. Следующая задача занятия — первая уникальная буква, глава 13.3.</p>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>LeetCode 242 «Valid Anagram» — условие и вопрос о строках Unicode проверены по данным сайта 28.10.2026</li>
+            <li>Документация Python: collections.Counter, unicodedata.normalize, str.casefold, str.isalnum</li>
+            <li>Замер: Python 3.12.12, Apple M4, 28.10.2026, bench.py из стартового набора lesson_13</li>
+            <li>КТП ОП.04, занятие 13: «Сравнить сортировку и частотный словарь»</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="01-uznat-zadachu.html">← 13.1 Как узнать задачу</a><a href="03-pervaya-unikalnaya.html">13.3 Первая уникальная буква →</a></div>
+        <div class="colophon">
+          <span>Модуль 13 · Нормализация и частоты · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../stroki.js"></script>
+</body>
+</html>

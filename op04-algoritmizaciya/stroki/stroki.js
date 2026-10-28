@@ -491,6 +491,14 @@
     plan(); show();
   });
 
+  /* ── Подпись над лентой прогона ─────────────────────────────────── */
+  /* Прогон из ../massivy/algo.js подписывает ленту «список имя». Для строки
+     подпись задаётся атрибутом data-label: <div class="tracer" data-label="строка text">. */
+  document.querySelectorAll('.tracer[data-label]').forEach(root => {
+    const lab = root.querySelector('.tracer__state .tracer__label');
+    if (lab) lab.textContent = root.dataset.label;
+  });
+
   /* ── 11. Разбор строки событий ────────────────────────────────── */
   /* data-s — строка вида «ключ=значение;ключ=значение». Сначала split(';'),
      затем у каждого куска partition('='). Повреждённые куски помечаются. */

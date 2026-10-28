@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>13.3 Первая уникальная буква и нормализация ввода · Алгоритмы на строках</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../stroki.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 13 · Частоты · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на строках</a> · модуль 13 · нормализация и частоты</p>
+          <p class="running__folio">Глава 13.3</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">13.3</span>
+          <h1>Первая уникальная буква<br>и нормализация ввода</h1>
+          <p class="lead">Вторая задача КТП — найти первую букву, которая встречается в строке один раз. В главе разобрано, почему для неё нужны два прохода, как убрать регистр, не сдвинув индексы, и что меняет ключ с регистром. Вторая часть главы — задача 0 занятия: привести ФИО из формы к единому виду.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Почему одного прохода мало</a></li>
+            <li><a href="#s2">Код и пошаговый прогон</a></li>
+            <li><a href="#s3">Ключ с регистром</a></li>
+            <li><a href="#s4">ФИО из формы</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Почему одного прохода мало</h2>
+        <p>Возьмём слово «Казак». Первая буква <code>К</code>. Уникальна ли она, становится известно только на последнем символе: там стоит <code>к</code>, а регистр по контракту не важен. Так с любой буквой: пока строка не прочитана до конца, нельзя сказать, что буква больше не встретится. Поэтому решение состоит из двух проходов. Первый строит частотный словарь всей строки. Второй идёт по строке слева направо и возвращает индекс первой буквы, у которой частота 1.</p>
+        <p>Перебор делает то же без словаря: для каждой буквы вызывает <code>text.count</code>. Это O(n) на каждый из n символов, всего O(n²). В главе 0.4 и во втором опыте <code>bench.py</code> эта версия при n = 16 000 работает около 124 мс, два прохода со словарём — около 2 мс.</p>
+        <p>Строку по контракту не нормализуют: ответ — индекс в исходной строке, и удаление знаков сдвинуло бы индексы. Нормализация выполняется по месту. В первом проходе ключ словаря — символ после <code>casefold</code>. Во втором проходе символ, который не буква, пропускается проверкой <code>isalpha</code>.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Код и пошаговый прогон</h2>
+        <p>Напишите функцию сами. Тесты проверяют регистр, знаки, пустую строку, строку без букв, примеры LeetCode и сравнивают ответ с перебором на трёхстах случайных строках.</p>
+        <div class="sandbox" data-title="Напишите first_unique сами" data-call="print(first_unique('Казак'), first_unique('Тот, кто'))">
+<script type="text/plain" class="sandbox__start">
+def first_unique(text):
+    count = {}
+    for ch in text:
+        key = ch.casefold()
+        # Увеличьте count[key].
+    # Второй проход: первый индекс i, где text[i] — буква и её частота 1.
+    return -1
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_case():
+    """'К' и 'к' — одна буква"""
+    r = first_unique('Казак')
+    assert r == 2, f"ожидалось 2, получено {r!r}"
+
+def test_marks():
+    """знаки и пробелы не рассматриваются"""
+    r = first_unique('Тот, кто')
+    assert r == 5, f"ожидалось 5, получено {r!r}"
+
+def test_empty():
+    """пустая строка и строка без букв"""
+    assert first_unique('') == -1
+    assert first_unique(' ,!') == -1
+
+def test_leetcode():
+    """примеры LeetCode 387"""
+    assert first_unique('leetcode') == 0
+    assert first_unique('loveleetcode') == 2
+    assert first_unique('aabb') == -1
+
+def test_matches_brute():
+    """300 случайных строк: ответ совпадает с перебором"""
+    import random
+    rnd = random.Random(133)
+    for _ in range(300):
+        text = ''.join(rnd.choice('абвАБВ ,1') for _ in range(rnd.randint(0, 10)))
+        low = text.casefold()
+        want = next((i for i, ch in enumerate(text) if ch.isalpha() and low.count(ch.casefold()) == 1), -1)
+        got = first_unique(text)
+        assert got == want, f"first_unique({text!r}): ожидалось {want}, получено {got}"
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(k)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">first_unique</span>(text):
+    count = {}
+    <span class="k">for</span> ch <span class="k">in</span> text:
+        key = ch.casefold()
+        count[key] = count.get(key, <span class="n">0</span>) + <span class="n">1</span>
+    <span class="k">for</span> i, ch <span class="k">in</span> <span class="k">enumerate</span>(text):
+        <span class="k">if</span> ch.isalpha() <span class="k">and</span> count[ch.casefold()] == <span class="n">1</span>:
+            <span class="k">return</span> i
+    <span class="k">return</span> <span class="n">-1</span></pre>
+        </figure>
+        <p>Прогон — на слове «Казак». Под лентой — указатель <code>i</code> второго прохода, в таблице справа — словарь <code>count</code>.</p>
+        <div class="tracer" data-trace="unique" data-label="строка text" data-title="first_unique('Казак')"></div>
+        <p>После первого прохода, на шаге 17, словарь равен <code>{'к': 2, 'а': 2, 'з': 1}</code>. Во втором проходе <code>К</code> и <code>а</code> пропускаются, на шаге 23 у <code>з</code> частота 1, и функция возвращает индекс 2. Во втором проходе словарь не меняется, проверка частоты стоит O(1). Каждый проход — O(n), вместе O(n). Память — словарь, O(k).</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Ключ с регистром</h2>
+        <p>Если в первом проходе ключом словаря сделать сам символ, без <code>casefold</code>, заглавная и строчная буквы попадут в разные ключи. Ниже эта версия и верная запущены на одном слове.</p>
+        <span class="run-label">изменённая версия</span>
+        <div class="tracer tracer--bug" data-trace="bug_case" data-label="строка text" data-title="count[ch] без casefold"></div>
+        <span class="run-label run-label--fix">верная версия</span>
+        <div class="tracer" data-trace="unique" data-label="строка text" data-title="count[ch.casefold()]"></div>
+        <p>Без <code>casefold</code> словарь равен <code>{'К': 1, 'а': 2, 'з': 1, 'к': 1}</code>, и на шаге 14 <code>К</code> считается уникальной: ответ 0 вместо 2. Ошибку видно только на строке, где одна буква встречается в двух регистрах. Примеры LeetCode состоят из строчных букв, и на них эта версия отвечает верно. Поэтому в тестах занятия есть «Казак» и <code>'аА'</code>.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>ФИО из формы</h2>
+        <p>Задача 0 занятия — нормализация пользовательского ввода. Покупатель вписывает ФИО в форму как угодно: <code>'  салтыков-щедрин   михаил '</code>. Перед записью в базу и печатью на документах его приводят к единому виду: <code>'Салтыков-Щедрин Михаил'</code>. В главе 0.3 строка приводилась к ключу для сравнения, и регистр там убирался полностью. Здесь результат показывают людям, поэтому каждое слово пишется с заглавной буквы, а буква <code>ё</code> сохраняется.</p>
+        <p>Правила записаны в контракте из главы 13.1: NFC, пробелы сжаты, в каждом слове и в каждой части двойной фамилии первая буква заглавная, остальные строчные. Порядок такой же, как в главе 0.3: сначала NFC, затем деление на слова. Деление на части через дефис идёт внутри слова.</p>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(n)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">normalize_name</span>(text):
+    words = unicodedata.normalize(<span class="s">'NFC'</span>, text).split()
+    result = []
+    <span class="k">for</span> word <span class="k">in</span> words:
+        parts = [part.capitalize() <span class="k">for</span> part <span class="k">in</span> word.split(<span class="s">'-'</span>)]
+        result.append(<span class="s">'-'</span>.join(parts))
+    <span class="k">return</span> <span class="s">' '</span>.join(result)</pre>
+        </figure>
+        <details class="pyhint"><summary>Python в этой строке: <code>part.capitalize()</code> и <code>title()</code></summary><div><p><code>capitalize</code> делает первую букву строки заглавной, а все остальные — строчными. <code>title</code> делает заглавной каждую букву, перед которой стоит не буква. Для двойной фамилии <code>title</code> подходит, а у фамилии с апострофом заглавной становится и буква после апострофа. По контракту нужен первый вариант, поэтому слово делится по дефису явно.</p><pre>&gt;&gt;&gt; 'иВАН'.capitalize()
+'Иван'
+&gt;&gt;&gt; 'салтыков-щедрин'.title()
+'Салтыков-Щедрин'
+&gt;&gt;&gt; "д'артаньян".title(), "д'артаньян".capitalize()
+("Д'Артаньян", "Д'артаньян")</pre></div></details>
+        <p>Прогон показывает, как строка из формы делится на слова и как каждое слово делится на части. Лента — список <code>words</code>.</p>
+        <div class="tracer" data-trace="name" data-label="список words" data-title="normalize_name('  салтыков-щедрин   михаил ')"></div>
+        <p>На шаге 1 <code>split()</code> без аргумента убрал пробелы по краям и между словами, осталось два слова. На шаге 4 первое слово разделено по дефису на две части, каждая получила заглавную букву. Напишите функцию сами: тесты проверяют пробелы, неразрывный пробел, регистр, <code>ё</code>, NFD, апостроф и пустую строку.</p>
+        <div class="sandbox" data-title="Напишите normalize_name сами" data-call="print(repr(normalize_name('  салтыков-щедрин   михаил ')))">
+<script type="text/plain" class="sandbox__start">
+import unicodedata
+
+def normalize_name(text):
+    words = unicodedata.normalize('NFC', text).split()
+    result = []
+    for word in words:
+        # Разделите слово по дефису, оформите каждую часть, склейте обратно.
+        result.append(word)
+    return ' '.join(result)
+</script>
+<script type="text/plain" class="sandbox__tests">
+import unicodedata
+
+def test_spaces_hyphen():
+    """пробелы и двойная фамилия"""
+    r = normalize_name('  салтыков-щедрин   михаил ')
+    assert r == 'Салтыков-Щедрин Михаил', f"получено {r!r}"
+
+def test_case_nbsp():
+    """регистр и неразрывный пробел"""
+    r = normalize_name('ИВАНОВ иван\xa0петрович')
+    assert r == 'Иванов Иван Петрович', f"получено {r!r}"
+
+def test_yo():
+    """ё сохраняется"""
+    r = normalize_name('ёлкин пётр')
+    assert r == 'Ёлкин Пётр', f"получено {r!r}"
+
+def test_nfd():
+    """й из двух кодовых точек"""
+    r = normalize_name(unicodedata.normalize('NFD', 'йошкин'))
+    assert r == 'Йошкин', f"получено {r!r}"
+
+def test_apostrophe():
+    """после апострофа буква строчная"""
+    r = normalize_name("д'артаньян")
+    assert r == "Д'артаньян", f"получено {r!r}"
+
+def test_blank():
+    """строка из пробелов"""
+    assert normalize_name('   ') == ''
+    assert normalize_name('') == ''
+</script>
+</div>
+        <p>Все три функции занятия написаны. В главе 13.4 собраны граничные входы, на которых ошибаются изменённые версии этих функций, и сводка ошибок по симптомам.</p>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>LeetCode 387 «First Unique Character in a String» — условие и примеры проверены по данным сайта 28.10.2026</li>
+            <li>Документация Python: str.capitalize, str.title — <a href="https://docs.python.org/3/library/stdtypes.html#str.capitalize" target="_blank" rel="noopener">docs.python.org/3/library/stdtypes.html</a></li>
+            <li>КТП ОП.04, занятие 13: «Решить задачи на анаграммы, нормализацию пользовательского ввода и первую уникальную букву»</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="02-anagrammy.html">← 13.2 Анаграммы</a><a href="04-granicy-i-oshibki.html">13.4 Границы и ошибки →</a></div>
+        <div class="colophon">
+          <span>Модуль 13 · Нормализация и частоты · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../stroki.js"></script>
+</body>
+</html>
