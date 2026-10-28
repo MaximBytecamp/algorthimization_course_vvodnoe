@@ -125,7 +125,6 @@ def ch12() -> None:
     # Опыт: язык en — надписи интерфейса меняются.
     edit("docs/source/conf.py", "language = 'ru'", "language = 'en'")
     build("12-build-en")
-    shot("12-en", "index.html", 440)
     edit("docs/source/conf.py", "language = 'en'", "language = 'ru'")
     build("12-build-ru", "-E")
     save("docs/source/index.rst", "12-index-edited.rst")
@@ -160,7 +159,6 @@ def ch13() -> None:
     edit("docs/source/conf.py", "napoleon_numpy_docstring = False",
          "napoleon_numpy_docstring = False\n\nautodoc_typehints = 'description'")
     build("13-typehints", "-q", "-E")
-    shot("13-typehints", "orders.html", 900)
     edit("docs/source/conf.py", "\n\nautodoc_typehints = 'description'", "")
     # Ошибка в докстринге: звёздочка без пары — начало выделения в reST.
     rel = "app/services/orders.py"

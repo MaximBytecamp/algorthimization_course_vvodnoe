@@ -135,11 +135,6 @@ async def st_ch12(e: Editor) -> None:
     edit("docs/source/index.rst", ":caption: Contents:", ":caption: Содержание:")
     await show(e, "docs/source/index.rst", "12-index-edited")
     await term(e, "12-build-edited", BUILD, 8.0)
-    # Опыт: короткая черта.
-    edit("docs/source/index.rst", "Отчёт кафе\n==========\n", "Отчёт кафе\n=====\n")
-    await show(e, "docs/source/index.rst", "12-underline-short")
-    await term(e, "12-build-underline", BUILD, 8.0)
-    edit("docs/source/index.rst", "Отчёт кафе\n=====\n", "Отчёт кафе\n==========\n")
     # .gitignore и .gitkeep.
     await show(e, ".gitignore", "12-gitignore")
     write("docs/source/_static/.gitkeep", "")
