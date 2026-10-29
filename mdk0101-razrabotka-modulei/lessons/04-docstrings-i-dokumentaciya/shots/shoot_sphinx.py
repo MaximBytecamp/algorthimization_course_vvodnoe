@@ -161,7 +161,9 @@ async def st_ch12(e: Editor) -> None:
     edit("docs/source/index.rst", ":caption: Contents:", ":caption: Содержание:")
     await show(e, "docs/source/index.rst", "12-index-edited")
     await term(e, "12-build-edited", BUILD, 8.0)
-    # .gitignore и .gitkeep.
+    # .gitignore: строки docs/build/ в третьем архиве нет — её добавляют.
+    await show(e, ".gitignore", "12-gitignore-before")
+    edit(".gitignore", ".mypy_cache/\n", ".mypy_cache/\ndocs/build/\n")
     await show(e, ".gitignore", "12-gitignore")
     write("docs/source/_static/.gitkeep", "")
     await show(e, "docs/source/_static/.gitkeep", "12-gitkeep")
@@ -232,6 +234,18 @@ async def st_ch14(e: Editor) -> None:
     (P / "app/utils/percent.py").unlink()
     await term(e, "14-stale", "sphinx-apidoc -o docs/source/api app && " + BUILD + " -q -E", 12.0)
     await term(e, "14-stale-fixed", APIDOC + " && " + BUILD + " -q -E", 12.0)
+    await st_indices(e)
+
+
+INDICES = """
+
+Указатели
+---------
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
+"""
 
 
 PERCENT = '''"""Проценты от суммы."""
@@ -269,6 +283,57 @@ async def st_ch15(e: Editor) -> None:
     write(".github/workflows/docs.yml", sr.WORKFLOW)
     await show(e, ".github/workflows/docs.yml", "15-workflow")
     await term(e, "15-strict", BUILD + " -E -W --keep-going 2>&1 | tail -4", 14.0)
+
+
+async def st_indices(e: Editor) -> None:
+    """4.14 §7: ссылки на указатель и поиск в index.rst."""
+    if "genindex" not in (P / "docs/source/index.rst").read_text(encoding="utf-8"):
+        (P / "docs/source/index.rst").write_text(
+            (P / "docs/source/index.rst").read_text(encoding="utf-8").rstrip("\n") + "\n" + INDICES,
+            encoding="utf-8")
+    await show(e, "docs/source/index.rst", "14-index-indices")
+    await term(e, "14-build-indices", BUILD + " -q", 10.0)
+
+
+GIT = Path("/private/tmp/student-sphinx-git/otchet-kafe-dokumentirovan")
+
+
+async def side(e: Editor, name: str) -> None:
+    """Кадр боковой панели (проводник или Source Control) по её границам."""
+    await sp.park(e)
+    r = await e.rect(".part.sidebar")
+    await e.shot(f"{RAW}/{name}.png", clip=[r[0], r[1], r[2], r[3]])
+
+
+async def st_git12(e: Editor) -> None:
+    """4.12 §7 на копии проекта под Git: docs/build до и после строки в .gitignore.
+
+    Перед стадией редактор запускают на GIT (`launch(str(GIT))`): там проект
+    закоммичен до главы 4.12, а docs собрана, как к концу главы.
+    """
+    gi = GIT / ".gitignore"
+    text = gi.read_text(encoding="utf-8").replace("docs/build/\n", "")
+    gi.write_text(text, encoding="utf-8")
+    await sp.reset(e)
+    await e.palette("Git: Refresh", 3.0)
+    await e.palette("View: Show Source Control", 2.0)
+    await side(e, "12-scm-before")
+    await sp.reset(e)
+    await sp.open_file(e, ".gitignore", 3.0)
+    await win(e, "12-gitignore-before")
+    gi.write_text(text + "docs/build/\n", encoding="utf-8")
+    await asyncio.sleep(2.0)
+    await e.palette("File: Revert File", 1.0)
+    await sp.goto(e, 7)
+    await e.palette("Git: Refresh", 4.0)
+    await win(e, "12-gitignore")
+    await sp.open_file(e, "docs/build/html/index.html", 3.0)
+    await e.palette("File: Reveal Active File in Explorer View", 1.5)
+    await e.palette("View: Close All Editors", 0.8)
+    await e.palette("View: Show Explorer", 1.0)
+    await side(e, "12-build-ignored")
+    await e.palette("View: Show Source Control", 2.5)
+    await side(e, "12-scm-after")
 
 
 async def st_wf(e: Editor) -> None:

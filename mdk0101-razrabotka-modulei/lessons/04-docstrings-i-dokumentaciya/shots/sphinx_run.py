@@ -252,6 +252,11 @@ def ch14() -> None:
     save("docs/source/api/app.services.rst", "14-app.services-members.rst")
     build("14-apidoc-clean", "-q", "-E")
     shot("14-apidoc-domain", "api/app.domain.html", 900)
+    # Ссылки на указатель и поиск: мастер Sphinx 9 их не пишет, добавляют руками.
+    edit("docs/source/index.rst", "   api/modules\n", "   api/modules\n\nУказатели\n---------\n\n"
+         "* :ref:`genindex`\n* :ref:`modindex`\n* :ref:`search`\n")
+    build("14-indices", "-q")
+    shot("14-index-links", "index.html", 640)
     shot("14-genindex", "genindex.html", 900)
     shot("14-search", "search.html?q=выручка", 780)
     # Строгий режим ссылок на всём сайте: внешние типы и ошибка в Returns у format_kopeks.
