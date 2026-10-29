@@ -271,6 +271,12 @@ async def st_ch15(e: Editor) -> None:
     await term(e, "15-strict", BUILD + " -E -W --keep-going 2>&1 | tail -4", 14.0)
 
 
+async def st_wf(e: Editor) -> None:
+    """Только кадр docs.yml — после смены версий действий, на проекте после ch15."""
+    write(".github/workflows/docs.yml", sr.WORKFLOW)
+    await show(e, ".github/workflows/docs.yml", "15-workflow")
+
+
 # ── 4.16 ────────────────────────────────────────────────────────────────
 async def st_ch16(e: Editor) -> None:
     """Ошибка в format_kopeks: вывод -n, файл до и после, повтор -n."""
