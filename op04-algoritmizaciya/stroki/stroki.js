@@ -604,4 +604,55 @@
     root.querySelectorAll('[data-p]').forEach(b => b.addEventListener('click', () => { inp.value = presets[+b.dataset.p][1]; draw(); }));
     draw();
   });
+  /* ── 12. Сжатие серий ──────────────────────────────────────────── */
+  /* data-s — строка. Серии подряд идущих одинаковых символов выделены по
+     очереди двумя цветами, под серией — её длина. Ниже — части ответа
+     compress: символ и длина, длина 1 не пишется. Цифра во входе — ошибка. */
+  document.querySelectorAll('.rle').forEach(root => {
+    const presets = json(root, 'presets') || [];
+    root.classList.add('widget');
+    root.innerHTML = `
+      <div class="widget__head"><b>${esc(root.dataset.title || 'Сжатие серий')}</b><span class="rl-count"></span></div>
+      <div class="widget__body">
+        <label class="sx-field"><span>s =</span><input class="sx-input" type="text" spellcheck="false"></label>
+        ${presets.length ? `<div class="btnrow cd-presets">${presets.map((p, k) => `<button class="btn" data-p="${k}">${esc(p[0])}</button>`).join('')}</div>` : ''}
+        <span class="tracer__label">серии строки s</span>
+        <div class="rl-tape"></div>
+        <span class="tracer__label">части ответа: символ серии и длина</span>
+        <div class="rl-parts"></div>
+        <span class="tracer__label">''.join(out)</span>
+        <pre class="ps-out rl-out"></pre>
+      </div>`;
+    const inp = root.querySelector('.sx-input');
+    inp.value = root.dataset.s ?? 'aaabccdddd';
+    const draw = () => {
+      const ch = cps(inp.value), runs = [];
+      for (let i = 0; i < ch.length;) {
+        let j = i;
+        while (j < ch.length && ch[j] === ch[i]) j++;
+        runs.push({ i, n: j - i, c: ch[i] });
+        i = j;
+      }
+      const digit = ch.findIndex(x => /^\p{Nd}$/u.test(x));
+      root.querySelector('.rl-tape').innerHTML = ch.length
+        ? `<div class="rl-runs">${runs.map((r, k) => `<div class="rl-run rl-run--${k % 2}"><div class="cells">${ch.slice(r.i, r.i + r.n).map((x, m) => cellHTML(x, { top: r.i + m, cls: r.i + m === digit ? 'is-diff' : '' })).join('')}</div><small>${r.n}</small></div>`).join('')}</div>`
+        : '<p class="sx-empty">Пустая строка: серий нет, ответ — пустая строка.</p>';
+      const out = root.querySelector('.rl-out');
+      if (digit >= 0) {
+        root.querySelector('.rl-parts').innerHTML = '';
+        out.textContent = `ValueError: символ ${digit}: цифра ${pyRepr(ch[digit])}`;
+        out.classList.add('is-err');
+      } else {
+        root.querySelector('.rl-parts').innerHTML = runs.map((r, k) => `<span class="rl-part rl-run--${k % 2}"><code>${esc(pyRepr(r.c))}</code>${r.n > 1 ? `<code>${esc(pyRepr(String(r.n)))}</code>` : '<i>длина 1 не пишется</i>'}</span>`).join('');
+        out.textContent = pyRepr(runs.map(r => r.c + (r.n > 1 ? r.n : '')).join(''));
+        out.classList.remove('is-err');
+      }
+      const code = runs.map(r => r.c + (r.n > 1 ? r.n : '')).join('');
+      root.querySelector('.rl-count').textContent = digit >= 0 ? 'в строке есть цифра'
+        : `${ch.length} симв. → ${cps(code).length} симв., серий ${runs.length}`;
+    };
+    inp.addEventListener('input', draw);
+    root.querySelectorAll('[data-p]').forEach(b => b.addEventListener('click', () => { inp.value = presets[+b.dataset.p][1]; draw(); }));
+    draw();
+  });
 })();

@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>15.3 Разбор строки событий и повреждённый ввод · Алгоритмы на строках</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../stroki.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 15 · Разбор · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на строках</a> · модуль 15 · сжатие и разбор</p>
+          <p class="running__folio">Глава 15.3</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">15.3</span>
+          <h1>Разбор строки событий<br>и повреждённый ввод</h1>
+          <p class="lead">Вторая задача КТП — разобрать строку события в словарь, а журнал из многих строк — в структурированный результат. В главе разобраны два уровня разбора, почему ключ отделяют методом <code>partition</code>, код с пошаговым прогоном и то, как разбор журнала переживает повреждённые строки.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Два уровня разбора</a></li>
+            <li><a href="#s2">Почему partition, а не split</a></li>
+            <li><a href="#s3">Код и пошаговый прогон</a></li>
+            <li><a href="#s4">Журнал: ошибка строки не останавливает разбор</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Два уровня разбора</h2>
+        <p>Строка события делится дважды. Сначала <code>line.split(';')</code> режет её на поля. Потом каждое поле делится на ключ и значение по знаку <code>=</code>. В блоке ниже видны оба шага. Кнопки подставляют повреждённые строки — те, о которых спрашивали интервьюера в главе 15.1, §4.</p>
+        <div class="parse" data-s="time=09:15;user=ivan;action=login" data-title="Разбор строки события"
+          data-presets='[["верная строка","time=09:15;user=ivan;action=login"],["две ; подряд","time=09:15;;user=ivan"],["поле без =","time=09:15;user;action=login"],["пустой ключ","time=09:15;=ivan"],["ключ дважды","time=09:15;user=ivan;user=olga"],["= в значении","time=09:15;note=a=b"]]'></div>
+        <p><code>split(';')</code> с аргументом сохраняет пустые куски: две точки с запятой подряд дают поле <code>''</code>. Так повреждение не теряется, и его можно назвать по номеру поля. <code>split()</code> без аргумента пустые куски выбросил бы, но он режет по пробелам, а не по <code>;</code>.</p>
+        <p>Блок проверяет каждый кусок по порядку: пустой ли он, есть ли <code>=</code>, не пустой ли ключ, не встречался ли ключ раньше. Код функции делает те же четыре проверки в том же порядке. Одна точка с запятой в конце строки по контракту допустима, поэтому код отрезает её до <code>split</code>.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Почему partition, а не split</h2>
+        <p>Первое, что приходит в голову для поля, — <code>key, value = field.split('=')</code>. На строке из примера это работает. Но значение может содержать <code>=</code>, как в последней кнопке блока: <code>note=a=b</code>.</p>
+        <span class="run-label">изменённая версия</span>
+        <div class="tracer tracer--bug" data-trace="bug_split" data-zone="" data-label="поле field" data-title="key, value = field.split('=')"></div>
+        <p>На втором поле <code>split('=')</code> даёт три куска <code>['note', 'a', 'b']</code>, и разложить их в две переменные нельзя: <code>ValueError</code>. Сообщение об ошибке при этом про распаковку, а не про поле, и номера поля в нём нет.</p>
+        <p><code>field.partition('=')</code> делит строку по первому <code>=</code> и всегда возвращает три части: ключ, сам разделитель и всё остальное. Если <code>=</code> нет, разделитель и значение — пустые строки. Проверка <code>sep == ''</code> находит поле без <code>=</code>, а знаки <code>=</code> в значении остаются на месте.</p>
+        <details class="pyhint"><summary>Python в этой строке: <code>field.partition('=')</code></summary><div><p><code>partition</code> возвращает кортеж из трёх строк. <code>split</code> с ограничением <code>maxsplit=1</code> тоже делит по первому разделителю, но возвращает список из одного или двух элементов, и его длину пришлось бы проверять отдельно.</p><pre>&gt;&gt;&gt; 'note=a=b'.partition('=')
+('note', '=', 'a=b')
+&gt;&gt;&gt; 'user'.partition('=')
+('user', '', '')
+&gt;&gt;&gt; 'note=a=b'.split('=', 1), 'user'.split('=', 1)
+(['note', 'a=b'], ['user'])</pre></div></details>
+
+        <h2 id="s3"><span class="sec">§3</span>Код и пошаговый прогон</h2>
+        <p>Напишите функцию сами. Тесты проверяют строку из примера, пробелы, <code>=</code> в значении, пустое значение, точку с запятой в конце и четыре повреждения. У каждого повреждения проверяется номер поля в тексте ошибки.</p>
+        <div class="sandbox" data-title="Напишите parse_event сами" data-call="print(parse_event('time=09:15;user=ivan;action=login'))">
+<script type="text/plain" class="sandbox__start">
+def parse_event(line):
+    if line.endswith(';'):
+        line = line[:-1]
+    event = {}
+    for k, field in enumerate(line.split(';'), start=1):
+        # Пустое поле — ValueError(f'поле {k}: пустое').
+        # Разделите поле по первому '=', проверьте, что '=' есть и ключ не пустой.
+        # Повтор ключа — ValueError. Ключ и значение — без пробелов по краям.
+        pass
+    return event
+</script>
+<script type="text/plain" class="sandbox__tests">
+def raises(line, field):
+    try:
+        parse_event(line)
+    except ValueError as e:
+        assert f'поле {field}' in str(e), f'в тексте ошибки нет «поле {field}»: {e}'
+        return
+    assert False, f'parse_event({line!r}): ожидалось ValueError'
+
+def test_example():
+    """пример из условия"""
+    assert parse_event('time=09:15;user=ivan;action=login') == {'time': '09:15', 'user': 'ivan', 'action': 'login'}
+
+def test_spaces_and_eq():
+    """пробелы по краям и '=' в значении"""
+    assert parse_event(' time = 09:15 ; note=a=b') == {'time': '09:15', 'note': 'a=b'}
+
+def test_empty_value_and_tail():
+    """пустое значение и ';' в конце"""
+    assert parse_event('time=09:15;note=;') == {'time': '09:15', 'note': ''}
+
+def test_empty_field():
+    """две ';' подряд и пустая строка"""
+    raises('time=09:15;;user=ivan', 2)
+    raises('', 1)
+
+def test_no_eq():
+    """поле без '='"""
+    raises('time=09:15;user', 2)
+
+def test_empty_key():
+    """пустой ключ"""
+    raises('time=09:15; =ivan', 2)
+
+def test_repeated_key():
+    """ключ повторяется"""
+    raises('user=ivan;time=09:15;user=olga', 3)
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(n)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">parse_event</span>(line):
+    <span class="k">if</span> line.endswith(<span class="s">';'</span>):
+        line = line[:<span class="n">-1</span>]
+    event = {}
+    <span class="k">for</span> k, field <span class="k">in</span> <span class="k">enumerate</span>(line.split(<span class="s">';'</span>), start=<span class="n">1</span>):
+        <span class="k">if</span> field.strip() == <span class="s">''</span>:
+            <span class="k">raise</span> ValueError(<span class="s">f'поле {k}: пустое'</span>)
+        key, sep, value = field.partition(<span class="s">'='</span>)
+        <span class="k">if</span> sep == <span class="s">''</span>:
+            <span class="k">raise</span> ValueError(<span class="s">f"поле {k}: нет '='"</span>)
+        key = key.strip()
+        <span class="k">if</span> key == <span class="s">''</span>:
+            <span class="k">raise</span> ValueError(<span class="s">f'поле {k}: пустой ключ'</span>)
+        <span class="k">if</span> key <span class="k">in</span> event:
+            <span class="k">raise</span> ValueError(<span class="s">f'поле {k}: ключ {key!r} повторяется'</span>)
+        event[key] = value.strip()
+    <span class="k">return</span> event</pre>
+        </figure>
+        <p>Прогон — на строке из примера. Для каждого поля видны все четыре проверки. Если все пройдены, пара записывается в словарь.</p>
+        <div class="tracer" data-trace="parse_event" data-zone="" data-label="поле field" data-title="parse_event('time=09:15;user=ivan;action=login')"></div>
+        <p>Каждый символ строки читается по одному разу при <code>split</code>, <code>partition</code> и <code>strip</code>. Проверка <code>key in event</code> в словаре стоит O(1). Время — O(n), память — O(n) на список полей и словарь.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Журнал: ошибка строки не останавливает разбор</h2>
+        <p>Журнал — много строк событий, по одной на строку текста. Если в нём тысяча строк и одна повреждена, остальные 999 нужны. Поэтому <code>parse_log</code> не даёт исключению из <code>parse_event</code> выйти наружу: ловит его, записывает номер строки и текст ошибки и переходит к следующей строке. После разбора проверяется, что у записи есть обязательные ключи <code>time</code>, <code>user</code> и <code>action</code>.</p>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) по длине журнала</span></figcaption>
+<pre>REQUIRED = (<span class="s">'time'</span>, <span class="s">'user'</span>, <span class="s">'action'</span>)
+
+
+<span class="k">def</span> <span class="f">parse_log</span>(text):
+    events, errors = [], []
+    <span class="k">for</span> n, line <span class="k">in</span> <span class="k">enumerate</span>(text.split(<span class="s">'\n'</span>), start=<span class="n">1</span>):
+        <span class="k">if</span> line.strip() == <span class="s">''</span>:
+            <span class="k">continue</span>
+        <span class="k">try</span>:
+            event = parse_event(line)
+        <span class="k">except</span> ValueError <span class="k">as</span> e:
+            errors.append((n, <span class="k">str</span>(e)))
+            <span class="k">continue</span>
+        missing = [key <span class="k">for</span> key <span class="k">in</span> REQUIRED <span class="k">if</span> key <span class="k">not</span> <span class="k">in</span> event]
+        <span class="k">if</span> missing:
+            errors.append((n, <span class="s">f'нет ключа {missing[0]}'</span>))
+            <span class="k">continue</span>
+        events.append(event)
+    <span class="k">return</span> events, errors</pre>
+        </figure>
+        <p>Прогон — на журнале из трёх строк, вторая повреждена: в ней две точки с запятой подряд.</p>
+        <div class="tracer" data-trace="parse_log" data-zone="" data-label="журнал" data-title="parse_log: три строки, вторая повреждена"></div>
+        <p>Формат результата — пара списков. В <code>events</code> — словари верных записей по порядку, с ними можно сразу работать. В <code>errors</code> — пары «номер строки, текст ошибки», по ним человек находит строку в файле. Функция ничего не печатает и не решает, что делать с ошибками: показать их, записать в файл или остановить работу решает тот, кто её вызвал. Что случится, если <code>try</code> убрать, показано в главе 15.4.</p>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Документация Python: str.split, str.partition, str.strip — <a href="https://docs.python.org/3/library/stdtypes.html#str.partition" target="_blank" rel="noopener">docs.python.org/3/library/stdtypes.html</a></li>
+            <li>КТП ОП.04, занятие 15: «Парсинг журналов и идентификаторов; формат результата», контроль «Проверка malformed input»</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="02-szhatie.html">← 15.2 Сжатие серий</a><a href="04-granicy-i-oshibki.html">15.4 Границы и ошибки →</a></div>
+        <div class="colophon">
+          <span>Модуль 15 · Сжатие и разбор · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../stroki.js"></script>
+</body>
+</html>

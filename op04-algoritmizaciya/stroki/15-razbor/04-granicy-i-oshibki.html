@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>15.4 Границы и ошибки · Алгоритмы на строках</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../stroki.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 15 · Разбор · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на строках</a> · модуль 15 · сжатие и разбор</p>
+          <p class="running__folio">Глава 15.4</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">15.4</span>
+          <h1>Границы<br>и ошибки</h1>
+          <p class="lead">Контроль занятия по КТП — «проверка malformed input, длинных серий и корректной сложности», результат сдаётся Pull Request с тестами. В этой главе — граничные входы и ошибки, которые видны только на них, сводка ошибок по симптомам и список проверки кода.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Граничные входы</a></li>
+            <li><a href="#s2">Сводка ошибок по симптомам</a></li>
+            <li><a href="#s3">Исправьте функции</a></li>
+            <li><a href="#s4">Проверка кода и объяснение решения</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Граничные входы</h2>
+        <p>У сжатия граничные входы — пустая строка, строка из одной серии, последняя серия, серия длиннее 9 и цифра во входе. У разбора — пустое поле, поле без <code>=</code>, <code>=</code> в значении, повтор ключа и повреждённая строка посреди журнала. Цифра во входе и <code>=</code> в значении разобраны в главах 15.2 и 15.3. Ниже ещё три версии. Каждая запущена рядом с верной на том же входе.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>Функции с изменёнными строками</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>последняя серия</button>
+            <button>одна цифра длины</button>
+            <button>журнал без try</button>
+          </div>
+          <div class="demo__pane">
+            <p><code>compress</code> записан по-другому: цикл по <code>k</code> сравнивает символ с предыдущим, а серия записывается, когда символ сменился. Вход — <code>'aaabcc'</code>.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_last_run" data-zone="" data-label="строка s" data-title="серия пишется при смене символа"></div>
+            <p class="demo__verdict"><b>'a3b'</b>Серия записывается, только когда символ сменился. После последней серии смены нет, и <code>'c2'</code> теряется. Ошибка видна на любой непустой строке, но тест «одна серия» <code>'aaa'</code> даёт самый явный ответ: пустую строку.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_last_run" data-zone="" data-label="строка s" data-title="последняя серия дописывается после цикла"></div>
+            <p class="demo__verdict"><b>'a3bc2'</b>После цикла дописана последняя серия. Проверка <code>if s:</code> нужна для пустой строки: у неё нет последнего символа. В коде главы 15.2 этой развилки нет: каждая серия, включая последнюю, пишется внутри одного цикла.</p>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>decompress</code> цифры длины читаются через <code>if</code>, а не <code>while</code>. Вход — <code>'a12b'</code>.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_one_digit" data-zone="" data-label="строка code" data-title="if вместо while"></div>
+            <p class="demo__verdict"><b>ValueError</b>Прочитана одна цифра <code>'1'</code>, и верная запись принята за повреждённую: длины 1 в записи не бывает. Без проверки длины 1 ошибка нашлась бы на следующем шаге: цифра <code>2</code> оказалась бы на месте символа серии. На сериях короче 10 версия отвечает верно, поэтому нужен тест с длинной серией.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_one_digit" data-zone="" data-label="строка code" data-title="while: все цифры подряд"></div>
+            <p class="demo__verdict"><b>'aaaaaaaaaaaab'</b>Цикл прочитал обе цифры, длина — 12.</p>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>parse_log</code> нет <code>try</code>: исключение из <code>parse_event</code> выходит наружу. Вход — журнал из трёх строк, вторая повреждена.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_no_try" data-zone="" data-label="журнал" data-title="без try"></div>
+            <p class="demo__verdict"><b>ValueError</b>Первая строка разобрана, на второй разбор прерван. Третья, верная, не прочитана, а разобранная первая потеряна вместе со списком <code>events</code>: функция не вернула ничего. На журнале без повреждений эта версия отвечает верно.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_no_try" data-zone="" data-label="журнал" data-title="try и except ValueError"></div>
+            <p class="demo__verdict"><b>2 записи, 1 ошибка</b>Ошибка второй строки записана в <code>errors</code> с номером 2, третья строка разобрана.</p>
+          </div>
+        </div>
+        <p>Все три ошибки на «удобных» входах не видны или видны не сразу: серии короткие, журнал чистый. Поэтому граничные тесты пишут по списку из начала раздела. Стартовый набор проверяет каждый пункт отдельным тестом, а тест <code>test_compress_linear</code> — ещё и сложность.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Сводка ошибок по симптомам</h2>
+        <p>Когда тест падает, первым видно неверный ответ или исключение. По симптому в таблице находят строку кода и вход, на котором ошибку видно. В последнем столбце — где ошибка запущена по шагам.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Симптом</th><th>Где искать</th><th>Вход, который её показывает</th><th>Прогон</th></tr></thead>
+            <tbody>
+              <tr><td>Нет последней серии</td><td>Серия пишется только при смене символа</td><td><code>'aaa'</code>, <code>'aaabcc'</code></td><td><a href="#s1">15.4, §1</a></td></tr>
+              <tr><td><code>IndexError</code> в конце строки</td><td>Цикл серии без <code>j &lt; len(s)</code></td><td>Любая строка: на последней серии <code>j</code> выходит за конец</td><td>—</td></tr>
+              <tr><td>Длина 12 записана как <code>'12'</code>, а прочитана как 1 и 2</td><td>Цифры длины читаются <code>if</code> или по одной</td><td><code>'a12b'</code></td><td><a href="#s1">15.4, §1</a></td></tr>
+              <tr><td>Восстановление не совпало с исходной строкой</td><td>Цифры во входе <code>compress</code> не запрещены</td><td><code>'a12'</code></td><td><a href="02-szhatie.html#s1">15.2, §1</a></td></tr>
+              <tr><td>Тест на миллион символов идёт секунды</td><td>Срез остатка на каждой серии</td><td>Короткие серии, n = 1 000 000</td><td><a href="02-szhatie.html#s4">15.2, §4</a></td></tr>
+              <tr><td><code>ValueError: too many values to unpack</code></td><td><code>split('=')</code> вместо <code>partition</code></td><td><code>'note=a=b'</code></td><td><a href="03-razbor-zhurnala.html#s2">15.3, §2</a></td></tr>
+              <tr><td>Две <code>;</code> подряд не дают ошибку</td><td>Пустое поле пропускается или <code>split()</code> без аргумента</td><td><code>'time=09:15;;user=ivan'</code></td><td>—</td></tr>
+              <tr><td>Весь журнал падает из-за одной строки</td><td>Нет <code>try</code> в <code>parse_log</code></td><td>Журнал с повреждённой строкой в середине</td><td><a href="#s1">15.4, §1</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Ошибки таблицы делятся на три группы. Первая — границы прохода: последняя серия и конец строки. Вторая — формат записи: многозначная длина, цифры во входе, <code>=</code> в значении. Третья — повреждённый ввод: что считается ошибкой и где её ловят.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Исправьте функции</h2>
+        <p>В окне ниже две функции модуля с ошибками из таблицы: в <code>decompress</code> — одна, в <code>parse_event</code> — одна. Сначала запустите тесты и посмотрите, какие падают.</p>
+        <div class="sandbox" data-title="Исправьте decompress и parse_event" data-call="print(decompress('a12b'), parse_event('time=09:15;note=a=b'))">
+<script type="text/plain" class="sandbox__start">
+def decompress(code):
+    out = []
+    i = 0
+    prev = ''
+    while i < len(code):
+        ch = code[i]
+        if ch.isdigit():
+            raise ValueError(f'символ {i}: цифра без символа серии')
+        if ch == prev:
+            raise ValueError(f'символ {i}: серия {ch!r} разбита на две')
+        j = i + 1
+        if j < len(code) and code[j].isdigit():
+            j += 1
+        digits = code[i + 1:j]
+        if digits == '':
+            count = 1
+        elif digits[0] == '0' or digits == '1':
+            raise ValueError(f'символ {i + 1}: недопустимая длина {digits!r}')
+        else:
+            count = int(digits)
+        out.append(ch * count)
+        prev = ch
+        i = j
+    return ''.join(out)
+
+
+def parse_event(line):
+    if line.endswith(';'):
+        line = line[:-1]
+    event = {}
+    for k, field in enumerate(line.split(';'), start=1):
+        if field.strip() == '':
+            raise ValueError(f'поле {k}: пустое')
+        if '=' not in field:
+            raise ValueError(f"поле {k}: нет '='")
+        key, value = field.split('=')
+        key = key.strip()
+        if key == '':
+            raise ValueError(f'поле {k}: пустой ключ')
+        if key in event:
+            raise ValueError(f'поле {k}: ключ {key!r} повторяется')
+        event[key] = value.strip()
+    return event
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_short_runs():
+    """серии короче 10"""
+    assert decompress('a3bc2d4') == 'aaabccdddd'
+
+def test_long_run():
+    """длина из двух цифр"""
+    assert decompress('a12b') == 'a' * 12 + 'b'
+
+def test_malformed_code():
+    """длина 1 записана явно"""
+    try:
+        decompress('a1')
+    except ValueError:
+        return
+    assert False, 'ожидалось ValueError'
+
+def test_event():
+    """обычная строка события"""
+    assert parse_event('time=09:15;user=ivan') == {'time': '09:15', 'user': 'ivan'}
+
+def test_eq_in_value():
+    """'=' в значении"""
+    assert parse_event('time=09:15;note=a=b') == {'time': '09:15', 'note': 'a=b'}
+</script>
+</div>
+
+        <h2 id="s4"><span class="sec">§4</span>Проверка кода и объяснение решения</h2>
+        <p>Решение занятия сдаётся Pull Request с тестами. Проверку кода соседа ведут по списку: каждый пункт — одна из групп ошибок из §2 или требование КТП.</p>
+        <div class="checklist">
+          <p class="checklist__head">Код принимается, если</p>
+          <div class="checklist__item"><span><b>Последняя серия записывается</b>Тест «одна серия» <code>'aaa'</code> → <code>'a3'</code> есть и проходит.</span></div>
+          <div class="checklist__item"><span><b>Длина серии читается и пишется всеми цифрами</b>Есть тесты с сериями длиннее 9 и длиннее 99.</span></div>
+          <div class="checklist__item"><span><b>Результат собирается через список и join</b>Нет среза остатка строки на каждой серии; <code>test_compress_linear</code> проходит.</span></div>
+          <div class="checklist__item"><span><b>Ключ отделяется по первому '='</b><code>partition</code>; тест с <code>=</code> в значении есть.</span></div>
+          <div class="checklist__item"><span><b>Каждое повреждение — отдельный тест</b>Пустое поле, поле без <code>=</code>, пустой ключ, повтор ключа; в тексте ошибки — номер поля.</span></div>
+          <div class="checklist__item"><span><b>Ошибка строки не останавливает журнал</b>Тест с повреждённой строкой в середине: верные строки после неё разобраны.</span></div>
+        </div>
+        <div class="speech">
+          <div class="speech__item">
+            <p class="speech__said">«Иду по строке двумя индексами: i стоит на начале серии, j уходит до её конца. Пишу символ и длину, если она больше 1, и ставлю i = j. Каждый символ j проходит один раз, поэтому O(n). Цифры во входе запрещаю: иначе 'a12' получалась бы и из двенадцати a, и из самой 'a12'. Тесты: пустая строка, одна серия, серия из двенадцати символов, цифра во входе, миллион символов на время».</p>
+            <p class="speech__note"><b>Что показывает</b>Проход, сложность, почему запрещены цифры, граничные тесты.</p>
+          </div>
+          <div class="speech__item">
+            <p class="speech__said">«Строку события режу по ';', поле — по первому '=' через partition, потому что в значении может быть '='. На каждое повреждение — ValueError с номером поля. parse_log ловит эту ошибку, пишет номер строки и текст в errors и идёт дальше, так что одна плохая строка не теряет остальные. Результат — пара: верные записи и ошибки».</p>
+            <p class="speech__note"><b>Что показывает</b>Два уровня разбора, выбор partition, обработку повреждённого ввода, формат результата.</p>
+          </div>
+        </div>
+
+        <div class="pager"><a href="03-razbor-zhurnala.html">← 15.3 Разбор журнала</a><a href="05-praktika-i-dz.html">15.5 Практика и ДЗ →</a></div>
+        <div class="colophon">
+          <span>Модуль 15 · Сжатие и разбор · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../stroki.js"></script>
+</body>
+</html>

@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>15.2 Сжатие серий и сборка через join · Алгоритмы на строках</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../stroki.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 15 · Разбор · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на строках</a> · модуль 15 · сжатие и разбор</p>
+          <p class="running__folio">Глава 15.2</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">15.2</span>
+          <h1>Сжатие серий<br>и сборка через join</h1>
+          <p class="lead">Первая задача КТП — сжать строку, записав каждую серию символом и длиной, и восстановить строку по такой записи. В главе разобрано, почему во входе нельзя допускать цифры, как пройти строку по сериям двумя индексами, как прочитать длину из нескольких цифр и что показывает замер: проход по индексам против среза остатка строки.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Запись серий и цифры во входе</a></li>
+            <li><a href="#s2">Проход по сериям</a></li>
+            <li><a href="#s3">Восстановление строки</a></li>
+            <li><a href="#s4">Индексы или срез остатка: замер</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Запись серий и цифры во входе</h2>
+        <p>Сжатие заменяет серию символом и её длиной: <code>'aaa'</code> → <code>'a3'</code>. Длина 1 не пишется, иначе строка без повторов стала бы вдвое длиннее. Длина пишется всеми цифрами: серия из двенадцати <code>a</code> — это <code>'a12'</code>. Кнопки над блоком подставляют строки, на которых ошибаются чаще всего.</p>
+        <div class="rle" data-s="aaabccdddd" data-title="Сжатие серий"
+          data-presets='[["из условия","aaabccdddd"],["серия длиннее 9","aaaaaaaaaaaab"],["без повторов","abc"],["регистр","aAAa"],["пробелы","a   b"],["цифра во входе","ab12"],["пустая",""]]'></div>
+        <p>Посмотрите на кнопку «цифра во входе». Если бы цифры разрешались, запись <code>'a12'</code> получалась бы из двух разных строк: из <code>'a' * 12</code> и из самой <code>'a12'</code>, в которой три серии длины 1. По записи нельзя было бы понять, какая из них была. Поэтому по контракту из главы 15.1 цифра во входе — <code>ValueError</code>. В LeetCode 443 цифры во входе разрешены: там запись обратно не восстанавливают, и неоднозначность никому не мешает.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Проход по сериям</h2>
+        <p>Серию находят двумя индексами. <code>i</code> стоит на первом символе серии. <code>j</code> начинает с <code>i</code> и идёт вправо, пока <code>s[j]</code> равен <code>s[i]</code>. Когда <code>j</code> остановился, длина серии — <code>j − i</code>. Следующая серия начинается с <code>j</code>, поэтому <code>i = j</code>. Индекс <code>j</code> проходит каждый символ один раз, и проход стоит O(n) при любых сериях.</p>
+        <p>Условие внутреннего цикла — <code>j &lt; len(s) and s[j] == s[i]</code>. Первая часть защищает последнюю серию: на ней <code>j</code> доходит до конца строки, и без проверки <code>s[j]</code> вызвал бы <code>IndexError</code>. Отдельно записывать последнюю серию после цикла не нужно: она обрабатывается в общем цикле, как все остальные.</p>
+        <p>Напишите функцию сами. Тесты проверяют пример из условия, пустую строку, серии длиннее 9, регистр, пробелы, цифру во входе и сравнивают ответ с регулярным выражением на трёхстах случайных строках.</p>
+        <div class="sandbox" data-title="Напишите compress сами" data-call="print(compress('aaabccdddd'), compress('a' * 12))">
+<script type="text/plain" class="sandbox__start">
+def compress(s):
+    out = []
+    i = 0
+    while i < len(s):
+        # Если s[i] — цифра, бросьте ValueError.
+        # Сдвиньте j от i до конца серии.
+        # Добавьте в out символ серии и длину, если она больше 1.
+        i += 1
+    return ''.join(out)
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """пример из условия"""
+    assert compress('aaabccdddd') == 'a3bc2d4'
+
+def test_empty_and_one():
+    """пустая строка и один символ"""
+    assert compress('') == ''
+    assert compress('a') == 'a'
+
+def test_long_run():
+    """длина из нескольких цифр"""
+    assert compress('a' * 12) == 'a12'
+    assert compress('a' * 100 + 'b') == 'a100b'
+
+def test_case_and_spaces():
+    """регистр важен, пробел — обычный символ"""
+    assert compress('aAAa') == 'aA2a'
+    assert compress('a   b') == 'a 3b'
+
+def test_digit():
+    """цифра во входе"""
+    try:
+        compress('ab12')
+    except ValueError:
+        return
+    assert False, 'ожидалось ValueError'
+
+def test_matches_regex():
+    """300 случайных строк: ответ совпадает с регулярным выражением"""
+    import random, re
+    rnd = random.Random(152)
+    for _ in range(300):
+        s = ''.join(rnd.choice('aab ') for _ in range(rnd.randint(0, 12)))
+        want = ''.join(m.group(1) + (str(len(m.group(0))) if len(m.group(0)) > 1 else '')
+                       for m in re.finditer(r'(.)\1*', s))
+        assert compress(s) == want, f"compress({s!r}): ожидалось {want!r}"
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(n) на ответ</span></figcaption>
+<pre><span class="k">def</span> <span class="f">compress</span>(s):
+    out = []
+    i = <span class="n">0</span>
+    <span class="k">while</span> i &lt; <span class="k">len</span>(s):
+        <span class="k">if</span> s[i].isdigit():
+            <span class="k">raise</span> ValueError(<span class="s">f'символ {i}: цифра {s[i]!r}'</span>)
+        j = i
+        <span class="k">while</span> j &lt; <span class="k">len</span>(s) <span class="k">and</span> s[j] == s[i]:
+            j += <span class="n">1</span>
+        out.append(s[i])
+        <span class="k">if</span> j - i &gt; <span class="n">1</span>:
+            out.append(<span class="k">str</span>(j - i))
+        i = j
+    <span class="k">return</span> <span class="s">''</span>.join(out)</pre>
+        </figure>
+        <p>Прогон — на строке из условия. Под лентой видно, как <code>j</code> уходит вперёд по серии, а <code>i</code> перепрыгивает сразу на начало следующей. В конце последней серии <code>j</code> равен длине строки, и цикл серии останавливается на первой части условия.</p>
+        <div class="tracer" data-trace="compress" data-zone="" data-label="строка s" data-title="compress('aaabccdddd')"></div>
+        <p>Инвариант внешнего цикла: символы левее <code>i</code> уже записаны в <code>out</code> целыми сериями, и <code>i</code> стоит на начале серии. Поэтому серия никогда не делится на две записи, а <code>''.join(out)</code> в конце собирает ответ одним проходом.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Восстановление строки</h2>
+        <p>Обратная функция читает запись так же, по частям: символ серии, затем все цифры подряд. Цифр может быть несколько, поэтому длину читают отдельным циклом, пока идут цифры, и переводят в число один раз: <code>int(code[i + 1:j])</code>. Цифр может не быть совсем — тогда длина 1.</p>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n + m), m — длина ответа</span></figcaption>
+<pre><span class="k">def</span> <span class="f">decompress</span>(code):
+    out = []
+    i = <span class="n">0</span>
+    prev = <span class="s">''</span>
+    <span class="k">while</span> i &lt; <span class="k">len</span>(code):
+        ch = code[i]
+        <span class="k">if</span> ch.isdigit():
+            <span class="k">raise</span> ValueError(<span class="s">f'символ {i}: цифра без символа серии'</span>)
+        <span class="k">if</span> ch == prev:
+            <span class="k">raise</span> ValueError(<span class="s">f'символ {i}: серия {ch!r} разбита на две'</span>)
+        j = i + <span class="n">1</span>
+        <span class="k">while</span> j &lt; <span class="k">len</span>(code) <span class="k">and</span> code[j].isdigit():
+            j += <span class="n">1</span>
+        digits = code[i + <span class="n">1</span>:j]
+        <span class="k">if</span> digits == <span class="s">''</span>:
+            count = <span class="n">1</span>
+        <span class="k">elif</span> digits[<span class="n">0</span>] == <span class="s">'0'</span> <span class="k">or</span> digits == <span class="s">'1'</span>:
+            <span class="k">raise</span> ValueError(<span class="s">f'символ {i + 1}: недопустимая длина {digits!r}'</span>)
+        <span class="k">else</span>:
+            count = <span class="k">int</span>(digits)
+        out.append(ch * count)
+        prev = ch
+        i = j
+    <span class="k">return</span> <span class="s">''</span>.join(out)</pre>
+        </figure>
+        <div class="tracer" data-trace="decompress" data-zone="" data-label="строка code" data-title="decompress('a12bc2')"></div>
+        <p>Три проверки отсекают записи, которые <code>compress</code> выдать не может. По контракту такая запись — повреждённая, и функция бросает <code>ValueError</code>, а не угадывает, что имелось в виду.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Запись</th><th>Почему compress её не выдаст</th></tr></thead>
+            <tbody>
+              <tr><td><code>'3a'</code>, <code>'12'</code></td><td>Запись всегда начинается с символа серии, цифра перед ним ничего не значит</td></tr>
+              <tr><td><code>'a0'</code>, <code>'a03'</code></td><td>Серии длины 0 не бывает, а число с нулём впереди <code>str</code> не пишет</td></tr>
+              <tr><td><code>'a1'</code></td><td>Длина 1 не записывается</td></tr>
+              <tr><td><code>'aa'</code>, <code>'a2a'</code></td><td>Одинаковые символы подряд — одна серия, её пишут одной записью: <code>'a2'</code>, <code>'a3'</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Из-за этих проверок у каждой строки ровно одна сжатая запись, а у каждой допустимой записи — ровно одна исходная строка. Тест стартового набора проверяет это на двух тысячах случайных строк: <code>decompress(compress(s)) == s</code>.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Индексы или срез остатка: замер</h2>
+        <p>Частое решение на собеседовании — отрезать от строки найденную серию и продолжить с остатком. Код получается коротким и верным.</p>
+        <figure class="code">
+          <figcaption><span>bench.py</span><span>время O(n · r), r — число серий</span></figcaption>
+<pre><span class="k">def</span> <span class="f">compress_slice</span>(s):
+    out = []
+    <span class="k">while</span> s:
+        ch = s[<span class="n">0</span>]
+        rest = s.lstrip(ch)
+        k = <span class="k">len</span>(s) - <span class="k">len</span>(rest)
+        out.append(ch + (<span class="k">str</span>(k) <span class="k">if</span> k &gt; <span class="n">1</span> <span class="k">else</span> <span class="s">''</span>))
+        s = rest
+    <span class="k">return</span> <span class="s">''</span>.join(out)</pre>
+        </figure>
+        <p><code>s.lstrip(ch)</code> возвращает новую строку и копирует в неё весь остаток. Копирование идёт на каждой серии, поэтому время — O(n · r), где r — число серий. Если серии короткие, r близко к n, и время растёт как n². Если серии длинные, копий мало. Замер проверяет обе стороны.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Строка</th><th>n</th><th>серий</th><th>индексы, мс</th><th>срез, мс</th></tr></thead>
+            <tbody>
+              <tr><td rowspan="4">Короткие серии из букв a и b</td><td>125&nbsp;000</td><td>62&nbsp;435</td><td>11,8</td><td>114,5</td></tr>
+              <tr><td>250&nbsp;000</td><td>124&nbsp;649</td><td>23,7</td><td>303,8</td></tr>
+              <tr><td>500&nbsp;000</td><td>249&nbsp;683</td><td>47,1</td><td>965,8</td></tr>
+              <tr><td>1&nbsp;000&nbsp;000</td><td>499&nbsp;154</td><td>95,0</td><td>3&nbsp;469,8</td></tr>
+              <tr><td rowspan="4">Серии по 1000 символов</td><td>125&nbsp;000</td><td>125</td><td>4,4</td><td>0,5</td></tr>
+              <tr><td>250&nbsp;000</td><td>250</td><td>8,8</td><td>1,1</td></tr>
+              <tr><td>500&nbsp;000</td><td>500</td><td>17,9</td><td>3,0</td></tr>
+              <tr><td>1&nbsp;000&nbsp;000</td><td>1&nbsp;000</td><td>35,3</td><td>9,0</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Замер выполнен на ноутбуке автора, Python 3.12.12, Apple M4: скрипт <code>bench.py</code> из стартового набора. Время — медиана пяти повторов.</p>
+        <p>На коротких сериях проход по индексам растёт линейно: вдвое длиннее строка — вдвое дольше. Срез при удвоении строки замедляется в 2,7–3,6 раза, и на миллионе символов он медленнее индексов в 36 раз. На длинных сериях всё наоборот: срез быстрее в 4–9 раз. Серий всего тысяча, копий тоже тысяча, а <code>lstrip</code> перебирает символы кодом на C. Проход по индексам проверяет каждый символ в цикле Python.</p>
+        <p>Вывод для собеседования: срез остатка — не ошибка в ответе, а ошибка в оценке. Его сложность O(n · r), и в худшем случае, когда серии короткие, это O(n²). Если длина серий заранее неизвестна, берут проход по индексам: он стоит O(n) на любых данных. Тест <code>test_compress_linear</code> из стартового набора сжимает миллион символов в коротких сериях и падает, если на это ушло больше 1,5 секунды. Следующая задача занятия — разбор строки событий, глава 15.3.</p>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>LeetCode 443 «String Compression» — условие</li>
+            <li>Документация Python: str.lstrip, str.join — <a href="https://docs.python.org/3/library/stdtypes.html#str.lstrip" target="_blank" rel="noopener">docs.python.org/3/library/stdtypes.html</a></li>
+            <li>Замер: Python 3.12.12, Apple M4, 02.11.2026, bench.py из стартового набора lesson_15</li>
+            <li>КТП ОП.04, занятие 15: «Run-length encoding; builder/list join», контроль «длинных серий и корректной сложности»</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="01-uznat-zadachu.html">← 15.1 Как узнать задачу</a><a href="03-razbor-zhurnala.html">15.3 Разбор журнала →</a></div>
+        <div class="colophon">
+          <span>Модуль 15 · Сжатие и разбор · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../stroki.js"></script>
+</body>
+</html>
