@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>14.4 Границы и ошибки · Алгоритмы на строках</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../stroki.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 14 · Палиндромы · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на строках</a> · модуль 14 · палиндромы</p>
+          <p class="running__folio">Глава 14.4</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">14.4</span>
+          <h1>Границы<br>и ошибки</h1>
+          <p class="lead">Контроль занятия по КТП: задачи решаются за 40 минут, после решения — «самостоятельный dry run на сложном примере и code review». Контрольный вопрос — «Какой инвариант остаётся истинным после каждого перемещения границы?». В этой главе — граничные входы и ошибки, которые видны только на них, таблица состояния указателей для пошагового прохода, сводка ошибок и список проверки кода.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Граничные входы</a></li>
+            <li><a href="#s2">Таблица состояния указателей</a></li>
+            <li><a href="#s3">Сводка ошибок по симптомам</a></li>
+            <li><a href="#s4">Исправьте функции</a></li>
+            <li><a href="#s5">Проверка кода и объяснение решения</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Граничные входы</h2>
+        <p>У задач на палиндромы граничные входы — пустая строка, один символ, строка без букв, цифры, одна буква в двух регистрах, различие в последней паре и различие, после которого нужно удалить правый символ. Регистр и удаление правого символа разобраны в главах 14.2 и 14.3. Ниже ещё три версии, в которых изменены одна-две строки. Каждая запущена рядом с верной на том же входе.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>Функции с изменёнными строками</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>пропуск без i &lt; j</button>
+            <button>isalpha вместо isalnum</button>
+            <button>выбор по соседу</button>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>is_palindrome</code> циклы пропуска записаны без границы: <code>while not text[i].isalnum()</code>. Вход — строка из двух знаков <code>'.,'</code>.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_bound" data-zone="between" data-label="строка text" data-title="while not text[i].isalnum()"></div>
+            <p class="demo__verdict"><b>IndexError</b>Знаков два, и на шаге 5 левый указатель проходит мимо правого: проверки <code>i &lt; j</code> нет. На шаге 7 <code>text[2]</code> не существует. Если в строке есть хотя бы одна буква, эта версия отвечает верно: пропуск останавливается на ней.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_bound" data-zone="between" data-label="строка text" data-title="while i &lt; j and not text[i].isalnum()"></div>
+            <p class="demo__verdict"><b>True</b>На шагах 5–6 пропуск останавливается на встрече указателей: <code>i = j = 1</code>.</p>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>is_palindrome</code> значимые символы отбираются через <code>isalpha</code>. Вход — <code>'1а2'</code>.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_isalpha" data-zone="between" data-label="строка text" data-title="isalpha()"></div>
+            <p class="demo__verdict"><b>True</b>Цифры пропущены на шагах 3 и 6, остаётся одна буква <code>а</code>, и строка принята за палиндром. По условию цифры значимы, и <code>1</code> не совпадает с <code>2</code>.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_isalpha" data-zone="between" data-label="строка text" data-title="isalnum()"></div>
+            <p class="demo__verdict"><b>False</b>На шаге 5 сравниваются <code>1</code> и <code>2</code>.</p>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>can_be_palindrome</code> при различии удаляется тот символ, рядом с которым стоит подходящий сосед: если <code>s[i + 1] == s[j]</code>, удаляется <code>s[i]</code>. Остаток не проверяется. Вход — <code>'abbab'</code>.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_greedy" data-zone="between" data-label="строка s" data-title="выбор по соседу"></div>
+            <p class="demo__verdict"><b>False</b>На шаге 6 сосед <code>s[1] = 'b'</code> совпал с <code>s[4]</code>, и версия удалила <code>s[0]</code>. Остаток <code>'bbab'</code> не палиндром, а второго удаления нет. Удалить нужно было <code>s[4]</code>: остаётся <code>'abba'</code>. Перебор по всем строкам из букв a, b, c длиной до 8 нашёл 138 строк, на которых эта версия ошибается; <code>'abbab'</code> — самая короткая.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_greedy" data-zone="between" data-label="строка s" data-title="две проверки отрезков"></div>
+            <p class="demo__verdict"><b>True</b>На шаге 4 проверены оба отрезка, и второй — палиндром.</p>
+          </div>
+        </div>
+        <p>Все три ошибки на обычных фразах не видны: в них есть буквы, нет цифр, а соседний символ обычно указывает верно. Поэтому граничные тесты пишут по списку из начала этого раздела: строка из одних знаков, цифры, различие с удалением правого символа.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Таблица состояния указателей</h2>
+        <p>КТП предлагает на занятии задание без ИИ: «вручную заполнить таблицу состояния указателей на пяти шагах». Это пошаговый проход на бумаге, его же просят сделать на собеседовании после кода. Для каждого шага запишите <code>i</code> и <code>j</code> до шага и выберите, что делает код: пропускает символ слева, пропускает справа, сравнивает совпавшую пару или находит различие. Символы <code>s[i]</code> и <code>s[j]</code> подставляются сами. Фраза — «А в Енисее — синева», в ней тире и пробелы стоят по обе стороны.</p>
+        <div class="ptrtable" data-s="А в Енисее — синева" data-n="7" data-title="is_palindrome('А в Енисее — синева')"></div>
+        <p>Таблица отвечает на контрольный вопрос КТП об инварианте: после каждой строки таблицы все значимые символы левее <code>i</code> и правее <code>j</code> разбиты на совпавшие пары. Пропуск не меняет пар, сравнение добавляет одну. Если в таблице появился шаг, после которого это неверно, ошибка в коде на этом шаге.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Сводка ошибок по симптомам</h2>
+        <p>Когда тест падает, первым видно неверный ответ или исключение. По симптому в таблице находят строку кода и вход, на котором ошибку видно. В последнем столбце — где ошибка запущена по шагам.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Симптом</th><th>Где искать</th><th>Вход, который её показывает</th><th>Прогон</th></tr></thead>
+            <tbody>
+              <tr><td><code>IndexError</code> на строке без букв</td><td>Цикл пропуска без <code>i &lt; j</code></td><td><code>'.,'</code></td><td><a href="#s1">14.4, §1</a></td></tr>
+              <tr><td>Не палиндром, хотя отличается только регистр</td><td>Сравнение без <code>casefold</code></td><td>«А роза упала на лапу Азора», <code>'Аа'</code></td><td><a href="02-palindrom.html#s4">14.2, §4</a></td></tr>
+              <tr><td>Палиндром, хотя цифры различаются</td><td><code>isalpha</code> вместо <code>isalnum</code></td><td><code>'1а2'</code></td><td><a href="#s1">14.4, §1</a></td></tr>
+              <tr><td>Палиндром для <code>ё</code> и <code>е</code></td><td>Лишняя замена <code>ё</code> на <code>е</code></td><td><code>'ёе'</code></td><td>—</td></tr>
+              <tr><td>Тест на память падает, ответ верный</td><td>Срез, список символов или <code>[::-1]</code> в <code>is_palindrome</code></td><td>Строка в 200 000 символов</td><td><a href="02-palindrom.html#s5">14.2, §5</a></td></tr>
+              <tr><td>Почти-палиндром не найден, удалить нужно правый символ</td><td>Проверяется только отрезок без <code>s[i]</code></td><td><code>'шалаши'</code></td><td><a href="03-pochti-palindrom.html#s5">14.3, §5</a></td></tr>
+              <tr><td>Почти-палиндром не найден, хотя сосед подходит</td><td>Выбор удаления по соседу без проверки остатка</td><td><code>'abbab'</code></td><td><a href="#s1">14.4, §1</a></td></tr>
+              <tr><td>После удаления по индексу <code>removal_index</code> не палиндром</td><td>Возвращается не тот указатель: <code>i</code> после проверки отрезка без <code>s[j]</code></td><td><code>'шалаши'</code></td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Ошибки таблицы делятся на три группы. Первая — границы указателей: пропуск без <code>i &lt; j</code>. Вторая — нормализация: регистр, цифры, <code>ё</code>. Третья — выбор при различии: проверить нужно оба отрезка и вернуть индекс того символа, без которого отрезок оказался палиндромом.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Исправьте функции</h2>
+        <p>В окне ниже две функции модуля с ошибками из таблицы: в <code>is_palindrome</code> — две, в <code>can_be_palindrome</code> — одна. Сначала запустите тесты и посмотрите, какие падают.</p>
+        <div class="sandbox" data-title="Исправьте is_palindrome и can_be_palindrome" data-call="print(is_palindrome('1а2'), can_be_palindrome('шалаши'))">
+<script type="text/plain" class="sandbox__start">
+def is_palindrome(text):
+    i, j = 0, len(text) - 1
+    while i < j:
+        while not text[i].isalpha():
+            i += 1
+        while i < j and not text[j].isalpha():
+            j -= 1
+        if text[i].casefold() != text[j].casefold():
+            return False
+        i += 1
+        j -= 1
+    return True
+
+
+def can_be_palindrome(s):
+    i, j = 0, len(s) - 1
+    while i < j:
+        if s[i] != s[j]:
+            return is_range_palindrome(s, i + 1, j)
+        i += 1
+        j -= 1
+    return True
+
+
+def is_range_palindrome(s, i, j):
+    while i < j:
+        if s[i] != s[j]:
+            return False
+        i += 1
+        j -= 1
+    return True
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_roza():
+    """фраза со знаками"""
+    assert is_palindrome('А в Енисее — синева') is True
+
+def test_marks_only():
+    """строка из одних знаков"""
+    assert is_palindrome('.,') is True
+
+def test_digits():
+    """цифры значимы"""
+    assert is_palindrome('1а2') is False
+
+def test_remove_right():
+    """удалить нужно правый символ"""
+    assert can_be_palindrome('шалаши') is True
+
+def test_remove_left():
+    """удалить нужно левый символ"""
+    assert can_be_palindrome('ашалаш') is True
+
+def test_two_diffs():
+    """двух удалений не хватает"""
+    assert can_be_palindrome('abcda') is False
+</script>
+</div>
+
+        <h2 id="s5"><span class="sec">§5</span>Проверка кода и объяснение решения</h2>
+        <p>После 40 минут КТП требует пошаговый проход на сложном примере и проверку кода. Сложный пример — тот, где сработает каждая ветка: знаки по обе стороны, заглавная буква, различие в середине. Для первой задачи подходит фраза из §2, для второй — «ротатоор» и «шалаши». Проверку кода соседа ведут по списку.</p>
+        <div class="checklist">
+          <p class="checklist__head">Код принимается, если</p>
+          <div class="checklist__item"><span><b>У каждого цикла пропуска есть граница i &lt; j</b>Строка из одних знаков не даёт IndexError.</span></div>
+          <div class="checklist__item"><span><b>Значимые символы отбираются по контракту</b>isalnum, а не isalpha; casefold перед сравнением; ё не заменяется.</span></div>
+          <div class="checklist__item"><span><b>В is_palindrome нет копии строки</b>Ни среза, ни списка символов, ни [::-1].</span></div>
+          <div class="checklist__item"><span><b>При различии проверены оба отрезка</b>Без s[i] и без s[j]; индекс возвращается от того отрезка, который оказался палиндромом.</span></div>
+          <div class="checklist__item"><span><b>Ответы −1 и None различаются</b>−1 — уже палиндром, None — одного удаления не хватает.</span></div>
+          <div class="checklist__item"><span><b>Тесты на границы есть</b>Пустая строка, один символ, строка без букв, цифры, удаление правого символа, два различия.</span></div>
+        </div>
+        <div class="speech">
+          <div class="speech__item">
+            <p class="speech__said">«Значимы буквы и цифры без учёта регистра, копию строить нельзя. Иду двумя указателями навстречу и пропускаю незначимые символы, пока i &lt; j. Инвариант: значимые символы снаружи отрезка от i до j разбиты на совпавшие пары. Каждый символ посещается один раз: время O(n), память O(1)».</p>
+            <p class="speech__note"><b>Что показывает</b>Правила, инвариант после каждого сдвига, сложность.</p>
+          </div>
+          <div class="speech__item">
+            <p class="speech__said">«Для одного удаления иду так же до первого различия. Пары снаружи совпали, значит, удалять нужно s[i] или s[j]. Проверяю оба отрезка, каждый за O(n). Выбирать по соседнему символу нельзя: на 'abbab' сосед указывает не на тот символ. Тесты: 'шалаши', 'ашалаш', 'abbab', 'abcda', пустая строка».</p>
+            <p class="speech__note"><b>Что показывает</b>Почему две проверки, почему нельзя меньше, граничные тесты.</p>
+          </div>
+        </div>
+
+        <div class="pager"><a href="03-pochti-palindrom.html">← 14.3 Почти-палиндром</a><a href="05-praktika-i-dz.html">14.5 Практика и ДЗ →</a></div>
+        <div class="colophon">
+          <span>Модуль 14 · Палиндромы · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../stroki.js"></script>
+</body>
+</html>

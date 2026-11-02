@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>14.3 Почти-палиндром: одно удаление · Алгоритмы на строках</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../stroki.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 14 · Палиндромы · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на строках</a> · модуль 14 · палиндромы</p>
+          <p class="running__folio">Глава 14.3</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">14.3</span>
+          <h1>Почти-палиндром:<br>одно удаление</h1>
+          <p class="lead">Вторая задача КТП — проверить, станет ли строка палиндромом после удаления не более одного символа, и назвать этот символ. В главе разобраны перебор удалений, почему в месте первого различия хватает двух проверок, код с пошаговым прогоном, восстановление ответа и версия, которая проверяет только один вариант.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Перебор удалений</a></li>
+            <li><a href="#s2">Две проверки в месте различия</a></li>
+            <li><a href="#s3">Код и пошаговый прогон</a></li>
+            <li><a href="#s4">Восстановление ответа</a></li>
+            <li><a href="#s5">Проверка одного варианта</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Перебор удалений</h2>
+        <p>В слове «ротатор» при наборе удвоилась буква, получилось «ротатоор». Задача — понять, исправляется ли опечатка удалением одного символа, и какого. Прямое решение пробует удалить каждый символ по очереди и проверяет, палиндром ли остаток. Удалений n, каждая проверка — O(n), всего O(n²).</p>
+        <figure class="code">
+          <figcaption><span>bench.py</span><span>перебор · время O(n²)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">one_removal_brute</span>(s):
+    <span class="k">if</span> s == s[::<span class="n">-1</span>]:
+        <span class="k">return</span> <span class="k">True</span>
+    <span class="k">for</span> k <span class="k">in</span> <span class="k">range</span>(<span class="k">len</span>(s)):
+        t = s[:k] + s[k + <span class="n">1</span>:]
+        <span class="k">if</span> t == t[::<span class="n">-1</span>]:
+            <span class="k">return</span> <span class="k">True</span>
+    <span class="k">return</span> <span class="k">False</span></pre>
+        </figure>
+        <p>Перебор верный, и на собеседовании его называют первым. Он же служит эталоном для тестов быстрого решения: в стартовом наборе ответы сравниваются с ним на двух тысячах случайных строк.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Две проверки в месте различия</h2>
+        <p>Указатели идут навстречу, как в главе 14.2, пока символы совпадают. Пусть первое различие найдено на паре <code>s[i]</code> и <code>s[j]</code>. Все пары снаружи уже совпали. Эти два символа стоят друг против друга, и пока оба на месте, строка не палиндром. Значит, удалить нужно один из них. Других вариантов два:</p>
+        <ul>
+          <li><b>удалить <code>s[i]</code></b> — тогда остаток между указателями, отрезок <code>s[i + 1 .. j]</code>, должен быть палиндромом;</li>
+          <li><b>удалить <code>s[j]</code></b> — тогда палиндромом должен быть отрезок <code>s[i .. j − 1]</code>.</li>
+        </ul>
+        <p>Удаление символа за пределами отрезка, среди уже совпавших пар, ничего нового не даёт: оно сдвигает совпавшие пары, а пара <code>s[i]</code>, <code>s[j]</code> остаётся несовпавшей или превращается в ту же строку, что и одно из двух удалений выше. Это утверждение проверено перебором: на всех 3280 строках из букв a, b, c длиной до 7 ответ двух проверок совпал с перебором всех удалений.</p>
+        <p>Каждая из двух проверок — проход по отрезку, O(n). До различия указатели прошли O(n). Всего O(n), память — несколько переменных. Удаление символа при этом не выполняется: строка не меняется, проверяются отрезки исходной строки по индексам. Для этого нужна вспомогательная функция «палиндром ли отрезок <code>s[i..j]</code>».</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Код и пошаговый прогон</h2>
+        <p>Напишите функцию сами. Тесты проверяют примеры LeetCode 680, пустую строку, один и два символа, удаление первого, последнего и среднего символа, две ошибки в строке и сравнивают ответ с перебором на двух тысячах случайных строк.</p>
+        <div class="sandbox" data-title="Напишите can_be_palindrome сами" data-call="print(can_be_palindrome('ротатоор'), can_be_palindrome('abc'))">
+<script type="text/plain" class="sandbox__start">
+def can_be_palindrome(s):
+    i, j = 0, len(s) - 1
+    while i < j:
+        if s[i] != s[j]:
+            # Первое различие: проверьте два отрезка — без s[i] и без s[j].
+            return False
+        i += 1
+        j -= 1
+    return True
+
+
+def is_range_palindrome(s, i, j):
+    while i < j:
+        if s[i] != s[j]:
+            return False
+        i += 1
+        j -= 1
+    return True
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_leetcode():
+    """примеры LeetCode 680"""
+    assert can_be_palindrome('aba') is True
+    assert can_be_palindrome('abca') is True
+    assert can_be_palindrome('abc') is False
+
+def test_small():
+    """пустая строка, один и два символа"""
+    assert can_be_palindrome('') is True
+    assert can_be_palindrome('a') is True
+    assert can_be_palindrome('ab') is True
+
+def test_positions():
+    """удаление последнего и среднего символа"""
+    assert can_be_palindrome('шалаши') is True
+    assert can_be_palindrome('ротатоор') is True
+
+def test_two_diffs():
+    """двух удалений не хватает"""
+    assert can_be_palindrome('abcda') is False
+
+def test_matches_brute():
+    """2000 случайных строк: ответ совпадает с перебором удалений"""
+    import random
+    rnd = random.Random(143)
+    for _ in range(2000):
+        s = ''.join(rnd.choice('abc') for _ in range(rnd.randint(0, 9)))
+        want = s == s[::-1] or any((t := s[:k] + s[k + 1:]) == t[::-1] for k in range(len(s)))
+        assert can_be_palindrome(s) == want, f"can_be_palindrome({s!r}): ожидалось {want}"
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(1)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">can_be_palindrome</span>(s):
+    i, j = <span class="n">0</span>, <span class="k">len</span>(s) - <span class="n">1</span>
+    <span class="k">while</span> i &lt; j:
+        <span class="k">if</span> s[i] != s[j]:
+            <span class="k">return</span> is_range_palindrome(s, i + <span class="n">1</span>, j) <span class="k">or</span> is_range_palindrome(s, i, j - <span class="n">1</span>)
+        i += <span class="n">1</span>
+        j -= <span class="n">1</span>
+    <span class="k">return</span> <span class="k">True</span>
+
+
+<span class="k">def</span> <span class="f">is_range_palindrome</span>(s, i, j):
+    <span class="k">while</span> i &lt; j:
+        <span class="k">if</span> s[i] != s[j]:
+            <span class="k">return</span> <span class="k">False</span>
+        i += <span class="n">1</span>
+        j -= <span class="n">1</span>
+    <span class="k">return</span> <span class="k">True</span></pre>
+        </figure>
+        <p>Прогон — на «ротатоор». Под лентой указатели <code>i</code> и <code>j</code>, проверенные символы бледные. Вспомогательная функция выполняется за один шаг прогона: в подписи к шагу сказано, какие отрезки она проверила.</p>
+        <div class="tracer" data-trace="can" data-zone="between" data-label="строка s" data-title="can_be_palindrome('ротатоор')"></div>
+        <p>На шаге 11 найдено первое различие: <code>s[2] = 'т'</code> и <code>s[5] = 'о'</code>. На шаге 12 проверены оба отрезка: без <code>'т'</code> остаётся <code>'ато'</code> — не палиндром, без <code>'о'</code> остаётся <code>'тат'</code> — палиндром. Ответ True.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Восстановление ответа</h2>
+        <p>Интервьюер просит не только «да или нет», но и какой символ удалить. В КТП это «восстановление ответа». Решение то же, только две проверки записываются по отдельности, и каждая возвращает свой индекс. Если строка уже палиндром, ответ −1. Если ни одна проверка не прошла, ответ <code>None</code>.</p>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(1)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">removal_index</span>(s):
+    i, j = <span class="n">0</span>, <span class="k">len</span>(s) - <span class="n">1</span>
+    <span class="k">while</span> i &lt; j:
+        <span class="k">if</span> s[i] != s[j]:
+            <span class="k">if</span> is_range_palindrome(s, i + <span class="n">1</span>, j):
+                <span class="k">return</span> i
+            <span class="k">if</span> is_range_palindrome(s, i, j - <span class="n">1</span>):
+                <span class="k">return</span> j
+            <span class="k">return</span> <span class="k">None</span>
+        i += <span class="n">1</span>
+        j -= <span class="n">1</span>
+    <span class="k">return</span> <span class="n">-1</span></pre>
+        </figure>
+        <div class="tracer" data-trace="removal" data-zone="between" data-label="строка s" data-title="removal_index('ротатоор')"></div>
+        <p>Функция вернула 5: без <code>s[5]</code> получается «ротатор». Удаление <code>s[6]</code>, второй <code>о</code> из пары, дало бы ту же строку. Поэтому контракт разрешает вернуть любой подходящий индекс, а тесты проверяют не число, а то, что после удаления получается палиндром. Ответы «−1» и <code>None</code> различаются по смыслу: удалять не нужно и удалить нечего. Значение <code>None</code> выбрано потому, что любое целое число, в том числе −1, могло бы быть принято за индекс.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Проверка одного варианта</h2>
+        <p>Частая ошибка — проверить только удаление левого символа. Ниже эта версия и верная запущены на слове «шалаши».</p>
+        <span class="run-label">изменённая версия</span>
+        <div class="tracer tracer--bug" data-trace="bug_only_left" data-zone="between" data-label="строка s" data-title="только без s[i]"></div>
+        <span class="run-label run-label--fix">верная версия</span>
+        <div class="tracer" data-trace="fix_only_left" data-zone="between" data-label="строка s" data-title="без s[i] или без s[j]"></div>
+        <p>Различие найдено на первой же паре: <code>'ш'</code> и <code>'и'</code>. Версия с одной проверкой удаляет <code>'ш'</code>, остаток <code>'алаши'</code> не палиндром, ответ False. Верная версия проверяет и второй вариант: без <code>'и'</code> остаётся «шалаш». Ошибку видно, когда удалить нужно правый символ. Пример LeetCode «abca» её не находит: там подходят оба удаления. Ещё одна неверная версия — выбрать вариант по соседнему символу, не проверяя остаток. Она разобрана в главе 14.4.</p>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>LeetCode 680 «Valid Palindrome II» — условие и примеры проверены по данным сайта 28.10.2026</li>
+            <li>Проверка двух вариантов против перебора всех удалений: все строки из букв a, b, c длиной от 0 до 7, запуск Python 3.12.12, 28.10.2026</li>
+            <li>КТП ОП.04, занятие 14: «почти-палиндром; восстановление ответа»</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="02-palindrom.html">← 14.2 Палиндром с пропуском символов</a><a href="04-granicy-i-oshibki.html">14.4 Границы и ошибки →</a></div>
+        <div class="colophon">
+          <span>Модуль 14 · Палиндромы · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../stroki.js"></script>
+</body>
+</html>

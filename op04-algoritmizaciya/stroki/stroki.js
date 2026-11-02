@@ -491,6 +491,69 @@
     plan(); show();
   });
 
+  /* ── 10а. Таблица состояния указателей вручную ─────────────────── */
+  /* data-s — фраза, data-n — число шагов. На каждом шаге вписываются i и j
+     до шага и выбирается действие; символы s[i] и s[j] подставляются сами.
+     Ход алгоритма — как в is_palindrome главы 14.2. */
+  const PT_ACTS = [['i', 'пропуск слева: i + 1'], ['j', 'пропуск справа: j − 1'], ['pair', 'совпали: i + 1, j − 1'], ['diff', 'различие: False']];
+  document.querySelectorAll('.ptrtable').forEach(root => {
+    const ch = cps(root.dataset.s || ''), n = +(root.dataset.n || 5);
+    const want = [];
+    let i = 0, j = ch.length - 1;
+    while (i < j && want.length < n) {
+      let act;
+      if (!isAlnum(ch[i])) act = 'i';
+      else if (!isAlnum(ch[j])) act = 'j';
+      else if (ch[i].toLowerCase() === ch[j].toLowerCase()) act = 'pair';
+      else act = 'diff';
+      want.push({ i, j, act });
+      if (act === 'i') i++; else if (act === 'j') j--; else if (act === 'pair') { i++; j--; } else break;
+    }
+    root.classList.add('widget');
+    root.innerHTML = `
+      <div class="widget__head"><b>${esc(root.dataset.title || 'Состояние указателей')}</b><span>${want.length} шагов</span></div>
+      <div class="widget__body">
+        <div class="cells pt-tape">${ch.map((x, k) => cellHTML(x, { top: k })).join('')}</div>
+        <div class="table-scroll"><table class="pt-table"><thead><tr><th>шаг</th><th>i</th><th>j</th><th>s[i]</th><th>s[j]</th><th>действие</th></tr></thead><tbody>
+          ${want.map((_, k) => `<tr data-k="${k}"><td>${k + 1}</td><td><input class="sx-num" data-f="i" inputmode="numeric"></td><td><input class="sx-num" data-f="j" inputmode="numeric"></td><td class="pt-ch" data-f="ci"></td><td class="pt-ch" data-f="cj"></td>
+            <td><select data-f="act"><option value="">—</option>${PT_ACTS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></td></tr>`).join('')}
+        </tbody></table></div>
+        <div class="btnrow"><button class="btn btn--main" data-go="check">Проверить</button><button class="btn" data-go="show">Показать ответ</button><button class="btn" data-go="clear">Очистить</button></div>
+      </div>
+      <div class="widget__foot pt-sum">Строка 1 — состояние до первого шага: i = 0, j = ${ch.length - 1}.</div>`;
+    const rows = [...root.querySelectorAll('tbody tr')];
+    const sync = tr => {
+      const vi = intOrNull(tr.querySelector('[data-f="i"]').value), vj = intOrNull(tr.querySelector('[data-f="j"]').value);
+      const put = (f, v) => { const c = tr.querySelector(`[data-f="${f}"]`); c.textContent = (v !== null && !Number.isNaN(v) && v >= 0 && v < ch.length) ? pyRepr(ch[v]) : ''; };
+      put('ci', vi); put('cj', vj);
+    };
+    rows.forEach(tr => tr.querySelectorAll('input').forEach(x => x.addEventListener('input', () => { sync(tr); tr.classList.remove('is-ok', 'is-no'); })));
+    root.querySelector('[data-go="check"]').addEventListener('click', () => {
+      let ok = 0;
+      rows.forEach((tr, k) => {
+        const w = want[k];
+        const gi = intOrNull(tr.querySelector('[data-f="i"]').value), gj = intOrNull(tr.querySelector('[data-f="j"]').value), ga = tr.querySelector('[data-f="act"]').value;
+        const good = gi === w.i && gj === w.j && ga === w.act;
+        tr.classList.toggle('is-ok', good); tr.classList.toggle('is-no', !good);
+        if (good) ok++;
+      });
+      const bad = rows.findIndex(tr => tr.classList.contains('is-no'));
+      root.querySelector('.pt-sum').innerHTML = ok === rows.length
+        ? `Все ${ok} шагов заполнены верно.`
+        : `Верно ${ok} из ${rows.length}. Первая ошибка — шаг ${bad + 1}: проверьте, значимы ли символы на позициях i и j до сравнения.`;
+    });
+    root.querySelector('[data-go="show"]').addEventListener('click', () => {
+      rows.forEach((tr, k) => {
+        tr.querySelector('[data-f="i"]').value = want[k].i; tr.querySelector('[data-f="j"]').value = want[k].j;
+        tr.querySelector('[data-f="act"]').value = want[k].act; sync(tr); tr.classList.remove('is-ok', 'is-no');
+      });
+      root.querySelector('.pt-sum').textContent = 'Ответ показан. Пропуск символа — отдельный шаг: указатель сдвигается, а сравнения нет.';
+    });
+    root.querySelector('[data-go="clear"]').addEventListener('click', () => {
+      rows.forEach(tr => { tr.querySelectorAll('input').forEach(x => { x.value = ''; }); tr.querySelector('select').value = ''; sync(tr); tr.classList.remove('is-ok', 'is-no'); });
+    });
+  });
+
   /* ── Подпись над лентой прогона ─────────────────────────────────── */
   /* Прогон из ../massivy/algo.js подписывает ленту «список имя». Для строки
      подпись задаётся атрибутом data-label: <div class="tracer" data-label="строка text">. */

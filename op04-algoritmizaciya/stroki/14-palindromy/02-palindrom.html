@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>14.2 Палиндром с пропуском символов · Алгоритмы на строках</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../stroki.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 14 · Палиндромы · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Алгоритмы на строках</a> · модуль 14 · палиндромы</p>
+          <p class="running__folio">Глава 14.2</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">14.2</span>
+          <h1>Палиндром<br>с пропуском символов</h1>
+          <p class="lead">Первая задача КТП — проверить фразу на палиндром, учитывая только буквы и цифры и не создавая копию строки. В главе разобрано, как пропускать лишние символы внутри цикла указателей и не выйти за границу, код с пошаговым прогоном, инвариант, версия без casefold и замер: указатели против копии по времени и по памяти.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Копия или указатели</a></li>
+            <li><a href="#s2">Пропуск лишних символов</a></li>
+            <li><a href="#s3">Код и пошаговый прогон</a></li>
+            <li><a href="#s4">Сравнение без casefold</a></li>
+            <li><a href="#s5">Указатели или копия: замер</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Копия или указатели</h2>
+        <p>Самое короткое решение — построить очищенную копию и сравнить её с разворотом. Оно верное и записывается в две строки, его удобно назвать интервьюеру первым.</p>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(n)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">is_palindrome_copy</span>(text):
+    cleaned = [ch.casefold() <span class="k">for</span> ch <span class="k">in</span> text <span class="k">if</span> ch.isalnum()]
+    <span class="k">return</span> cleaned == cleaned[::<span class="n">-1</span>]</pre>
+        </figure>
+        <p>По времени это тоже O(n), но память — O(n): список <code>cleaned</code> и его разворот <code>cleaned[::-1]</code>. По условию после уточнений копию создавать нельзя. Значит, лишние символы нужно пропускать прямо при движении указателей по исходной строке: указатель, который стоит на пробеле или знаке, сдвигается дальше, а сравнение выполняется только для двух значимых символов.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Пропуск лишних символов</h2>
+        <p>Перед каждым сравнением левый указатель сдвигается вправо, пока стоит на незначимом символе, а правый — влево. Так проверяющий читает фразу глазами с двух концов: пропускает запятые и пробелы, пока не дойдёт до буквы. Пропуск — это два вложенных цикла <code>while</code> внутри главного.</p>
+        <p>У вложенного цикла должна быть своя граница. Если в строке остались одни знаки, левый указатель без ограничения пройдёт мимо правого и выйдет за конец строки. Поэтому условие пропуска — <code>i &lt; j and not text[i].isalnum()</code>: пропуск останавливается, когда указатели встретились. Что бывает без этой проверки, показано в главе 14.4.</p>
+        <details class="pyhint"><summary>Python в этой строке: <code>text[i].isalnum()</code></summary><div><p><code>isalnum</code> истинно для букв и цифр любой письменности, включая кириллицу и <code>ё</code>. Для пробела, знаков препинания и подчёркивания — ложно. <code>isalpha</code> истинно только для букв: цифры с ним пропускались бы, а по условию они значимы.</p><pre>&gt;&gt;&gt; 'ё'.isalnum(), '7'.isalnum(), ' '.isalnum(), '—'.isalnum()
+(True, True, False, False)
+&gt;&gt;&gt; '7'.isalpha()
+False</pre></div></details>
+
+        <h2 id="s3"><span class="sec">§3</span>Код и пошаговый прогон</h2>
+        <p>Напишите функцию сами. Тесты проверяют фразы со знаками, регистр, цифры, <code>ё</code>, пустую строку, строку из одних знаков и сравнивают ответ с очищенной копией на трёхстах случайных строках.</p>
+        <div class="sandbox" data-title="Напишите is_palindrome сами" data-call="print(is_palindrome('А роза упала на лапу Азора'), is_palindrome('race a car'))">
+<script type="text/plain" class="sandbox__start">
+def is_palindrome(text):
+    i, j = 0, len(text) - 1
+    while i < j:
+        # Сдвиньте i вправо, пока text[i] — не буква и не цифра (и i < j).
+        # Сдвиньте j влево так же.
+        # Сравните text[i] и text[j] без учёта регистра, сдвиньте оба указателя.
+        i += 1
+        j -= 1
+    return True
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_roza():
+    """фраза с пробелами и регистром"""
+    assert is_palindrome('А роза упала на лапу Азора') is True
+
+def test_race():
+    """не палиндром"""
+    assert is_palindrome('race a car') is False
+
+def test_digits():
+    """цифры значимы"""
+    assert is_palindrome('1а2') is False
+    assert is_palindrome('1а1') is True
+
+def test_yo():
+    """ё и е — разные буквы"""
+    assert is_palindrome('ёе') is False
+
+def test_empty_and_marks():
+    """пустая строка и строка из одних знаков"""
+    assert is_palindrome('') is True
+    assert is_palindrome('.,') is True
+    assert is_palindrome('!?!') is True
+
+def test_matches_copy():
+    """300 случайных строк: ответ совпадает с очищенной копией"""
+    import random
+    rnd = random.Random(142)
+    for _ in range(300):
+        half = ''.join(rnd.choice('абАБ ,1') for _ in range(rnd.randint(0, 5)))
+        text = half + rnd.choice(['', 'в', ' ']) + (half[::-1] if rnd.random() < 0.5 else half)
+        key = [ch.casefold() for ch in text if ch.isalnum()]
+        want = key == key[::-1]
+        assert is_palindrome(text) == want, f"is_palindrome({text!r}): ожидалось {want}"
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(1)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">is_palindrome</span>(text):
+    i, j = <span class="n">0</span>, <span class="k">len</span>(text) - <span class="n">1</span>
+    <span class="k">while</span> i &lt; j:
+        <span class="k">while</span> i &lt; j <span class="k">and</span> <span class="k">not</span> text[i].isalnum():
+            i += <span class="n">1</span>
+        <span class="k">while</span> i &lt; j <span class="k">and</span> <span class="k">not</span> text[j].isalnum():
+            j -= <span class="n">1</span>
+        <span class="k">if</span> text[i].casefold() != text[j].casefold():
+            <span class="k">return</span> <span class="k">False</span>
+        i += <span class="n">1</span>
+        j -= <span class="n">1</span>
+    <span class="k">return</span> <span class="k">True</span></pre>
+        </figure>
+        <p>Прогон — на фразе «А роза упала на лапу Азора». Символы вне отрезка от <code>i</code> до <code>j</code> бледные: они уже проверены. Смотрите на шаги 9–10 и 38–39: указатель стоит на пробеле, и цикл пропуска сдвигает его без сравнения.</p>
+        <div class="tracer" data-trace="pal" data-zone="between" data-label="строка text" data-title="А роза упала на лапу Азора"></div>
+        <p>Инвариант главного цикла: значимые символы левее <code>i</code> и правее <code>j</code> уже разбиты на пары, и в каждой паре символы совпали. Пропуск сохраняет инвариант: незначимые символы в пары не входят. Сравнение с последующим сдвигом добавляет одну пару. Когда <code>i</code> и <code>j</code> встречаются, вне отрезка остались все значимые символы, кроме, может быть, среднего, а среднему пара не нужна. На шагах 71–75 видно, как пропуск останавливается на встрече указателей: <code>i = j = 13</code>, и буква <code>н</code> сравнивается сама с собой.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Сравнение без casefold</h2>
+        <p>Если сравнивать <code>text[i] != text[j]</code> без <code>casefold</code>, ошибка видна на первой же паре фразы.</p>
+        <span class="run-label">изменённая версия</span>
+        <div class="tracer tracer--bug" data-trace="bug_case" data-zone="between" data-label="строка text" data-title="text[i] != text[j]"></div>
+        <p>На шаге 5 <code>'А'</code> и <code>'а'</code> различаются, и функция отвечает False. Ошибку видно, если пара отличается только регистром, а во фразах первая буква обычно заглавная. Примеры LeetCode 125 тоже ловят эту ошибку: в «A man, a plan, a canal: Panama» первая буква заглавная.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Указатели или копия: замер</h2>
+        <p>КТП предлагает в расширении занятия «сравнить вариант с дополнительной памятью и in-place по сложности и риску дефекта». Обе функции — O(n) по времени. Замер показывает, как они различаются на деле. Строки — палиндромы из русских букв с пробелами и знаками, поэтому обе функции проходят их до конца.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>n</th><th>указатели, мс</th><th>копия, мс</th><th>указатели, КБ</th><th>копия, КБ</th></tr></thead>
+            <tbody>
+              <tr><td>100&nbsp;000</td><td>6,6</td><td>4,5</td><td>0,2</td><td>6&nbsp;225</td></tr>
+              <tr><td>200&nbsp;000</td><td>13,9</td><td>9,8</td><td>0,2</td><td>12&nbsp;488</td></tr>
+              <tr><td>400&nbsp;000</td><td>27,5</td><td>19,5</td><td>0,2</td><td>25&nbsp;012</td></tr>
+              <tr><td>800&nbsp;000</td><td>56,9</td><td>42,0</td><td>0,2</td><td>50&nbsp;061</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Замер выполнен на ноутбуке автора, Python 3.12.12, Apple M4: опыты 1 и 2 скрипта <code>bench.py</code> из стартового набора. Время — медиана трёх запусков по пять повторов, память — пиковая дополнительная, по <code>tracemalloc</code>.</p>
+        <p>Копия быстрее указателей в 1,35 раза: генератор списка и сравнение списков выполняются кодом на C, а цикл указателей — интерпретатором. По памяти разница другого порядка. Указателям хватает двух переменных при любой длине строки. Копия при 800 000 символов занимает 50 МБ, примерно 64 байта на символ. Каждый символ после <code>casefold</code> — отдельный объект строки: <code>sys.getsizeof('я')</code> равен 60 байтам. Ещё по 8 байт на символ занимают ссылки в списке и в его развороте.</p>
+        <p>По риску дефекта картина обратная. В копии ошибиться почти негде: две строки, без индексов. В указателях — границы вложенных циклов и порядок сдвигов, и ошибки там видны только на граничных входах. Выбор зависит от условия: если память не ограничена, копия короче и быстрее; если ограничена или строка огромная, нужны указатели и тесты на границы из главы 14.4. Следующая задача занятия — почти-палиндром, глава 14.3.</p>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>LeetCode 125 «Valid Palindrome» — условие и примеры проверены по данным сайта 28.10.2026</li>
+            <li>Документация Python: str.isalnum, str.casefold, tracemalloc — <a href="https://docs.python.org/3/library/tracemalloc.html" target="_blank" rel="noopener">docs.python.org/3/library/tracemalloc.html</a></li>
+            <li>Замер: Python 3.12.12, Apple M4, 28.10.2026, bench.py из стартового набора lesson_14</li>
+            <li>КТП ОП.04, занятие 14: расширение «Сравнить вариант с дополнительной памятью и in-place по сложности и риску дефекта»</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="01-uznat-zadachu.html">← 14.1 Как узнать задачу</a><a href="03-pochti-palindrom.html">14.3 Почти-палиндром →</a></div>
+        <div class="colophon">
+          <span>Модуль 14 · Палиндромы · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../stroki.js"></script>
+</body>
+</html>
