@@ -31,7 +31,7 @@
             <div class="analogy__side"><b>Имя метрики</b><p><code>process_resident_memory_bytes 47058944</code>: память процесса, в байтах.</p></div>
           </div>
         </div>
-        <p>Поля для единицы и описания у отсчёта нет, поэтому всё о числе записывают в имя. Имя — слова через подчёркивание от общего к частному: префикс (к чему относится), что измеряется, единица, у счётчика ещё <code>_total</code>.</p>
+        <p>Поля для единицы и описания у отсчёта нет, поэтому всё о числе записывают в имя. Имя — слова через подчёркивание от общего к частному: префикс (к чему относится), что измеряется, единица, у счётчика ещё <code>_total</code>. Так устроено имя гистограммы сервиса заказов:</p>
         <div class="pic">
           <div class="pic__bar"><span>Части имени метрики</span><span>метрика сервиса заказов</span></div>
           <div class="pic__body">
@@ -42,19 +42,7 @@
             </div>
           </div>
         </div>
-        <div class="table-scroll">
-          <table>
-            <thead><tr><th>Имя в сервисе заказов</th><th>Префикс</th><th>Что измеряется</th><th>Единица</th><th>Окончание</th></tr></thead>
-            <tbody>
-              <tr><td><code>http_request_duration_seconds</code></td><td>http</td><td>длительность запроса</td><td>seconds</td><td>—</td></tr>
-              <tr><td><code>process_resident_memory_bytes</code></td><td>process</td><td>память в RAM</td><td>bytes</td><td>—</td></tr>
-              <tr><td><code>process_cpu_seconds_total</code></td><td>process</td><td>время процессора</td><td>seconds</td><td>_total</td></tr>
-              <tr><td><code>orders_created_total</code></td><td>orders</td><td>созданные заказы</td><td>—</td><td>_total</td></tr>
-              <tr><td><code>orders_queue_length</code></td><td>orders</td><td>длина очереди</td><td>—</td><td>—</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p>У метрик заказов единицы нет: для штук её не пишут.</p>
+        <p>Так же читаются другие имена: <code>process_resident_memory_bytes</code> — процесс, память, байты; <code>process_cpu_seconds_total</code> — процесс, время процессора, секунды, счётчик. У <code>orders_created_total</code> и <code>orders_queue_length</code> единицы нет: заказы считают штуками, а для штук единицу не пишут.</p>
 
         <h2 id="s2"><span class="sec">§2</span>Базовые единицы</h2>
         <div class="analogy">
@@ -64,7 +52,7 @@
             <div class="analogy__side"><b>Метрики в секундах</b><p>Миллисекунды и секунды на одном графике не сравнить. Время везде в секундах — и перевод не нужен.</p></div>
           </div>
         </div>
-        <p>Prometheus единицы не переводит: <code>_seconds</code> и <code>_milliseconds</code> для него — разные имена. Поэтому документация вводит базовые единицы: одна единица на величину, без «милли» и «кило».</p>
+        <p>Prometheus единицы не переводит: <code>_seconds</code> и <code>_milliseconds</code> для него — разные имена. Поэтому документация вводит базовые единицы: одна единица на величину, без «милли» и «кило». Для частых величин они такие:</p>
         <div class="table-scroll">
           <table>
             <thead><tr><th>Величина</th><th>Базовая единица</th><th>Пример значения</th><th>Вместо</th></tr></thead>
@@ -100,18 +88,8 @@ report_build_seconds 0.5215566250262782</pre>
         </figure>
 
         <h2 id="s3"><span class="sec">§3</span>Окончания _total, _bucket, _info</h2>
-        <p>После единицы в имени может стоять окончание. Оно показывает тип метрики, а значит, как обращаться с числом.</p>
-        <div class="table-scroll">
-          <table>
-            <thead><tr><th>Окончание</th><th>Где ставится</th><th>Пример в сервисе заказов</th></tr></thead>
-            <tbody>
-              <tr><td><code>_total</code></td><td>Счётчик, counter</td><td><code>orders_created_total</code></td></tr>
-              <tr><td><code>_bucket</code>, <code>_sum</code>, <code>_count</code></td><td>Три вида строк гистограммы, histogram</td><td><code>http_request_duration_seconds_bucket</code></td></tr>
-              <tr><td><code>_info</code></td><td>Сведения в метках, значение всегда 1</td><td><code>python_info</code></td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p>Окончания <code>_total</code>, <code>_bucket</code>, <code>_sum</code> и <code>_count</code> библиотека <code>prometheus-client</code> дописывает сама. Единицу можно передать параметром <code>unit</code>.</p>
+        <p>После единицы в имени может стоять окончание. Оно показывает тип метрики, а значит, как обращаться с числом. <code>_total</code> ставят у счётчика: <code>orders_created_total</code>. <code>_bucket</code>, <code>_sum</code> и <code>_count</code> — три вида строк гистограммы, они разобраны в главе 3.6. <code>_info</code> — у метрики-сведений со значением 1, как <code>python_info</code> из главы 3.1.</p>
+        <p>Окончания типов библиотека <code>prometheus-client</code> дописывает сама, а единицу можно передать параметром <code>unit</code>. В примере первый счётчик объявлен без <code>_total</code>, второй — с ним, у gauge единица передана отдельно:</p>
         <figure class="code">
           <figcaption><span>Объявление трёх метрик</span><span>prometheus-client 0.26.0</span></figcaption>
 <pre>Counter(<span class="s">"orders_created"</span>, <span class="s">"Orders"</span>)
@@ -137,7 +115,7 @@ report_build_seconds 0.4</pre>
 $ echo $?
 0</pre>
         </figure>
-        <p>Файл с семью неудачными именами даёт замечания и код завершения 3 — по нему можно остановить сборку перед выпуском.</p>
+        <p>Для сравнения — файл с семью неудачными именами. Каждая строка вывода — имя и замечание к нему, код завершения 3 означает «есть замечания»: по нему можно остановить сборку перед выпуском.</p>
         <figure class="code code--out">
           <figcaption><span>promtool check metrics &lt; bad_names.txt</span><span>код завершения 3</span></figcaption>
 <pre>cache_size_megabytes use base unit "bytes" instead of "megabytes"
@@ -148,6 +126,7 @@ queue_length_total non-counter metrics should not have "_total" suffix
 report_build_milliseconds use base unit "seconds" instead of "milliseconds"
 requestTime metric names should be written in 'snake_case' not 'camelCase'</pre>
         </figure>
+        <p>Замечания делятся на три группы. На схеме они разложены по группам, рядом — исправленное имя:</p>
         <div class="pic">
           <div class="pic__bar"><span>Замечания promtool и исправленные имена</span><span>Prometheus 3.5.0</span></div>
           <div class="pic__body">
@@ -178,29 +157,8 @@ requestTime metric names should be written in 'snake_case' not 'camelCase'</pre>
             <div class="analogy__side"><b>Имя и метки</b><p>Запросы лежат под одним именем и разделены метками. Все запросы — сумма рядов одного имени.</p></div>
           </div>
         </div>
-        <p>Величину записывают в имя, её части — в метки. Если вынести метод в имя, для общего числа запросов придётся перечислять все имена, а новый метод добавит новое имя.</p>
-        <div class="pic">
-          <div class="pic__bar"><span>Метод в метке и метод в имени</span><span>ряды сервиса заказов</span></div>
-          <div class="pic__body">
-            <div class="duo">
-              <div><b><span class="ok">Метод в метке</span></b>
-                <div class="ser">
-                  <div>http_requests_total <i>method="GET"</i> <b>11</b></div>
-                  <div>http_requests_total <i>method="POST"</i> <b>1</b></div>
-                </div>
-                <em>Одно имя. Сумма рядов этого имени — все запросы, 12.</em>
-              </div>
-              <div><b><span class="bad">Метод в имени</span></b>
-                <div class="ser">
-                  <div><i class="x">http_requests_get_total</i> <b>11</b></div>
-                  <div><i class="x">http_requests_post_total</i> <b>1</b></div>
-                </div>
-                <em>Два имени. Для суммы их нужно перечислить вручную.</em>
-              </div>
-            </div>
-          </div>
-        </div>
-        <p>В коде метод — значение метки, и новый метод не требует нового имени:</p>
+        <p>Величину записывают в имя, её части — в метки. Если вынести метод в имя — <code>http_requests_get_total</code>, <code>http_requests_post_total</code>, — для общего числа запросов придётся перечислять все имена, а новый метод добавит новое имя.</p>
+        <p>Если метод — значение метки, имя одно на все методы. Новый метод <code>DELETE</code> появился как ещё один ряд, без правки объявления:</p>
         <figure class="code">
           <figcaption><span>Метод — значением метки</span><span>Python</span></figcaption>
 <pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, disable_created_metrics, generate_latest

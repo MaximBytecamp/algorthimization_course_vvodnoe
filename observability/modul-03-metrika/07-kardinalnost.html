@@ -95,7 +95,7 @@ HTTP_REQUESTS.labels(request.method, route, str(response.status_code)).inc()
 customer = request.headers.get(<span class="s">"X-Customer-Id"</span>, <span class="s">"none"</span>)
 REQUESTS_BY_PATH.labels(request.url.path, customer).inc()</pre>
         </figure>
-        <p>Три шага: 20 запросов к заказам 1–20; 980 запросов к заказам 21–1000 со случайными клиентами 1–300; ещё 1000 запросов к заказам 1–1000 с новыми клиентами.</p>
+        <p>Три шага: 20 запросов к заказам 1–20; 980 запросов к заказам 21–1000 со случайными клиентами 1–300; ещё 1000 запросов к заказам 1–1000 с новыми клиентами. После каждого шага Prometheus выполнил опрос, и число рядов в базе записано в таблицу:</p>
         <div class="table-scroll">
           <table>
             <thead><tr><th>После шага</th><th>Запросов всего</th><th><code>http_requests_total</code></th><th><code>http_requests_by_path_total</code></th><th>Рядов в базе</th></tr></thead>
@@ -106,17 +106,7 @@ REQUESTS_BY_PATH.labels(request.url.path, customer).inc()</pre>
             </tbody>
           </table>
         </div>
-        <div class="pic">
-          <div class="pic__bar"><span>Ряды двух счётчиков после 2 000 запросов</span><span>BAD_LABELS=1</span></div>
-          <div class="pic__body">
-            <div class="bars">
-              <span>route, method, status</span><i class="m" style="--w:0.15%"></i><b>3</b>
-              <span>path, customer_id</span><i style="--w:100%"></i><b>2 001</b>
-            </div>
-          </div>
-          <p class="pic__note">Полосы в одном масштабе: 3 ряда против 2 001.</p>
-        </div>
-        <p>На третьем шаге адресов не прибавилось, но сочетания «путь + клиент» были новыми: у заказа 17 стало два ряда, <code>customer_id="4"</code> и <code>"185"</code>. Дальше рядов стало бы до 1 000 × 300 = 300 000.</p>
+        <p>Обычный счётчик за все шаги вырос только до трёх рядов: успешные запросы, ответы 404 и запрос к <code>/</code>. Счётчик с полным путём получил по ряду почти на каждый запрос. На третьем шаге адресов не прибавилось, но сочетания «путь + клиент» были новыми: у заказа 17 стало два ряда, <code>customer_id="4"</code> и <code>"185"</code>. Дальше рядов стало бы до 1 000 × 300 = 300 000.</p>
         <p>Опыт повторяется и без сервиса — только библиотека:</p>
         <figure class="code">
           <figcaption><span>Опыт без сервиса, на одной библиотеке</span><span>Python</span></figcaption>
@@ -146,7 +136,7 @@ random.seed(<span class="n">1</span>)
         <p>Рядов 1 996: четыре раза случайный номер клиента повторился у того же заказа.</p>
 
         <h2 id="s3"><span class="sec">§3</span>Что растёт вместе с числом рядов</h2>
-        <p>Лишние ряды — не только длинная таблица в запросе. Запросов к сервису больше не стало, но выросла работа на всём пути числа: память приложения, ответ <code>/metrics</code>, сеть, разбор и хранение в Prometheus.</p>
+        <p>Лишние ряды — не только длинная таблица в запросе. Запросов к сервису больше не стало, но выросла работа на всём пути числа: память приложения, ответ <code>/metrics</code>, сеть, разбор и хранение в Prometheus. Как это росло по тем же шагам опыта:</p>
         <div class="table-scroll">
           <table>
             <thead><tr><th>После шага</th><th>Ответ /metrics, байт</th><th>Строк значений</th><th><code>scrape_samples_scraped</code></th><th>Память меток <code>path</code> в TSDB, байт</th></tr></thead>
@@ -173,7 +163,7 @@ random.seed(<span class="n">1</span>)
             <div class="analogy__side"><b>Метрики и логи</b><p>В метки — значения из короткого списка. Номера заказов и клиентов — в лог и трассу.</p></div>
           </div>
         </div>
-        <p>Когда метка найдена, решают, что писать в неё вместо номера. Значение метки берётся из небольшого заранее известного набора. Документация советует держать кардинальность большинства метрик ниже 10.</p>
+        <p>Когда метка найдена, решают, что писать в неё вместо номера. Значение метки берётся из небольшого заранее известного набора. Документация советует держать кардинальность большинства метрик ниже 10. В таблице — частые значения и место для каждого:</p>
         <div class="table-scroll">
           <table>
             <thead><tr><th>Значение</th><th>Сколько разных</th><th>Где хранить</th></tr></thead>
@@ -188,7 +178,7 @@ random.seed(<span class="n">1</span>)
             </tbody>
           </table>
         </div>
-        <p>Метку <code>path</code> из опыта заменяет шаблон маршрута FastAPI. Для запроса без маршрута функция возвращает <code>"unknown"</code>, иначе случайные адреса тоже создавали бы ряды.</p>
+        <p>У первых трёх строк короткий список значений, и их место — в метках. Остальные растут вместе с заказами, клиентами и запросами, поэтому их пишут в лог и трассу. Метку <code>path</code> из опыта заменяет шаблон маршрута FastAPI. Для запроса без маршрута функция возвращает <code>"unknown"</code>, иначе случайные адреса тоже создавали бы ряды.</p>
         <figure class="code">
           <figcaption><span>app.py</span><span>шаблон адреса вместо пути</span></figcaption>
 <pre><span class="k">def</span> <span class="f">route_of</span>(request: Request) -> str:
@@ -249,19 +239,7 @@ order_errors_total{error="TimeoutError"} 2.0</pre>
           <figcaption><span>Status → Target health, job orders</span><span>Prometheus 3.5.0</span></figcaption>
 <pre>sample limit exceeded</pre>
         </figure>
-        <div class="pic">
-          <div class="pic__bar"><span>Опрос при пределе 500 отсчётов</span><span>Prometheus 3.5.0</span></div>
-          <div class="pic__body">
-            <div class="chain">
-              <div class="chain__box"><small>ответ /metrics</small><b>2 042 отсчёта</b>2 001 из них — счётчик с полным путём</div>
-              <span class="chain__arr" data-l="больше 500"></span>
-              <div class="chain__box is-bad"><small>sample_limit</small><b>опрос отклонён</b>sample limit exceeded</div>
-              <span class="chain__arr"></span>
-              <div class="chain__box is-bad"><small>в базе</small><b>up = 0</b>ни одного отсчёта сервиса</div>
-            </div>
-          </div>
-        </div>
-        <p>Вместе с лишними рядами пропали и нужные. Поэтому предел ставят с запасом над обычным числом отсчётов (в опыте 61 против 500), а после срабатывания исправляют метки в приложении.</p>
+        <p>Ряд <code>up</code> стал 0, а <code>scrape_samples_scraped</code> показал 2 042: ответ получен и прочитан, но отклонён целиком. Вместе с лишними рядами пропали и нужные — счётчик заказов, очередь, гистограмма. Поэтому предел ставят с запасом над обычным числом отсчётов (в опыте 61 против 500), а после срабатывания исправляют метки в приложении.</p>
 
         <h2 id="s7"><span class="sec">§7</span>Проверьте себя</h2>
         <div class="quiz">

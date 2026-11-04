@@ -33,7 +33,7 @@
         </div>
         <p>Метка — пара «название — значение». Название, например <code>status</code>, общее у всех рядов метрики, значение, например <code>"404"</code>, у рядов разное. В сервис заказов отправлено десять запросов к существующим заказам, один к заказу 777 и один POST. Запрос <code>http_requests_total</code> вернул три ряда.</p>
         <figure class="shot"><img src="shots/series-labels.png" alt="Вкладка Table в Prometheus: три ряда http_requests_total с метками instance, job, method, route, status и значениями 10, 1, 1" loading="lazy"><figcaption>Три ряда счётчика запросов: метки в фигурных скобках, значение справа</figcaption></figure>
-        <p>Метки <code>method</code>, <code>route</code>, <code>status</code> поставило приложение, <code>job</code> и <code>instance</code> — Prometheus. Значение — число запросов с этим сочетанием меток.</p>
+        <p>В каждой строке пять меток в фигурных скобках и число справа. Метки <code>method</code>, <code>route</code>, <code>status</code> поставило приложение, <code>job</code> и <code>instance</code> — Prometheus. Число — сколько запросов было с этим сочетанием меток: 10 успешных GET, один GET с ответом 404 и один POST.</p>
 
         <h2 id="s2"><span class="sec">§2</span>Идентичность ряда</h2>
         <div class="term-card">
@@ -42,7 +42,7 @@
             <p>Ряд определяется именем и всеми метками вместе. Имя внутри Prometheus — тоже метка, <code>__name__</code>, поэтому ряд — набор пар «название — значение». Порядок пар не важен.</p>
           </div>
         </div>
-        <p>Запрос <code>{__name__="http_requests_total", status="404"}</code> вернул тот же ряд, что <code>http_requests_total{status="404"}</code>: имя перед скобками — сокращение.</p>
+        <p>Запрос <code>{__name__="http_requests_total", status="404"}</code> вернул тот же ряд, что <code>http_requests_total{status="404"}</code>: имя перед скобками — сокращение. На схеме два ряда из кадра §1 записаны целиком, вместе с именем:</p>
         <div class="pic">
           <div class="pic__bar"><span>Набор меток одного ряда</span><span>ряд с ответом 404</span></div>
           <div class="pic__body">
@@ -83,7 +83,7 @@ http_requests_total{method="GET",status="200"} 3.0</pre>
             <div class="analogy__side"><b>Ряды метрики</b><p>Ряд появляется с первым событием с новым сочетанием меток. До этого его нет ни в ответе, ни в базе.</p></div>
           </div>
         </div>
-        <p>Ряды из §1 появились не сразу. После запуска сервиса были только успешные GET, и <code>count(http_requests_total)</code> вернул 1. После запросов к заказу 777 и POST и очередного опроса — 3.</p>
+        <p>Ряды из §1 появились не сразу. После запуска сервиса были только успешные GET, и <code>count(http_requests_total)</code> вернул 1. После запросов к заказу 777 и POST и очередного опроса — 3. Каждое новое сочетание метода и кода добавило по ряду:</p>
         <div class="pic">
           <div class="pic__bar"><span>Появление рядов после новых сочетаний меток</span><span>сервис заказов</span></div>
           <div class="pic__body">
@@ -98,7 +98,7 @@ http_requests_total{method="GET",status="200"} 3.0</pre>
             </div>
           </div>
         </div>
-                <p>История нового ряда начинается с опроса после первого события. Чтобы ряд с нулём был с запуска, его создают заранее:</p>
+        <p>До первого события ряда нет вовсе, и его история начинается с опроса после этого события. Чтобы ряд с нулём был с запуска, его создают заранее:</p>
         <figure class="code">
           <figcaption><span>Ряд с нулём до первого события</span><span>Python</span></figcaption>
 <pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, disable_created_metrics, generate_latest
@@ -126,7 +126,7 @@ payment_errors_total{status="500"} 0.0</pre>
         <p>Смена значения метки тоже создаёт новый ряд. Если в метке версия и она сменилась с <code>2.4.0</code> на <code>2.4.1</code>, старый ряд обрывается и начинается новый. Поэтому в метки пишут то, что у источника не меняется: метод, адрес, код ответа.</p>
 
         <h2 id="s4"><span class="sec">§4</span>Метки приложения и метки target</h2>
-        <p>Метки приложения записаны в его коде и стоят в ответе <code>/metrics</code>. Метки target Prometheus берёт из конфигурации: <code>job</code> — название задания, <code>instance</code> — адрес. Если в ответе уже есть <code>job</code>, она сохраняется как <code>exported_job</code> (глава 2.2).</p>
+        <p>Метки ряда приходят из двух мест. Метки приложения записаны в его коде и стоят в ответе <code>/metrics</code>. Метки target Prometheus берёт из конфигурации: <code>job</code> — название задания, <code>instance</code> — адрес. Если в ответе уже есть <code>job</code>, она сохраняется как <code>exported_job</code> (глава 2.2). Для ряда из §1 это выглядит так:</p>
         <div class="pic">
           <div class="pic__bar"><span>Откуда берутся метки одного ряда</span><span>ряд сервиса заказов</span></div>
           <div class="pic__body">
@@ -172,7 +172,7 @@ HTTP_REQUESTS.labels(request.method, route, str(response.status_code)).inc()</pr
         </div></details>
 
         <h2 id="s5"><span class="sec">§5</span>Выбор рядов по меткам</h2>
-        <p>По меткам ряды не только различают, но и выбирают в запросе. Условия в фигурных скобках называются селектором. Знаков сравнения четыре: <code>=</code>, <code>!=</code>, <code>=~</code> — подходит под регулярное выражение, <code>!~</code> — не подходит. Шаблон <code>4..</code> — «4 и два любых символа»; он должен совпасть со всем значением целиком.</p>
+        <p>По меткам ряды не только различают, но и выбирают в запросе. Условия в фигурных скобках называются селектором. Знаков сравнения четыре: <code>=</code>, <code>!=</code>, <code>=~</code> — подходит под регулярное выражение, <code>!~</code> — не подходит. Шаблон <code>4..</code> — «4 и два любых символа»; он должен совпасть со всем значением целиком. В таблице запросы к трём рядам из §1 и сколько рядов вернул каждый:</p>
         <div class="table-scroll">
           <table>
             <thead><tr><th>Запрос</th><th>Рядов</th><th>Какие</th></tr></thead>
