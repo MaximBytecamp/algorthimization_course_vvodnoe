@@ -164,6 +164,39 @@ HTTP_DURATION.labels(route).observe(elapsed)</pre>
           </table>
         </div>
         <p>Если ранг попал в <code>+Inf</code>, функция возвращает последнюю конечную границу: 2,5 вместо 3. Долгий отчёт по такой оценке не заметен.</p>
+        <p>Тот же расчёт на Python рядом с точным перцентилем:</p>
+        <figure class="code">
+          <figcaption><span>histogram_quantile на Python</span><span>Python</span></figcaption>
+<pre><span class="k">import</span> math
+
+<span class="k">def</span> <span class="f">histogram_quantile</span>(q, buckets):
+    <span class="s">"""Оценка перцентиля по накопительным корзинам, как в Prometheus."""</span>
+    rank = q * buckets[-<span class="n">1</span>][<span class="n">1</span>]                  <span class="c"># +Inf хранит все значения</span>
+    prev_le, prev_count = <span class="n">0.0</span>, <span class="n">0.0</span>
+    <span class="k">for</span> le, count <span class="k">in</span> buckets:
+        <span class="k">if</span> count &gt;= rank:
+            <span class="k">if</span> le == math.inf:                 <span class="c"># у +Inf нет верхней границы</span>
+                <span class="k">return</span> prev_le
+            <span class="k">return</span> prev_le + (le - prev_le) * (rank - prev_count) / (count - prev_count)
+        prev_le, prev_count = le, count
+
+<span class="k">def</span> <span class="f">exact</span>(q, values):
+    <span class="s">"""Точный перцентиль методом ближайшего ранга (глава 1.4)."""</span>
+    <span class="k">return</span> sorted(values)[math.ceil(q * len(values)) - <span class="n">1</span>]
+
+buckets = [(<span class="n">0.025</span>, <span class="n">0</span>), (<span class="n">0.05</span>, <span class="n">2</span>), (<span class="n">0.1</span>, <span class="n">6</span>), (<span class="n">0.25</span>, <span class="n">12</span>), (<span class="n">0.5</span>, <span class="n">16</span>),
+           (<span class="n">1.0</span>, <span class="n">18</span>), (<span class="n">2.5</span>, <span class="n">19</span>), (math.inf, <span class="n">20</span>)]
+reports = [<span class="n">0.03</span>, <span class="n">0.04</span>, <span class="n">0.06</span>, <span class="n">0.07</span>, <span class="n">0.08</span>, <span class="n">0.09</span>, <span class="n">0.12</span>, <span class="n">0.13</span>, <span class="n">0.15</span>, <span class="n">0.18</span>,
+           <span class="n">0.2</span>, <span class="n">0.22</span>, <span class="n">0.3</span>, <span class="n">0.35</span>, <span class="n">0.4</span>, <span class="n">0.45</span>, <span class="n">0.7</span>, <span class="n">0.9</span>, <span class="n">1.4</span>, <span class="n">3.0</span>]
+<span class="k">for</span> q <span class="k">in</span> (<span class="n">0.5</span>, <span class="n">0.9</span>, <span class="n">0.99</span>):
+    print(<span class="s">f"</span><span class="s">p</span>{round(q * <span class="n">100</span>)}<span class="s">: оценка </span>{histogram_quantile(q, buckets):<span class="s">.3g</span>}<span class="s">, точно </span>{exact(q, reports)}<span class="s">"</span>)</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод</span><span>результат запуска</span></figcaption>
+<pre>p50: оценка 0.2, точно 0.18
+p90: оценка 1, точно 0.9
+p99: оценка 2.5, точно 3.0</pre>
+        </figure>
         <div class="widget hist">
           <div class="widget__head"><b>Гистограмма из своих длительностей</b><span>расчёт как в histogram_quantile</span></div>
           <div class="widget__body">

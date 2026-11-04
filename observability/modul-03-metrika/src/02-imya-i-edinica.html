@@ -78,6 +78,26 @@
           </table>
         </div>
         <p>Дробное значение float64 хранит без потерь, а в миллисекунды переводят при выводе: Grafana покажет <code>0.12</code> секунды как «120 ms». Доля пишется от 0 до 1 с окончанием <code>_ratio</code>.</p>
+        <p>Переводить ничего не нужно: <code>time.perf_counter()</code> уже считает в секундах.</p>
+        <figure class="code">
+          <figcaption><span>Длительность сразу в секундах</span><span>Python</span></figcaption>
+<pre><span class="k">import</span> time
+<span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Gauge, generate_latest
+registry = CollectorRegistry()
+REPORT_BUILD = Gauge(<span class="s">"report_build_seconds"</span>, <span class="s">"Last report build time"</span>, registry=registry)
+
+start = time.perf_counter()        <span class="c"># perf_counter() считает в секундах</span>
+time.sleep(<span class="n">0.52</span>)                   <span class="c"># отчёт строится 520 мс</span>
+REPORT_BUILD.set(time.perf_counter() - start)
+
+print(generate_latest(registry).decode())</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод</span><span>результат запуска</span></figcaption>
+<pre># HELP report_build_seconds Last report build time
+# TYPE report_build_seconds gauge
+report_build_seconds 0.5215566250262782</pre>
+        </figure>
 
         <h2 id="s3"><span class="sec">§3</span>Окончания _total, _bucket, _info</h2>
         <p>Окончание показывает тип метрики, а значит, как обращаться с числом.</p>
@@ -180,6 +200,29 @@ requestTime metric names should be written in 'snake_case' not 'camelCase'</pre>
             </div>
           </div>
         </div>
+        <p>В коде метод — значение метки, и новый метод не требует нового имени:</p>
+        <figure class="code">
+          <figcaption><span>Метод — значением метки</span><span>Python</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, disable_created_metrics, generate_latest
+disable_created_metrics()
+registry = CollectorRegistry()
+HTTP_REQUESTS = Counter(<span class="s">"http_requests_total"</span>, <span class="s">"HTTP requests"</span>, [<span class="s">"method"</span>], registry=registry)
+
+HTTP_REQUESTS.labels(<span class="s">"GET"</span>).inc(<span class="n">11</span>)
+HTTP_REQUESTS.labels(<span class="s">"POST"</span>).inc()
+<span class="c"># новый метод — новый ряд того же имени, код менять не нужно</span>
+HTTP_REQUESTS.labels(<span class="s">"DELETE"</span>).inc()
+
+print(generate_latest(registry).decode())</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод</span><span>результат запуска</span></figcaption>
+<pre># HELP http_requests_total HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{method="GET"} 11.0
+http_requests_total{method="POST"} 1.0
+http_requests_total{method="DELETE"} 1.0</pre>
+        </figure>
         <p>Обратная ошибка — разные величины под одним именем: <code>orders_queue{kind="length"} 3</code> и <code>orders_queue{kind="capacity"} 100</code>. Сумма 103 ничего не значит. Правило из документации: сумма или среднее по всем рядам одного имени должны иметь смысл. Если нет — нужны разные имена: <code>orders_queue_length</code> и <code>orders_queue_capacity</code>.</p>
 
         <h2 id="s6"><span class="sec">§6</span>Проверьте себя</h2>

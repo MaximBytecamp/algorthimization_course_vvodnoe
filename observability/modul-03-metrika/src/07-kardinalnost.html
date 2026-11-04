@@ -90,6 +90,33 @@ REQUESTS_BY_PATH.labels(request.url.path, customer).inc()</pre>
           <p class="pic__note">Полосы в одном масштабе: 3 ряда против 2 001.</p>
         </div>
         <p>На третьем шаге адресов не прибавилось, но сочетания «путь + клиент» были новыми: у заказа 17 стало два ряда, <code>customer_id="4"</code> и <code>"185"</code>. Дальше рядов стало бы до 1 000 × 300 = 300 000.</p>
+        <p>Опыт повторяется и без сервиса — только библиотека:</p>
+        <figure class="code">
+          <figcaption><span>Опыт без сервиса, на одной библиотеке</span><span>Python</span></figcaption>
+<pre><span class="k">import</span> random
+<span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, disable_created_metrics
+disable_created_metrics()
+registry = CollectorRegistry()
+BY_ROUTE = Counter(<span class="s">"http_requests_total"</span>, <span class="s">"By route"</span>, [<span class="s">"route"</span>], registry=registry)
+BY_PATH = Counter(<span class="s">"http_requests_by_path_total"</span>, <span class="s">"By path"</span>, [<span class="s">"path"</span>, <span class="s">"customer_id"</span>], registry=registry)
+
+<span class="k">def</span> <span class="f">series</span>(metric):
+    <span class="k">return</span> len(next(iter(metric.collect())).samples)
+
+random.seed(<span class="n">1</span>)
+<span class="k">for</span> step, orders <span class="k">in</span> enumerate([range(<span class="n">1</span>, <span class="n">21</span>), range(<span class="n">21</span>, <span class="n">1001</span>), range(<span class="n">1</span>, <span class="n">1001</span>)], start=<span class="n">1</span>):
+    <span class="k">for</span> order_id <span class="k">in</span> orders:
+        BY_ROUTE.labels(<span class="s">"/orders/{order_id}"</span>).inc()
+        BY_PATH.labels(<span class="s">f"</span><span class="s">/orders/</span>{order_id}<span class="s">"</span>, str(random.randint(<span class="n">1</span>, <span class="n">300</span>))).inc()
+    print(<span class="s">f"</span><span class="s">шаг </span>{step}<span class="s">: route — </span>{series(BY_ROUTE)}<span class="s">, path + customer_id — </span>{series(BY_PATH)}<span class="s">"</span>)</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод</span><span>результат запуска</span></figcaption>
+<pre>шаг 1: route — 1, path + customer_id — 20
+шаг 2: route — 1, path + customer_id — 1000
+шаг 3: route — 1, path + customer_id — 1996</pre>
+        </figure>
+        <p>Рядов 1 996: четыре раза случайный номер клиента повторился у того же заказа.</p>
 
         <h2 id="s3"><span class="sec">§3</span>Что растёт вместе с числом рядов</h2>
         <p>Запросов к сервису больше не стало. Выросла работа на всём пути числа: память приложения, ответ <code>/metrics</code>, сеть, разбор и хранение в Prometheus.</p>
@@ -134,6 +161,37 @@ REQUESTS_BY_PATH.labels(request.url.path, customer).inc()</pre>
             </tbody>
           </table>
         </div>
+        <p>Для ошибок в метку пишут тип исключения, номера и текст — в лог:</p>
+        <figure class="code">
+          <figcaption><span>Тип ошибки в метке, подробности в логе</span><span>Python</span></figcaption>
+<pre><span class="k">import</span> logging
+<span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, disable_created_metrics, generate_latest
+disable_created_metrics()
+logging.basicConfig(format=<span class="s">"%(levelname)s %(message)s"</span>)
+log = logging.getLogger(<span class="s">"orders"</span>)
+registry = CollectorRegistry()
+ERRORS = Counter(<span class="s">"order_errors_total"</span>, <span class="s">"Failed orders"</span>, [<span class="s">"error"</span>], registry=registry)
+
+<span class="k">def</span> <span class="f">create_order</span>(order_id, customer_id):
+    <span class="k">raise</span> TimeoutError(<span class="s">f"</span><span class="s">warehouse timeout for order </span>{order_id}<span class="s">"</span>)
+
+<span class="k">for</span> order_id, customer_id <span class="k">in</span> [(<span class="n">17</span>, <span class="n">4</span>), (<span class="n">18</span>, <span class="n">185</span>)]:
+    <span class="k">try</span>:
+        create_order(order_id, customer_id)
+    <span class="k">except</span> Exception <span class="k">as</span> exc:
+        ERRORS.labels(type(exc).__name__).inc()                      <span class="c"># в метку — тип ошибки</span>
+        log.error(<span class="s">"order=%s customer=%s: %s"</span>, order_id, customer_id, exc)  <span class="c"># номера и текст — в лог</span>
+
+print(generate_latest(registry).decode())</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод: журнал и /metrics</span><span>результат запуска</span></figcaption>
+<pre>ERROR order=17 customer=4: warehouse timeout for order 17
+ERROR order=18 customer=185: warehouse timeout for order 18
+# HELP order_errors_total Failed orders
+# TYPE order_errors_total counter
+order_errors_total{error="TimeoutError"} 2.0</pre>
+        </figure>
         <p>На стенде путь заменён шаблоном маршрута FastAPI. Для запроса без маршрута функция возвращает <code>"unknown"</code>, иначе случайные адреса тоже создавали бы ряды.</p>
         <figure class="code">
           <figcaption><span>stand/app.py</span><span>шаблон адреса вместо пути</span></figcaption>

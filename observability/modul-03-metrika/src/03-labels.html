@@ -43,6 +43,26 @@
           </div>
         </div>
         <p>Запрос <code>{__name__="http_requests_total", status="404"}</code> вернул тот же ряд, что <code>http_requests_total{status="404"}</code>: имя перед скобками — сокращение.</p>
+        <p>Порядок меток и тип значения на ряд не влияют — три вызова увеличивают один ряд:</p>
+        <figure class="code">
+          <figcaption><span>Один ряд при разной записи меток</span><span>Python</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, disable_created_metrics, generate_latest
+disable_created_metrics()
+registry = CollectorRegistry()
+HTTP_REQUESTS = Counter(<span class="s">"http_requests_total"</span>, <span class="s">"HTTP requests"</span>, [<span class="s">"method"</span>, <span class="s">"status"</span>], registry=registry)
+
+HTTP_REQUESTS.labels(method=<span class="s">"GET"</span>, status=<span class="s">"200"</span>).inc()
+HTTP_REQUESTS.labels(status=<span class="s">"200"</span>, method=<span class="s">"GET"</span>).inc()  <span class="c"># другой порядок</span>
+HTTP_REQUESTS.labels(<span class="s">"GET"</span>, <span class="n">200</span>).inc()                  <span class="c"># число вместо строки</span>
+
+print(generate_latest(registry).decode())</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод</span><span>результат запуска</span></figcaption>
+<pre># HELP http_requests_total HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{method="GET",status="200"} 3.0</pre>
+        </figure>
         <div class="pic">
           <div class="pic__bar"><span>Набор меток одного ряда</span><span>ряд стенда с ответом 404</span></div>
           <div class="pic__body">
@@ -78,7 +98,31 @@
             </div>
           </div>
         </div>
-        <p>История нового ряда начинается с опроса после первого события. Чтобы ряд с нулём был с запуска, его создают заранее: <code>c.labels(status="200")</code> без <code>.inc()</code> дал в ответе <code>c_total{status="200"} 0.0</code>.</p>
+                <p>История нового ряда начинается с опроса после первого события. Чтобы ряд с нулём был с запуска, его создают заранее:</p>
+        <figure class="code">
+          <figcaption><span>Ряд с нулём до первого события</span><span>Python</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, disable_created_metrics, generate_latest
+disable_created_metrics()
+registry = CollectorRegistry()
+ERRORS = Counter(<span class="s">"payment_errors_total"</span>, <span class="s">"Failed payments"</span>, [<span class="s">"status"</span>], registry=registry)
+
+print(<span class="s">"--- событий не было"</span>)
+print(generate_latest(registry).decode())
+ERRORS.labels(status=<span class="s">"500"</span>)                 <span class="c"># ряд создан заранее, без .inc()</span>
+print(<span class="s">"--- после .labels()"</span>)
+print(generate_latest(registry).decode())</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод</span><span>результат запуска</span></figcaption>
+<pre>--- событий не было
+# HELP payment_errors_total Failed payments
+# TYPE payment_errors_total counter
+
+--- после .labels()
+# HELP payment_errors_total Failed payments
+# TYPE payment_errors_total counter
+payment_errors_total{status="500"} 0.0</pre>
+        </figure>
         <p>Смена значения метки тоже создаёт новый ряд. Если в метке версия и она сменилась с <code>2.4.0</code> на <code>2.4.1</code>, старый ряд обрывается и начинается новый. Поэтому в метки пишут то, что у источника не меняется: метод, адрес, код ответа.</p>
 
         <h2 id="s4"><span class="sec">§4</span>Метки приложения и метки target</h2>
@@ -113,7 +157,6 @@
 ...
 HTTP_REQUESTS.labels(request.method, route, str(response.status_code)).inc()</pre>
         </figure>
-        <p>Значение метки — всегда текст: <code>labels(status=200)</code> и <code>labels("200")</code> увеличивают один ряд.</p>
         <details class="more"><summary>Подробнее: ошибки в метках, которые находит библиотека</summary><div>
           <div class="table-scroll">
           <table>

@@ -79,6 +79,30 @@
         <span class="k">await</span> asyncio.sleep(PACK_SECONDS)  <span class="c"># сборка занимает 1 с</span>
         QUEUE_LENGTH.dec()             <span class="c"># заказ собран</span></pre>
         </figure>
+        <p>Если длину можно спросить у самой очереди, проще <code>set_function</code>:</p>
+        <figure class="code">
+          <figcaption><span>Значение в момент опроса</span><span>Python</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Gauge, generate_latest
+registry = CollectorRegistry()
+QUEUE_LENGTH = Gauge(<span class="s">"orders_queue_length"</span>, <span class="s">"Orders waiting"</span>, registry=registry)
+
+queue = [<span class="s">"card"</span>, <span class="s">"cash"</span>, <span class="s">"card"</span>]
+QUEUE_LENGTH.set_function(<span class="k">lambda</span>: len(queue))   <span class="c"># длина считается в момент опроса</span>
+
+print(generate_latest(registry).decode())
+queue.pop()                                      <span class="c"># заказ собран, inc/dec не нужны</span>
+print(generate_latest(registry).decode())</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод</span><span>результат запуска</span></figcaption>
+<pre># HELP orders_queue_length Orders waiting
+# TYPE orders_queue_length gauge
+orders_queue_length 3.0
+
+# HELP orders_queue_length Orders waiting
+# TYPE orders_queue_length gauge
+orders_queue_length 2.0</pre>
+        </figure>
 
         <h2 id="s3"><span class="sec">§3</span>Что попадает в базу при опросе</h2>
         <div class="analogy">
@@ -102,6 +126,29 @@
         </div>
         <p>В базе за минуту 0, 7, 0, 0. Значение 10 не попало никуда. Каким был пик и сколько он длился, по этим отсчётам не узнать. Если бы всплеск целиком пришёлся между опросами, в базе были бы одни нули.</p>
         <p>Чтобы не терять пики, сокращают интервал опроса или считают события счётчиками: созданные и собранные заказы. Разность двух счётчиков даёт длину очереди, а рост — сколько заказов пришло между опросами (глава 2.4).</p>
+        <figure class="code">
+          <figcaption><span>Два счётчика вместо gauge</span><span>Python</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, disable_created_metrics, generate_latest
+disable_created_metrics()
+registry = CollectorRegistry()
+CREATED = Counter(<span class="s">"orders_created_total"</span>, <span class="s">"Orders created"</span>, registry=registry)
+PACKED = Counter(<span class="s">"orders_packed_total"</span>, <span class="s">"Orders packed"</span>, registry=registry)
+
+CREATED.inc(<span class="n">10</span>)    <span class="c"># пришло десять заказов</span>
+PACKED.inc(<span class="n">3</span>)      <span class="c"># три уже собраны</span>
+
+print(generate_latest(registry).decode())</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод</span><span>результат запуска</span></figcaption>
+<pre># HELP orders_created_total Orders created
+# TYPE orders_created_total counter
+orders_created_total 10.0
+# HELP orders_packed_total Orders packed
+# TYPE orders_packed_total counter
+orders_packed_total 3.0</pre>
+        </figure>
+        <p>Длина очереди в запросе — <code>orders_created_total - orders_packed_total</code>, здесь 7.</p>
 
         <h2 id="s4"><span class="sec">§4</span>Запросы в работе</h2>
         <p><code>http_requests_in_progress</code> увеличивается в начале обработки запроса и уменьшается в конце. <code>dec</code> стоит в <code>finally</code>. Без этого каждое исключение оставит лишнюю единицу, и gauge будет расти при свободном сервисе.</p>
@@ -113,7 +160,29 @@
 <span class="k">finally</span>:
     IN_PROGRESS.dec()</pre>
         </figure>
-        <p>Короче то же самое: <code>with IN_PROGRESS.track_inprogress(): …</code>.</p>
+        <p>Короче и с той же защитой от исключений — <code>track_inprogress()</code>:</p>
+        <figure class="code">
+          <figcaption><span>Запросы в работе через track_inprogress</span><span>Python</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Gauge
+registry = CollectorRegistry()
+IN_PROGRESS = Gauge(<span class="s">"http_requests_in_progress"</span>, <span class="s">"Requests in progress"</span>, registry=registry)
+
+<span class="k">def</span> <span class="f">handle</span>():
+    <span class="k">with</span> IN_PROGRESS.track_inprogress():         <span class="c"># +1 при входе, −1 при выходе</span>
+        print(<span class="s">"внутри:"</span>, registry.get_sample_value(<span class="s">"http_requests_in_progress"</span>))
+        <span class="k">raise</span> ValueError(<span class="s">"ошибка обработки"</span>)
+
+<span class="k">try</span>:
+    handle()
+<span class="k">except</span> ValueError:
+    <span class="k">pass</span>
+print(<span class="s">"после ошибки:"</span>, registry.get_sample_value(<span class="s">"http_requests_in_progress"</span>))</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод</span><span>результат запуска</span></figcaption>
+<pre>внутри: 1.0
+после ошибки: 0.0</pre>
+        </figure>
         <p>Опыт: в 15:13:26 отправлено пять отчётов по 4 секунды.</p>
         <div class="pic">
           <div class="pic__bar"><span>Пять отчётов по 4 секунды и опросы Prometheus</span><span>стенд · время UTC</span></div>

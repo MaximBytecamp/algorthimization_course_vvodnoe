@@ -122,6 +122,31 @@ ORDERS_CREATED.labels(payment).inc()</pre>
           <p class="pic__note">Опрос 15:05:28 пришёлся на перезапуск: <code>up = 0</code>, отсчёта нет. Выделен первый отсчёт после сброса.</p>
         </div>
         <p>Уменьшение у счётчика возможно только при сбросе, поэтому Prometheus так его и распознаёт: <code>resets(…[2m])</code> вернул 1. Рост считается как 30 до сброса плюс 10 после — 40. Разность 10 − 10 = 0 была бы ошибкой.</p>
+        <p>Тот же расчёт на Python, без достраивания до краёв окна. Второй ряд — скрытый сброс из §4:</p>
+        <figure class="code">
+          <figcaption><span>Рост счётчика со сбросами</span><span>Python</span></figcaption>
+<pre><span class="k">def</span> <span class="f">growth</span>(samples):
+    <span class="s">"""Рост счётчика по отсчётам: уменьшение считается сбросом."""</span>
+    total = <span class="n">0</span>
+    resets = <span class="n">0</span>
+    <span class="k">for</span> prev, cur <span class="k">in</span> zip(samples, samples[<span class="n">1</span>:]):
+        <span class="k">if</span> cur &gt;= prev:
+            total += cur - prev
+        <span class="k">else</span>:              <span class="c"># сброс: после него рост — всё новое значение</span>
+            total += cur
+            resets += <span class="n">1</span>
+    <span class="k">return</span> total, resets
+
+print(growth([<span class="n">10</span>, <span class="n">10</span>, <span class="n">40</span>, <span class="n">40</span>, <span class="n">10</span>, <span class="n">10</span>, <span class="n">10</span>]))   <span class="c"># перезапуск, затем 10 запросов</span>
+print(growth([<span class="n">40</span>, <span class="n">40</span>, <span class="n">40</span>, <span class="n">60</span>, <span class="n">60</span>]))           <span class="c"># перезапуск, затем 60 запросов</span>
+print(growth([<span class="n">100</span>, <span class="n">130</span>, <span class="n">15</span>, <span class="n">45</span>]))</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод</span><span>результат запуска</span></figcaption>
+<pre>(40, 1)
+(20, 0)
+(75, 1)</pre>
+        </figure>
         <details class="more"><summary>Подробнее: почему increase вернул 45,7</summary><div>
           <p>Отсчёты занимают 105 секунд окна в 120. <code>increase</code> достраивает рост до краёв окна: 40 × 119,8 / 105 ≈ 45,7. Поэтому результат часто дробный даже для целых событий.</p>
         </div></details>
@@ -162,6 +187,36 @@ ORDERS_CREATED.labels(payment).inc()</pre>
           <p class="pic__note">Первый процесс обработал 6 запросов, второй — 14. Ни один ответ не показывает 20.</p>
         </div>
         <p>В ряд попадают числа двух процессов вперемешку, и каждый переход 14 → 6 выглядит как сброс. Решения два: режим нескольких процессов в prometheus-client (переменная <code>PROMETHEUS_MULTIPROC_DIR</code>, значения складываются из файлов) или один процесс на контейнер, каждый отдельным target со своим <code>instance</code>.</p>
+        <p>В режиме нескольких процессов каждый процесс пишет значение в свой файл, а ответ <code>/metrics</code> складывает файлы. Те же 6 и 14 запросов:</p>
+        <figure class="code">
+          <figcaption><span>Режим нескольких процессов</span><span>Python</span></figcaption>
+<pre><span class="k">import</span> os
+os.makedirs(<span class="s">"metrics-dir"</span>, exist_ok=<span class="k">True</span>)
+os.environ[<span class="s">"PROMETHEUS_MULTIPROC_DIR"</span>] = <span class="s">"metrics-dir"</span>   <span class="c"># общая папка процессов</span>
+
+<span class="k">from</span> multiprocessing <span class="k">import</span> Process
+<span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, generate_latest, multiprocess
+
+HTTP_REQUESTS = Counter(<span class="s">"http_requests_total"</span>, <span class="s">"HTTP requests"</span>)
+
+<span class="k">def</span> <span class="f">worker</span>(n):                       <span class="c"># один процесс обработал n запросов</span>
+    <span class="k">for</span> _ <span class="k">in</span> range(n):
+        HTTP_REQUESTS.inc()
+
+<span class="k">if</span> __name__ == <span class="s">"__main__"</span>:
+    <span class="k">for</span> n <span class="k">in</span> (<span class="n">6</span>, <span class="n">14</span>):
+        p = Process(target=worker, args=(n,))
+        p.start(); p.join()
+    registry = CollectorRegistry()   <span class="c"># так строится ответ /metrics</span>
+    multiprocess.MultiProcessCollector(registry)
+    print(generate_latest(registry).decode())</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод</span><span>результат запуска</span></figcaption>
+<pre># HELP http_requests_total HTTP requests
+# TYPE http_requests_total counter
+http_requests_total 20.0</pre>
+        </figure>
 
         <h2 id="s6"><span class="sec">§6</span>Проверьте себя</h2>
         <div class="quiz">

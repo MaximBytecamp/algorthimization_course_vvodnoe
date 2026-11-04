@@ -65,6 +65,25 @@
           </div>
         </div>
         <p>Десять событий дали одну запись со временем опроса. Когда пришли сами запросы, по ней не определить. Сто запросов между опросами тоже дали бы одну запись — с числом на сто больше.</p>
+        <p>То же в коде: <code>.inc()</code> меняет число в памяти, <code>generate_latest</code> собирает текст, который заберёт опрос.</p>
+        <figure class="code">
+          <figcaption><span>Счётчик в памяти и ответ для опроса</span><span>Python</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, disable_created_metrics, generate_latest
+disable_created_metrics()
+registry = CollectorRegistry()
+HTTP_REQUESTS = Counter(<span class="s">"http_requests_total"</span>, <span class="s">"HTTP requests"</span>, [<span class="s">"method"</span>, <span class="s">"status"</span>], registry=registry)
+
+<span class="k">for</span> _ <span class="k">in</span> range(<span class="n">10</span>):                   <span class="c"># десять запросов GET /orders/1 … /orders/10</span>
+    HTTP_REQUESTS.labels(<span class="s">"GET"</span>, <span class="s">"200"</span>).inc()
+
+print(generate_latest(registry).decode())  <span class="c"># это и прочитает Prometheus при опросе</span></pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод</span><span>результат запуска</span></figcaption>
+<pre># HELP http_requests_total HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{method="GET",status="200"} 10.0</pre>
+        </figure>
 
         <h2 id="s3"><span class="sec">§3</span>Отсчёт: время и значение</h2>
         <div class="term-card">
@@ -97,6 +116,26 @@
           </div>
         </div>
         <p>Отметка <code>1792769766.827</code> — это 23 октября 2026 года, 15:36:06.827 UTC. Внутри базы она хранится целым числом миллисекунд. Часового пояса в отметке нет: в местное время её переводит интерфейс при выводе.</p>
+        <p>Отметки с кадра §3, переведённые в Python:</p>
+        <figure class="code">
+          <figcaption><span>Отметки времени в обычной записи</span><span>Python</span></figcaption>
+<pre><span class="k">from</span> datetime <span class="k">import</span> datetime, timezone
+
+stamps = [<span class="n">1792769766.827</span>, <span class="n">1792769781.925</span>, <span class="n">1792769796.869</span>, <span class="n">1792769812.672</span>]
+<span class="k">for</span> ts <span class="k">in</span> stamps:
+    print(datetime.fromtimestamp(ts, tz=timezone.utc).strftime(<span class="s">"%Y-%m-%d %H:%M:%S.%f"</span>)[:-<span class="n">3</span>])
+print(int(stamps[<span class="n">0</span>] * <span class="n">1000</span>))                                   <span class="c"># так отметка лежит в базе</span>
+print([round(b - a, <span class="n">3</span>) <span class="k">for</span> a, b <span class="k">in</span> zip(stamps, stamps[<span class="n">1</span>:])])   <span class="c"># промежутки между опросами</span></pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод</span><span>результат запуска</span></figcaption>
+<pre>2026-10-23 15:36:06.827
+2026-10-23 15:36:21.925
+2026-10-23 15:36:36.869
+2026-10-23 15:36:52.672
+1792769766827
+[15.098, 14.944, 15.803]</pre>
+        </figure>
         <p>Отметку ставит Prometheus, один раз за опрос, — момент начала запроса к target. Все ряды из одного ответа и служебный ряд <code>up</code> получают одну отметку:</p>
         <div class="pic">
           <div class="pic__bar"><span>Отметки трёх рядов одного target</span><span>стенд · время UTC</span></div>
@@ -127,6 +166,21 @@
           </div>
         </div>
         <p>У второго ряда время есть дважды. Отметка — когда Prometheus прочитал число. Значение — когда запущен процесс; оно не меняется, пока процесс работает.</p>
+        <p>Свою такую метрику создают классом <code>Info</code> — он сам допишет <code>_info</code> и значение 1:</p>
+        <figure class="code">
+          <figcaption><span>Метрика-сведения</span><span>Python</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Info, generate_latest
+registry = CollectorRegistry()
+APP = Info(<span class="s">"app"</span>, <span class="s">"Application version"</span>, registry=registry)
+APP.info({<span class="s">"version"</span>: <span class="s">"2.4.1"</span>})
+print(generate_latest(registry).decode())</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод</span><span>результат запуска</span></figcaption>
+<pre># HELP app_info Application version
+# TYPE app_info gauge
+app_info{version="2.4.1"} 1.0</pre>
+        </figure>
 
         <h2 id="s6"><span class="sec">§6</span>Последний отсчёт в запросе</h2>
         <div class="analogy">
