@@ -1,0 +1,38 @@
+# Модуль 4 «Сбор и хранение»: сервис заказов, склад со своим exporter,
+# node_exporter и Prometheus в одной сети Compose.
+name: sbor-hranenie
+services:
+  api:
+    build: .
+    ports: ['127.0.0.1:8041:8000']
+
+  sklad:
+    build: .
+    command: ["uvicorn", "sklad:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports: ['127.0.0.1:8043:8000']
+
+  sklad-exporter:
+    build: .
+    command: ["python", "sklad_exporter.py"]
+    ports: ['127.0.0.1:8042:8000']
+    depends_on: [sklad]
+
+  node-exporter:
+    image: prom/node-exporter:v1.9.1
+    ports: ['127.0.0.1:9110:9100']
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/${PROM_CONFIG:-prometheus.yml}
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    ports: ['127.0.0.1:9104:9090']
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - ./targets:/etc/targets:ro
+      - prometheus-data:/prometheus
+    depends_on: [api, sklad-exporter, node-exporter]
+
+volumes:
+  prometheus-data:

@@ -1,0 +1,22 @@
+SKLAD_URL = os.environ.get(<span class="s">"SKLAD_URL"</span>, <span class="s">"http://sklad:8000/status"</span>)
+
+
+<span class="k">class</span> <span class="f">SkladCollector</span>:
+    <span class="k">def</span> <span class="f">collect</span>(self):
+        up = GaugeMetricFamily(<span class="s">"sklad_up"</span>, <span class="s">"1 if the warehouse answered /status"</span>)
+        <span class="k">try</span>:
+            <span class="k">with</span> urllib.request.urlopen(SKLAD_URL, timeout=<span class="n">2</span>) <span class="k">as</span> response:
+                status = json.load(response)
+        <span class="k">except</span> OSError:
+            up.add_metric([], <span class="n">0</span>)
+            <span class="k">yield</span> up
+            <span class="k">return</span>
+        up.add_metric([], <span class="n">1</span>)
+        <span class="k">yield</span> up
+        <span class="k">yield</span> GaugeMetricFamily(<span class="s">"sklad_queue_length"</span>, <span class="s">"Orders waiting to be packed"</span>,
+                                value=status[<span class="s">"queue"</span>])
+        <span class="k">yield</span> CounterMetricFamily(<span class="s">"sklad_packed"</span>, <span class="s">"Orders packed since start"</span>,
+                                  value=status[<span class="s">"packed_total"</span>])
+
+
+REGISTRY.register(SkladCollector())

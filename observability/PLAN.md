@@ -46,9 +46,14 @@
 3.9 итоги. Книга `modul-03-metrika/` в визуале модуля 2, стенд — сервис заказов с пятью метриками
 и Prometheus 3.5.0. Все числа получены опытами на стенде.
 
+## Модуль 4 · пишется
+
+Сбор и хранение: 4.1 exporter, 4.2 service discovery, 4.3 relabeling, 4.4 лимиты опроса, 4.5 TSDB,
+4.6 пропуски, 4.7 Pushgateway, 4.8 федерация и remote_write, 4.9 практика, 4.10 итоги. Книга `modul-04-sbor/`,
+проект — сервис заказов, склад с JSON и его exporter, node_exporter, Prometheus 3.5.0. Готова 4.1.
+
 ## Дальнейшая карта · план
 
-4. Сбор и хранение: exporters, discovery и relabeling, лимиты, TSDB, Pushgateway, remote_write.
 5. PromQL: селекторы, окна, rate/increase, агрегации, перцентили, сопоставление рядов.
 6. Grafana: источники, панели, единицы, переменные, сравнения, annotations, связи сигналов.
 7. Python и зависимости: FastAPI, PostgreSQL, Redis, RabbitMQ, Celery, процесс и узел.

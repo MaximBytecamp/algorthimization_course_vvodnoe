@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#EEF1F5">
+  <meta name="description" content="Глава 4.1 модуля «Сбор и хранение»: exporter: метрики чужой программы.">
+  <title>4.1 Exporter: метрики чужой программы · Сбор и хранение</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&amp;family=Pixelify+Sans:wght@500;600;700&amp;family=Roboto+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../modul-02-prometheus/styles.css">
+  <link rel="stylesheet" href="../modul-02-prometheus/algo.css">
+  <link rel="stylesheet" href="../modul-02-prometheus/prom.css">
+  <link rel="stylesheet" href="../modul-03-metrika/m3.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 4 · Сбор и хранение · Макаров М. Н.</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Модуль 4 · сбор и хранение</a> · сбор и хранение</p>
+          <p class="running__folio">Глава 4.1</p>
+        </div>
+        <header class="chapter-head">
+          <span class="chapter-num">4.1</span>
+          <h1>Exporter: метрики<br>чужой программы</h1>
+          <p class="lead">Не в каждую программу можно дописать метрики. В главе разобрано, как exporter переводит состояние такой программы в метрики, что в этом случае означает <code>up</code> и какую машину на самом деле измеряет node_exporter.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Сбор данных</dd></div>
+          <div><dt>Уровень</dt><dd>Средний</dd></div>
+          <div><dt>Опирается на</dt><dd>Глава 2.3: /metrics; глава 2.4: up; главы 3.4–3.5: counter и gauge</dd></div>
+          <div><dt>Результат</dt><dd>Exporter для программы без метрик; чтение up и метрики доступности</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Программа без метрик</a></li>
+            <li><a href="#s2">Exporter на Python</a></li>
+            <li><a href="#s3">up и состояние программы</a></li>
+            <li><a href="#s4">Готовый exporter: node_exporter</a></li>
+            <li><a href="#s5">Какую машину он измеряет</a></li>
+            <li><a href="#s6">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Программа без метрик</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Переводчик</b><p>Переводит то, что собеседник сказал сейчас. Своего мнения и записей у него нет.</p></div>
+            <div class="analogy__side"><b>Exporter</b><p>На каждый опрос спрашивает программу и пересказывает её ответ языком метрик.</p></div>
+          </div>
+        </div>
+        <p>В проекте модуля есть склад: он собирает заказы, по одному за 2 секунды. Метрик у склада нет — своё состояние он отдаёт в JSON на странице <code>/status</code>. Склад считается чужой программой: дописать в него код нельзя.</p>
+        <div class="term-card">
+          <p class="term-card__head"><b>Exporter</b><span>отдельная программа-переводчик</span></p>
+          <div class="term-card__body">
+            <p>Программа, которая при каждом опросе читает состояние другой программы и отдаёт его на своей странице <code>/metrics</code>. Prometheus опрашивает именно exporter; к самой программе он не обращается.</p>
+          </div>
+        </div>
+        <p>Скрипт читает оба адреса подряд: сначала JSON склада, затем страницу его exporter.</p>
+        <figure class="code">
+          <figcaption><span>Склад и его exporter</span><span>Python</span></figcaption>
+<pre><span class="k">import</span> json
+<span class="k">import</span> urllib.request
+
+<span class="k">def</span> <span class="f">get</span>(url):
+    <span class="k">with</span> urllib.request.urlopen(url) <span class="k">as</span> response:
+        <span class="k">return</span> response.read().decode()
+
+print(json.loads(get(<span class="s">"http://localhost:8043/status"</span>)))          <span class="c"># склад</span>
+<span class="k">for</span> line <span class="k">in</span> get(<span class="s">"http://localhost:8042/metrics"</span>).splitlines():  <span class="c"># exporter</span>
+    <span class="k">if</span> line.startswith(<span class="s">"sklad_"</span>):
+        print(line)</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод</span><span>результат запуска</span></figcaption>
+<pre>{'queue': 3, 'packed_total': 0}
+sklad_up 1.0
+sklad_queue_length 3.0
+sklad_packed_total 0.0</pre>
+        </figure>
+        <p>Числа те же, изменилась форма. Поле <code>queue</code> стало gauge <code>sklad_queue_length</code>, поле <code>packed_total</code> — счётчиком <code>sklad_packed_total</code>. Строку <code>sklad_up</code> exporter добавил от себя, она разобрана в §3.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Exporter на Python</h2>
+        <p>В prometheus-client exporter пишут как сборщик: класс с методом <code>collect</code>. Библиотека вызывает этот метод при каждом запросе <code>/metrics</code>. Сборщик склада целиком:</p>
+        <figure class="code">
+          <figcaption><span>sklad_exporter.py</span><span>сборщик</span></figcaption>
+<pre>SKLAD_URL = os.environ.get(<span class="s">"SKLAD_URL"</span>, <span class="s">"http://sklad:8000/status"</span>)
+
+
+<span class="k">class</span> <span class="f">SkladCollector</span>:
+    <span class="k">def</span> <span class="f">collect</span>(self):
+        up = GaugeMetricFamily(<span class="s">"sklad_up"</span>, <span class="s">"1 if the warehouse answered /status"</span>)
+        <span class="k">try</span>:
+            <span class="k">with</span> urllib.request.urlopen(SKLAD_URL, timeout=<span class="n">2</span>) <span class="k">as</span> response:
+                status = json.load(response)
+        <span class="k">except</span> OSError:
+            up.add_metric([], <span class="n">0</span>)
+            <span class="k">yield</span> up
+            <span class="k">return</span>
+        up.add_metric([], <span class="n">1</span>)
+        <span class="k">yield</span> up
+        <span class="k">yield</span> GaugeMetricFamily(<span class="s">"sklad_queue_length"</span>, <span class="s">"Orders waiting to be packed"</span>,
+                                value=status[<span class="s">"queue"</span>])
+        <span class="k">yield</span> CounterMetricFamily(<span class="s">"sklad_packed"</span>, <span class="s">"Orders packed since start"</span>,
+                                  value=status[<span class="s">"packed_total"</span>])
+
+
+REGISTRY.register(SkladCollector())</pre>
+        </figure>
+        <p><code>collect</code> читает <code>/status</code> и сразу возвращает метрики. Очередь — <code>GaugeMetricFamily</code>, собранные заказы — <code>CounterMetricFamily</code>; окончание <code>_total</code> библиотека допишет сама. Если склад не ответил, сборщик отдаёт только <code>sklad_up 0</code>.</p>
+        <p>Хранилища у exporter нет. Так требует документация Prometheus: читать программу в момент опроса, без своего таймера, — тогда число в базе не старше самого опроса. Опыт: в склад отправлено шесть заказов, страница exporter прочитана дважды с промежутком 5 секунд.</p>
+        <figure class="code code--out">
+          <figcaption><span>curl -s localhost:8042/metrics | grep ^sklad</span><span>два чтения</span></figcaption>
+<pre># 14:52:58
+sklad_queue_length 5.0
+sklad_packed_total 0.0
+# 14:53:03
+sklad_queue_length 3.0
+sklad_packed_total 2.0</pre>
+        </figure>
+        <p>За 5 секунд склад собрал два заказа. Exporter ничего у себя не обновлял — он снова спросил склад.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>up и состояние программы</h2>
+        <p>Prometheus опрашивает exporter, поэтому <code>up</code> сообщает только одно: ответил ли exporter. Опыт: склад остановлен, прошло два опроса. На странице Target health все три target в состоянии UP:</p>
+        <figure class="shot"><img src="shots/targets-sklad-down.png" alt="Status → Target health: задания node, orders и sklad, у каждого один target в состоянии UP; у sklad время опроса 2.021s" loading="lazy"><figcaption>Склад остановлен, а target задания sklad — в состоянии UP</figcaption></figure>
+        <p>Остановку видно только по метрике, которую добавил сам exporter. Запрос обоих рядов задания:</p>
+        <figure class="shot"><img src="shots/up-vs-sklad-up.png" alt="Вкладка Table: sklad_up равен 0, up задания sklad равен 1" loading="lazy"><figcaption>up = 1: exporter ответил. sklad_up = 0: склад не ответил exporter</figcaption></figure>
+        <p>Ряд <code>sklad_queue_length</code> в это время пропал из запросов: exporter перестал его отдавать. Метрику вида <code>*_up</code> документация советует как раз для такого случая — когда exporter жив, а программа за ним нет.</p>
+        <p>На первом кадре есть ещё одна деталь: опрос задания sklad длился 2,021 с вместо обычных 7 мс. Exporter ждал склад свои 2 секунды (<code>timeout=2</code>) и только потом ответил. Поэтому таймаут exporter делают меньше <code>scrape_timeout</code> задания, здесь 10 с. Иначе Prometheus оборвёт опрос раньше, и вместо <code>sklad_up 0</code> получится <code>up 0</code> без объяснения причины.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Готовый exporter: node_exporter</h2>
+        <p>Для распространённых программ exporter уже написаны: node_exporter для машины Linux, postgres_exporter, redis_exporter и десятки других. node_exporter читает файлы ядра в <code>/proc</code> и <code>/sys</code>. Скрипт считает, сколько он отдаёт и какие разделы остались пустыми:</p>
+        <figure class="code">
+          <figcaption><span>Что отдаёт node_exporter</span><span>Python</span></figcaption>
+<pre><span class="k">import</span> urllib.request
+
+<span class="k">with</span> urllib.request.urlopen(<span class="s">"http://localhost:9110/metrics"</span>) <span class="k">as</span> response:
+    lines = response.read().decode().splitlines()
+
+values = [line <span class="k">for</span> line <span class="k">in</span> lines <span class="k">if</span> <span class="k">not</span> line.startswith(<span class="s">"#"</span>)]
+names = [line.split()[<span class="n">2</span>] <span class="k">for</span> line <span class="k">in</span> lines <span class="k">if</span> line.startswith(<span class="s">"# TYPE"</span>)]
+failed = [line.split(<span class="s">'"'</span>)[<span class="n">1</span>] <span class="k">for</span> line <span class="k">in</span> values
+          <span class="k">if</span> line.startswith(<span class="s">"node_scrape_collector_success"</span>) <span class="k">and</span> line.endswith(<span class="s">" 0"</span>)]
+
+print(<span class="s">"значений:"</span>, len(values), <span class="s">"метрик:"</span>, len(names))
+print(<span class="s">"сборщики без данных:"</span>, <span class="s">", "</span>.join(failed))</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод</span><span>результат запуска</span></figcaption>
+<pre>значений: 1392 метрик: 307
+сборщики без данных: dmi, fibrechannel, hwmon, infiniband, mdadm, nvme, os, rapl, schedstat, tapestats, watchdog, zfs</pre>
+        </figure>
+        <p>1 392 значения против 18 у сервиса заказов, а ответ готовится несколько десятков миллисекунд. За каждый раздел отвечает свой сборщик (collector), и о каждом есть ряд <code>node_scrape_collector_success</code>. Двенадцать сборщиков вернули 0: они ищут оборудование — датчики, диски NVMe, RAID, — которого внутри контейнера нет.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Какую машину он измеряет</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Термометр за окном</b><p>Висит на доме, но показывает температуру на улице.</p></div>
+            <div class="analogy__side"><b>node_exporter</b><p>Показывает ту машину, чьи файлы ему видны. Это не всегда компьютер, на котором запущен проект.</p></div>
+          </div>
+        </div>
+        <p>В Docker Desktop контейнеры работают внутри виртуальной машины Linux. Вот что node_exporter сообщил о «своей» машине и что на самом деле:</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Метрика</th><th>Значение</th><th>Что это на самом деле</th></tr></thead>
+            <tbody>
+              <tr><td><code>node_uname_info</code>, nodename</td><td><code>29df10f2da84</code></td><td>Идентификатор контейнера</td></tr>
+              <tr><td><code>node_uname_info</code>, release</td><td><code>7.0.12-linuxkit</code></td><td>Ядро виртуальной машины Docker</td></tr>
+              <tr><td><code>node_memory_MemTotal_bytes</code></td><td>4,1 ГБ</td><td>Память виртуальной машины; у компьютера 16 ГБ</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Ошибки здесь нет: exporter измерил то, что ему доступно. На сервере Linux его запускают прямо на машине или в контейнере с доступом к её файлам. Для Docker README node_exporter приводит флаги <code>--net=host</code> и <code>--pid=host</code>, корень машины в <code>/host</code> и <code>--path.rootfs=/host</code>. Прежде чем верить числам exporter, проверяют, откуда он их читает.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>Склад остановлен, его exporter работает. Что покажет <code>up{job="sklad"}</code>?</p>
+          <ul class="quiz__opts">
+            <li><button>0</button><p class="quiz__why"><code>up</code> относится к target, а target — exporter. Он ответил.</p></li>
+            <li data-ok><button>1</button><p class="quiz__why">Верно. Остановку склада показывает <code>sklad_up 0</code>.</p></li>
+            <li><button>Ряд пропадёт</button><p class="quiz__why"><code>up</code> пишется после каждого опроса. Пропал ряд очереди, которую exporter перестал отдавать.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>Exporter опрашивает программу раз в минуту по своему таймеру и отдаёт сохранённые числа. Чем это плохо?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button>Число в базе может быть старше опроса почти на минуту</button><p class="quiz__why">Верно. Отметка времени — момент опроса, а число прочитано раньше.</p></li>
+            <li><button>Prometheus отклонит такой ответ</button><p class="quiz__why">Ответ формально правильный. Плохо то, что числа устаревшие.</p></li>
+            <li><button>Ничем, так даже быстрее</button><p class="quiz__why">Документация Prometheus требует читать программу в момент опроса.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 3</b>На ноутбуке с 16 ГБ памяти node_exporter в Docker Desktop показал <code>node_memory_MemTotal_bytes</code> около 4 ГБ. Почему?</p>
+          <ul class="quiz__opts">
+            <li><button>node_exporter показывает только свободную память</button><p class="quiz__why">Это <code>MemTotal</code> — вся память машины, которую он видит.</p></li>
+            <li data-ok><button>Он измеряет виртуальную машину Docker, внутри которой работает</button><p class="quiz__why">Верно. Имя машины в <code>node_uname_info</code> — ID контейнера, ядро — linuxkit.</p></li>
+            <li><button>Ошибка в node_exporter</button><p class="quiz__why">Числа верные для той машины, файлы которой ему видны.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 4</b>Таймаут exporter — 15 с, <code>scrape_timeout</code> задания — 10 с. Программа за exporter зависла. Что будет в Prometheus?</p>
+          <ul class="quiz__opts">
+            <li><button><code>sklad_up 0</code> через 15 секунд</button><p class="quiz__why">Prometheus не ждёт 15 секунд: опрос обрывается на 10-й.</p></li>
+            <li data-ok><button><code>up 0</code>, причина не видна</button><p class="quiz__why">Верно. Опрос оборван по таймауту, ответа exporter нет. Таймаут exporter делают меньше <code>scrape_timeout</code>.</p></li>
+            <li><button>Последние числа программы</button><p class="quiz__why">Своих сохранённых чисел у exporter нет.</p></li>
+          </ul>
+        </div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Prometheus. Writing exporters: scheduling, failed scrapes — <a href="https://prometheus.io/docs/instrumenting/writing_exporters/" target="_blank" rel="noopener">prometheus.io/docs/instrumenting/writing_exporters</a></li>
+            <li>Prometheus. Exporters and integrations — <a href="https://prometheus.io/docs/instrumenting/exporters/" target="_blank" rel="noopener">prometheus.io/docs/instrumenting/exporters</a></li>
+            <li>node_exporter: README, Docker — <a href="https://github.com/prometheus/node_exporter" target="_blank" rel="noopener">github.com/prometheus/node_exporter</a></li>
+            <li>prometheus-client для Python: custom collectors — <a href="https://prometheus.github.io/client_python/collector/custom/" target="_blank" rel="noopener">prometheus.github.io/client_python/collector/custom</a></li>
+            <li>Опыты главы: склад, его exporter и node_exporter 1.9.1, 04.11.2026</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="index.html">← К оглавлению модуля</a><a href="../index.html">К справочнику →</a></div>
+        <div class="colophon">
+          <span>Метрики и наблюдаемость · Модуль 4 · Сбор и хранение</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../modul-02-prometheus/book.js"></script>
+  <script src="../modul-02-prometheus/algo.js"></script>
+  <script src="../modul-02-prometheus/prom.js"></script>
+</body>
+</html>
