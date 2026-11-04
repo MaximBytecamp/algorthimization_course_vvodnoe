@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#EEF1F5">
+  <meta name="description" content="Глава 4.4 модуля «Сбор и хранение»: лимиты опроса.">
+  <title>4.4 Лимиты опроса · Сбор и хранение</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&amp;family=Pixelify+Sans:wght@500;600;700&amp;family=Roboto+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../modul-02-prometheus/styles.css">
+  <link rel="stylesheet" href="../modul-02-prometheus/algo.css">
+  <link rel="stylesheet" href="../modul-02-prometheus/prom.css">
+  <link rel="stylesheet" href="../modul-03-metrika/m3.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 4 · Сбор и хранение · Макаров М. Н.</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Модуль 4 · сбор и хранение</a> · сбор и хранение</p>
+          <p class="running__folio">Глава 4.4</p>
+        </div>
+        <header class="chapter-head">
+          <span class="chapter-num">4.4</span>
+          <h1>Лимиты<br>опроса</h1>
+          <p class="lead">В главе 3.7 предел <code>sample_limit</code> отклонил опрос, в котором было слишком много рядов. У Prometheus есть и другие пределы: время опроса, размер ответа, число и длина меток, число target. В главе каждый из них сработал на своём задании.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Сбор данных</dd></div>
+          <div><dt>Уровень</dt><dd>Средний</dd></div>
+          <div><dt>Опирается на</dt><dd>Глава 2.4: scrape_timeout; глава 3.7: sample_limit; глава 4.1</dd></div>
+          <div><dt>Результат</dt><dd>Пределы опроса в настройках и чтение их ошибок</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Зачем пределы</a></li>
+            <li><a href="#s2">Пределы в настройках</a></li>
+            <li><a href="#s3">Что показал опыт</a></li>
+            <li><a href="#s4">Таймаут обрывает опрос</a></li>
+            <li><a href="#s5">Как выбрать значения</a></li>
+            <li><a href="#s6">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Зачем пределы</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Лифт с перегрузом</b><p>Если вес больше допустимого, лифт не едет вовсе — ни с кем из пассажиров.</p></div>
+            <div class="analogy__side"><b>Предел опроса</b><p>Если ответ нарушил предел, Prometheus отклоняет опрос целиком: <code>up = 0</code>, ни одного отсчёта.</p></div>
+          </div>
+        </div>
+        <p>Одна ошибка в программе — номер заказа в метке, огромный ответ, зависшая страница — может нагрузить Prometheus так, что пострадают все задания. Пределы останавливают такой target на входе. Все они работают одинаково с <code>sample_limit</code>: опрос отклоняется целиком, причина записывается в ошибку target.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Пределы в настройках</h2>
+        <p>Пределы задают в задании. В опыте у каждого предела своё задание и заведомо маленькое значение, чтобы он сработал:</p>
+        <figure class="code">
+          <figcaption><span>prometheus/prometheus-limity.yml</span><span>пять заданий</span></figcaption>
+<pre>scrape_configs:
+  - job_name: timeout          <span class="c"># exporter склада ждёт склад 2 секунды</span>
+    scrape_timeout: 1s
+    static_configs:
+      - targets: [<span class="s">'sklad-exporter:8000'</span>]
+
+  - job_name: body-size        <span class="c"># ответ node_exporter — около 100 КБ</span>
+    body_size_limit: 1KB
+    static_configs:
+      - targets: [<span class="s">'node-exporter:9100'</span>]
+
+  - job_name: label-count      <span class="c"># у http_requests_total 5 меток вместе с job и instance</span>
+    label_limit: <span class="n">4</span>
+    static_configs:
+      - targets: [<span class="s">'api:8000'</span>]
+
+  - job_name: label-length     <span class="c"># значение route="/orders/{order_id}" — 18 символов</span>
+    label_value_length_limit: <span class="n">10</span>
+    static_configs:
+      - targets: [<span class="s">'api:8000'</span>]
+
+  - job_name: target-count     <span class="c"># две копии сервиса при пределе в одну</span>
+    target_limit: <span class="n">1</span>
+    static_configs:
+      - targets: [<span class="s">'api:8000'</span>, <span class="s">'api2:8000'</span>]</pre>
+        </figure>
+        <p><code>scrape_timeout</code> — сколько ждать ответа. <code>body_size_limit</code> — наибольший размер ответа. <code>label_limit</code> — сколько меток может быть у одного ряда, <code>label_value_length_limit</code> — какой длины значение метки. <code>target_limit</code> — сколько target может быть у задания после relabeling. Значение 0 у любого из них, кроме таймаута, означает «без предела», и так стоит по умолчанию.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Что показал опыт</h2>
+        <p>Склад на время опыта «заморожен» командой <code>docker compose pause sklad</code>: его exporter ждёт ответа 2 секунды. Скрипт берёт из API Prometheus все target в состоянии DOWN и выводит причину:</p>
+        <figure class="code">
+          <figcaption><span>limits_check.py</span><span>Python</span></figcaption>
+<pre><span class="k">import</span> json
+<span class="k">import</span> urllib.request
+
+<span class="k">with</span> urllib.request.urlopen(<span class="s">"http://localhost:9104/api/v1/targets"</span>) <span class="k">as</span> response:
+    targets = json.load(response)[<span class="s">"data"</span>][<span class="s">"activeTargets"</span>]
+
+<span class="k">for</span> t <span class="k">in</span> sorted(targets, key=<span class="k">lambda</span> t: t[<span class="s">"labels"</span>][<span class="s">"job"</span>]):
+    <span class="k">if</span> t[<span class="s">"health"</span>] != <span class="s">"up"</span>:
+        error = t[<span class="s">"lastError"</span>].split(<span class="s">" ("</span>)[<span class="n">0</span>]          <span class="c"># причина без подробностей</span>
+        print(<span class="s">f'</span>{t[<span class="s">"labels"</span>][<span class="s">"job"</span>]:<span class="s">&lt;13</span>}{t[<span class="s">"lastScrapeDuration"</span>]:<span class="s">&gt;7.3f</span>}<span class="s"> с  </span>{error}<span class="s">'</span>)</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод</span><span>результат запуска</span></figcaption>
+<pre>body-size      0.041 с  body size limit exceeded
+label-count    0.007 с  label_limit exceeded
+label-length   0.021 с  label_value_length_limit exceeded
+target-count   0.001 с  target_limit exceeded
+target-count   0.000 с  target_limit exceeded
+timeout        1.003 с  Get "http://sklad-exporter:8000/metrics": context deadline exceeded</pre>
+        </figure>
+        <p>Все пять заданий в DOWN. Полный текст ошибок объясняет, где именно нарушен предел:</p>
+        <ul>
+          <li><b>body-size.</b> Ответ node_exporter — 111 057 байт при пределе 1 КБ.</li>
+          <li><b>label-count.</b> Первым сработал ряд <code>python_info</code>: <code>number of labels: 8, limit: 4</code>. Считаются все метки ряда — <code>__name__</code>, <code>job</code>, <code>instance</code> и пять своих.</li>
+          <li><b>label-length.</b> Сработало имя метрики: <code>label name: __name__, value: "python_gc_objects_collected_total", length: 33</code>. Имя хранится как метка <code>__name__</code> (глава 3.3) и тоже проверяется.</li>
+          <li><b>target-count.</b> Обе копии в DOWN с длительностью 0: при превышении предела не опрашивается ни один target задания.</li>
+        </ul>
+        <p>Чтение ответа останавливается на первом нарушении. У label-length <code>scrape_samples_scraped</code> равен 1, у label-count — 10: столько строк Prometheus прочитал, прежде чем встретил неподходящую.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Таймаут обрывает опрос</h2>
+        <p>Последняя строка вывода — таймаут. Prometheus ждал 1 секунду и оборвал опрос. Тот же адрес, открытый вручную, ответил через 2,03 с:</p>
+        <figure class="code code--out">
+          <figcaption><span>time curl -s localhost:8042/metrics | grep ^sklad</span><span>склад заморожен</span></figcaption>
+<pre>sklad_up 0.0
+curl -s localhost:8042/metrics  0.01s user 0.00s system 0% cpu 2.029 total</pre>
+        </figure>
+        <p>Exporter знал причину и сообщил бы её строкой <code>sklad_up 0</code>. Но Prometheus не дождался, и в базе осталось только <code>up 0</code> с текстом «context deadline exceeded». Это и есть правило из главы 4.1: таймаут exporter должен быть меньше <code>scrape_timeout</code> задания.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Как выбрать значения</h2>
+        <p>Предел — предохранитель, он не должен срабатывать в обычной работе. Поэтому сначала измеряют обычные значения target, затем ставят предел с запасом:</p>
+        <ul>
+          <li>размер ответа — <code>curl -s …/metrics | wc -c</code>; у node_exporter было 111 КБ, значит, предел в несколько мегабайт;</li>
+          <li>число рядов — <code>scrape_samples_scraped</code> (глава 3.7);</li>
+          <li>длина значений — не меньше самого длинного имени метрики: имя тоже проверяется;</li>
+          <li>таймаут — больше обычной длительности опроса <code>scrape_duration_seconds</code> и не больше <code>scrape_interval</code> (глава 2.4).</li>
+        </ul>
+        <p>Если предел сработал, чинят программу: пока ошибка есть, предел отклоняет и все нужные ряды target.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>Ответ target нарушил <code>label_limit</code> в одном ряду из 300. Что сохранит Prometheus?</p>
+          <ul class="quiz__opts">
+            <li><button>299 рядов без нарушения</button><p class="quiz__why">Пределы отклоняют опрос целиком.</p></li>
+            <li data-ok><button>Ни одного отсчёта, <code>up = 0</code></button><p class="quiz__why">Верно. Как и <code>sample_limit</code> в главе 3.7.</p></li>
+            <li><button>Все 300 рядов, у нарушителя метки обрежутся</button><p class="quiz__why">Метки не обрезаются, опрос отклоняется.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b><code>label_value_length_limit: 20</code>, самая длинная метка в коде — 12 символов. Может ли предел сработать?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button>Да, если имя метрики длиннее 20 символов</button><p class="quiz__why">Верно. Имя — метка <code>__name__</code>, в опыте сработало имя из 33 символов.</p></li>
+            <li><button>Нет, имена метрик не проверяются</button><p class="quiz__why">В опыте ошибка указала <code>label name: __name__</code>.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 3</b>У задания <code>target_limit: 10</code>, после relabeling нашлось 11 target. Сколько из них опрашивается?</p>
+          <ul class="quiz__opts">
+            <li><button>10, лишний отбрасывается</button><p class="quiz__why">В опыте обе копии были в DOWN с длительностью 0.</p></li>
+            <li data-ok><button>Ни одного</button><p class="quiz__why">Верно. Все target задания получают ошибку target_limit exceeded.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 4</b>Exporter отвечает 2 секунды, <code>scrape_timeout</code> — 1 секунда. Что будет в базе?</p>
+          <ul class="quiz__opts">
+            <li><button>Метрики exporter с опозданием на секунду</button><p class="quiz__why">Опрос оборван, ответа нет.</p></li>
+            <li data-ok><button><code>up 0</code>, ошибка «context deadline exceeded»</button><p class="quiz__why">Верно. Даже если exporter знал причину, она не дошла до базы.</p></li>
+            <li><button><code>sklad_up 0</code></button><p class="quiz__why">Эту строку Prometheus так и не получил.</p></li>
+          </ul>
+        </div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Prometheus. Configuration: scrape_config — body_size_limit, label_limit, label_value_length_limit, target_limit — <a href="https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/configuration/configuration</a></li>
+            <li>Prometheus. HTTP API: targets — <a href="https://prometheus.io/docs/prometheus/latest/querying/api/#targets" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/querying/api</a></li>
+            <li>Опыты главы: пять пределов на пяти заданиях, 04.11.2026</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="03-relabeling.html">← 4.3 Relabeling: метки до опроса и после</a><a href="../index.html">К справочнику →</a></div>
+        <div class="colophon">
+          <span>Метрики и наблюдаемость · Модуль 4 · Сбор и хранение</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../modul-02-prometheus/book.js"></script>
+  <script src="../modul-02-prometheus/algo.js"></script>
+  <script src="../modul-02-prometheus/prom.js"></script>
+</body>
+</html>

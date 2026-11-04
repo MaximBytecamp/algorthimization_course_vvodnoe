@@ -66,3 +66,13 @@ python3 relabel_check.py
 
 Запросы `scrape_samples_scraped{job="orders"}` и `scrape_samples_post_metric_relabeling{job="orders"}`
 показывают, сколько рядов выбросили правила после опроса. Ошибка с regex — `prometheus-relabel-oshibka.yml`.
+
+**4.4. Лимиты опроса.** Пять заданий, у каждого свой предел. Склад на время опыта замораживается,
+чтобы exporter отвечал 2 секунды:
+
+```sh
+docker compose pause sklad
+PROM_CONFIG=prometheus-limity.yml docker compose up -d prometheus
+python3 limits_check.py          # через 30 секунд: задание, длительность опроса, ошибка
+docker compose unpause sklad
+```

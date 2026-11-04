@@ -50,7 +50,7 @@
 
 Сбор и хранение: 4.1 exporter, 4.2 service discovery, 4.3 relabeling, 4.4 лимиты опроса, 4.5 TSDB,
 4.6 пропуски, 4.7 Pushgateway, 4.8 федерация и remote_write, 4.9 практика, 4.10 итоги. Книга `modul-04-sbor/`,
-проект — сервис заказов, склад с JSON и его exporter, node_exporter, Prometheus 3.5.0. Готовы 4.1–4.3.
+проект — сервис заказов, склад с JSON и его exporter, node_exporter, Prometheus 3.5.0. Готовы 4.1–4.4.
 
 ## Дальнейшая карта · план
 
