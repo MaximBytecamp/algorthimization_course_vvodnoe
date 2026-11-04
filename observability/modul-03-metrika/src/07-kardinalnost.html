@@ -38,11 +38,12 @@
             <p>Число разных рядов метрики, то есть сочетаний значений её меток. Наибольшее — произведение числа значений всех меток; настоящее меньше, потому что ряд появляется, только когда сочетание встретилось.</p>
           </div>
         </div>
+        <p>В интерактиве число рядов считается по числу значений каждой метки:</p>
         <div class="widget card">
           <div class="widget__head"><b>Наибольшее число рядов метрики</b><span>произведение значений меток</span></div>
           <div class="widget__body">
             <div class="card__presets">
-              <button type="button" data-preset="3,2,3,1">счётчик стенда</button>
+              <button type="button" data-preset="3,2,3,1">счётчик сервиса заказов</button>
               <button type="button" data-preset="1000,2,3,1">полный путь вместо шаблона</button>
               <button type="button" data-preset="1000,2,3,300">полный путь и номер клиента</button>
             </div>
@@ -58,9 +59,9 @@
         <p>С полным путём вместо шаблона — до 6 000 рядов, с номером клиента — до 1,8 миллиона на одну метрику и один target. Метка с неограниченным числом значений умножает всё остальное.</p>
 
         <h2 id="s2"><span class="sec">§2</span>Опыт: полный путь и номер клиента в метках</h2>
-        <p>С переменной <code>BAD_LABELS=1</code> сервис ведёт второй счётчик — <code>http_requests_by_path_total</code> с метками <code>path</code> (полный путь) и <code>customer_id</code> (из заголовка <code>X-Customer-Id</code>).</p>
+        <p>Расчёт можно проверить на сервисе заказов. С переменной <code>BAD_LABELS=1</code> он ведёт второй счётчик — <code>http_requests_by_path_total</code> с метками <code>path</code> (полный путь) и <code>customer_id</code> (из заголовка <code>X-Customer-Id</code>).</p>
         <figure class="code">
-          <figcaption><span>stand/app.py</span><span>два способа записать адрес</span></figcaption>
+          <figcaption><span>app.py</span><span>два способа записать адрес</span></figcaption>
 <pre><span class="c"># шаблон адреса: /orders/{order_id}</span>
 HTTP_REQUESTS.labels(request.method, route, str(response.status_code)).inc()
 
@@ -80,7 +81,7 @@ REQUESTS_BY_PATH.labels(request.url.path, customer).inc()</pre>
           </table>
         </div>
         <div class="pic">
-          <div class="pic__bar"><span>Ряды двух счётчиков после 2 000 запросов</span><span>стенд · BAD_LABELS=1</span></div>
+          <div class="pic__bar"><span>Ряды двух счётчиков после 2 000 запросов</span><span>BAD_LABELS=1</span></div>
           <div class="pic__body">
             <div class="bars">
               <span>route, method, status</span><i class="m" style="--w:0.15%"></i><b>3</b>
@@ -119,7 +120,7 @@ random.seed(<span class="n">1</span>)
         <p>Рядов 1 996: четыре раза случайный номер клиента повторился у того же заказа.</p>
 
         <h2 id="s3"><span class="sec">§3</span>Что растёт вместе с числом рядов</h2>
-        <p>Запросов к сервису больше не стало. Выросла работа на всём пути числа: память приложения, ответ <code>/metrics</code>, сеть, разбор и хранение в Prometheus.</p>
+        <p>Лишние ряды — не только длинная таблица в запросе. Запросов к сервису больше не стало, но выросла работа на всём пути числа: память приложения, ответ <code>/metrics</code>, сеть, разбор и хранение в Prometheus.</p>
         <div class="table-scroll">
           <table>
             <thead><tr><th>После шага</th><th>Ответ /metrics, байт</th><th>Строк значений</th><th><code>scrape_samples_scraped</code></th><th>Память меток <code>path</code> в TSDB, байт</th></tr></thead>
@@ -130,10 +131,10 @@ random.seed(<span class="n">1</span>)
             </tbody>
           </table>
         </div>
-        <p>Ответ вырос в 26 раз. 2 042 отсчёта за опрос — это ≈ 11,8 миллиона в сутки вместо 350 тысяч. На стенде это килобайты, а в системе с сотнями target и миллионами рядов — гигабайты памяти сервера.</p>
+        <p>Ответ вырос в 26 раз. 2 042 отсчёта за опрос — это ≈ 11,8 миллиона в сутки вместо 350 тысяч. У сервиса заказов это килобайты, а в системе с сотнями target и миллионами рядов — гигабайты памяти сервера.</p>
 
         <h2 id="s4"><span class="sec">§4</span>Страница TSDB status</h2>
-        <p>Виновника ищут на странице <b>Status → TSDB status</b> (TSDB — база временных рядов Prometheus). Снимок после третьего шага:</p>
+        <p>В опыте виновник известен заранее. В настоящей системе его ищут на странице <b>Status → TSDB status</b> (TSDB — база временных рядов Prometheus). Снимок после третьего шага:</p>
         <figure class="shot"><img src="shots/tsdb-status.png" alt="Страница Status → TSDB status в Prometheus 3.5.0: Number of Series 2047, Top 10 label names with value count — path 1001, customer_id 300; Top 10 series count by metric names — http_requests_by_path_total 2001" loading="lazy"><figcaption>Status → TSDB status после двух тысяч запросов с метками path и customer_id</figcaption></figure>
         <p>Нужны три таблицы. <b>TSDB Head Status</b> — всего рядов: 2047. <b>Top 10 label names with value count</b> — метки с наибольшим числом значений: <code>path</code> — 1001, <code>customer_id</code> — 300 (у <code>route</code> — 2). <b>Top 10 series count by metric names</b> — метрики с наибольшим числом рядов: <code>http_requests_by_path_total</code> — 2001.</p>
         <p>По второй таблице находят метку, по третьей — метрику, затем в коде — место, где метрика получает значение метки.</p>
@@ -146,7 +147,7 @@ random.seed(<span class="n">1</span>)
             <div class="analogy__side"><b>Метрики и логи</b><p>В метки — значения из короткого списка. Номера заказов и клиентов — в лог и трассу.</p></div>
           </div>
         </div>
-        <p>Значение метки берётся из небольшого заранее известного набора. Документация советует держать кардинальность большинства метрик ниже 10.</p>
+        <p>Когда метка найдена, решают, что писать в неё вместо номера. Значение метки берётся из небольшого заранее известного набора. Документация советует держать кардинальность большинства метрик ниже 10.</p>
         <div class="table-scroll">
           <table>
             <thead><tr><th>Значение</th><th>Сколько разных</th><th>Где хранить</th></tr></thead>
@@ -161,7 +162,14 @@ random.seed(<span class="n">1</span>)
             </tbody>
           </table>
         </div>
-        <p>Для ошибок в метку пишут тип исключения, номера и текст — в лог:</p>
+        <p>Метку <code>path</code> из опыта заменяет шаблон маршрута FastAPI. Для запроса без маршрута функция возвращает <code>"unknown"</code>, иначе случайные адреса тоже создавали бы ряды.</p>
+        <figure class="code">
+          <figcaption><span>app.py</span><span>шаблон адреса вместо пути</span></figcaption>
+<pre><span class="k">def</span> <span class="f">route_of</span>(request: Request) -> str:
+    route = request.scope.get(<span class="s">"route"</span>)
+    <span class="k">return</span> getattr(route, <span class="s">"path"</span>, <span class="s">"unknown"</span>)</pre>
+        </figure>
+        <p>С ошибками так же: в метку пишут тип исключения, номера и текст — в лог:</p>
         <figure class="code">
           <figcaption><span>Тип ошибки в метке, подробности в логе</span><span>Python</span></figcaption>
 <pre><span class="k">import</span> logging
@@ -192,13 +200,6 @@ ERROR order=18 customer=185: warehouse timeout for order 18
 # TYPE order_errors_total counter
 order_errors_total{error="TimeoutError"} 2.0</pre>
         </figure>
-        <p>На стенде путь заменён шаблоном маршрута FastAPI. Для запроса без маршрута функция возвращает <code>"unknown"</code>, иначе случайные адреса тоже создавали бы ряды.</p>
-        <figure class="code">
-          <figcaption><span>stand/app.py</span><span>шаблон адреса вместо пути</span></figcaption>
-<pre><span class="k">def</span> <span class="f">route_of</span>(request: Request) -> str:
-    route = request.scope.get(<span class="s">"route"</span>)
-    <span class="k">return</span> getattr(route, <span class="s">"path"</span>, <span class="s">"unknown"</span>)</pre>
-        </figure>
 
         <h2 id="s6"><span class="sec">§6</span>Предел sample_limit</h2>
         <div class="analogy">
@@ -208,8 +209,9 @@ order_errors_total{error="TimeoutError"} 2.0</pre>
             <div class="analogy__side"><b>sample_limit</b><p>Если отсчётов в ответе больше предела, опрос отклоняется целиком: метрик target нет, но и база не растёт.</p></div>
           </div>
         </div>
+        <p>Если ошибка в метках всё же попала в рабочую версию, базу защищает <code>sample_limit</code> — предел отсчётов в одном ответе target:</p>
         <figure class="code">
-          <figcaption><span>stand/prometheus-limit.yml</span><span>предел 500 отсчётов</span></figcaption>
+          <figcaption><span>prometheus-limit.yml</span><span>предел 500 отсчётов</span></figcaption>
 <pre>scrape_configs:
   - job_name: orders
     sample_limit: <span class="n">500</span>
@@ -222,7 +224,7 @@ order_errors_total{error="TimeoutError"} 2.0</pre>
 <pre>sample limit exceeded</pre>
         </figure>
         <div class="pic">
-          <div class="pic__bar"><span>Опрос при пределе 500 отсчётов</span><span>стенд · Prometheus 3.5.0</span></div>
+          <div class="pic__bar"><span>Опрос при пределе 500 отсчётов</span><span>Prometheus 3.5.0</span></div>
           <div class="pic__body">
             <div class="chain">
               <div class="chain__box"><small>ответ /metrics</small><b>2 042 отсчёта</b>2 001 из них — счётчик с полным путём</div>
@@ -233,7 +235,7 @@ order_errors_total{error="TimeoutError"} 2.0</pre>
             </div>
           </div>
         </div>
-        <p>Вместе с лишними рядами пропали и нужные. Поэтому предел ставят с запасом над обычным числом отсчётов (на стенде 61 против 500), а после срабатывания исправляют метки в приложении.</p>
+        <p>Вместе с лишними рядами пропали и нужные. Поэтому предел ставят с запасом над обычным числом отсчётов (в опыте 61 против 500), а после срабатывания исправляют метки в приложении.</p>
 
         <h2 id="s7"><span class="sec">§7</span>Проверьте себя</h2>
         <div class="quiz">
@@ -248,7 +250,7 @@ order_errors_total{error="TimeoutError"} 2.0</pre>
           <p class="quiz__q"><b>Вопрос 2</b>Что из этого подходит для значения метки?</p>
           <ul class="quiz__opts">
             <li><button>Адрес электронной почты пользователя</button><p class="quiz__why">Сколько пользователей, столько значений. Почту хранят в логе.</p></li>
-            <li data-ok><button>Способ оплаты: card или cash</button><p class="quiz__why">Верно. Так устроена метка <code>payment</code> на стенде.</p></li>
+            <li data-ok><button>Способ оплаты: card или cash</button><p class="quiz__why">Верно. Так устроена метка <code>payment</code> у счётчика заказов.</p></li>
             <li><button>Время запроса в миллисекундах</button><p class="quiz__why">Почти каждое значение новое. Длительность пишут в гистограмму.</p></li>
           </ul>
         </div>
@@ -264,7 +266,7 @@ order_errors_total{error="TimeoutError"} 2.0</pre>
           <p class="quiz__q"><b>Вопрос 4</b>У задания <code>sample_limit: 1000</code>, ответ target содержит 1 200 отсчётов. Что сохранит Prometheus?</p>
           <ul class="quiz__opts">
             <li><button>Первые 1 000 отсчётов</button><p class="quiz__why">Ответ отклоняется целиком.</p></li>
-            <li><button>Все 1 200, с предупреждением в журнале</button><p class="quiz__why">На стенде target перешёл в DOWN.</p></li>
+            <li><button>Все 1 200, с предупреждением в журнале</button><p class="quiz__why">В опыте §6 target перешёл в DOWN.</p></li>
             <li data-ok><button>Ни одного отсчёта из ответа, <code>up</code> = 0</button><p class="quiz__why">Верно. Ошибка — sample limit exceeded.</p></li>
           </ul>
         </div>
@@ -275,6 +277,6 @@ order_errors_total{error="TimeoutError"} 2.0</pre>
             <li>Prometheus. Instrumentation: use labels; do not overuse labels — <a href="https://prometheus.io/docs/practices/instrumentation/#use-labels" target="_blank" rel="noopener">prometheus.io/docs/practices/instrumentation</a></li>
             <li>Prometheus. Metric and label naming: labels — <a href="https://prometheus.io/docs/practices/naming/#labels" target="_blank" rel="noopener">prometheus.io/docs/practices/naming</a></li>
             <li>Prometheus. Configuration: scrape_config, sample_limit — <a href="https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/configuration/configuration</a></li>
-            <li>Стенд модуля 3: опыт с BAD_LABELS=1 и sample_limit 23.10.2026</li>
+            <li>Опыты главы: BAD_LABELS=1 и sample_limit 23.10.2026</li>
           </ol>
         </div>

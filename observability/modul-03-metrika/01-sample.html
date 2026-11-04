@@ -40,7 +40,7 @@
         <nav class="contents">
           <b>В этой главе</b>
           <ol>
-            <li><a href="#s1">Стенд модуля</a></li>
+            <li><a href="#s1">Сервис заказов</a></li>
             <li><a href="#s2">Измерение: число в памяти и момент опроса</a></li>
             <li><a href="#s3">Отсчёт: время и значение</a></li>
             <li><a href="#s4">Отметка времени</a></li>
@@ -51,8 +51,8 @@
           </ol>
         </nav>
 
-        <h2 id="s1"><span class="sec">§1</span>Стенд модуля</h2>
-        <p>Все опыты модуля выполнены на одном стенде: сервис заказов на FastAPI и Prometheus 3.5.0, который опрашивает его раз в 15 секунд. Сервис отдаёт заказ по номеру, принимает новый заказ и строит отчёт. Новые заказы встают в очередь, склад собирает их по одному в секунду. Адреса: сервис — <code>localhost:8031</code>, Prometheus — <code>localhost:9094</code>.</p>
+        <h2 id="s1"><span class="sec">§1</span>Сервис заказов</h2>
+        <p>Все опыты модуля выполнены на одном сервисе заказов: FastAPI и Prometheus 3.5.0, который опрашивает его раз в 15 секунд. Сервис отдаёт заказ по номеру, принимает новый заказ и строит отчёт. Новые заказы встают в очередь, склад собирает их по одному в секунду. Адреса: сервис — <code>localhost:8031</code>, Prometheus — <code>localhost:9094</code>.</p>
         <div class="table-scroll">
           <table>
             <thead><tr><th>Метрика</th><th>Тип</th><th>Вопрос о сервисе</th></tr></thead>
@@ -65,7 +65,7 @@
             </tbody>
           </table>
         </div>
-        <p>Кроме них библиотека <code>prometheus-client</code> отдаёт метрики процесса Python: память, время процессора, момент запуска.</p>
+        <p>Кроме них библиотека <code>prometheus-client</code> отдаёт метрики процесса Python: память, время процессора, момент запуска. Все эти числа сервис держит в памяти, и с вопроса, как они попадают в базу, начинается модуль.</p>
 
         <h2 id="s2"><span class="sec">§2</span>Измерение: число в памяти и момент опроса</h2>
         <div class="analogy">
@@ -75,9 +75,9 @@
             <div class="analogy__side"><b>Метрика</b><p>Число в памяти приложения меняется при каждом событии. Prometheus переписывает его раз в 15 секунд.</p></div>
           </div>
         </div>
-        <p>Приложение меняет число в своей памяти при каждом событии, и Prometheus об этих изменениях не знает. По расписанию он запрашивает <code>/metrics</code> и записывает числа, которые стоят там в эту секунду. На стенде в сервис отправлено десять запросов, затем прошёл опрос.</p>
+        <p>Приложение меняет число в своей памяти при каждом событии, и Prometheus об этих изменениях не знает. По расписанию он запрашивает <code>/metrics</code> и записывает числа, которые стоят там в эту секунду. В опыте в сервис отправлено десять запросов, затем прошёл опрос.</p>
         <div class="pic">
-          <div class="pic__bar"><span>От запросов до записи в базе</span><span>стенд модуля 3</span></div>
+          <div class="pic__bar"><span>От запросов до записи в базе</span><span>сервис заказов</span></div>
           <div class="pic__body">
             <div class="chain">
               <div class="chain__box"><small>события</small><b>10 запросов</b>GET /orders/1 … /orders/10</div>
@@ -112,6 +112,7 @@ http_requests_total{method="GET",status="200"} 10.0</pre>
         </figure>
 
         <h2 id="s3"><span class="sec">§3</span>Отсчёт: время и значение</h2>
+        <p>Запись, которую опрос кладёт в базу, состоит из двух частей: когда число прочитано и какое оно.</p>
         <div class="term-card">
           <p class="term-card__head"><b>Отсчёт</b><span>sample · одна запись временного ряда</span></p>
           <div class="term-card__body">
@@ -131,7 +132,7 @@ http_requests_total{method="GET",status="200"} 10.0</pre>
             </div>
           </div>
         </div>
-        <p>Видно два свойства. Отсчёт пишется при каждом успешном опросе, даже если число не изменилось. Промежутки близки к 15 секундам, но не равны: отметка — фактическое начало опроса, а оно сдвигается на доли секунды.</p>
+        <p>Видно два свойства. Отсчёт пишется при каждом успешном опросе, даже если число не изменилось. Промежутки близки к 15 секундам, но не равны: отметка — фактическое начало опроса, а оно сдвигается на доли секунды. Как читать само число отметки — в следующем разделе.</p>
 
         <h2 id="s4"><span class="sec">§4</span>Отметка времени</h2>
         <div class="analogy">
@@ -164,7 +165,7 @@ print([round(b - a, <span class="n">3</span>) <span class="k">for</span> a, b <s
         </figure>
         <p>Отметку ставит Prometheus, один раз за опрос, — момент начала запроса к target. Все ряды из одного ответа и служебный ряд <code>up</code> получают одну отметку:</p>
         <div class="pic">
-          <div class="pic__bar"><span>Отметки трёх рядов одного target</span><span>стенд · время UTC</span></div>
+          <div class="pic__bar"><span>Отметки трёх рядов одного target</span><span>сервис заказов · время UTC</span></div>
           <div class="pic__body">
             <div class="tl tl--wide" style="--n:4">
               <b>время</b><span class="t">15:52:06.837</span><span class="t">15:52:21.832</span><span class="t">15:52:38.339</span><span class="t">15:52:51.613</span>
@@ -180,19 +181,8 @@ print([round(b - a, <span class="n">3</span>) <span class="k">for</span> a, b <s
         </div></details>
 
         <h2 id="s5"><span class="sec">§5</span>Значение</h2>
-        <p>Значение — число типа float64, как <code>float</code> в Python. Даже счётчик запросов хранится так, поэтому библиотека пишет <code>10.0</code>, а интерфейс показывает <code>10</code>. Дробные значения нужны для времени и долей: <code>process_cpu_seconds_total</code> на стенде — <code>5.26</code> секунды процессора. Особые значения: <code>NaN</code>, <code>+Inf</code>, <code>-Inf</code>.</p>
-        <p>Текст в значение не записать. Слова кладут в метки, а значением ставят 1. Время записать можно — числом секунд Unix-времени:</p>
-        <div class="pic">
-          <div class="pic__bar"><span>Две метрики процесса на стенде</span><span>ответ /metrics</span></div>
-          <div class="pic__body">
-            <div class="ser">
-              <div>python_info <i>implementation="CPython"</i> <i>version="3.12.15"</i> <b>1.0</b><em>Сведения записаны в метках. Значение 1 означает, что ряд есть.</em></div>
-              <div>process_start_time_seconds <b>1.7927697213e+09</b><em>Значение — Unix-время запуска процесса: 23.10.2026 15:35:21 UTC.</em></div>
-            </div>
-          </div>
-        </div>
-        <p>У второго ряда время есть дважды. Отметка — когда Prometheus прочитал число. Значение — когда запущен процесс; оно не меняется, пока процесс работает.</p>
-        <p>Свою такую метрику создают классом <code>Info</code> — он сам допишет <code>_info</code> и значение 1:</p>
+        <p>Вторая часть отсчёта — значение. Это число типа float64, как <code>float</code> в Python. Даже счётчик запросов хранится так, поэтому библиотека пишет <code>10.0</code>, а интерфейс показывает <code>10</code>. Дробные значения нужны для времени и долей: <code>process_cpu_seconds_total</code> у сервиса заказов — <code>5.26</code> секунды процессора. Особые значения: <code>NaN</code>, <code>+Inf</code>, <code>-Inf</code>.</p>
+        <p>Текст в значение не записать: слова кладут в метки, а значением ставят 1. Для этого есть класс <code>Info</code> — он сам допишет к имени <code>_info</code>:</p>
         <figure class="code">
           <figcaption><span>Метрика-сведения</span><span>Python</span></figcaption>
 <pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Info, generate_latest
@@ -207,6 +197,17 @@ print(generate_latest(registry).decode())</pre>
 # TYPE app_info gauge
 app_info{version="2.4.1"} 1.0</pre>
         </figure>
+        <p>Время в значение записать можно — числом секунд Unix-времени. Обе записи есть среди метрик процесса Python:</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Две метрики процесса Python</span><span>ответ /metrics</span></div>
+          <div class="pic__body">
+            <div class="ser">
+              <div>python_info <i>implementation="CPython"</i> <i>version="3.12.15"</i> <b>1.0</b><em>Сведения записаны в метках. Значение 1 означает, что ряд есть.</em></div>
+              <div>process_start_time_seconds <b>1.7927697213e+09</b><em>Значение — Unix-время запуска процесса: 23.10.2026 15:35:21 UTC.</em></div>
+            </div>
+          </div>
+        </div>
+        <p>У второго ряда время есть дважды. Отметка — когда Prometheus прочитал число. Значение — когда запущен процесс; оно не меняется, пока процесс работает.</p>
 
         <h2 id="s6"><span class="sec">§6</span>Последний отсчёт в запросе</h2>
         <div class="analogy">
@@ -216,7 +217,8 @@ app_info{version="2.4.1"} 1.0</pre>
             <div class="analogy__side"><b>Мгновенный запрос</b><p>Prometheus берёт последний отсчёт. Если он старше пяти минут, ряда в ответе нет.</p></div>
           </div>
         </div>
-        <p>Запрос без квадратных скобок называется мгновенным и возвращает по одному значению на ряд. Отсчёта ровно в момент запроса обычно нет, поэтому берётся последний отсчёт до него, но не старше пяти минут (lookback delta).</p>
+        <p>Отсчёты лежат в базе через 15 секунд, а запрос может прийти в любой момент. Запрос без квадратных скобок называется мгновенным и возвращает по одному значению на ряд. Отсчёта ровно в момент запроса обычно нет, поэтому берётся последний отсчёт до него, но не старше пяти минут (lookback delta).</p>
+        <p>Ответ API на мгновенный запрос <code>http_requests_total{status="404"}</code>, выполненный в 15:53:04:</p>
         <figure class="code code--out">
           <figcaption><span>GET /api/v1/query?query=http_requests_total{status="404"}</span><span>Prometheus 3.5.0</span></figcaption>
 <pre>"metric": {"__name__": "http_requests_total", "instance": "api:8000",
@@ -225,7 +227,7 @@ app_info{version="2.4.1"} 1.0</pre>
 "value": [1792770784.543, "1"]</pre>
         </figure>
         <div class="pic">
-          <div class="pic__bar"><span>Какой отсчёт выбирает мгновенный запрос</span><span>стенд · время UTC</span></div>
+          <div class="pic__bar"><span>Какой отсчёт выбирает мгновенный запрос</span><span>время UTC</span></div>
           <div class="pic__body">
             <div class="tl tl--wide" style="--n:5">
               <b>время</b><span class="t">15:52:06</span><span class="t">15:52:21</span><span class="t">15:52:38</span><span class="t">15:52:51</span><span class="t">15:53:04</span>
@@ -234,23 +236,23 @@ app_info{version="2.4.1"} 1.0</pre>
           </div>
           <p class="pic__note">Выделен отсчёт, попавший в ответ: последний до момента запроса.</p>
         </div>
-        <p>Значение 1 взято из отсчёта 15:52:51.613, а в ответе стоит момент запроса — 15:53:04.543. Если отсчётов нет совсем, ответ пустой: запрос на время до первого опроса стенда ничего не вернул. Ряд, пропавший из ответа приложения, исчезает раньше пяти минут — по отметке «устарел» из главы 2.4.</p>
+        <p>Значение 1 взято из отсчёта 15:52:51.613, а в ответе стоит момент запроса — 15:53:04.543. Если отсчётов нет совсем, ответ пустой: запрос на время до первого опроса сервиса ничего не вернул. Ряд, пропавший из ответа приложения, исчезает раньше пяти минут — по отметке «устарел» из главы 2.4.</p>
 
         <h2 id="s7"><span class="sec">§7</span>Сколько отсчётов хранится</h2>
-        <p>Число отсчётов = число рядов × число опросов. При интервале 15 секунд у ряда 5 760 отсчётов в сутки. На стенде было 34 ряда: 29 из ответа сервиса и 5 служебных.</p>
+        <p>Каждый опрос добавляет по отсчёту в каждый ряд, поэтому число отсчётов = число рядов × число опросов. При интервале 15 секунд у ряда 5 760 отсчётов в сутки. У сервиса заказов было 34 ряда: 29 из его ответа и 5 служебных.</p>
         <div class="pic">
-          <div class="pic__bar"><span>Отсчёты стенда за сутки</span><span>интервал 15 с · 34 ряда</span></div>
+          <div class="pic__bar"><span>Отсчёты сервиса заказов за сутки</span><span>интервал 15 с · 34 ряда</span></div>
           <div class="pic__body">
             <div class="chain">
               <div class="chain__box"><small>в сутках</small><b>86 400 с</b>24 × 3 600</div>
               <span class="chain__arr" data-l="÷ 15 с"></span>
               <div class="chain__box"><small>на один ряд</small><b>5 760</b>отсчётов в сутки</div>
               <span class="chain__arr" data-l="× 34 ряда"></span>
-              <div class="chain__box is-key"><small>на стенд</small><b>195 840</b>отсчётов в сутки</div>
+              <div class="chain__box is-key"><small>на сервис</small><b>195 840</b>отсчётов в сутки</div>
             </div>
           </div>
         </div>
-        <p>Без сжатия отсчёт — 16 байт, со сжатием в среднем 1–2 байта: соседние отметки идут почти ровно, значения часто повторяются. Для стенда это 0,2–0,4 МБ в сутки. Число запросов к сервису на объём не влияет: оно меняет только значения.</p>
+        <p>Без сжатия отсчёт — 16 байт, со сжатием в среднем 1–2 байта: соседние отметки идут почти ровно, значения часто повторяются. Для сервиса заказов это 0,2–0,4 МБ в сутки. Число запросов к сервису на объём не влияет: оно меняет только значения.</p>
 
         <h2 id="s8"><span class="sec">§8</span>Проверьте себя</h2>
         <div class="quiz">
@@ -258,7 +260,7 @@ app_info{version="2.4.1"} 1.0</pre>
           <ul class="quiz__opts">
             <li><button>50, по одному на запрос</button><p class="quiz__why">Отдельные события в Prometheus не попадают. Он читает число из памяти один раз за опрос.</p></li>
             <li data-ok><button>Один, со значением на 50 больше прошлого</button><p class="quiz__why">Верно. Опрос даёт один отсчёт на ряд.</p></li>
-            <li><button>Ни одного, если значение не изменилось</button><p class="quiz__why">Отсчёт пишется при каждом успешном опросе. На стенде четыре отсчёта подряд имели значение 10.</p></li>
+            <li><button>Ни одного, если значение не изменилось</button><p class="quiz__why">Отсчёт пишется при каждом успешном опросе. В опыте §3 четыре отсчёта подряд имели значение 10.</p></li>
           </ul>
         </div>
         <div class="quiz">
@@ -273,7 +275,7 @@ app_info{version="2.4.1"} 1.0</pre>
           <p class="quiz__q"><b>Вопрос 3</b>Мгновенный запрос выполнен в 12:00:10, последние отсчёты ряда сделаны в 11:59:55 и 11:59:40. Какое время стоит в ответе?</p>
           <ul class="quiz__opts">
             <li data-ok><button>12:00:10, а значение взято из отсчёта 11:59:55</button><p class="quiz__why">Верно. В ответе — момент запроса, значение — из последнего отсчёта до него.</p></li>
-            <li><button>11:59:55 — время отсчёта</button><p class="quiz__why">На стенде запрос в 15:53:04.543 вернул эту же отметку, хотя последний опрос был в 15:52:51.613.</p></li>
+            <li><button>11:59:55 — время отсчёта</button><p class="quiz__why">В §6 запрос в 15:53:04.543 вернул в ответе время запроса, хотя последний опрос был в 15:52:51.613.</p></li>
             <li><button>11:59:40 — время первого отсчёта в пределах минуты</button><p class="quiz__why">Берётся последний отсчёт до момента запроса.</p></li>
           </ul>
         </div>
@@ -281,7 +283,7 @@ app_info{version="2.4.1"} 1.0</pre>
           <p class="quiz__q"><b>Вопрос 4</b>Нужно хранить версию приложения, например 2.4.1. Как её записать в метрику?</p>
           <ul class="quiz__opts">
             <li><button>Значением: <code>app_version 2.4.1</code></button><p class="quiz__why">Значение — одно число. Prometheus отклонит такой ответ целиком.</p></li>
-            <li data-ok><button>Меткой со значением 1: <code>app_info{version="2.4.1"} 1</code></button><p class="quiz__why">Верно. Так устроена <code>python_info</code> на стенде.</p></li>
+            <li data-ok><button>Меткой со значением 1: <code>app_info{version="2.4.1"} 1</code></button><p class="quiz__why">Верно. Так устроена <code>python_info</code>.</p></li>
             <li><button>Отметкой времени после значения</button><p class="quiz__why">Отметка — число миллисекунд, версию в ней не записать.</p></li>
           </ul>
         </div>
@@ -301,7 +303,7 @@ app_info{version="2.4.1"} 1.0</pre>
             <li>Prometheus. Storage: «on average, Prometheus uses only around 1–2 bytes per sample» — <a href="https://prometheus.io/docs/prometheus/latest/storage/" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/storage</a></li>
             <li>Prometheus. Querying basics: instant vectors, range vectors, staleness — <a href="https://prometheus.io/docs/prometheus/latest/querying/basics/" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/querying/basics</a></li>
             <li>Prometheus. Exposition formats: timestamps — <a href="https://prometheus.io/docs/instrumenting/exposition_formats/" target="_blank" rel="noopener">prometheus.io/docs/instrumenting/exposition_formats</a></li>
-            <li>Стенд модуля 3: отсчёты, отметки и ответы API получены 23.10.2026</li>
+            <li>Опыты главы: отсчёты, отметки и ответы API сервиса заказов получены 23.10.2026</li>
           </ol>
         </div>
 

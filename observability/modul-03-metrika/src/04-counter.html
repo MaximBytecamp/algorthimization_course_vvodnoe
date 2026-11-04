@@ -39,7 +39,7 @@
         </div>
         <p>Счётчиком считают события и накопленные количества: запросы, ошибки, заказы, байты, секунды процессора.</p>
         <div class="pic">
-          <div class="pic__bar"><span>Три счётчика стенда и что их увеличивает</span><span>ответ /metrics</span></div>
+          <div class="pic__bar"><span>Три счётчика сервиса заказов и что их увеличивает</span><span>ответ /metrics</span></div>
           <div class="pic__body">
             <div class="cards">
               <div><small>событие · запрос</small><b>http_requests_total</b>+1 после каждого обработанного запроса</div>
@@ -49,7 +49,7 @@
           </div>
         </div>
         <figure class="code">
-          <figcaption><span>stand/app.py</span><span>счётчик заказов</span></figcaption>
+          <figcaption><span>app.py</span><span>счётчик заказов</span></figcaption>
 <pre>ORDERS_CREATED = Counter(<span class="s">"orders_created_total"</span>, <span class="s">"Orders created"</span>, [<span class="s">"payment"</span>])
 ...
 ORDERS_CREATED.labels(payment).inc()</pre>
@@ -69,9 +69,9 @@ ORDERS_CREATED.labels(payment).inc()</pre>
             <div class="analogy__side"><b>Счётчик запросов</b><p>Значение 40 ничего не говорит о нагрузке. +30 за 15 секунд — это 2 запроса в секунду.</p></div>
           </div>
         </div>
-        <p>Значение счётчика зависит от того, когда программа запущена. Поэтому смотрят рост за промежуток, а рост, делённый на длину промежутка, даёт скорость.</p>
+        <p>Значение счётчика зависит от того, когда программа запущена. Поэтому смотрят рост за промежуток, а рост, делённый на длину промежутка, даёт скорость. В опыте за несколько секунд отправлено 30 запросов:</p>
         <div class="pic">
-          <div class="pic__bar"><span>Рост счётчика между двумя отсчётами</span><span>стенд · время UTC</span></div>
+          <div class="pic__bar"><span>Рост счётчика между двумя отсчётами</span><span>время UTC</span></div>
           <div class="pic__body">
             <div class="tl tl--wide" style="--n:4">
               <b>время</b><span class="t">15:04:28</span><span class="t">15:04:43</span><span class="t">15:04:58</span><span class="t">15:05:13</span>
@@ -83,9 +83,9 @@ ORDERS_CREATED.labels(payment).inc()</pre>
         <p>Рост 30 за 15 секунд — 2 запроса в секунду. В запросах это считают функции <code>increase</code> и <code>rate</code> по разностям соседних отсчётов.</p>
 
         <h2 id="s3"><span class="sec">§3</span>Сброс при перезапуске</h2>
-        <p>Счётчик живёт в памяти процесса. Новый процесс создаёт его заново с нуля — это сброс. Опыт: счётчик доведён до 40, сервис перезапущен в 15:05:26, затем отправлено 10 запросов.</p>
+        <p>Расчёт по разностям работает, пока счётчик растёт. Но счётчик живёт в памяти процесса, и новый процесс создаёт его заново с нуля — это сброс. Опыт: счётчик доведён до 40, сервис перезапущен в 15:05:26, затем отправлено 10 запросов.</p>
         <div class="pic">
-          <div class="pic__bar"><span>Ряд счётчика при перезапуске сервиса</span><span>стенд · время UTC</span></div>
+          <div class="pic__bar"><span>Ряд счётчика при перезапуске сервиса</span><span>время UTC</span></div>
           <div class="pic__body">
             <div class="tl tl--wide" style="--n:6">
               <b>время</b><span class="t">15:04:58</span><span class="t">15:05:13</span><span class="t">15:05:28</span><span class="t">15:05:43</span><span class="t">15:05:58</span><span class="t">15:06:13</span>
@@ -96,7 +96,32 @@ ORDERS_CREATED.labels(payment).inc()</pre>
           <p class="pic__note">Опрос 15:05:28 пришёлся на перезапуск: <code>up = 0</code>, отсчёта нет. Выделен первый отсчёт после сброса.</p>
         </div>
         <p>Уменьшение у счётчика возможно только при сбросе, поэтому Prometheus так его и распознаёт: <code>resets(…[2m])</code> вернул 1. Рост считается как 30 до сброса плюс 10 после — 40. Разность 10 − 10 = 0 была бы ошибкой.</p>
-        <p>Тот же расчёт на Python, без достраивания до краёв окна. Второй ряд — скрытый сброс из §4:</p>
+        <details class="more"><summary>Подробнее: почему increase вернул 45,7</summary><div>
+          <p>Отсчёты занимают 105 секунд окна в 120. <code>increase</code> достраивает рост до краёв окна: 40 × 119,8 / 105 ≈ 45,7. Поэтому результат часто дробный даже для целых событий.</p>
+        </div></details>
+
+        <h2 id="s4"><span class="sec">§4</span>Скрытый сброс</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Замена турникета</b><p>В 9:00 было 400, в 9:10 турникет заменили, к 10:00 новый насчитал 600. Контролёр запишет рост 200 и потеряет 400.</p></div>
+            <div class="analogy__side"><b>Сброс между опросами</b><p>После 40 в базу попадает 60, и Prometheus считает рост 20 вместо 60.</p></div>
+          </div>
+        </div>
+        <p>Если после перезапуска до опроса пришло больше событий, чем было, уменьшения нет и сброс не виден. Опыт: счётчик 40, перезапуск сразу после опроса, за две секунды 60 запросов.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Сброс, который Prometheus не обнаружил</span><span>время UTC</span></div>
+          <div class="pic__body">
+            <div class="tl tl--wide" style="--n:5">
+              <b>время</b><span class="t">15:09:28</span><span class="t">15:09:43</span><span class="t">15:09:58</span><span class="t">15:10:13</span><span class="t">15:10:28</span>
+              <b>в памяти</b><span>40</span><span>40</span><span class="bad">40 → 0 → 60</span><span>60</span><span>60</span>
+              <b>в базе</b><span>40</span><span>40</span><span>40</span><span class="hot">60</span><span>60</span>
+              <b>рост по базе</b><span class="t">—</span><span class="t">0</span><span class="t">0</span><span class="t">+20</span><span class="t">0</span>
+            </div>
+          </div>
+          <p class="pic__note">Пришло 60 запросов. По базе рост — 20, <code>resets</code> вернул 0.</p>
+        </div>
+        <p>Оба случая — видимый и скрытый сброс — в одном расчёте на Python, по тем же отсчётам и без достраивания до краёв окна:</p>
         <figure class="code">
           <figcaption><span>Рост счётчика со сбросами</span><span>Python</span></figcaption>
 <pre><span class="k">def</span> <span class="f">growth</span>(samples):
@@ -121,31 +146,6 @@ print(growth([<span class="n">100</span>, <span class="n">130</span>, <span clas
 (20, 0)
 (75, 1)</pre>
         </figure>
-        <details class="more"><summary>Подробнее: почему increase вернул 45,7</summary><div>
-          <p>Отсчёты занимают 105 секунд окна в 120. <code>increase</code> достраивает рост до краёв окна: 40 × 119,8 / 105 ≈ 45,7. Поэтому результат часто дробный даже для целых событий.</p>
-        </div></details>
-
-        <h2 id="s4"><span class="sec">§4</span>Скрытый сброс</h2>
-        <div class="analogy">
-          <div class="analogy__head">Сравнение из жизни</div>
-          <div class="analogy__pair">
-            <div class="analogy__side"><b>Замена турникета</b><p>В 9:00 было 400, в 9:10 турникет заменили, к 10:00 новый насчитал 600. Контролёр запишет рост 200 и потеряет 400.</p></div>
-            <div class="analogy__side"><b>Сброс между опросами</b><p>После 40 в базу попадает 60, и Prometheus считает рост 20 вместо 60.</p></div>
-          </div>
-        </div>
-        <p>Если после перезапуска до опроса пришло больше событий, чем было, уменьшения нет и сброс не виден. Опыт: счётчик 40, перезапуск сразу после опроса, за две секунды 60 запросов.</p>
-        <div class="pic">
-          <div class="pic__bar"><span>Сброс, который Prometheus не обнаружил</span><span>стенд · время UTC</span></div>
-          <div class="pic__body">
-            <div class="tl tl--wide" style="--n:5">
-              <b>время</b><span class="t">15:09:28</span><span class="t">15:09:43</span><span class="t">15:09:58</span><span class="t">15:10:13</span><span class="t">15:10:28</span>
-              <b>в памяти</b><span>40</span><span>40</span><span class="bad">40 → 0 → 60</span><span>60</span><span>60</span>
-              <b>в базе</b><span>40</span><span>40</span><span>40</span><span class="hot">60</span><span>60</span>
-              <b>рост по базе</b><span class="t">—</span><span class="t">0</span><span class="t">0</span><span class="t">+20</span><span class="t">0</span>
-            </div>
-          </div>
-          <p class="pic__note">Пришло 60 запросов. По базе рост — 20, <code>resets</code> вернул 0.</p>
-        </div>
         <p>Чем реже опрос, тем вероятнее такая потеря. Перезапуск выдаёт метрика <code>process_start_time_seconds</code> — момент запуска процесса: если она изменилась, процесс перезапускался.</p>
 
         <h2 id="s5"><span class="sec">§5</span>Несколько процессов одного сервиса</h2>
@@ -160,8 +160,7 @@ print(growth([<span class="n">100</span>, <span class="n">130</span>, <span clas
           </div>
           <p class="pic__note">Первый процесс обработал 6 запросов, второй — 14. Ни один ответ не показывает 20.</p>
         </div>
-        <p>В ряд попадают числа двух процессов вперемешку, и каждый переход 14 → 6 выглядит как сброс. Решения два: режим нескольких процессов в prometheus-client (переменная <code>PROMETHEUS_MULTIPROC_DIR</code>, значения складываются из файлов) или один процесс на контейнер, каждый отдельным target со своим <code>instance</code>.</p>
-        <p>В режиме нескольких процессов каждый процесс пишет значение в свой файл, а ответ <code>/metrics</code> складывает файлы. Те же 6 и 14 запросов:</p>
+        <p>В ряд попадают числа двух процессов вперемешку, и каждый переход 14 → 6 выглядит как сброс. Решения два: один процесс на контейнер, каждый отдельным target со своим <code>instance</code>, или режим нескольких процессов в prometheus-client. В этом режиме каждый процесс пишет значение в свой файл в папке <code>PROMETHEUS_MULTIPROC_DIR</code>, а ответ <code>/metrics</code> складывает файлы. Те же 6 и 14 запросов:</p>
         <figure class="code">
           <figcaption><span>Режим нескольких процессов</span><span>Python</span></figcaption>
 <pre><span class="k">import</span> os
@@ -232,6 +231,6 @@ http_requests_total 20.0</pre>
             <li>Prometheus. Metric types: Counter — <a href="https://prometheus.io/docs/concepts/metric_types/" target="_blank" rel="noopener">prometheus.io/docs/concepts/metric_types</a></li>
             <li>Prometheus. Query functions: resets, increase, rate — <a href="https://prometheus.io/docs/prometheus/latest/querying/functions/" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/querying/functions</a></li>
             <li>prometheus-client для Python: Multiprocess Mode — <a href="https://prometheus.github.io/client_python/multiprocess/" target="_blank" rel="noopener">prometheus.github.io/client_python/multiprocess</a></li>
-            <li>Стенд модуля 3: перезапуски сервиса и запуск с двумя процессами 23.10.2026</li>
+            <li>Опыты главы: перезапуски сервиса заказов и запуск с двумя процессами 23.10.2026</li>
           </ol>
         </div>

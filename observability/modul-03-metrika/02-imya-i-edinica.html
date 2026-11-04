@@ -59,7 +59,7 @@
         </div>
         <p>Поля для единицы и описания у отсчёта нет, поэтому всё о числе записывают в имя. Имя — слова через подчёркивание от общего к частному: префикс (к чему относится), что измеряется, единица, у счётчика ещё <code>_total</code>.</p>
         <div class="pic">
-          <div class="pic__bar"><span>Части имени метрики</span><span>метрика стенда</span></div>
+          <div class="pic__bar"><span>Части имени метрики</span><span>метрика сервиса заказов</span></div>
           <div class="pic__body">
             <div class="url">
               <div class="a"><b>http</b><small>Префикс: к чему относится, здесь — к HTTP-запросам</small></div>
@@ -70,7 +70,7 @@
         </div>
         <div class="table-scroll">
           <table>
-            <thead><tr><th>Имя на стенде</th><th>Префикс</th><th>Что измеряется</th><th>Единица</th><th>Окончание</th></tr></thead>
+            <thead><tr><th>Имя в сервисе заказов</th><th>Префикс</th><th>Что измеряется</th><th>Единица</th><th>Окончание</th></tr></thead>
             <tbody>
               <tr><td><code>http_request_duration_seconds</code></td><td>http</td><td>длительность запроса</td><td>seconds</td><td>—</td></tr>
               <tr><td><code>process_resident_memory_bytes</code></td><td>process</td><td>память в RAM</td><td>bytes</td><td>—</td></tr>
@@ -103,8 +103,8 @@
             </tbody>
           </table>
         </div>
-        <p>Дробное значение float64 хранит без потерь, а в миллисекунды переводят при выводе: Grafana покажет <code>0.12</code> секунды как «120 ms». Доля пишется от 0 до 1 с окончанием <code>_ratio</code>.</p>
-        <p>Переводить ничего не нужно: <code>time.perf_counter()</code> уже считает в секундах.</p>
+        <p>В базовых единицах значение часто дробное: 120 мс — это <code>0.12</code> с. float64 хранит его без потерь, а в миллисекунды переводят при выводе: Grafana покажет «120 ms». Доля пишется от 0 до 1 с окончанием <code>_ratio</code>.</p>
+        <p>В коде длительность сразу получается в секундах: <code>time.perf_counter()</code> считает в них.</p>
         <figure class="code">
           <figcaption><span>Длительность сразу в секундах</span><span>Python</span></figcaption>
 <pre><span class="k">import</span> time
@@ -126,10 +126,10 @@ report_build_seconds 0.5215566250262782</pre>
         </figure>
 
         <h2 id="s3"><span class="sec">§3</span>Окончания _total, _bucket, _info</h2>
-        <p>Окончание показывает тип метрики, а значит, как обращаться с числом.</p>
+        <p>После единицы в имени может стоять окончание. Оно показывает тип метрики, а значит, как обращаться с числом.</p>
         <div class="table-scroll">
           <table>
-            <thead><tr><th>Окончание</th><th>Где ставится</th><th>Пример на стенде</th></tr></thead>
+            <thead><tr><th>Окончание</th><th>Где ставится</th><th>Пример в сервисе заказов</th></tr></thead>
             <tbody>
               <tr><td><code>_total</code></td><td>Счётчик, counter</td><td><code>orders_created_total</code></td></tr>
               <tr><td><code>_bucket</code>, <code>_sum</code>, <code>_count</code></td><td>Три вида строк гистограммы, histogram</td><td><code>http_request_duration_seconds_bucket</code></td></tr>
@@ -156,9 +156,9 @@ report_build_seconds 0.4</pre>
         <p>Повторно <code>_total</code> не добавляется, поэтому оба способа дают одно имя. Смысл имени библиотека не проверяет: <code>Gauge("x_ms", …, unit="seconds")</code> без ошибки превратился в <code>x_ms_seconds</code>.</p>
 
         <h2 id="s4"><span class="sec">§4</span>Проверка имён командой promtool</h2>
-        <p>Подкоманда <code>promtool check metrics</code> из поставки Prometheus читает текст метрик со стандартного ввода и сообщает о нарушениях договорённостей. Ответ стенда проходит чисто:</p>
+        <p>Раз библиотека смысл имени не проверяет, договорённости проверяют отдельно — подкомандой <code>promtool check metrics</code> из поставки Prometheus. Она читает текст метрик со стандартного ввода. Ответ сервиса заказов проходит чисто:</p>
         <figure class="code code--out">
-          <figcaption><span>Проверка ответа стенда</span><span>promtool из Prometheus 3.5.0</span></figcaption>
+          <figcaption><span>Проверка ответа сервиса заказов</span><span>promtool из Prometheus 3.5.0</span></figcaption>
 <pre>$ curl -s localhost:8031/metrics | docker run --rm -i --entrypoint promtool prom/prometheus:v3.5.0 check metrics
 $ echo $?
 0</pre>
@@ -194,7 +194,7 @@ requestTime metric names should be written in 'snake_case' not 'camelCase'</pre>
             </div>
           </div>
         </div>
-        <p>Проверка неполная. Восьмое имя в файле, <code>disk_usage_percent 73</code>, прошло без замечаний, хотя по договорённости это <code>disk_usage_ratio 0.73</code>. Чистый вывод <code>promtool</code> не заменяет чтения имён человеком.</p>
+        <p>Проверка неполная: восьмое имя в файле, <code>disk_usage_percent 73</code>, прошло без замечаний, хотя по договорённости это <code>disk_usage_ratio 0.73</code>. Чистый вывод <code>promtool</code> не заменяет чтения имён человеком.</p>
 
         <h2 id="s5"><span class="sec">§5</span>Что записать в имя, а что в метки</h2>
         <div class="analogy">
@@ -206,7 +206,7 @@ requestTime metric names should be written in 'snake_case' not 'camelCase'</pre>
         </div>
         <p>Величину записывают в имя, её части — в метки. Если вынести метод в имя, для общего числа запросов придётся перечислять все имена, а новый метод добавит новое имя.</p>
         <div class="pic">
-          <div class="pic__bar"><span>Метод в метке и метод в имени</span><span>ряды стенда</span></div>
+          <div class="pic__bar"><span>Метод в метке и метод в имени</span><span>ряды сервиса заказов</span></div>
           <div class="pic__body">
             <div class="duo">
               <div><b><span class="ok">Метод в метке</span></b>
@@ -264,7 +264,7 @@ http_requests_total{method="DELETE"} 1.0</pre>
           <p class="quiz__q"><b>Вопрос 2</b>В коде написано <code>Counter("payments_failed", "…")</code>. Какое имя будет в ответе /metrics?</p>
           <ul class="quiz__opts">
             <li><button><code>payments_failed</code></button><p class="quiz__why">Для счётчика библиотека дописывает окончание <code>_total</code>.</p></li>
-            <li data-ok><button><code>payments_failed_total</code></button><p class="quiz__why">Верно. На стенде <code>orders_created</code> вышел в ответ как <code>orders_created_total</code>.</p></li>
+            <li data-ok><button><code>payments_failed_total</code></button><p class="quiz__why">Верно. В §3 <code>orders_created</code> вышел в ответ как <code>orders_created_total</code>.</p></li>
             <li><button><code>payments_failed_count</code></button><p class="quiz__why">Окончание <code>_count</code> бывает у гистограммы.</p></li>
           </ul>
         </div>
@@ -291,7 +291,7 @@ http_requests_total{method="DELETE"} 1.0</pre>
             <li>Prometheus. Metric and label naming — <a href="https://prometheus.io/docs/practices/naming/" target="_blank" rel="noopener">prometheus.io/docs/practices/naming</a></li>
             <li>Prometheus. Command-line: promtool check metrics — <a href="https://prometheus.io/docs/prometheus/latest/command-line/promtool/" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/command-line/promtool</a></li>
             <li>prometheus-client для Python: Counter, Gauge, параметр unit — <a href="https://prometheus.github.io/client_python/" target="_blank" rel="noopener">prometheus.github.io/client_python</a></li>
-            <li>Стенд модуля 3: вывод promtool и библиотеки получен 23.10.2026</li>
+            <li>Опыты главы: вывод promtool и библиотеки получен 23.10.2026</li>
           </ol>
         </div>
 

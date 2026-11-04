@@ -27,7 +27,7 @@
         <header class="chapter-head">
           <span class="chapter-num">3.6</span>
           <h1>Histogram:<br>распределение длительности</h1>
-          <p class="lead">Третий тип метрик — гистограмма: сколько значений были малыми, а сколько большими. В главе на двадцати отчётах стенда разобраны корзины, строки <code>_sum</code> и <code>_count</code>, оценка перцентиля и выбор границ.</p>
+          <p class="lead">Третий тип метрик — гистограмма: сколько значений были малыми, а сколько большими. В главе на двадцати отчётах сервиса заказов разобраны корзины, строки <code>_sum</code> и <code>_count</code>, оценка перцентиля и выбор границ.</p>
         </header>
 
         <dl class="passport">
@@ -57,9 +57,9 @@
             <div class="analogy__side"><b>Среднее время отчёта</b><p>19 отчётов за доли секунды, один за 3 секунды. Среднее — 0,45 с, и долгого отчёта не видно.</p></div>
           </div>
         </div>
-        <p>На стенде построено 20 отчётов. Адрес <code>/report?ms=…</code> работает заданное время, поэтому длительности известны: 30, 40, 60, 70, 80, 90, 120, 130, 150, 180, 200, 220, 300, 350, 400, 450, 700, 900, 1400 и 3000 мс.</p>
+        <p>Для опытов главы в сервисе заказов построено 20 отчётов. Адрес <code>/report?ms=…</code> работает заданное время, поэтому длительности известны: 30, 40, 60, 70, 80, 90, 120, 130, 150, 180, 200, 220, 300, 350, 400, 450, 700, 900, 1400 и 3000 мс.</p>
         <div class="pic">
-          <div class="pic__bar"><span>Двадцать отчётов по длительности</span><span>стенд · миллисекунды</span></div>
+          <div class="pic__bar"><span>Двадцать отчётов по длительности</span><span>миллисекунды</span></div>
           <div class="pic__body">
             <div class="bars">
               <span>30–90 мс</span><i class="m" style="--w:30%"></i><b>6 отчётов</b>
@@ -88,8 +88,9 @@
             <p>Счётчик значений, которые меньше или равны границе. Граница — в метке <code>le</code> (less or equal). Корзины накопительные, последняя <code>le="+Inf"</code> считает все значения.</p>
           </div>
         </div>
+        <p>Границы задают при объявлении гистограммы. В сервисе заказов их семь, от 25 мс до 2,5 с:</p>
         <figure class="code">
-          <figcaption><span>stand/app.py</span><span>объявление гистограммы</span></figcaption>
+          <figcaption><span>app.py</span><span>объявление гистограммы</span></figcaption>
 <pre>HTTP_DURATION = Histogram(
     <span class="s">"http_request_duration_seconds"</span>,
     <span class="s">"Time spent handling an HTTP request"</span>,
@@ -99,7 +100,7 @@
         </figure>
         <p>Корзину <code>+Inf</code> библиотека добавляет сама. Ответ после двадцати отчётов:</p>
         <figure class="code code--out">
-          <figcaption><span>curl -s localhost:8031/metrics | grep 'route="/report"'</span><span>стенд модуля 3</span></figcaption>
+          <figcaption><span>curl -s localhost:8031/metrics | grep 'route="/report"'</span><span>сервис заказов</span></figcaption>
 <pre>http_request_duration_seconds_bucket{le="0.025",route="/report"} 0.0
 http_request_duration_seconds_bucket{le="0.05",route="/report"} 2.0
 http_request_duration_seconds_bucket{le="0.1",route="/report"} 6.0
@@ -112,7 +113,7 @@ http_request_duration_seconds_count{route="/report"} 20.0
 http_request_duration_seconds_sum{route="/report"} 8.990030834916979</pre>
         </figure>
         <div class="pic">
-          <div class="pic__bar"><span>Накопительные корзины после двадцати отчётов</span><span>стенд · из ответа выше</span></div>
+          <div class="pic__bar"><span>Накопительные корзины после двадцати отчётов</span><span>из ответа выше</span></div>
           <div class="pic__body">
             <div class="bars">
               <span>le="0.025"</span><i style="--w:0%"></i><b>0</b>
@@ -129,9 +130,9 @@ http_request_duration_seconds_sum{route="/report"} 8.990030834916979</pre>
         <p><code>le="0.1"</code> = 6: шесть отчётов не дольше 0,1 с. Число между границами — вычитанием: от 0,25 до 0,5 с — 16 − 12 = 4. Каждая корзина — отдельный ряд-счётчик, поэтому у корзин смотрят рост за промежуток.</p>
 
         <h2 id="s3"><span class="sec">§3</span>Строки _sum и _count</h2>
-        <p><code>_count</code> — число значений, всегда равен корзине <code>+Inf</code>. <code>_sum</code> — их сумма. Среднее — <code>_sum / _count</code>: 8,99 / 20 = 0,4495 с, Prometheus вернул то же число.</p>
+        <p>Значения в гистограмму записывает код вокруг обработки запроса:</p>
         <figure class="code">
-          <figcaption><span>stand/app.py</span><span>запись длительности</span></figcaption>
+          <figcaption><span>app.py</span><span>запись длительности</span></figcaption>
 <pre>start = time.perf_counter()
 response = <span class="k">await</span> call_next(request)
 elapsed = time.perf_counter() - start
@@ -139,7 +140,7 @@ HTTP_DURATION.labels(route).observe(elapsed)</pre>
         </figure>
         <p><code>.observe(elapsed)</code> увеличивает каждую корзину с границей не меньше значения, <code>_count</code> на 1 и <code>_sum</code> на значение:</p>
         <div class="pic">
-          <div class="pic__bar"><span>Один вызов observe(0.12)</span><span>корзины стенда</span></div>
+          <div class="pic__bar"><span>Один вызов observe(0.12)</span><span>корзины сервиса заказов</span></div>
           <div class="pic__body">
             <div class="ser">
               <div>le="0.025" · le="0.05" · le="0.1" <b>без изменений</b><em>0,12 больше этих границ.</em></div>
@@ -149,6 +150,7 @@ HTTP_DURATION.labels(route).observe(elapsed)</pre>
             </div>
           </div>
         </div>
+        <p>Поэтому <code>_count</code> — число значений, всегда равен корзине <code>+Inf</code>. <code>_sum</code> — их сумма. Среднее — <code>_sum / _count</code>: 8,99 / 20 = 0,4495 с, Prometheus вернул то же число.</p>
         <p>Отчёты заказаны на 8,87 с, а <code>_sum</code> — 8,99: гистограмма записывает настоящую длительность обработки вместе с накладными расходами сервиса.</p>
 
         <h2 id="s4"><span class="sec">§4</span>Оценка перцентиля по корзинам</h2>
@@ -197,31 +199,32 @@ reports = [<span class="n">0.03</span>, <span class="n">0.04</span>, <span class
 p90: оценка 1, точно 0.9
 p99: оценка 2.5, точно 3.0</pre>
         </figure>
+        <p>Точность оценки зависит от границ. В интерактиве можно подставить свои длительности и другие наборы границ:</p>
         <div class="widget hist">
           <div class="widget__head"><b>Гистограмма из своих длительностей</b><span>расчёт как в histogram_quantile</span></div>
           <div class="widget__body">
             <div class="hist__form">
               <label>Длительности, мс, через пробел<textarea class="hist__ms" spellcheck="false">30 40 60 70 80 90 120 130 150 180 200 220 300 350 400 450 700 900 1400 3000</textarea></label>
               <div class="hist__presets">
-                <button type="button" data-le="0.025 0.05 0.1 0.25 0.5 1 2.5">границы стенда</button>
+                <button type="button" data-le="0.025 0.05 0.1 0.25 0.5 1 2.5">границы сервиса заказов</button>
                 <button type="button" data-le="0.005 0.01 0.025 0.05 0.075 0.1 0.25 0.5 0.75 1 2.5 5 7.5 10">по умолчанию в библиотеке</button>
                 <button type="button" data-le="0.5 1 5">крупные: 0,5 · 1 · 5</button>
               </div>
               <label>Границы корзин, секунды<input class="hist__le" value="0.025 0.05 0.1 0.25 0.5 1 2.5" spellcheck="false"></label>
               <label>Перцентиль<select class="hist__q"><option value="0.5">p50</option><option value="0.9" selected>p90</option><option value="0.95">p95</option><option value="0.99">p99</option></select></label>
             </div>
-            <div class="hist__out"><p>Корзины после двадцати отчётов стенда: 0, 2, 6, 12, 16, 18, 19, 20. Оценка p90 по ним — 1 с, точное значение — 0,9 с.</p></div>
+            <div class="hist__out"><p>Корзины после двадцати отчётов: 0, 2, 6, 12, 16, 18, 19, 20. Оценка p90 по ним — 1 с, точное значение — 0,9 с.</p></div>
           </div>
         </div>
-        <p>С границами библиотеки p99 станет 4,5 с — уже больше настоящего, потому что 3 с попало в корзину 2,5–5. С крупными границами p50 станет 0,313 вместо 0,2: в корзине 0–0,5 с шестнадцать отчётов.</p>
+        <p>С границами по умолчанию p99 станет 4,5 с — уже больше настоящего, потому что 3 с попало в корзину 2,5–5. С крупными границами p50 станет 0,313 вместо 0,2: в корзине 0–0,5 с шестнадцать отчётов.</p>
 
         <h2 id="s5"><span class="sec">§5</span>Выбор границ корзин</h2>
         <p>По умолчанию prometheus-client ставит 14 границ от 0,005 до 10 секунд — для обычного веб-сервиса. Для другого их меняют по трём правилам.</p>
-        <p><b>Границы покрывают настоящие длительности.</b> Значения выше последней границы не оценить, как p99 на стенде.</p>
+        <p><b>Границы покрывают настоящие длительности.</b> Значения выше последней границы не оценить, как p99 в §4.</p>
         <p><b>Граница стоит на целевом значении.</b> Для требования «95 % быстрее 300 мс» нужна граница <code>0.3</code>: тогда доля считается точно — <code>le="0.3"</code> делить на <code>_count</code>.</p>
         <p><b>Каждая граница — ещё один ряд.</b> На каждое сочетание остальных меток — по ряду на корзину плюс <code>_sum</code> и <code>_count</code>.</p>
         <div class="pic">
-          <div class="pic__bar"><span>Ряды гистограммы стенда</span><span>три адреса · семь границ</span></div>
+          <div class="pic__bar"><span>Ряды гистограммы сервиса заказов</span><span>три адреса · семь границ</span></div>
           <div class="pic__body">
             <div class="chain">
               <div class="chain__box"><small>корзины</small><b>7 + 1</b>семь границ и +Inf</div>
@@ -247,7 +250,7 @@ p99: оценка 2.5, точно 3.0</pre>
           </ul>
         </div>
         <div class="quiz">
-          <p class="quiz__q"><b>Вопрос 2</b>Запрос обработан ровно за 0,25 секунды. В какие корзины стенда он попадёт?</p>
+          <p class="quiz__q"><b>Вопрос 2</b>Запрос обработан ровно за 0,25 секунды. В какие корзины сервиса заказов он попадёт?</p>
           <ul class="quiz__opts">
             <li data-ok><button>В <code>le="0.25"</code> и все корзины с большими границами</button><p class="quiz__why">Верно. <code>le</code> — «меньше или равно».</p></li>
             <li><button>Только в <code>le="0.5"</code> и выше</button><p class="quiz__why">Граница входит в корзину: 0,25 ≤ 0,25.</p></li>
@@ -258,7 +261,7 @@ p99: оценка 2.5, точно 3.0</pre>
           <p class="quiz__q"><b>Вопрос 3</b>Последняя граница — 1 с, часть запросов идёт 4 секунды. Что вернёт <code>histogram_quantile(0.99, …)</code>, если ранг попал в корзину +Inf?</p>
           <ul class="quiz__opts">
             <li><button>4 секунды</button><p class="quiz__why">Корзина +Inf не сообщает, насколько значение больше 1 с.</p></li>
-            <li data-ok><button>1 секунду — границу последней конечной корзины</button><p class="quiz__why">Верно. На стенде p99 = 2,5 при настоящих 3 секундах.</p></li>
+            <li data-ok><button>1 секунду — границу последней конечной корзины</button><p class="quiz__why">Верно. В §4 p99 = 2,5 при настоящих 3 секундах.</p></li>
             <li><button>Бесконечность</button><p class="quiz__why">Возвращается верхняя граница последней конечной корзины.</p></li>
           </ul>
         </div>
@@ -266,7 +269,7 @@ p99: оценка 2.5, точно 3.0</pre>
           <p class="quiz__q"><b>Вопрос 4</b>Как получить среднюю длительность запроса из гистограммы?</p>
           <ul class="quiz__opts">
             <li><button>Взять корзину с наибольшим числом значений</button><p class="quiz__why">Так получится промежуток, где значений больше всего.</p></li>
-            <li data-ok><button>Разделить <code>_sum</code> на <code>_count</code></button><p class="quiz__why">Верно. На стенде 8,99 / 20 = 0,4495 с.</p></li>
+            <li data-ok><button>Разделить <code>_sum</code> на <code>_count</code></button><p class="quiz__why">Верно. В §3 8,99 / 20 = 0,4495 с.</p></li>
             <li><button><code>histogram_quantile(0.5, …)</code></button><p class="quiz__why">Это оценка медианы: 0,2 против среднего 0,45.</p></li>
           </ul>
         </div>
@@ -285,7 +288,7 @@ p99: оценка 2.5, точно 3.0</pre>
             <li>Prometheus. Histograms and summaries — <a href="https://prometheus.io/docs/practices/histograms/" target="_blank" rel="noopener">prometheus.io/docs/practices/histograms</a></li>
             <li>Prometheus. Query functions: histogram_quantile — <a href="https://prometheus.io/docs/prometheus/latest/querying/functions/#histogram_quantile" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/querying/functions</a></li>
             <li>prometheus-client для Python: Histogram — <a href="https://prometheus.github.io/client_python/instrumenting/histogram/" target="_blank" rel="noopener">prometheus.github.io/client_python/instrumenting/histogram</a></li>
-            <li>Стенд модуля 3: двадцать отчётов и запросы histogram_quantile 23.10.2026</li>
+            <li>Опыты главы: двадцать отчётов и запросы histogram_quantile 23.10.2026</li>
           </ol>
         </div>
 

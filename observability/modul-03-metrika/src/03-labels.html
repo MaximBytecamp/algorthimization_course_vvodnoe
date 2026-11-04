@@ -31,7 +31,7 @@
             <div class="analogy__side"><b>Метки ряда</b><p>Метод, адрес, код ответа: из всех запросов — GET, из них — к заказам, из них — с ответом 404.</p></div>
           </div>
         </div>
-        <p>Метка — пара «название — значение». Название, например <code>status</code>, общее у всех рядов метрики, значение, например <code>"404"</code>, у рядов разное. На стенде отправлено десять запросов к существующим заказам, один к заказу 777 и один POST. Запрос <code>http_requests_total</code> вернул три ряда.</p>
+        <p>Метка — пара «название — значение». Название, например <code>status</code>, общее у всех рядов метрики, значение, например <code>"404"</code>, у рядов разное. В сервис заказов отправлено десять запросов к существующим заказам, один к заказу 777 и один POST. Запрос <code>http_requests_total</code> вернул три ряда.</p>
         <figure class="shot"><img src="shots/series-labels.png" alt="Вкладка Table в Prometheus: три ряда http_requests_total с метками instance, job, method, route, status и значениями 10, 1, 1" loading="lazy"><figcaption>Три ряда счётчика запросов: метки в фигурных скобках, значение справа</figcaption></figure>
         <p>Метки <code>method</code>, <code>route</code>, <code>status</code> поставило приложение, <code>job</code> и <code>instance</code> — Prometheus. Значение — число запросов с этим сочетанием меток.</p>
 
@@ -43,7 +43,17 @@
           </div>
         </div>
         <p>Запрос <code>{__name__="http_requests_total", status="404"}</code> вернул тот же ряд, что <code>http_requests_total{status="404"}</code>: имя перед скобками — сокращение.</p>
-        <p>Порядок меток и тип значения на ряд не влияют — три вызова увеличивают один ряд:</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Набор меток одного ряда</span><span>ряд с ответом 404</span></div>
+          <div class="pic__body">
+            <div class="ser">
+              <div><i class="t">__name__="http_requests_total"</i> <i>instance="api:8000"</i> <i>job="orders"</i> <i>method="GET"</i> <i>route="/orders/{order_id}"</i> <i class="x">status="404"</i> <b>1</b></div>
+              <div><i class="t">__name__="http_requests_total"</i> <i>instance="api:8000"</i> <i>job="orders"</i> <i>method="GET"</i> <i>route="/orders/{order_id}"</i> <i>status="200"</i> <b>10</b><em>Отличается одна пара — status, поэтому это другой ряд.</em></div>
+            </div>
+          </div>
+          <p class="pic__note">Оранжевым выделено имя: в наборе это такая же пара, как остальные. Красным — пара, по которой ряды отличаются.</p>
+        </div>
+        <p>Порядок меток и тип значения, наоборот, на ряд не влияют — три вызова увеличивают один ряд:</p>
         <figure class="code">
           <figcaption><span>Один ряд при разной записи меток</span><span>Python</span></figcaption>
 <pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, disable_created_metrics, generate_latest
@@ -63,17 +73,7 @@ print(generate_latest(registry).decode())</pre>
 # TYPE http_requests_total counter
 http_requests_total{method="GET",status="200"} 3.0</pre>
         </figure>
-        <div class="pic">
-          <div class="pic__bar"><span>Набор меток одного ряда</span><span>ряд стенда с ответом 404</span></div>
-          <div class="pic__body">
-            <div class="ser">
-              <div><i class="t">__name__="http_requests_total"</i> <i>instance="api:8000"</i> <i>job="orders"</i> <i>method="GET"</i> <i>route="/orders/{order_id}"</i> <i class="x">status="404"</i> <b>1</b></div>
-              <div><i class="t">__name__="http_requests_total"</i> <i>instance="api:8000"</i> <i>job="orders"</i> <i>method="GET"</i> <i>route="/orders/{order_id}"</i> <i>status="200"</i> <b>10</b><em>Отличается одна пара — status, поэтому это другой ряд.</em></div>
-            </div>
-          </div>
-          <p class="pic__note">Оранжевым выделено имя: в наборе это такая же пара, как остальные. Красным — пара, по которой ряды отличаются.</p>
-        </div>
-        <p>Метка с пустым значением равна отсутствию метки. Метки <code>customer</code> у рядов стенда нет, и <code>http_requests_total{customer=""}</code> вернул все три ряда.</p>
+        <p>Метка с пустым значением равна отсутствию метки. Метки <code>customer</code> у рядов сервиса нет, и <code>http_requests_total{customer=""}</code> вернул все три ряда.</p>
 
         <h2 id="s3"><span class="sec">§3</span>Когда появляется новый ряд</h2>
         <div class="analogy">
@@ -83,9 +83,9 @@ http_requests_total{method="GET",status="200"} 3.0</pre>
             <div class="analogy__side"><b>Ряды метрики</b><p>Ряд появляется с первым событием с новым сочетанием меток. До этого его нет ни в ответе, ни в базе.</p></div>
           </div>
         </div>
-        <p>После запуска стенда были только успешные GET, и <code>count(http_requests_total)</code> вернул 1. После запросов к заказу 777 и POST и очередного опроса — 3.</p>
+        <p>Ряды из §1 появились не сразу. После запуска сервиса были только успешные GET, и <code>count(http_requests_total)</code> вернул 1. После запросов к заказу 777 и POST и очередного опроса — 3.</p>
         <div class="pic">
-          <div class="pic__bar"><span>Появление рядов после новых сочетаний меток</span><span>стенд модуля 3</span></div>
+          <div class="pic__bar"><span>Появление рядов после новых сочетаний меток</span><span>сервис заказов</span></div>
           <div class="pic__body">
             <div class="chain">
               <div class="chain__box"><small>до</small><b>1 ряд</b>GET · 200</div>
@@ -128,7 +128,7 @@ payment_errors_total{status="500"} 0.0</pre>
         <h2 id="s4"><span class="sec">§4</span>Метки приложения и метки target</h2>
         <p>Метки приложения записаны в его коде и стоят в ответе <code>/metrics</code>. Метки target Prometheus берёт из конфигурации: <code>job</code> — название задания, <code>instance</code> — адрес. Если в ответе уже есть <code>job</code>, она сохраняется как <code>exported_job</code> (глава 2.2).</p>
         <div class="pic">
-          <div class="pic__bar"><span>Откуда берутся метки одного ряда</span><span>ряд стенда</span></div>
+          <div class="pic__bar"><span>Откуда берутся метки одного ряда</span><span>ряд сервиса заказов</span></div>
           <div class="pic__body">
             <div class="duo">
               <div><b>Из ответа приложения</b>
@@ -148,7 +148,7 @@ payment_errors_total{status="500"} 0.0</pre>
         </div>
         <p>В коде названия меток перечисляют при объявлении, значения передают при каждом событии в том же порядке:</p>
         <figure class="code">
-          <figcaption><span>stand/app.py</span><span>названия при объявлении, значения при событии</span></figcaption>
+          <figcaption><span>app.py</span><span>названия при объявлении, значения при событии</span></figcaption>
 <pre>HTTP_REQUESTS = Counter(
     <span class="s">"http_requests_total"</span>,
     <span class="s">"HTTP requests handled by the service"</span>,
@@ -172,7 +172,7 @@ HTTP_REQUESTS.labels(request.method, route, str(response.status_code)).inc()</pr
         </div></details>
 
         <h2 id="s5"><span class="sec">§5</span>Выбор рядов по меткам</h2>
-        <p>Условия в фигурных скобках называются селектором. Знаков сравнения четыре: <code>=</code>, <code>!=</code>, <code>=~</code> — подходит под регулярное выражение, <code>!~</code> — не подходит. Шаблон <code>4..</code> — «4 и два любых символа»; он должен совпасть со всем значением целиком.</p>
+        <p>По меткам ряды не только различают, но и выбирают в запросе. Условия в фигурных скобках называются селектором. Знаков сравнения четыре: <code>=</code>, <code>!=</code>, <code>=~</code> — подходит под регулярное выражение, <code>!~</code> — не подходит. Шаблон <code>4..</code> — «4 и два любых символа»; он должен совпасть со всем значением целиком.</p>
         <div class="table-scroll">
           <table>
             <thead><tr><th>Запрос</th><th>Рядов</th><th>Какие</th></tr></thead>
@@ -237,6 +237,6 @@ HTTP_REQUESTS.labels(request.method, route, str(response.status_code)).inc()</pr
             <li>Prometheus. Querying basics: time series selectors — <a href="https://prometheus.io/docs/prometheus/latest/querying/basics/" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/querying/basics</a></li>
             <li>Prometheus. Jobs and instances — <a href="https://prometheus.io/docs/concepts/jobs_instances/" target="_blank" rel="noopener">prometheus.io/docs/concepts/jobs_instances</a></li>
             <li>prometheus-client для Python: labels — <a href="https://prometheus.github.io/client_python/instrumenting/labels/" target="_blank" rel="noopener">prometheus.github.io/client_python/instrumenting/labels</a></li>
-            <li>Стенд модуля 3: запросы и вывод библиотеки получены 23.10.2026</li>
+            <li>Опыты главы: запросы и вывод библиотеки получены 23.10.2026</li>
           </ol>
         </div>

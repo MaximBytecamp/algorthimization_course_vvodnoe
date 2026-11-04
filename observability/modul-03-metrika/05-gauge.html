@@ -65,7 +65,7 @@
         </div>
         <p>У gauge смотрят само значение: «в очереди 3 заказа» уже ответ на вопрос.</p>
         <div class="pic">
-          <div class="pic__bar"><span>Gauge на стенде</span><span>ответ /metrics</span></div>
+          <div class="pic__bar"><span>Gauge в сервисе заказов</span><span>ответ /metrics</span></div>
           <div class="pic__body">
             <div class="cards">
               <div class="is-key"><small>сервис</small><b>orders_queue_length</b>заказы, которые ждут сборки</div>
@@ -91,9 +91,9 @@
             </tbody>
           </table>
         </div>
-        <p>На стенде очередь растёт при создании заказа и уменьшается, когда склад его собрал:</p>
+        <p>В сервисе заказов очередь растёт при создании заказа и уменьшается, когда склад его собрал:</p>
         <figure class="code">
-          <figcaption><span>stand/app.py</span><span>очередь заказов</span></figcaption>
+          <figcaption><span>app.py</span><span>очередь заказов</span></figcaption>
 <pre><span class="k">async def</span> <span class="f">create_order</span>(payment: str = <span class="s">"card"</span>):
     ...
     QUEUE_LENGTH.inc()                 <span class="c"># заказ встал в очередь</span>
@@ -138,9 +138,9 @@ orders_queue_length 2.0</pre>
             <div class="analogy__side"><b>Опрос gauge</b><p>Prometheus читает gauge раз в 15 секунд. Всплеск между опросами в базу не попадает.</p></div>
           </div>
         </div>
-        <p>Опыт: в 15:11:10 отправлено десять заказов, склад собирает по одному в секунду. Скрипт читал <code>/metrics</code> каждую секунду, Prometheus — по своему расписанию.</p>
+        <p>Значение gauge меняется в памяти в любой момент, а в базу попадает только то, что было при опросе. Опыт: в 15:11:10 отправлено десять заказов, склад собирает по одному в секунду. Скрипт читал <code>/metrics</code> каждую секунду, Prometheus — по своему расписанию.</p>
         <div class="pic">
-          <div class="pic__bar"><span>Очередь заказов: каждую секунду и в базе</span><span>стенд · время UTC</span></div>
+          <div class="pic__bar"><span>Очередь заказов: каждую секунду и в базе</span><span>время UTC</span></div>
           <div class="pic__body">
             <div class="tl" style="--n:13">
               <b>секунда</b><span class="t">:10</span><span class="t">:11</span><span class="t">:12</span><span class="t">:13</span><span class="t">:14</span><span class="t">:15</span><span class="t">:16</span><span class="t">:17</span><span class="t">:18</span><span class="t">:19</span><span class="t">:20</span><span class="t">:21</span><span class="t">:22</span>
@@ -177,9 +177,9 @@ orders_packed_total 3.0</pre>
         <p>Длина очереди в запросе — <code>orders_created_total - orders_packed_total</code>, здесь 7.</p>
 
         <h2 id="s4"><span class="sec">§4</span>Запросы в работе</h2>
-        <p><code>http_requests_in_progress</code> увеличивается в начале обработки запроса и уменьшается в конце. <code>dec</code> стоит в <code>finally</code>. Без этого каждое исключение оставит лишнюю единицу, и gauge будет расти при свободном сервисе.</p>
+        <p>Второй gauge сервиса, <code>http_requests_in_progress</code>, показывает, сколько запросов обрабатывается сейчас. Он увеличивается в начале обработки запроса и уменьшается в конце. <code>dec</code> стоит в <code>finally</code>. Без этого каждое исключение оставит лишнюю единицу, и gauge будет расти при свободном сервисе.</p>
         <figure class="code">
-          <figcaption><span>stand/app.py</span><span>запросы в работе</span></figcaption>
+          <figcaption><span>app.py</span><span>запросы в работе</span></figcaption>
 <pre>IN_PROGRESS.inc()
 <span class="k">try</span>:
     response = <span class="k">await</span> call_next(request)
@@ -209,9 +209,9 @@ print(<span class="s">"после ошибки:"</span>, registry.get_sample_val
 <pre>внутри: 1.0
 после ошибки: 0.0</pre>
         </figure>
-        <p>Опыт: в 15:13:26 отправлено пять отчётов по 4 секунды.</p>
+        <p>Что этот gauge показывает в базе, видно на опыте: в 15:13:26 отправлено пять отчётов по 4 секунды.</p>
         <div class="pic">
-          <div class="pic__bar"><span>Пять отчётов по 4 секунды и опросы Prometheus</span><span>стенд · время UTC</span></div>
+          <div class="pic__bar"><span>Пять отчётов по 4 секунды и опросы Prometheus</span><span>время UTC</span></div>
           <div class="pic__body">
             <div class="lanes">
               <span class="lanes__head">окно 15:12:58 — 15:13:43, точки — опросы</span>
@@ -233,7 +233,7 @@ print(<span class="s">"после ошибки:"</span>, registry.get_sample_val
               <tr><td>Как меняется</td><td>Только растёт, сбрасывается при перезапуске</td><td>В обе стороны</td></tr>
               <tr><td>Что смотрят в запросах</td><td>Рост за промежуток</td><td>Значение, среднее, наибольшее</td></tr>
               <tr><td>Что теряется между опросами</td><td>Момент событий; число событий сохраняется</td><td>Все изменения между опросами</td></tr>
-              <tr><td>Пример на стенде</td><td><code>orders_created_total</code></td><td><code>orders_queue_length</code></td></tr>
+              <tr><td>Пример в сервисе заказов</td><td><code>orders_created_total</code></td><td><code>orders_queue_length</code></td></tr>
             </tbody>
           </table>
         </div>
@@ -251,7 +251,7 @@ print(<span class="s">"после ошибки:"</span>, registry.get_sample_val
           <p class="quiz__q"><b>Вопрос 2</b>Опрос раз в 15 секунд. Очередь выросла с 0 до 30 и вернулась к 0 за 6 секунд между опросами. Что будет в базе?</p>
           <ul class="quiz__opts">
             <li><button>Отсчёт 30 при следующем опросе</button><p class="quiz__why">К следующему опросу очередь уже 0.</p></li>
-            <li data-ok><button>Отсчёты 0 до и после, рост очереди не записан</button><p class="quiz__why">Верно. На стенде так пропало значение 10.</p></li>
+            <li data-ok><button>Отсчёты 0 до и после, рост очереди не записан</button><p class="quiz__why">Верно. В опыте §3 так пропало значение 10.</p></li>
             <li><button>Среднее за интервал, 12</button><p class="quiz__why">Prometheus не усредняет, он читает одно число в момент опроса.</p></li>
           </ul>
         </div>
@@ -268,7 +268,7 @@ print(<span class="s">"после ошибки:"</span>, registry.get_sample_val
           <ul class="quiz__opts">
             <li><button>Запросов к сервису нет</button><p class="quiz__why">Число запросов показывает счётчик.</p></li>
             <li data-ok><button>Долгих и зависших запросов в моменты опроса нет</button><p class="quiz__why">Верно.</p></li>
-            <li><button>Метрика сломана</button><p class="quiz__why">На стенде она показала 5, когда долгие отчёты пришлись на опрос.</p></li>
+            <li><button>Метрика сломана</button><p class="quiz__why">В опыте §4 она показала 5, когда долгие отчёты пришлись на опрос.</p></li>
           </ul>
         </div>
 
@@ -278,7 +278,7 @@ print(<span class="s">"после ошибки:"</span>, registry.get_sample_val
             <li>Prometheus. Metric types: Gauge — <a href="https://prometheus.io/docs/concepts/metric_types/" target="_blank" rel="noopener">prometheus.io/docs/concepts/metric_types</a></li>
             <li>Prometheus. Instrumentation: counter vs. gauge — <a href="https://prometheus.io/docs/practices/instrumentation/" target="_blank" rel="noopener">prometheus.io/docs/practices/instrumentation</a></li>
             <li>prometheus-client для Python: Gauge — <a href="https://prometheus.github.io/client_python/instrumenting/gauge/" target="_blank" rel="noopener">prometheus.github.io/client_python/instrumenting/gauge</a></li>
-            <li>Стенд модуля 3: опыты с очередью и отчётами 23.10.2026</li>
+            <li>Опыты главы: очередь заказов и долгие отчёты 23.10.2026</li>
           </ol>
         </div>
 
