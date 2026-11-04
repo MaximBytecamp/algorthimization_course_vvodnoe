@@ -1,0 +1,155 @@
+        <header class="chapter-head">
+          <span class="chapter-num">4.3</span>
+          <h1>Relabeling: метки<br>до опроса и после</h1>
+          <p class="lead">В главе 4.2 найденные метки сами превращались в метки target. Правила relabeling управляют этим переходом: отбрасывают target, создают метки и выбрасывают лишние ряды. В главе разобраны оба места для правил, их запись и частая ошибка.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Сбор данных</dd></div>
+          <div><dt>Уровень</dt><dd>Средний</dd></div>
+          <div><dt>Опирается на</dt><dd>Глава 3.3: метки и ряд; глава 4.2: найденные метки</dd></div>
+          <div><dt>Результат</dt><dd>Правила keep, drop и replace до опроса и после него</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Два места для правил</a></li>
+            <li><a href="#s2">Как записано правило</a></li>
+            <li><a href="#s3">Результат до опроса</a></li>
+            <li><a href="#s4">Те же правила на Python</a></li>
+            <li><a href="#s5">Отбор рядов после опроса</a></li>
+            <li><a href="#s6">Правило, которое отбросило всё</a></li>
+            <li><a href="#s7">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Два места для правил</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Склад</b><p>На въезде решают, какую машину пустить и какой номер ворот ей дать. После разгрузки решают, что из привезённого класть на полки.</p></div>
+            <div class="analogy__side"><b>Prometheus</b><p>До опроса решают, какой target опрашивать и какие у него метки. После опроса — какие ряды сохранить.</p></div>
+          </div>
+        </div>
+        <p>Правила пишут в задании в двух блоках. <code>relabel_configs</code> работает с метками target до опроса: может отбросить target целиком или изменить его метки. <code>metric_relabel_configs</code> работает с каждым рядом из ответа после опроса, перед записью в базу. Порядок на пути числа:</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Где срабатывают правила</span><span>одно задание</span></div>
+          <div class="pic__body">
+            <div class="chain">
+              <div class="chain__box"><small>поиск target</small><b>найденные метки</b>__address__, __meta_*, env</div>
+              <span class="chain__arr" data-l="relabel_configs"></span>
+              <div class="chain__box is-key"><small>до опроса</small><b>метки target</b>или target отброшен</div>
+              <span class="chain__arr" data-l="опрос"></span>
+              <div class="chain__box"><small>ответ /metrics</small><b>ряды</b>с метками target</div>
+              <span class="chain__arr" data-l="metric_relabel_configs"></span>
+              <div class="chain__box is-ok"><small>после опроса</small><b>база</b>только оставленные ряды</div>
+            </div>
+          </div>
+        </div>
+        <p>Значит, сэкономить опрос можно только первым блоком: второй получает ряды, когда ответ уже прочитан.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Как записано правило</h2>
+        <p>Правило берёт значения меток из <code>source_labels</code>, сравнивает с <code>regex</code> и выполняет действие <code>action</code>. В задании ниже четыре правила: три до опроса и одно после.</p>
+        <figure class="code">
+          <figcaption><span>prometheus/prometheus-relabel.yml</span><span>задание orders</span></figcaption>
+<pre>    relabel_configs:
+      <span class="c"># 1. Опрашивать только копии из боевого окружения.</span>
+      - source_labels: [env]
+        regex: prod
+        action: keep
+      <span class="c"># 2. Имя копии без порта: api:8000 -> api.</span>
+      - source_labels: [__address__]
+        regex: <span class="s">'([^:]+):\d+'</span>
+        target_label: replica
+        replacement: <span class="s">'$1'</span>
+      <span class="c"># 3. Из какого файла пришёл target: /etc/targets/orders.json -> orders.</span>
+      - source_labels: [__meta_filepath]
+        regex: <span class="s">'.*/(.+)\.json'</span>
+        target_label: source
+    metric_relabel_configs:
+      <span class="c"># 4. Не хранить метрики процесса Python и сборщика мусора.</span>
+      - source_labels: [__name__]
+        regex: <span class="s">'(process|python)_.*'</span>
+        action: drop</pre>
+        </figure>
+        <p><code>keep</code> оставляет target, если значение подошло под regex, <code>drop</code> — наоборот, отбрасывает. У правил 2 и 3 действие не указано, поэтому оно <code>replace</code>: часть значения в скобках, <code>$1</code>, записывается в метку <code>target_label</code>. В правиле 3 нет и <code>replacement</code> — по умолчанию это тот же <code>$1</code>. Regex всегда сравнивается со всем значением целиком, как в селекторах главы 3.3.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Результат до опроса</h2>
+        <p>В файле target две копии: <code>api</code> с <code>env="prod"</code> и <code>api2</code> с <code>env="test"</code>. Страница Service discovery после запуска с этими правилами:</p>
+        <figure class="shot"><img src="shots/relabel-sd.png" alt="Status → Service discovery, задание orders 1/2: у api справа метки env, instance, job, replica=api, source=orders; у api2 надпись dropped due to relabeling rules" loading="lazy"><figcaption>api получил метки replica и source, api2 отброшен правилом keep</figcaption></figure>
+        <p>У <code>api</code> справа две новые метки: <code>replica="api"</code> из адреса и <code>source="orders"</code> из пути к файлу. <code>api2</code> не прошёл правило 1 и отмечен «dropped due to relabeling rules» — его не опрашивают вовсе.</p>
+        <p>Новые метки меняют набор меток, а значит, и ряды (глава 3.3). Сразу после смены правил запрос <code>scrape_samples_scraped{job="orders"}</code> вернул три ряда: два прежних без <code>replica</code> и один новый. Прежние ряды перестали получать отсчёты и исчезли из запросов позже.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Те же правила на Python</h2>
+        <p>Правила проще понять, если выполнить их вручную. Скрипт берёт найденные метки обоих target из API Prometheus, применяет к ним правила 1–3 и выводит рядом то, что получилось у самого Prometheus:</p>
+        <figure class="code">
+          <figcaption><span>relabel_check.py</span><span>Python</span></figcaption>
+<pre><!--include:_ex_relabel.html--></pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод</span><span>результат запуска</span></figcaption>
+<pre>api:8000 -> {'env': 'prod', 'instance': 'api:8000', 'job': 'orders', 'replica': 'api', 'source': 'orders'}
+api2:8000 -> None
+у Prometheus: [{'env': 'prod', 'instance': 'api:8000', 'job': 'orders', 'replica': 'api', 'source': 'orders'}]</pre>
+        </figure>
+        <p>Результаты совпали. В скрипте видны два шага, которые Prometheus делает сам после правил: если метки <code>instance</code> нет, она берётся из <code>__address__</code>, а все метки с <code>__</code> отбрасываются. <code>re.fullmatch</code> повторяет главное свойство regex в правилах — сравнение со всем значением.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Отбор рядов после опроса</h2>
+        <p>Правило 4 стоит в <code>metric_relabel_configs</code> и смотрит на <code>__name__</code> — имя каждого ряда. Сколько оно выбросило, показывают два служебных ряда, которые Prometheus пишет после опроса:</p>
+        <figure class="code code--out">
+          <figcaption><span>Запросы к Prometheus</span><span>задание orders</span></figcaption>
+<pre>scrape_samples_scraped{job="orders"}                 30
+scrape_samples_post_metric_relabeling{job="orders"}  14</pre>
+        </figure>
+        <p>Сервис отдал 30 отсчётов, в базу попало 14. Выброшены ровно 16 строк <code>process_*</code> и <code>python_*</code> из ответа сервиса. При этом сервис всё так же собирает эти 16 чисел, а Prometheus их скачивает и разбирает: правило после опроса экономит только место в базе. Если метрика не нужна никому, её убирают в самой программе (глава 3.7).</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Правило, которое отбросило всё</h2>
+        <p>Опыт: в правиле 1 вместо <code>regex: prod</code> написано <code>regex: pro</code>. Похоже на «начинается с pro», но regex сравнивается со всем значением, а <code>prod</code> ≠ <code>pro</code>. Итог после запуска:</p>
+        <figure class="code code--out">
+          <figcaption><span>API targets и promtool</span><span>regex: pro</span></figcaption>
+<pre>active 0 dropped 2
+SUCCESS: /p/prometheus-relabel-oshibka.yml is valid prometheus config file syntax</pre>
+        </figure>
+        <p>Оба target отброшены, задание orders не опрашивается. Ошибки при этом нет нигде: <code>promtool check config</code> проверяет только запись настроек, смысл правил он не оценивает. Поэтому после правки relabeling открывают Status → Service discovery и смотрят, сколько target осталось. Для «начинается с» нужен <code>regex: pro.*</code>.</p>
+
+        <h2 id="s7"><span class="sec">§7</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>Нужно, чтобы Prometheus вообще не обращался к копиям из тестового окружения. Где писать правило?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button>В <code>relabel_configs</code></button><p class="quiz__why">Верно. Отброшенный там target не опрашивается.</p></li>
+            <li><button>В <code>metric_relabel_configs</code></button><p class="quiz__why">Это правила после опроса: ответ уже скачан.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b><code>scrape_samples_scraped</code> = 30, <code>scrape_samples_post_metric_relabeling</code> = 14. Что это значит?</p>
+          <ul class="quiz__opts">
+            <li><button>16 отсчётов потеряны из-за ошибки</button><p class="quiz__why">Ошибки нет: их выбросило правило после опроса.</p></li>
+            <li data-ok><button>Правила после опроса выбросили 16 отсчётов из 30</button><p class="quiz__why">Верно. В базу попало 14.</p></li>
+            <li><button>Сервис отдал 14 отсчётов</button><p class="quiz__why">Сервис отдал 30 — это первый ряд.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 3</b>Правило <code>source_labels: [env]</code>, <code>regex: pro</code>, <code>action: keep</code>. У target <code>env="prod"</code>. Что будет?</p>
+          <ul class="quiz__opts">
+            <li><button>Target останется: prod начинается с pro</button><p class="quiz__why">Regex сравнивается со всем значением целиком.</p></li>
+            <li data-ok><button>Target отбросят</button><p class="quiz__why">Верно. В опыте так отброшены оба target, а promtool не нашёл ошибки.</p></li>
+            <li><button>Prometheus не запустится</button><p class="quiz__why">Настройки записаны правильно, promtool вернул SUCCESS.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 4</b>В <code>relabel_configs</code> добавили новую метку <code>replica</code>. Что произошло с рядами этого target?</p>
+          <ul class="quiz__opts">
+            <li><button>У старых рядов появилась метка, история сохранилась</button><p class="quiz__why">Набор меток — идентичность ряда, его нельзя изменить.</p></li>
+            <li data-ok><button>Начались новые ряды, старые перестали получать отсчёты</button><p class="quiz__why">Верно. Сразу после смены правил было видно и старые, и новые ряды.</p></li>
+          </ul>
+        </div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Prometheus. Configuration: relabel_config, metric_relabel_configs — <a href="https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/configuration/configuration</a></li>
+            <li>Prometheus. Jobs and instances: automatically generated labels — <a href="https://prometheus.io/docs/concepts/jobs_instances/" target="_blank" rel="noopener">prometheus.io/docs/concepts/jobs_instances</a></li>
+            <li>Опыты главы: правила keep, replace и drop, regex pro, 04.11.2026</li>
+          </ol>
+        </div>

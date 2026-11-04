@@ -52,3 +52,17 @@ python3 make_targets.py
 Страница Status → Service discovery показывает найденные метки. Ошибку чтения файла видно
 в `docker compose logs prometheus` и в счётчике `prometheus_sd_file_read_errors_total` на
 http://localhost:9104/metrics.
+
+**4.3. Relabeling.** В `targets/orders.json` две копии с разными `env`, правила — в `prometheus-relabel.yml`:
+
+```sh
+cat > targets/orders.json <<'JSON'
+[{"targets": ["api:8000"], "labels": {"env": "prod"}},
+ {"targets": ["api2:8000"], "labels": {"env": "test"}}]
+JSON
+PROM_CONFIG=prometheus-relabel.yml docker compose up -d prometheus
+python3 relabel_check.py
+```
+
+Запросы `scrape_samples_scraped{job="orders"}` и `scrape_samples_post_metric_relabeling{job="orders"}`
+показывают, сколько рядов выбросили правила после опроса. Ошибка с regex — `prometheus-relabel-oshibka.yml`.

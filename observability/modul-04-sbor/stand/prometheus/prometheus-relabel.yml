@@ -1,0 +1,28 @@
+# Глава 4.3: правила меток до опроса (relabel_configs) и после (metric_relabel_configs).
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+
+scrape_configs:
+  - job_name: orders
+    file_sd_configs:
+      - files: ['/etc/targets/*.json']
+    relabel_configs:
+      # 1. Опрашивать только копии из боевого окружения.
+      - source_labels: [env]
+        regex: prod
+        action: keep
+      # 2. Имя копии без порта: api:8000 -> api.
+      - source_labels: [__address__]
+        regex: '([^:]+):\d+'
+        target_label: replica
+        replacement: '$1'
+      # 3. Из какого файла пришёл target: /etc/targets/orders.json -> orders.
+      - source_labels: [__meta_filepath]
+        regex: '.*/(.+)\.json'
+        target_label: source
+    metric_relabel_configs:
+      # 4. Не хранить метрики процесса Python и сборщика мусора.
+      - source_labels: [__name__]
+        regex: '(process|python)_.*'
+        action: drop

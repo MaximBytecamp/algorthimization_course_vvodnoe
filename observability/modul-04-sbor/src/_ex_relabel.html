@@ -1,0 +1,28 @@
+<span class="k">import</span> json
+<span class="k">import</span> re
+<span class="k">import</span> urllib.request
+
+<span class="k">def</span> <span class="f">keep</span>(labels, source, regex):
+    <span class="c"># regex в Prometheus сравнивается со всем значением целиком</span>
+    <span class="k">return</span> re.fullmatch(regex, labels.get(source, <span class="s">""</span>)) <span class="k">is</span> <span class="k">not</span> <span class="k">None</span>
+
+<span class="k">def</span> <span class="f">replace</span>(labels, source, regex, target, replacement):
+    m = re.fullmatch(regex, labels.get(source, <span class="s">""</span>))
+    <span class="k">if</span> m:
+        labels[target] = m.expand(replacement.replace(<span class="s">"$1"</span>, <span class="s">r"\1"</span>))
+
+<span class="k">def</span> <span class="f">relabel</span>(found):
+    labels = dict(found)
+    <span class="k">if</span> <span class="k">not</span> keep(labels, <span class="s">"env"</span>, <span class="s">"prod"</span>):
+        <span class="k">return</span> <span class="k">None</span>                                   <span class="c"># target отброшен до опроса</span>
+    replace(labels, <span class="s">"__address__"</span>, <span class="s">r"([^:]+):\d+"</span>, <span class="s">"replica"</span>, <span class="s">"$1"</span>)
+    replace(labels, <span class="s">"__meta_filepath"</span>, <span class="s">r".*/(.+)\.json"</span>, <span class="s">"source"</span>, <span class="s">"$1"</span>)
+    labels.setdefault(<span class="s">"instance"</span>, labels[<span class="s">"__address__"</span>])
+    <span class="k">return</span> {k: v <span class="k">for</span> k, v <span class="k">in</span> sorted(labels.items()) <span class="k">if</span> <span class="k">not</span> k.startswith(<span class="s">"__"</span>)}
+
+<span class="k">with</span> urllib.request.urlopen(<span class="s">"http://localhost:9104/api/v1/targets?state=any"</span>) <span class="k">as</span> r:
+    data = json.load(r)[<span class="s">"data"</span>]
+found = [t[<span class="s">"discoveredLabels"</span>] <span class="k">for</span> t <span class="k">in</span> data[<span class="s">"activeTargets"</span>] + data[<span class="s">"droppedTargets"</span>]]
+<span class="k">for</span> labels <span class="k">in</span> found:
+    print(labels[<span class="s">"__address__"</span>], <span class="s">"-&gt;"</span>, relabel(labels))
+print(<span class="s">"у Prometheus:"</span>, [t[<span class="s">"labels"</span>] <span class="k">for</span> t <span class="k">in</span> data[<span class="s">"activeTargets"</span>]])
