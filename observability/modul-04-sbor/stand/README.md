@@ -39,3 +39,16 @@ curl -s localhost:8042/metrics | grep ^sklad
 docker compose stop sklad
 docker compose start sklad
 ```
+
+**4.2. Service discovery.** Запустить Prometheus с поиском target в папке `targets/`
+и дописать вторую копию сервиса скриптом:
+
+```sh
+echo '[{"targets": ["api:8000"], "labels": {"env": "prod"}}]' > targets/orders.json
+PROM_CONFIG=prometheus-sd.yml docker compose up -d
+python3 make_targets.py
+```
+
+Страница Status → Service discovery показывает найденные метки. Ошибку чтения файла видно
+в `docker compose logs prometheus` и в счётчике `prometheus_sd_file_read_errors_total` на
+http://localhost:9104/metrics.

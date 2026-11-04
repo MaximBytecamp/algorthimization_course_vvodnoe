@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#EEF1F5">
+  <meta name="description" content="Глава 4.2 модуля «Сбор и хранение»: service discovery: target из файла.">
+  <title>4.2 Service discovery: target из файла · Сбор и хранение</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&amp;family=Pixelify+Sans:wght@500;600;700&amp;family=Roboto+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../modul-02-prometheus/styles.css">
+  <link rel="stylesheet" href="../modul-02-prometheus/algo.css">
+  <link rel="stylesheet" href="../modul-02-prometheus/prom.css">
+  <link rel="stylesheet" href="../modul-03-metrika/m3.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 4 · Сбор и хранение · Макаров М. Н.</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Модуль 4 · сбор и хранение</a> · сбор и хранение</p>
+          <p class="running__folio">Глава 4.2</p>
+        </div>
+        <header class="chapter-head">
+          <span class="chapter-num">4.2</span>
+          <h1>Service discovery:<br>target из файла</h1>
+          <p class="lead">Копии сервиса запускаются и останавливаются, а список target в настройках Prometheus стоит на месте. В главе разобрано, как Prometheus берёт список target из файла, как быстро замечает изменения и что делает с испорченным файлом.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Сбор данных</dd></div>
+          <div><dt>Уровень</dt><dd>Средний</dd></div>
+          <div><dt>Опирается на</dt><dd>Глава 2.2: target, job и instance; глава 4.1</dd></div>
+          <div><dt>Результат</dt><dd>Список target в файле, который меняется без перезапуска Prometheus</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Зачем искать target</a></li>
+            <li><a href="#s2">Список в файле</a></li>
+            <li><a href="#s3">Изменение без перезапуска</a></li>
+            <li><a href="#s4">Метки, найденные вместе с target</a></li>
+            <li><a href="#s5">Испорченный файл</a></li>
+            <li><a href="#s6">Другие источники списка</a></li>
+            <li><a href="#s7">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Зачем искать target</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Список смены</b><p>Охрана не переписывает инструкцию, когда меняется смена. Она смотрит список дежурных на сегодня.</p></div>
+            <div class="analogy__side"><b>Service discovery</b><p>Prometheus не правит настройки, когда меняются копии сервиса. Он читает текущий список target.</p></div>
+          </div>
+        </div>
+        <p>До сих пор target были записаны прямо в <code>prometheus.yml</code> блоком <code>static_configs</code>. Для новой копии сервиса нужно править файл и перезагружать настройки, а остановленная копия остаётся в списке и висит в состоянии DOWN. Поиск target (service discovery) убирает эту ручную работу: Prometheus сам берёт список из внешнего источника. Самый простой источник — файл.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Список в файле</h2>
+        <p>В задании вместо <code>static_configs</code> пишут <code>file_sd_configs</code> и указывают, какие файлы читать. Звёздочка разрешает несколько файлов в одной папке:</p>
+        <figure class="code">
+          <figcaption><span>prometheus/prometheus-sd.yml</span><span>задание orders</span></figcaption>
+<pre>scrape_configs:
+  - job_name: orders
+    file_sd_configs:
+      - files: [<span class="s">'/etc/targets/*.json'</span>]</pre>
+        </figure>
+        <p>Сам файл — список групп. В группе адреса target и метки, которые получат все её target:</p>
+        <figure class="code code--out">
+          <figcaption><span>targets/orders.json</span><span>одна копия сервиса</span></figcaption>
+<pre>[{"targets": ["api:8000"], "labels": {"env": "prod"}}]</pre>
+        </figure>
+        <p>После запуска с этими настройками у задания orders один target, <code>api:8000</code>, с меткой <code>env="prod"</code>.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Изменение без перезапуска</h2>
+        <p>Опыт: в проекте запущена вторая копия сервиса, <code>api2</code>. В 15:15:22 её адрес дописан в файл. Скрипт раз в секунду спрашивал Prometheus, сколько у него target, и второй появился через 2 секунды. Перезапуска и перезагрузки настроек не было.</p>
+        <p>Prometheus следит за файлами и применяет изменения сразу. Кроме того, он перечитывает их по таймеру <code>refresh_interval</code>, по умолчанию раз в 5 минут, — на случай, если файловая система не сообщает об изменениях.</p>
+        <p>Удаление работает так же. Адрес <code>api2</code> убран из файла — через 5 секунд target исчез со страницы Target health, а запрос <code>up{job="orders"}</code> вернул один ряд вместо двух. Ряды пропавшего target Prometheus помечает устаревшими, как ряд, исчезнувший из ответа (глава 2.4). Висящего DOWN, как со <code>static_configs</code>, не остаётся.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Метки, найденные вместе с target</h2>
+        <p>Вместе с адресом Prometheus получает о target служебные метки. Их видно на странице Status → Service discovery: слева — всё, что найдено, справа — что осталось у target.</p>
+        <figure class="shot"><img src="shots/service-discovery.png" alt="Status → Service discovery, задание orders, 2/2: слева метки __address__, __meta_filepath, __metrics_path__, __scheme__, __scrape_interval__, __scrape_timeout__, env, job; справа env, instance, job" loading="lazy"><figcaption>Слева метки, найденные вместе с target, справа — метки, которые получат его ряды</figcaption></figure>
+        <p>Слева восемь меток. Те, что начинаются с <code>__</code>, служебные: <code>__address__</code> — куда идти за метриками, <code>__meta_filepath</code> — из какого файла пришёл target. Справа их нет: после поиска Prometheus отбрасывает все метки с <code>__</code>, а <code>__address__</code> превращает в <code>instance</code>. Метка <code>env</code> из файла дошла до target и будет у всех его рядов. Как управлять этим переходом слева направо — тема главы 4.3.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Испорченный файл</h2>
+        <p>Опыт: в файл записан JSON с лишней запятой. В журнале Prometheus сразу появилась ошибка:</p>
+        <figure class="code code--out">
+          <figcaption><span>docker compose logs prometheus</span><span>15:21:08</span></figcaption>
+<pre>level=ERROR source=file.go:342 msg="Error reading file" config=orders
+path=/etc/targets/orders.json err="invalid character '}' looking for beginning of object key string"</pre>
+        </figure>
+        <p>Список target при этом не изменился: Prometheus оставил последний правильный. В его собственных метриках на <code>localhost:9104/metrics</code> счётчик <code>prometheus_sd_file_read_errors_total</code> стал равен 1 — по нему ошибку можно заметить без чтения журнала.</p>
+        <p>Та же ошибка возможна и без опечатки: Prometheus прочитает файл, который программа ещё не дописала. Поэтому файл пишут под другим именем и подменяют целиком одной операцией <code>os.replace</code>:</p>
+        <figure class="code">
+          <figcaption><span>make_targets.py</span><span>Python</span></figcaption>
+<pre><span class="k">import</span> json
+<span class="k">import</span> os
+
+replicas = [<span class="s">"api"</span>, <span class="s">"api2"</span>]            <span class="c"># например, ответ системы развёртывания</span>
+groups = [{<span class="s">"targets"</span>: [<span class="s">f"</span>{name}<span class="s">:8000</span><span class="s">"</span> <span class="k">for</span> name <span class="k">in</span> replicas],
+           <span class="s">"labels"</span>: {<span class="s">"env"</span>: <span class="s">"prod"</span>}}]
+
+<span class="k">with</span> open(<span class="s">"targets/orders.json.tmp"</span>, <span class="s">"w"</span>) <span class="k">as</span> f:
+    json.dump(groups, f, indent=<span class="n">2</span>)
+os.replace(<span class="s">"targets/orders.json.tmp"</span>, <span class="s">"targets/orders.json"</span>)  <span class="c"># подмена за один шаг</span>
+print(open(<span class="s">"targets/orders.json"</span>).read())</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод</span><span>результат запуска</span></figcaption>
+<pre>[
+  {
+    "targets": [
+      "api:8000",
+      "api2:8000"
+    ],
+    "labels": {
+      "env": "prod"
+    }
+  }
+]</pre>
+        </figure>
+        <p>Через несколько секунд после запуска скрипта у задания orders снова два target в состоянии UP.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Другие источники списка</h2>
+        <p>Файл — самый простой источник. Prometheus умеет спрашивать список и у систем, которые сами знают, что запущено: Kubernetes (<code>kubernetes_sd_configs</code>), Consul, Docker, облака EC2 и других. Устроены они одинаково: источник отдаёт адреса и служебные метки <code>__meta_*</code>, например имя пода или контейнера, а дальше работают те же правила, что в §4. Для системы без готового источника пишут скрипт, который сохраняет список в файл, как в §5.</p>
+
+        <h2 id="s7"><span class="sec">§7</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>В файл <code>file_sd_configs</code> дописан адрес новой копии сервиса. Что нужно сделать, чтобы Prometheus начал её опрашивать?</p>
+          <ul class="quiz__opts">
+            <li><button>Перезапустить Prometheus</button><p class="quiz__why">Не нужно: в опыте target появился через 2 секунды без перезапуска.</p></li>
+            <li data-ok><button>Ничего, изменение подхватится само</button><p class="quiz__why">Верно. Prometheus следит за файлами и применяет изменения сразу.</p></li>
+            <li><button>Дождаться <code>refresh_interval</code>, 5 минут</button><p class="quiz__why">Таймер — запасной путь на случай, когда слежение за файлами не работает.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>Скрипт записал в файл список с ошибкой в JSON. Что будет с target задания?</p>
+          <ul class="quiz__opts">
+            <li><button>Все target пропадут</button><p class="quiz__why">Prometheus оставляет последний правильный список.</p></li>
+            <li data-ok><button>Останется прежний список, в журнале — ошибка чтения</button><p class="quiz__why">Верно. Растёт и <code>prometheus_sd_file_read_errors_total</code>.</p></li>
+            <li><button>Prometheus остановится</button><p class="quiz__why">Ошибка в файле поиска не останавливает Prometheus.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 3</b>Будет ли у рядов target метка <code>__meta_filepath</code>?</p>
+          <ul class="quiz__opts">
+            <li><button>Да, как и все найденные метки</button><p class="quiz__why">На странице Service discovery её нет в правом столбце.</p></li>
+            <li data-ok><button>Нет, метки с <code>__</code> отбрасываются после поиска</button><p class="quiz__why">Верно. Остаются <code>env</code>, <code>instance</code> и <code>job</code>.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 4</b>Зачем скрипт пишет файл под другим именем и подменяет его через <code>os.replace</code>?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button>Чтобы Prometheus не прочитал наполовину записанный файл</button><p class="quiz__why">Верно. Подмена происходит за один шаг.</p></li>
+            <li><button>Чтобы сохранить старую версию</button><p class="quiz__why">Старая версия при подмене исчезает.</p></li>
+            <li><button>Так требует формат JSON</button><p class="quiz__why">Формат здесь ни при чём: дело в моменте чтения.</p></li>
+          </ul>
+        </div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Prometheus. Configuration: file_sd_config — <a href="https://prometheus.io/docs/prometheus/latest/configuration/configuration/#file_sd_config" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/configuration/configuration</a></li>
+            <li>Prometheus. Use file-based service discovery to discover scrape targets — <a href="https://prometheus.io/docs/guides/file-sd/" target="_blank" rel="noopener">prometheus.io/docs/guides/file-sd</a></li>
+            <li>Prometheus. Jobs and instances — <a href="https://prometheus.io/docs/concepts/jobs_instances/" target="_blank" rel="noopener">prometheus.io/docs/concepts/jobs_instances</a></li>
+            <li>Опыты главы: файл target, вторая копия сервиса и испорченный JSON, 04.11.2026</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="01-exporter.html">← 4.1 Exporter: метрики чужой программы</a><a href="../index.html">К справочнику →</a></div>
+        <div class="colophon">
+          <span>Метрики и наблюдаемость · Модуль 4 · Сбор и хранение</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../modul-02-prometheus/book.js"></script>
+  <script src="../modul-02-prometheus/algo.js"></script>
+  <script src="../modul-02-prometheus/prom.js"></script>
+</body>
+</html>

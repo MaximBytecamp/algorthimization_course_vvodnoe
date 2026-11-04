@@ -1,7 +1,7 @@
         <header class="chapter-head">
           <span class="chapter-num">3.8</span>
           <h1>Практика: метрики<br>сервиса доставки</h1>
-          <p class="lead">В сервисе доставки нужно исправить метку, которая создаёт лишние ряды, и добавить три метрики: counter, gauge и histogram. Каждое задание проверяется в Prometheus, результаты записываются в бланк отчёта.</p>
+          <p class="lead">Всё, что было в модуле, теперь нужно сделать самим на новом сервисе — сервисе доставки. В нём есть та же ошибка с метками, что в главе 3.7: её нужно найти и исправить. Затем добавить три метрики: counter, gauge и histogram. Каждое задание проверяется в Prometheus, а результаты записываются в бланк отчёта.</p>
         </header>
 
         <dl class="passport">
@@ -26,7 +26,7 @@
         </nav>
 
         <h2 id="s1"><span class="sec">§1</span>Сервис доставки</h2>
-        <p>Сервис принимает заявки на доставку, отдаёт доставку по номеру и рассчитывает маршрут. Курьер забирает одну заявку каждые 2 секунды. Prometheus 3.5.0 опрашивает сервис раз в 15 секунд.</p>
+        <p>Сервис доставки устроен так же, как сервис заказов из глав, только вместо заказов — доставки. Он принимает заявки, показывает доставку по номеру и рассчитывает маршрут курьера. Заявки встают в очередь, а курьер забирает по одной каждые 2 секунды — как склад собирал заказы в главе 3.5. Prometheus 3.5.0 опрашивает сервис раз в 15 секунд.</p>
         <p><a class="btn btn--main" href="metrika-praktika.zip" download>↓ Скачать проект metrika-praktika.zip</a></p>
         <p>В архиве — сервис, Prometheus, скрипт нагрузки и бланк отчёта:</p>
         <div class="tree">
@@ -52,7 +52,7 @@
             </tbody>
           </table>
         </div>
-        <p>В сервисе одна метрика — <code>http_requests_total</code>, и в ней ошибка из главы 3.7. Порты — 8033 и 9096, поэтому проект может работать рядом с сервисом заказов из глав.</p>
+        <p>Пока в сервисе одна метрика — <code>http_requests_total</code>, и в ней ошибка из главы 3.7. Остальные метрики вы добавите сами. Сервис работает на порту 8033, Prometheus — на 9096. Порты другие, чем у сервиса заказов, поэтому оба проекта можно держать запущенными одновременно.</p>
 
         <h2 id="s2"><span class="sec">§2</span>Запуск и нагрузка</h2>
         <p>Команды выполняются в папке <code>metrika-praktika</code>.</p>
@@ -65,7 +65,7 @@ docker compose ps</pre></figure></li>
             <div data-os="win"><figure class="code code--out"><figcaption><span>Windows</span><span>PowerShell</span></figcaption><pre>powershell -ExecutionPolicy Bypass -File nagruzka.ps1</pre></figure></div></li>
           <li><b>Подождать 20 секунд</b> — за это время Prometheus выполнит опрос — и открыть <code>http://localhost:9096</code>, меню <b>Status → Target health</b>. У задания <code>delivery</code> должно быть состояние UP.</li>
         </ol>
-        <p>После каждой правки <code>app.py</code> проект перезапускается с ключом <code>-v</code>: он удаляет старые ряды, иначе TSDB status и запросы будут их учитывать.</p>
+        <p>После каждой правки <code>app.py</code> проект перезапускают с ключом <code>-v</code>. Этот ключ удаляет базу Prometheus вместе со старыми рядами. Без него старые ряды останутся, и TSDB status и запросы посчитают их вместе с новыми. Это как вклеить в новую тетрадь страницы из старой.</p>
         <div data-os="mac linux"><figure class="code code--out"><figcaption><span>Перезапуск после правки</span><span>macOS, Linux</span></figcaption><pre>docker compose down -v
 docker compose up -d --build
 ./nagruzka.sh</pre></figure></div>
@@ -74,7 +74,7 @@ docker compose up -d --build
 powershell -ExecutionPolicy Bypass -File nagruzka.ps1</pre></figure></div>
 
         <h2 id="s3"><span class="sec">§3</span>Задание 1. Метка с лишними рядами</h2>
-        <p>У <code>http_requests_total</code> после нагрузки рядов намного больше, чем сочетаний метода и кода. Нужно найти метку-виновника и объяснить, откуда ряды (глава 3.7, §4).</p>
+        <p>После нагрузки у <code>http_requests_total</code> рядов намного больше, чем должно быть: методов и кодов ответа всего несколько. Значит, одна из меток получает слишком много разных значений. Задача — найти эту метку так, как это делают в настоящей системе: по числам Prometheus, а не по догадке (глава 3.7, §4).</p>
         <ol class="steps">
           <li><b>Число рядов.</b> В Prometheus выполнить запрос <code>count(http_requests_total)</code> и записать результат.</li>
           <li><b>Метка-виновник.</b> Открыть <b>Status → TSDB status</b>. В таблице Top 10 label names with value count записать первую метку и число её значений. В таблице Top 10 series count by metric names проверить, какой метрике принадлежат ряды.</li>
@@ -86,7 +86,8 @@ powershell -ExecutionPolicy Bypass -File nagruzka.ps1</pre></figure></div>
         </ol>
 
         <h2 id="s4"><span class="sec">§4</span>Задание 2. Шаблон адреса вместо пути</h2>
-        <p>Записать в метку <code>route</code> шаблон маршрута вместо пути (глава 3.7, §5). Меняются две строки: список меток при объявлении и вызов <code>.labels(...)</code> в <code>count_requests</code>. После перезапуска снова выполнить <code>count(http_requests_total)</code> и <code>http_requests_total</code>.</p>
+        <p>Метка найдена — теперь её нужно исправить. Вместо полного пути (<code>/deliveries/7</code>, <code>/deliveries/8</code>, …) в метку <code>route</code> записывается шаблон маршрута (<code>/deliveries/{delivery_id}</code>). Тогда все запросы к доставкам попадут в один ряд, сколько бы доставок ни было (глава 3.7, §5).</p>
+        <p>Меняются две строки: список меток при объявлении счётчика и вызов <code>.labels(...)</code> в функции <code>count_requests</code>. После перезапуска снова выполните <code>count(http_requests_total)</code> и <code>http_requests_total</code> и сравните с заданием 1.</p>
         <div class="checklist">
           <p class="checklist__head">Задание выполнено, если</p>
           <div class="checklist__item"><span><b>Метка</b>У рядов есть метка <code>route</code> со значениями вида <code>/deliveries/{delivery_id}</code>; метки <code>path</code> нет.</span></div>
@@ -95,7 +96,7 @@ powershell -ExecutionPolicy Bypass -File nagruzka.ps1</pre></figure></div>
         </div>
 
         <h2 id="s5"><span class="sec">§5</span>Задание 3. Счётчик заявок</h2>
-        <p>Счётчик созданных заявок по зонам:</p>
+        <p>Нужно знать, сколько заявок приходит из каждой зоны города: так видно, куда отправлять больше курьеров. Число заявок только растёт, поэтому это счётчик (глава 3.4). Требования к нему:</p>
         <ul>
           <li>имя в ответе <code>/metrics</code> — <code>deliveries_created_total</code>, тип counter;</li>
           <li>одна метка <code>zone</code> со значениями <code>north</code>, <code>south</code>, <code>center</code>;</li>
@@ -117,7 +118,8 @@ deliveries_created_total{zone="center"} …</pre>
         </div>
 
         <h2 id="s6"><span class="sec">§6</span>Задание 4. Заявки, которые ждут курьера</h2>
-        <p>Gauge <code>deliveries_waiting</code> без меток: растёт при создании заявки, уменьшается, когда курьер её забрал. Оба места помечены «ЗАДАНИЕ 4» — в <code>create_delivery</code> и <code>courier</code> (образец — глава 3.5, §2).</p>
+        <p>Второй вопрос диспетчера: сколько заявок ждут курьера прямо сейчас? Если число растёт и не падает, курьеры не справляются. Это число и растёт, и уменьшается, поэтому нужен gauge (глава 3.5) — как табло очереди в банке.</p>
+        <p>Gauge называется <code>deliveries_waiting</code>, меток у него нет. Он растёт на 1, когда заявка создана, и уменьшается на 1, когда курьер её забрал. Оба места в коде помечены «ЗАДАНИЕ 4» — в функциях <code>create_delivery</code> и <code>courier</code> (образец — глава 3.5, §2).</p>
         <ol class="steps">
           <li><b>Сразу после нагрузки</b> запросить <code>/metrics</code> и записать значение <code>deliveries_waiting</code>.</li>
           <li><b>Через 70 секунд</b> запросить ещё раз: 30 заявок по 2 секунды разбираются за минуту.</li>
@@ -131,13 +133,14 @@ deliveries_created_total{zone="center"} …</pre>
         </div>
 
         <h2 id="s7"><span class="sec">§7</span>Задание 5. Гистограмма расчёта маршрута</h2>
-        <p>Требование: расчёт маршрута не дольше 0,3 секунды. Гистограмма должна показать, какая доля расчётов в него укладывается:</p>
+        <p>Курьер ждёт, пока сервис рассчитает маршрут. Требование заказчика: расчёт не дольше 0,3 секунды. Нужно узнать, какая доля расчётов в него укладывается. Одно среднее здесь не поможет (глава 3.6, §1), поэтому нужна гистограмма. Требования к ней:</p>
         <ul>
           <li>имя — <code>route_build_duration_seconds</code>, меток нет;</li>
           <li>границы корзин — 0,1, 0,2, 0,3, 0,5, 1 и 2 секунды; граница 0,3 совпадает с требованием (глава 3.6, §5);</li>
           <li>в функции <code>build_route</code> в месте «ЗАДАНИЕ 5» в гистограмму записывается уже посчитанная переменная <code>elapsed</code>.</li>
         </ul>
-                <ol class="steps">
+        <p>После перезапуска и нагрузки:</p>
+        <ol class="steps">
           <li><b>Корзины.</b> Записать значения всех корзин, <code>_count</code> и <code>_sum</code>.</li>
           <li><b>Доля.</b> Посчитать долю расчётов не дольше 0,3 с: значение корзины <code>le="0.3"</code>, делённое на <code>_count</code>.</li>
           <li><b>Оценка p90.</b> Выполнить в Prometheus <code>histogram_quantile(0.9, route_build_duration_seconds_bucket)</code>.</li>
@@ -151,7 +154,7 @@ deliveries_created_total{zone="center"} …</pre>
         </div>
 
         <h2 id="s8"><span class="sec">§8</span>Сдача работы</h2>
-        <p>В <code>otchet.md</code> на месте каждого <code>___</code> записывается число, строка кода или объяснение. Вместе с отчётом сдаётся исправленный <code>app.py</code>.</p>
+        <p>Бланк <code>otchet.md</code> уже размечен: на месте каждого <code>___</code> впишите число, строку кода или объяснение своими словами. Вместе с отчётом сдаётся исправленный <code>app.py</code>.</p>
         <div class="checklist">
           <p class="checklist__head">В работе есть</p>
           <div class="checklist__item"><span><b>app.py</b>Метка <code>route</code> вместо <code>path</code>; три новые метрики; <code>promtool check metrics</code> без замечаний.</span></div>
