@@ -1,0 +1,120 @@
+        <header class="chapter-head">
+          <span class="chapter-num">4.6</span>
+          <h1>Пропуски<br>и устаревшие ряды</h1>
+          <p class="lead">Опрос может не удаться, ряд может пропасть из ответа, target — из списка. В главе разобрано, что в каждом случае происходит с рядами, как выглядит дыра в истории и каким запросом её заметить.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Хранение</dd></div>
+          <div><dt>Уровень</dt><dd>Средний</dd></div>
+          <div><dt>Опирается на</dt><dd>Глава 2.4: up и отметка «устарел»; глава 3.1: последний отсчёт в запросе</dd></div>
+          <div><dt>Результат</dt><dd>Чтение дыр в истории и запросы up == 0 и absent()</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Три вида пропуска</a></li>
+            <li><a href="#s2">Target не ответил</a></li>
+            <li><a href="#s3">Дыра в истории</a></li>
+            <li><a href="#s4">Как заметить пропуск</a></li>
+            <li><a href="#s5">Когда отметки «устарел» нет</a></li>
+            <li><a href="#s6">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Три вида пропуска</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Школьный журнал</b><p>Ученик заболел — в журнале «н». Не сдал одну работу — пустая клетка в одной графе. Ушёл из школы — строки больше нет.</p></div>
+            <div class="analogy__side"><b>Prometheus</b><p>Target не ответил — <code>up = 0</code>. Ряд пропал из ответа — пусто в одном ряду. Target убрали из списка — нет и <code>up</code>.</p></div>
+          </div>
+        </div>
+        <p>Во всех трёх случаях Prometheus не оставляет ряду последнее значение на пять минут, как при обычном мгновенном запросе (глава 3.1). Он записывает в ряд особый отсчёт — отметку «устарел» (stale marker, глава 2.4), и ряд пропадает из запросов. В первых двух случаях это происходит на ближайшем опросе. В третьем — вскоре после удаления target: в опыте ряд был виден ещё не меньше 25 секунд после перезагрузки настроек. Второй случай показан в главе 4.1: склад остановлен, а ряд очереди исчез при живом exporter. Здесь — первый и третий.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Target не ответил</h2>
+        <p>Опыт: сервис заказов остановлен в 18:49:39. Каждые 3 секунды запрашиваются <code>up</code> и ряд счётчика успешных запросов:</p>
+        <figure class="code code--out">
+          <figcaption><span>up{job="orders"} и http_requests_total{status="200"}</span><span>время UTC</span></figcaption>
+<pre>18:49:39  up=1  req=18     # сервис только что остановлен
+18:49:54  up=1  req=18     # опроса ещё не было
+18:49:57  up=0  req=пусто  # опрос не удался
+18:50:19  up=0  req=пусто</pre>
+        </figure>
+        <p>18 секунд после остановки запросы показывали прежнее значение: Prometheus ещё не знал о сбое — опрос раз в 15 секунд. На первом неудачном опросе <code>up</code> стал 0, а ряд счётчика сразу пропал. Неудачный опрос и есть момент, когда Prometheus ставит отметку «устарел» всем рядам target.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Дыра в истории</h2>
+        <p>В 18:50:22 сервис запущен снова. Скрипт читает оба ряда по истории с шагом 15 секунд и ставит прочерк там, где отсчёта нет:</p>
+        <figure class="code">
+          <figcaption><span>gaps.py</span><span>Python</span></figcaption>
+<pre><!--include:_ex_gaps.html--></pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>python3 gaps.py 'http_requests_total{job="orders",status="200"}' 18:49:00 18:52:00</span><span>результат запуска</span></figcaption>
+<pre>18:49:00 13
+18:49:15 13
+18:49:30 13
+18:49:45 18
+18:50:00 —
+18:50:15 —
+…
+18:52:00 —</pre>
+        </figure>
+        <p>С 18:50:00 у счётчика дыра. Ряд <code>up</code> за то же окно дыр не имеет: <code>1 1 1 1 0 0 0 1 1 1 1 1 1</code>. Нули — неудачные опросы, с 18:50:45 сервис снова отвечает. График Grafana нарисует такую дыру разрывом линии.</p>
+        <p>Почему счётчик не вернулся вместе с <code>up</code>? Новый процесс начал с нуля, и ряд с методом GET и кодом 200 появился только после первых запросов (глава 3.3) — со значением 3. Для расчёта роста это сброс, как в главе 3.4.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Как заметить пропуск</h2>
+        <p>Для первого случая достаточно <code>up == 0</code>. Но если target убрали из настроек или поиск перестал его находить, ряда <code>up</code> нет вовсе — и сравнивать нечего. Для этого есть функция <code>absent</code>: она возвращает 1, когда подходящих рядов нет. Задание orders убрано из настроек, затем выполнены три запроса:</p>
+        <figure class="code code--out">
+          <figcaption><span>Запросы к Prometheus</span><span>задания orders нет в настройках</span></figcaption>
+<pre>up{job="orders"} == 0       ->  пусто
+absent(up{job="orders"})    ->  {job="orders"} 1
+absent(up{job="sklad"})     ->  пусто     # sklad на месте</pre>
+        </figure>
+        <p><code>up == 0</code> молчит, хотя сервис не опрашивается совсем. <code>absent</code> сообщил об этом и подставил в ответ метку <code>job="orders"</code> из условия. Поэтому проверку «target пропал» пишут через <code>absent</code>, а «target не отвечает» — через <code>up == 0</code>; к правилам оповещения вернёмся в модуле 8.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Когда отметки «устарел» нет</h2>
+        <p>Отметку ставит работающий Prometheus. Если остановить сам Prometheus и поменять настройки до запуска, отметок не будет. Ряды убранных target останутся видны в мгновенных запросах до пяти минут — по последнему отсчёту (глава 3.1). Это было видно в главе 4.3: после смены правил с перезапуском контейнера старые ряды без метки <code>replica</code> какое-то время отвечали рядом с новыми.</p>
+        <p>Поэтому настройки меняют перезагрузкой — <code>curl -X POST localhost:9104/-/reload</code> при флаге <code>--web.enable-lifecycle</code>, — а не перезапуском. И помнят, что пятиминутное значение в запросе после перезапуска Prometheus — не признак живого target.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>Сервис упал 10 секунд назад, опрос раз в 15 секунд. Что покажет мгновенный запрос его счётчика?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button>Прежнее значение, если опроса после падения ещё не было</button><p class="quiz__why">Верно. В опыте 18 секунд запросы показывали 18.</p></li>
+            <li><button>Пусто сразу после падения</button><p class="quiz__why">Prometheus узнаёт о сбое только при неудачном опросе.</p></li>
+            <li><button>Прежнее значение ещё 5 минут</button><p class="quiz__why">На неудачном опросе ставится отметка «устарел», и ряд пропадает сразу.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>Target убрали из настроек. Что вернёт <code>up{job="orders"} == 0</code>?</p>
+          <ul class="quiz__opts">
+            <li><button>0</button><p class="quiz__why">Ряда <code>up</code> нет, сравнивать нечего.</p></li>
+            <li data-ok><button>Пустой результат</button><p class="quiz__why">Верно. Пропавший target ловят через <code>absent(up{job="orders"})</code>.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 3</b>Сервис перезапустился, <code>up</code> снова 1, а ряд счётчика ошибок не появляется. Почему?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button>Ошибок после перезапуска ещё не было, ряд появится с первой</button><p class="quiz__why">Верно. Новый процесс создаёт ряд при первом событии.</p></li>
+            <li><button>Prometheus не опрашивает перезапущенный сервис</button><p class="quiz__why"><code>up</code> = 1 — опрос идёт.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 4</b>Настройки поменяли, остановив и запустив Prometheus. Убранный target ещё 4 минуты виден в мгновенных запросах. Почему?</p>
+          <ul class="quiz__opts">
+            <li><button>Target всё ещё опрашивается</button><p class="quiz__why">Его нет в настройках.</p></li>
+            <li data-ok><button>Отметку «устарел» некому было поставить, работает правило пяти минут</button><p class="quiz__why">Верно. При перезагрузке через <code>/-/reload</code> Prometheus сам пометит ряды устаревшими.</p></li>
+          </ul>
+        </div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Prometheus. Querying basics: staleness — <a href="https://prometheus.io/docs/prometheus/latest/querying/basics/#staleness" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/querying/basics</a></li>
+            <li>Prometheus. Query functions: absent — <a href="https://prometheus.io/docs/prometheus/latest/querying/functions/#absent" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/querying/functions</a></li>
+            <li>Prometheus. Management API: reload — <a href="https://prometheus.io/docs/prometheus/latest/management_api/" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/management_api</a></li>
+            <li>Опыты главы: остановка сервиса заказов, чтение по истории, absent, 04.11.2026</li>
+          </ol>
+        </div>

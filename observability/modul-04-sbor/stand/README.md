@@ -86,3 +86,12 @@ docker compose exec prometheus-tsdb promtool tsdb list -r /prometheus   # чер
 docker compose kill prometheus-tsdb && docker compose --profile tsdb start prometheus-tsdb
 docker compose logs prometheus-tsdb | grep -E "WAL replay|Deleting obsolete block"
 ```
+
+**4.6. Пропуски.** Остановить сервис, через минуту запустить и прочитать окно по истории:
+
+```sh
+docker compose stop api; sleep 60; docker compose start api
+python3 gaps.py 'http_requests_total{job="orders",status="200"}' 18:49:00 18:52:00   # своё время UTC
+```
+
+Проверка пропавшего target — запрос `absent(up{job="orders"})`.

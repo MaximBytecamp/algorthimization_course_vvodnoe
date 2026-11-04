@@ -1,0 +1,21 @@
+<span class="k">import</span> json
+<span class="k">import</span> sys
+<span class="k">import</span> urllib.parse
+<span class="k">import</span> urllib.request
+<span class="k">from</span> datetime <span class="k">import</span> datetime, timezone
+
+query, start, end = sys.argv[<span class="n">1</span>], sys.argv[<span class="n">2</span>], sys.argv[<span class="n">3</span>]   <span class="c"># время — UTC, ЧЧ:ММ:СС</span>
+day = datetime.now(timezone.utc).strftime(<span class="s">"%Y-%m-%dT"</span>)
+params = urllib.parse.urlencode({<span class="s">"query"</span>: query, <span class="s">"start"</span>: day + start + <span class="s">"Z"</span>,
+                                 <span class="s">"end"</span>: day + end + <span class="s">"Z"</span>, <span class="s">"step"</span>: <span class="s">"15s"</span>})
+<span class="k">with</span> urllib.request.urlopen(<span class="s">"http://localhost:9104/api/v1/query_range?"</span> + params) <span class="k">as</span> r:
+    result = json.load(r)[<span class="s">"data"</span>][<span class="s">"result"</span>]
+
+points = {}
+<span class="k">for</span> series <span class="k">in</span> result:
+    <span class="k">for</span> ts, value <span class="k">in</span> series[<span class="s">"values"</span>]:
+        points[ts] = value
+t = datetime.fromisoformat(day + start + <span class="s">"+00:00"</span>).timestamp()
+<span class="k">while</span> t &lt;= datetime.fromisoformat(day + end + <span class="s">"+00:00"</span>).timestamp():
+    print(datetime.fromtimestamp(t, timezone.utc).strftime(<span class="s">"%H:%M:%S"</span>), points.get(t, <span class="s">"—"</span>))
+    t += <span class="n">15</span>
