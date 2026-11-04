@@ -37,5 +37,23 @@ services:
       - prometheus-data:/prometheus
     depends_on: [api, sklad-exporter, node-exporter]
 
+  # Глава 4.5: отдельный Prometheus с блоками по 5 минут и хранением 12 минут,
+  # чтобы рождение и удаление блоков было видно за полчаса, а не за дни.
+  prometheus-tsdb:
+    image: prom/prometheus:v3.5.0
+    profiles: [tsdb]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.min-block-duration=5m
+      - --storage.tsdb.max-block-duration=5m
+      - --storage.tsdb.retention.time=12m
+    ports: ['127.0.0.1:9105:9090']
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - prometheus-tsdb-data:/prometheus
+    depends_on: [api, sklad-exporter, node-exporter]
+
 volumes:
   prometheus-data:
+  prometheus-tsdb-data:

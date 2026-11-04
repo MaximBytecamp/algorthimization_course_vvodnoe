@@ -1,0 +1,18 @@
+<span class="k">import</span> json
+<span class="k">import</span> sys
+<span class="k">import</span> urllib.request
+<span class="k">from</span> datetime <span class="k">import</span> datetime, timezone
+
+base = sys.argv[<span class="n">1</span>] <span class="k">if</span> len(sys.argv) &gt; <span class="n">1</span> <span class="k">else</span> <span class="s">"http://localhost:9104"</span>
+
+<span class="k">def</span> <span class="f">api</span>(path):
+    <span class="k">with</span> urllib.request.urlopen(base + path) <span class="k">as</span> response:
+        <span class="k">return</span> json.load(response)[<span class="s">"data"</span>]
+
+head = api(<span class="s">"/api/v1/status/tsdb"</span>)[<span class="s">"headStats"</span>]
+runtime = api(<span class="s">"/api/v1/status/runtimeinfo"</span>)
+utc = <span class="k">lambda</span> ms: datetime.fromtimestamp(ms / <span class="n">1000</span>, timezone.utc).strftime(<span class="s">"%H:%M:%S"</span>)
+
+print(<span class="s">"рядов в head:"</span>, head[<span class="s">"numSeries"</span>], <span class="s">" кусков:"</span>, head[<span class="s">"chunkCount"</span>])
+print(<span class="s">"head с"</span>, utc(head[<span class="s">"minTime"</span>]), <span class="s">"по"</span>, utc(head[<span class="s">"maxTime"</span>]), <span class="s">"UTC"</span>)
+print(<span class="s">"срок хранения:"</span>, runtime[<span class="s">"storageRetention"</span>])

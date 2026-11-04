@@ -76,3 +76,13 @@ PROM_CONFIG=prometheus-limity.yml docker compose up -d prometheus
 python3 limits_check.py          # через 30 секунд: задание, длительность опроса, ошибка
 docker compose unpause sklad
 ```
+
+**4.5. TSDB.** Второй Prometheus с блоками по 5 минут и сроком хранения 12 минут (порт 9105):
+
+```sh
+docker compose --profile tsdb up -d prometheus-tsdb
+python3 tsdb_status.py http://localhost:9105
+docker compose exec prometheus-tsdb promtool tsdb list -r /prometheus   # через 8–10 минут
+docker compose kill prometheus-tsdb && docker compose --profile tsdb start prometheus-tsdb
+docker compose logs prometheus-tsdb | grep -E "WAL replay|Deleting obsolete block"
+```

@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#EEF1F5">
+  <meta name="description" content="Глава 4.5 модуля «Сбор и хранение»: tSDB: head, WAL, блоки и retention.">
+  <title>4.5 TSDB: head, WAL, блоки и retention · Сбор и хранение</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&amp;family=Pixelify+Sans:wght@500;600;700&amp;family=Roboto+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../modul-02-prometheus/styles.css">
+  <link rel="stylesheet" href="../modul-02-prometheus/algo.css">
+  <link rel="stylesheet" href="../modul-02-prometheus/prom.css">
+  <link rel="stylesheet" href="../modul-03-metrika/m3.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 4 · Сбор и хранение · Макаров М. Н.</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Модуль 4 · сбор и хранение</a> · сбор и хранение</p>
+          <p class="running__folio">Глава 4.5</p>
+        </div>
+        <header class="chapter-head">
+          <span class="chapter-num">4.5</span>
+          <h1>TSDB: head, WAL,<br>блоки и retention</h1>
+          <p class="lead">Отсчёты, собранные опросами, попадают в базу временных рядов Prometheus — TSDB. В главе разобрано, что лежит в её папке, почему данные переживают аварийную остановку и когда старые данные удаляются.</p>
+        </header>
+
+        <dl class="passport">
+          <div><dt>Категория</dt><dd>Хранение</dd></div>
+          <div><dt>Уровень</dt><dd>Средний</dd></div>
+          <div><dt>Опирается на</dt><dd>Глава 3.1: отсчёт и объём данных; глава 3.7: TSDB status</dd></div>
+          <div><dt>Результат</dt><dd>Чтение папки данных и выбор срока хранения</dd></div>
+        </dl>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Путь отсчёта на диск</a></li>
+            <li><a href="#s2">Head и WAL</a></li>
+            <li><a href="#s3">Аварийная остановка</a></li>
+            <li><a href="#s4">Блоки</a></li>
+            <li><a href="#s5">Retention: удаление старых блоков</a></li>
+            <li><a href="#s6">Проверьте себя</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Путь отсчёта на диск</h2>
+        <div class="analogy">
+          <div class="analogy__head">Сравнение из жизни</div>
+          <div class="analogy__pair">
+            <div class="analogy__side"><b>Бухгалтерия</b><p>Текущие документы лежат на столе, каждый сразу записан в журнал. В конце месяца их подшивают в папку и ставят в архив. Старые папки по сроку уничтожают.</p></div>
+            <div class="analogy__side"><b>TSDB</b><p>Свежие отсчёты — в памяти (head) и в журнале (WAL). Раз в два часа их сохраняют блоком на диск. Старые блоки удаляет retention.</p></div>
+          </div>
+        </div>
+        <p>У отсчёта три остановки. Сначала он попадает в память, в часть базы под названием head, и одновременно дописывается в журнал WAL. Затем вместе с соседними отсчётами переносится в блок — неизменяемую папку на диске. Наконец, блок удаляется, когда становится старше срока хранения.</p>
+        <div class="pic">
+          <div class="pic__bar"><span>Путь отсчёта в TSDB</span><span>значения по умолчанию</span></div>
+          <div class="pic__body">
+            <div class="chain">
+              <div class="chain__box"><small>опрос</small><b>отсчёт</b></div>
+              <span class="chain__arr" data-l="сразу"></span>
+              <div class="chain__box is-key"><small>память + журнал</small><b>head и WAL</b>последние часы</div>
+              <span class="chain__arr" data-l="раз в 2 часа"></span>
+              <div class="chain__box is-ok"><small>диск</small><b>блок</b>неизменяемая папка</div>
+              <span class="chain__arr" data-l="старше 15 дней"></span>
+              <div class="chain__box is-bad"><small>retention</small><b>удаление</b>блок целиком</div>
+            </div>
+          </div>
+        </div>
+        <p>При настройках по умолчанию первый блок появится только через несколько часов. Чтобы увидеть весь путь за полчаса, в проекте запущен второй Prometheus с блоками по 5 минут и сроком хранения 12 минут (флаги в §4).</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Head и WAL</h2>
+        <p>Папка данных сразу после запуска — блоков ещё нет:</p>
+        <figure class="code code--out">
+          <figcaption><span>ls /prometheus</span><span>17:28:55</span></figcaption>
+<pre>chunks_head
+lock
+queries.active
+wal</pre>
+        </figure>
+        <p><code>wal</code> — журнал: каждый новый отсчёт дописывается сюда файлами-сегментами <code>00000000</code>, <code>00000001</code> и далее. <code>chunks_head</code> — заполненные куски head, сброшенные на диск, чтобы не держать их в памяти. <code>lock</code> не даёт двум Prometheus писать в одну папку. Сколько сейчас в head, показывает API; скрипт читает его:</p>
+        <figure class="code">
+          <figcaption><span>tsdb_status.py</span><span>Python</span></figcaption>
+<pre><span class="k">import</span> json
+<span class="k">import</span> sys
+<span class="k">import</span> urllib.request
+<span class="k">from</span> datetime <span class="k">import</span> datetime, timezone
+
+base = sys.argv[<span class="n">1</span>] <span class="k">if</span> len(sys.argv) &gt; <span class="n">1</span> <span class="k">else</span> <span class="s">"http://localhost:9104"</span>
+
+<span class="k">def</span> <span class="f">api</span>(path):
+    <span class="k">with</span> urllib.request.urlopen(base + path) <span class="k">as</span> response:
+        <span class="k">return</span> json.load(response)[<span class="s">"data"</span>]
+
+head = api(<span class="s">"/api/v1/status/tsdb"</span>)[<span class="s">"headStats"</span>]
+runtime = api(<span class="s">"/api/v1/status/runtimeinfo"</span>)
+utc = <span class="k">lambda</span> ms: datetime.fromtimestamp(ms / <span class="n">1000</span>, timezone.utc).strftime(<span class="s">"%H:%M:%S"</span>)
+
+print(<span class="s">"рядов в head:"</span>, head[<span class="s">"numSeries"</span>], <span class="s">" кусков:"</span>, head[<span class="s">"chunkCount"</span>])
+print(<span class="s">"head с"</span>, utc(head[<span class="s">"minTime"</span>]), <span class="s">"по"</span>, utc(head[<span class="s">"maxTime"</span>]), <span class="s">"UTC"</span>)
+print(<span class="s">"срок хранения:"</span>, runtime[<span class="s">"storageRetention"</span>])</pre>
+        </figure>
+        <figure class="code code--out">
+          <figcaption><span>Вывод</span><span>python3 tsdb_status.py http://localhost:9105 · 17:37</span></figcaption>
+<pre>рядов в head: 1456  кусков: 2912
+head с 17:30:01 по 17:37:23 UTC
+срок хранения: 12m</pre>
+        </figure>
+        <p>В head 1 456 рядов — почти все от node_exporter (глава 4.1). Head начинается с 17:30:01, хотя опросы шли с 17:29: всё, что было раньше, уже ушло в блок.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Аварийная остановка</h2>
+        <p>Head живёт в памяти, и при аварии он пропал бы. Для этого и нужен WAL. Опыт: Prometheus остановлен командой <code>docker compose kill</code> — без сохранения, как при сбое питания, — и запущен снова. До и после выполнен один запрос:</p>
+        <figure class="code code--out">
+          <figcaption><span>count_over_time(up{job="orders"}[5m])</span><span>до и после kill</span></figcaption>
+<pre>17:43:16  20     # до остановки
+17:43:23  20     # через 7 секунд после запуска</pre>
+        </figure>
+        <p>Все 20 отсчётов за 5 минут на месте, хотя они хранились только в head. При запуске Prometheus прочитал журнал заново:</p>
+        <figure class="code code--out">
+          <figcaption><span>docker compose logs prometheus-tsdb</span><span>после запуска</span></figcaption>
+<pre>msg="WAL segment loaded" segment=4 maxSegment=4
+msg="WAL replay completed" wal_replay_duration=33.839416ms</pre>
+        </figure>
+        <p>Чтение заняло 34 мс. На большой базе оно длится минуты, поэтому после перезапуска Prometheus какое-то время не отвечает на запросы.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Блоки</h2>
+        <p>Длину блока задают флаги <code>--storage.tsdb.min-block-duration</code> и <code>--storage.tsdb.max-block-duration</code>. По умолчанию блок — 2 часа; флаги скрыты из справки и нужны для опытов. Во втором Prometheus проекта стоит 5 минут:</p>
+        <figure class="code">
+          <figcaption><span>compose.yaml</span><span>сервис prometheus-tsdb</span></figcaption>
+<pre>      - --storage.tsdb.min-block-duration=5m
+      - --storage.tsdb.max-block-duration=5m
+      - --storage.tsdb.retention.time=12m</pre>
+        </figure>
+        <p>Через восемь минут после запуска <code>promtool tsdb list</code> показал два блока:</p>
+        <figure class="code code--out">
+          <figcaption><span>promtool tsdb list -r /prometheus</span><span>17:37</span></figcaption>
+<pre>BLOCK ULID                  MIN TIME   MAX TIME   NUM SAMPLES  NUM SERIES  SIZE
+01M6KT4K4YR4D0WJD0S087KH43  17:29:01   17:30:00   5824         1456        178KiB
+01M6KT6DQA7EGQ20GPHP1WJHZ2  17:30:01   17:35:00   29120        1456        235KiB</pre>
+        </figure>
+        <p>Границы блоков ровные — 17:30:00 и 17:35:00, поэтому первый блок короче минуты. Блок пишется не сразу на границе: первый записан в 17:36:33, когда в head накопилось полтора отрезка. Внутри блока:</p>
+        <figure class="code code--out">
+          <figcaption><span>ls /prometheus/01M6KT4K4YR4D0WJD0S087KH43</span><span>одна папка — один блок</span></figcaption>
+<pre>chunks/000001   # сами отсчёты, сжатые
+index           # какие ряды есть и где их куски
+meta.json       # время блока, число рядов и отсчётов
+tombstones      # пометки об удалённых рядах</pre>
+        </figure>
+        <p>Блок после записи не меняется. Поэтому его можно скопировать для резервной копии, а удалить — целиком, одной папкой.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Retention: удаление старых блоков</h2>
+        <p>Срок хранения задаёт флаг <code>--storage.tsdb.retention.time</code>, по умолчанию 15 дней; второй флаг, <code>--storage.tsdb.retention.size</code>, ограничивает объём. Удаляются только блоки целиком. Первый блок проекта заканчивался в 17:30:00 и был удалён в 17:47:31, когда в журнале появилась строка:</p>
+        <figure class="code code--out">
+          <figcaption><span>docker compose logs prometheus-tsdb</span><span>17:47:31</span></figcaption>
+<pre>msg="Deleting obsolete block" block=01M6KT4K4YR4D0WJD0S087KH43</pre>
+        </figure>
+        <p>Удалён он не в 17:42, а позже: срок отсчитывается от конца самого нового блока, а проверка идёт после записи очередного блока. Блок до 17:45 был записан около 17:47 — и сразу после этого первый блок оказался старше 12 минут. Документация предупреждает, что при обычных 2-часовых блоках удаление просроченного блока может запоздать до двух часов.</p>
+        <p>После удаления счётчик <code>prometheus_tsdb_time_retentions_total</code> стал равен 1, а запрос <code>up{job="orders"}</code> на 17:29:30 вернул пустой ответ: этих данных больше нет. На диске всё время лежат примерно три последних блока — 12 минут плюс head.</p>
+        <p>Срок выбирают по самому долгому вопросу к данным. Если отчёт сравнивает месяц с прошлым месяцем, 15 дней не хватит. Объём оценивают по главе 3.1: число рядов × отсчётов в сутки × дни × 1–2 байта.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Проверьте себя</h2>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 1</b>Prometheus аварийно остановлен через час после запуска, блоков ещё нет. Что будет с данными за этот час?</p>
+          <ul class="quiz__opts">
+            <li><button>Пропадут: head был в памяти</button><p class="quiz__why">Каждый отсчёт записан и в WAL.</p></li>
+            <li data-ok><button>Восстановятся из WAL при запуске</button><p class="quiz__why">Верно. В опыте после kill все 20 отсчётов были на месте.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 2</b>Срок хранения 12 минут, блок закончился 15 минут назад. Почему его могут ещё не удалить?</p>
+          <ul class="quiz__opts">
+            <li data-ok><button>Срок отсчитывается от конца самого нового блока, а проверка идёт после записи блока</button><p class="quiz__why">Верно. В опыте блок до 17:30 удалён в 17:47.</p></li>
+            <li><button>Удаляются только блоки старше 15 дней</button><p class="quiz__why">15 дней — значение по умолчанию; здесь задано 12 минут.</p></li>
+            <li><button>Блоки не удаляются никогда</button><p class="quiz__why">В журнале было «Deleting obsolete block».</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 3</b>Нужно убрать из базы данные одного дня. Можно ли поправить файл блока?</p>
+          <ul class="quiz__opts">
+            <li><button>Да, блок — обычный файл</button><p class="quiz__why">Блок после записи не меняется; удаление помечается в tombstones.</p></li>
+            <li data-ok><button>Нет, блок неизменяем: удаляется целиком или помечается через API</button><p class="quiz__why">Верно. Удаление рядов делают через API администратора, оно попадает в tombstones.</p></li>
+          </ul>
+        </div>
+        <div class="quiz">
+          <p class="quiz__q"><b>Вопрос 4</b>Отчёт сравнивает этот месяц с прошлым. Хватит ли настроек по умолчанию?</p>
+          <ul class="quiz__opts">
+            <li><button>Да</button><p class="quiz__why">По умолчанию хранится 15 дней.</p></li>
+            <li data-ok><button>Нет, нужен срок не меньше двух месяцев</button><p class="quiz__why">Верно. Срок хранения выбирают по самому долгому вопросу к данным.</p></li>
+          </ul>
+        </div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Prometheus. Storage: on-disk layout, compaction, retention — <a href="https://prometheus.io/docs/prometheus/latest/storage/" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/storage</a></li>
+            <li>Prometheus. Command-line: promtool tsdb list — <a href="https://prometheus.io/docs/prometheus/latest/command-line/promtool/" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/command-line/promtool</a></li>
+            <li>Prometheus. HTTP API: TSDB stats, runtime information — <a href="https://prometheus.io/docs/prometheus/latest/querying/api/" target="_blank" rel="noopener">prometheus.io/docs/prometheus/latest/querying/api</a></li>
+            <li>Опыты главы: Prometheus с блоками по 5 минут и сроком 12 минут, 04.11.2026</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="04-limity.html">← 4.4 Лимиты опроса</a><a href="../index.html">К справочнику →</a></div>
+        <div class="colophon">
+          <span>Метрики и наблюдаемость · Модуль 4 · Сбор и хранение</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../modul-02-prometheus/book.js"></script>
+  <script src="../modul-02-prometheus/algo.js"></script>
+  <script src="../modul-02-prometheus/prom.js"></script>
+</body>
+</html>
