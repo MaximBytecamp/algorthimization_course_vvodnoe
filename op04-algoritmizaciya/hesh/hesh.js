@@ -16,7 +16,8 @@
         с data-grow — рост таблицы и перекладка ключей (resize/rehash)
      4. .setops — операции над двумя множествами
      5. .groupby — группировка слов по ключу: отсортированные буквы или частоты
-     6. .buckets — частоты и вёдра «частота → элементы» для k самых частых */
+     6. .buckets — частоты и вёдра «частота → элементы» для k самых частых
+     7. .consec — серии подряд идущих чисел и число проверок in        */
 (() => {
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const json = (node, name) => { try { return JSON.parse(node.dataset[name]); } catch (_) { return null; } };
@@ -319,6 +320,55 @@
         + ' Числа с одинаковой частотой стоят в ведре в порядке первого появления.';
     };
     root.querySelectorAll('.hx-input').forEach(i => i.addEventListener('input', draw));
+    draw();
+  });
+
+  /* ── 7. Серии подряд идущих чисел ───────────────────────────── */
+  /* data-nums — числа. Режим «с каждого числа» идёт вверх от каждого
+     элемента множества, режим «с начала серии» — только от x, у которого
+     нет x − 1. Счётчик — сколько раз выполнена проверка in. */
+  document.querySelectorAll('.consec').forEach(root => {
+    const nums0 = (json(root, 'nums') || [100, 4, 200, 1, 3, 2]).join(', ');
+    let mode = 'start';
+    root.classList.add('widget');
+    root.innerHTML = `
+      <div class="widget__head"><b>${esc(root.dataset.title || 'Серии подряд идущих чисел')}</b><span>впишите числа</span></div>
+      <div class="widget__body">
+        <label class="hx-field"><span>nums =</span><input class="hx-input cs-nums" value="${esc(nums0)}" style="max-width:none"></label>
+        <div class="hx-ctrl"><button type="button" class="btn" data-m="every">идти вверх от каждого числа</button><button type="button" class="btn" data-m="start">только от начала серии</button></div>
+        <h4 class="bk-h">Множество s по возрастанию, серии — отдельными блоками</h4>
+        <div class="cs-runs"></div>
+        <div class="table-scroll"><table class="cs-table"><thead><tr><th>Откуда идём вверх</th><th>Серия</th><th>Проверок <code>in</code></th></tr></thead><tbody></tbody></table></div>
+        <div class="legend"><span><i class="l-hit"></i>начало серии: x − 1 нет во множестве</span><span><i class="l-probe"></i>не начало: от него проход повторяет часть серии</span></div>
+      </div>
+      <div class="widget__foot hx-note"></div>`;
+    const draw = () => {
+      const note = root.querySelector('.hx-note');
+      const raw = root.querySelector('.cs-nums').value.split(',').map(v => v.trim()).filter(Boolean).map(readInt);
+      if (raw.some(v => v === null)) { note.innerHTML = '<span class="hx-err">Впишите целые числа через запятую.</span>'; return; }
+      const s = new Set(raw), vals = [...s].sort((a, b) => a - b);
+      const runs = [];
+      vals.forEach(v => { if (runs.length && runs[runs.length - 1].at(-1) === v - 1) runs[runs.length - 1].push(v); else runs.push([v]); });
+      root.querySelector('.cs-runs').innerHTML = runs.map(r => `<div class="so-chips cs-run">${r.map((v, i) => `<span class="so-chip ${i === 0 ? 'so-both' : 'bk-off'}">${v}</span>`).join('')}</div>`).join('') || '<span class="so-empty">множество пустое</span>';
+      let checks = 0, best = 0; const rows = [];
+      const order = [...s];   // обход множества; порядок для подсчёта не важен
+      for (const x of order) {
+        let c = 0;
+        if (mode === 'start') { c++; if (s.has(x - 1)) { rows.push([x, '—', c, false]); checks += c; continue; } }
+        let y = x; c++;
+        while (s.has(y + 1)) { y++; c++; }
+        best = Math.max(best, y - x + 1); checks += c;
+        rows.push([x, y > x ? `${x}…${y}, длина ${y - x + 1}` : `${x}, длина 1`, c, !s.has(x - 1)]);
+      }
+      root.querySelectorAll('.hx-ctrl .btn').forEach(b => b.classList.toggle('btn--main', b.dataset.m === mode));
+      root.querySelector('.cs-table tbody').innerHTML = rows.map(([x, run, c, st]) => `<tr><td><span class="so-chip ${st ? 'so-both' : 'bk-off'}">${x}</span></td><td>${run}</td><td>${c}</td></tr>`).join('');
+      const n = s.size;
+      note.innerHTML = `Разных чисел ${n}, самая длинная серия — <b>${best}</b>. Проверок <code>in</code>: <b>${checks}</b>. `
+        + (mode === 'start' ? `Каждое число проверяется на x − 1 один раз и проходится вверх один раз — внутри своей серии, поэтому проверок не больше 2n = ${2 * n}.`
+          : `Проход вверх начинается от каждого числа, и длинная серия проходится много раз: для одной серии длины n это n(n + 1)/2 проверок.`);
+    };
+    root.querySelector('.cs-nums').addEventListener('input', draw);
+    root.querySelectorAll('.hx-ctrl .btn').forEach(b => b.addEventListener('click', () => { mode = b.dataset.m; draw(); }));
     draw();
   });
 })();

@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>19.1 Как узнать задачу · Хеш-структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../hesh.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 19 · Множества · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Хеш-структуры</a> · модуль 19 · множества</p>
+          <p class="running__folio">Глава 19.1</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">19.1</span>
+          <h1>Множества:<br>как узнать задачу</h1>
+          <p class="lead">Задачи занятия 19 — общие пользователи двух сервисов, самая длинная последовательность подряд идущих чисел и контроль уникальности. Во всех трёх ответ зависит от состава: какие элементы есть, каких нет, какие повторяются. В главе разобрано, сколько стоят операции над множествами, как узнать такую задачу, почему порядок хранят отдельно от множества и что спросить до кода.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Операции над множествами в коде</a></li>
+            <li><a href="#s2">Сколько стоят операции</a></li>
+            <li><a href="#s3">Порядок хранят отдельно</a></li>
+            <li><a href="#s4">Как узнать задачу по условию</a></li>
+            <li><a href="#s5">Вопросы до кода</a></li>
+            <li><a href="#s6">Контракты функций</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Операции над множествами в коде</h2>
+        <p>Классный руководитель держит два списка: кто ходит в шахматный кружок и кто — в кружок робототехники. Вопросы к ним всегда о составе: кто ходит в оба, кто только в шахматы, есть ли хоть один общий ученик. Порядок фамилий в списке на ответ не влияет.</p>
+        <p>Операторы <code>&amp;</code>, <code>|</code>, <code>-</code>, <code>^</code> и <code>&lt;=</code> из главы 0.1 отвечают на такие вопросы для двух множеств. У каждого оператора есть метод с тем же смыслом: <code>intersection</code>, <code>union</code>, <code>difference</code>, <code>symmetric_difference</code>, <code>issubset</code>. Разница в одном: метод принимает любую последовательность, например список, а оператор — только множество.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; chess = {'Аня', 'Борис', 'Вера', 'Глеб'}
+&gt;&gt;&gt; robots = ['Вера', 'Дина', 'Глеб', 'Вера']
+&gt;&gt;&gt; sorted(chess.intersection(robots))
+['Вера', 'Глеб']
+&gt;&gt;&gt; chess &amp; robots
+TypeError: unsupported operand type(s) for &amp;: 'set' and 'list'
+&gt;&gt;&gt; chess.isdisjoint(['Ева', 'Жора']), set(robots) &lt;= chess
+(True, False)
+&gt;&gt;&gt; club = set(chess)
+&gt;&gt;&gt; club |= {'Дина'}
+&gt;&gt;&gt; club -= {'Аня'}
+&gt;&gt;&gt; sorted(club), sorted(chess)
+(['Борис', 'Вера', 'Глеб', 'Дина'], ['Аня', 'Борис', 'Вера', 'Глеб'])</pre>
+        </figure>
+        <p>Метод <code>isdisjoint</code> отвечает, что общих элементов нет, и останавливается на первом общем. Операторы с присваиванием <code>|=</code> и <code>-=</code> меняют само множество, нового не создают. Здесь <code>club</code> — копия, поэтому <code>chess</code> не изменилось. Если бы написали <code>club = chess</code>, обе переменные указывали бы на одно множество, и Аня пропала бы из шахмат.</p>
+        <p>Повтор Веры в списке робототехники на ответ не повлиял: пересечение считает разные элементы, повторы не учитываются. Бывает, что повторы важны: «сколько раз каждое число встречается в обоих списках». Тогда нужен <code>Counter</code> из модуля 18. У него тоже есть операция <code>&amp;</code>, и она берёт наименьшую частоту. Чтобы выбрать между способами, нужно знать их цену.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Сколько стоят операции</h2>
+        <p>Каждая операция над множествами — это цикл по элементам одного множества с проверкой <code>in</code> в другом. Проверка стоит в среднем O(1), глава 0.2, поэтому операция стоит столько, сколько элементов перебирается. Python выбирает, какое множество перебирать, так, чтобы работы было меньше.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Запись</th><th>Что перебирается</th><th>Время в среднем</th></tr></thead>
+            <tbody>
+              <tr><td><code>x in s</code></td><td>одна ячейка</td><td>O(1)</td></tr>
+              <tr><td><code>s &amp; t</code></td><td>меньшее из двух, проверка в большем</td><td>O(min(len(s), len(t)))</td></tr>
+              <tr><td><code>s | t</code></td><td>оба: копия s и добавление t</td><td>O(len(s) + len(t))</td></tr>
+              <tr><td><code>s - t</code></td><td>s, проверка в t</td><td>O(len(s))</td></tr>
+              <tr><td><code>s &lt;= t</code></td><td>s, проверка в t, до первого отсутствующего</td><td>O(len(s))</td></tr>
+              <tr><td><code>set(lst)</code></td><td>весь список</td><td>O(len(lst))</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Последняя строка нужна в каждой задаче занятия: данные приходят списками, и построение множества — часть решения. Пересечение двух списков длины n и m стоит O(n + m): O(m) на <code>set(b)</code> и O(n) на проверки. Простое решение без множества проверяет каждый элемент a в списке b, это O(n · m). Множество отвечает на вопросы о составе, но порядок элементов в нём теряется.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Порядок хранят отдельно</h2>
+        <p>Контроль занятия 19 требует не полагаться на порядок множества. В главе 0.6 показано, почему: множество обходит ячейки таблицы, и порядок зависит от хешей и от порядка вставки. Ниже пересечение верное, а порядок — не тот, в котором пользователи стояли в списке a.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; a = [30, 1, 9, 16]
+&gt;&gt;&gt; b = [16, 1, 9]
+&gt;&gt;&gt; list(set(a) &amp; set(b))
+[16, 1, 9]
+&gt;&gt;&gt; in_b = set(b)
+&gt;&gt;&gt; [x for x in a if x in in_b]
+[1, 9, 16]</pre>
+        </figure>
+        <p>Число 16 попало в ячейку 0 таблицы из восьми ячеек: 16 % 8 = 0. Поэтому оно идёт первым, хотя в a оно последнее. Для строк порядок ещё и меняется между запусками. Приём во второй записи повторяется во всём модуле. Множество строится для проверок, а ответ собирается проходом по исходному списку: порядок берётся из списка, быстрота — из множества. Тот же приём был в <code>unique_in_order</code> модуля 17.</p>
+        <p>Если ответ нужно отсортировать, сортируют явно: <code>sorted(set(a) &amp; set(b))</code>. Сортировка добавляет O(k log k) для k общих элементов, но ответ одинаков при любом запуске. Опираться на «случайно правильный» порядок множества нельзя: на других числах он будет другим.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Как узнать задачу по условию</h2>
+        <p>Задачу на множества узнают по трём признакам.</p>
+        <ol class="steps">
+          <li><b>Вопрос о составе.</b> «Общие», «есть в одном, но нет в другом», «все ли разные», «встречался ли», «каких не хватает». Сколько раз встречается элемент, не важно — иначе нужен счётчик из модуля 18.</li>
+          <li><b>Простое решение — поиск в списке внутри цикла.</b> <code>if x in other_list</code> в цикле стоит O(n · m). Множество из other_list превращает каждую проверку в O(1).</li>
+          <li><b>Нужны соседние значения.</b> «Есть ли x + 1», «есть ли x − 1» — вопрос к множеству значений. Так устроена задача о самой длинной последовательности: её решают без сортировки, проверяя соседей по значению.</li>
+        </ol>
+        <p>В таблице — задачи LeetCode этого вида. Первые две — задачи занятия, остальные — для самостоятельной практики.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Задача</th><th>Что найти</th><th>Что хранить</th></tr></thead>
+            <tbody>
+              <tr><td><a href="https://leetcode.com/problems/intersection-of-two-arrays/" target="_blank" rel="noopener">349</a> · задача 1 КТП</td><td>Общие элементы двух массивов, каждый один раз</td><td>Множество одного массива</td></tr>
+              <tr><td><a href="https://leetcode.com/problems/longest-consecutive-sequence/" target="_blank" rel="noopener">128</a> · задача 2 КТП</td><td>Длина самой длинной серии подряд идущих чисел</td><td>Множество всех чисел</td></tr>
+              <tr><td><a href="https://leetcode.com/problems/intersection-of-two-arrays-ii/" target="_blank" rel="noopener">350</a></td><td>Общие элементы с учётом повторов</td><td>Частотный словарь — модуль 18</td></tr>
+              <tr><td><a href="https://leetcode.com/problems/destination-city/" target="_blank" rel="noopener">1436</a></td><td>Город, из которого нет маршрута</td><td>Множество городов отправления</td></tr>
+              <tr><td><a href="https://leetcode.com/problems/happy-number/" target="_blank" rel="noopener">202</a></td><td>Попадёт ли последовательность в цикл</td><td>Множество уже встреченных чисел</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="s5"><span class="sec">§5</span>Вопросы до кода</h2>
+        <p>Первая задача КТП — общие пользователи двух сервисов. На LeetCode порядок ответа любой. В задаче занятия ответ проверяется целиком, и до кода нужно выяснить, каким он должен быть. Слева — условие в том виде, в каком его произнёс интервьюер. Справа — вопросы.</p>
+        <div class="widget ask">
+          <div class="widget__head"><b>Общие пользователи</b><span class="ask__count"></span></div>
+          <div class="ask__layout">
+            <div class="ask__task">
+              <span class="tracer__label">условие от интервьюера</span>
+              <p>«Даны два списка id пользователей: сайт и мобильное приложение. Верните пользователей, которые есть в обоих».</p>
+              <span class="tracer__label">уточнено</span>
+              <ul class="ask__facts"></ul>
+            </div>
+            <div class="ask__side">
+              <div class="ask__qs">
+                <button data-answer="В порядке первого появления в списке сайта." data-fact="Порядок ответа — как в первом списке." data-code="Ответ собирается проходом по a, множество — только из b. Не list(set(a) &amp; set(b)).">В каком порядке вернуть пользователей?</button>
+                <button data-answer="Да, в журнале входов id повторяется. В ответе каждый пользователь один раз." data-fact="Повторы во входе, в ответе — без повторов." data-code="Второе множество seen — уже записанные в ответ. Тест: [8, 8], [8] → [8].">Бывают ли повторы id?</button>
+                <button data-answer="Да, до миллиона в каждом." data-fact="Списки длинные." data-code="Проверка в списке b — O(n · m), нужен set(b). Тест на длинных списках.">Какой длины списки?</button>
+                <button data-answer="Да. Тогда общих нет." data-fact="Пустой список допустим." data-code="Ответ — []. Тесты с пустым a и с пустым b.">Может ли список быть пустым?</button>
+                <button data-answer="А ещё нужны те, кто есть на сайте, но не в приложении." data-fact="Вторая функция — разность в порядке a." data-code="left_users — тот же проход по a, условие «нет в b».">Нужно ли что-то кроме общих?</button>
+              </div>
+              <div class="ask__log" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+        <p>Первые два ответа и делают задачу задачей занятия: без них <code>list(set(a) &amp; set(b))</code> выглядит верным решением. Вопросы ко второй задаче — самой длинной последовательности — задаются так же, ответы записаны в контракт ниже.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Контракты функций</h2>
+        <p>На этих контрактах построены код и тесты модуля.</p>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>контракты после уточнений</span></figcaption>
+<pre><span class="k">def</span> <span class="f">common_users</span>(a, b):
+    <span class="s">"""Пользователи, которые есть и в a, и в b, LeetCode 349.
+
+    В порядке первого появления в a, каждый один раз. Время O(n + m) в среднем,
+    память O(m) на множество из b и O(k) на ответ.
+    """</span>
+
+
+<span class="k">def</span> <span class="f">left_users</span>(a, b):
+    <span class="s">"""Пользователи из a, которых нет в b. Порядок и повторы — как в common_users.
+    """</span>
+
+
+<span class="k">def</span> <span class="f">longest_consecutive</span>(nums):
+    <span class="s">"""Длина самой длинной серии подряд идущих чисел, LeetCode 128.
+
+    Числа — целые, повторы допустимы и серию не удлиняют. Пустой список — 0.
+    Без сортировки: время O(n) в среднем, память O(n).
+    """</span>
+
+
+<span class="k">def</span> <span class="f">longest_consecutive_sorted</span>(nums):
+    <span class="s">"""То же через сортировку разных чисел. Время O(n log n).
+    """</span>
+
+
+<span class="k">def</span> <span class="f">find_duplicates</span>(logins):
+    <span class="s">"""Контроль уникальности: логины, которые встречаются больше одного раза.
+
+    Логины сравниваются после strip() и casefold(). Каждый повтор в ответе один раз,
+    в нормализованном виде, в порядке, в котором повтор обнаружился.
+    Время O(L) в среднем, L — общая длина логинов.
+    """</span></pre>
+        </figure>
+        <p>В <code>longest_consecutive</code> повторы не удлиняют серию: у <code>[1, 2, 2, 3]</code> ответ 3. Серия складывается из значений, и множество само убирает повторы. Первая задача — общие пользователи, глава 19.2.</p>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Сколько в среднем стоит <code>common = set(a) &amp; set(b)</code> для списков длины n и m?</div><ul class="quiz__opts">
+          <li><button>O(min(n, m)): пересечение перебирает меньшее множество</button><p class="quiz__why">Само пересечение — да, но сначала из обоих списков строятся множества: O(n) и O(m).</p></li>
+          <li data-ok><button>O(n + m): построение двух множеств и пересечение</button><p class="quiz__why">Верно. set(a) — O(n), set(b) — O(m), пересечение — O(min(n, m)). Сумма — O(n + m).</p></li>
+          <li><button>O(n · m): каждый элемент a сравнивается с каждым элементом b</button><p class="quiz__why">Так работает проверка в списке. Во множестве каждая проверка — в среднем O(1).</p></li>
+          <li><button>O(1): операция выполняется кодом на C</button><p class="quiz__why">Код на C уменьшает множитель, но перебор элементов остаётся.</p></li>
+        </ul></div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Документация Python: Set Types — set, frozenset — <a href="https://docs.python.org/3/library/stdtypes.html#set-types-set-frozenset" target="_blank" rel="noopener">docs.python.org/3/library/stdtypes.html</a></li>
+            <li>Python Wiki: TimeComplexity — оценки операций set — <a href="https://wiki.python.org/moin/TimeComplexity" target="_blank" rel="noopener">wiki.python.org/moin/TimeComplexity</a></li>
+            <li>LeetCode — условия задач 349, 128, 350, 1436, 202 по данным сайта</li>
+            <li>КТП ОП.04, занятие 19: задачи и контроль; вывод примеров получен в Python 3.12.12 и сверен через doctest</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="../18-schetchiki/06-mok-intervyu.html">← Модуль 18</a><a href="02-obshchie.html">19.2 Общие пользователи →</a></div>
+        <div class="colophon">
+          <span>Модуль 19 · Множества · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../hesh.js"></script>
+</body>
+</html>

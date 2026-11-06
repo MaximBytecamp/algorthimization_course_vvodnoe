@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>19.4 Уникальность и ошибки · Хеш-структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../hesh.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 19 · Множества · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Хеш-структуры</a> · модуль 19 · множества</p>
+          <p class="running__folio">Глава 19.4</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">19.4</span>
+          <h1>Контроль уникальности,<br>границы и ошибки</h1>
+          <p class="lead">Третья задача занятия 19 — контроль уникальности: найти логины, которые встречаются больше одного раза. В главе она решена двумя множествами. Затем — граничные входы трёх задач модуля, сводка ошибок по симптомам, окно для исправления функций и схема объяснения решения по контролю КТП.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Контроль уникальности</a></li>
+            <li><a href="#s2">Граничные входы</a></li>
+            <li><a href="#s3">Сводка ошибок по симптомам</a></li>
+            <li><a href="#s4">Исправьте функции</a></li>
+            <li><a href="#s5">Как объяснить решение</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Контроль уникальности</h2>
+        <p>При регистрации на сайте два человека не могут взять один логин. Администратор получил выгрузку логинов и должен найти занятые дважды. «Ivan» и « ivan» — один логин: система сравнивает их без регистра и пробелов по краям. В отчёт каждый повтор нужно записать один раз, даже если логин встретился пять раз.</p>
+        <p>Это задача о повторах из модуля 17, но ответ другой: нужен список всех повторов. Нужны два множества. <code>seen</code> хранит логины, которые уже встречались: если текущий в нём есть, это повтор. <code>reported</code> хранит повторы, уже записанные в ответ. Благодаря ему третье вхождение логина не запишет его снова. Ключ сравнения строится, как почта в главе 17.4: <code>login.strip().casefold()</code>.</p>
+        <div class="sandbox" data-title="Напишите find_duplicates сами" data-call="print(find_duplicates(['ivan', 'Olga', ' IVAN', 'petr', 'olga', 'ivan']))">
+<script type="text/plain" class="sandbox__start">
+def find_duplicates(logins):
+    seen = set()
+    reported = set()
+    result = []
+    for login in logins:
+        key = login.strip().casefold()
+        # Повтор, которого ещё нет в ответе, — записать. Затем запомнить key.
+    return result
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """пример из главы"""
+    r = find_duplicates(['ivan', 'Olga', ' IVAN', 'petr', 'olga', 'ivan'])
+    assert r == ['ivan', 'olga'], f"ожидалось ['ivan', 'olga'], получено {r!r}"
+
+def test_once_in_report():
+    """логин встретился трижды — в ответе один раз"""
+    assert find_duplicates(['a', 'a', 'a']) == ['a']
+
+def test_normalized():
+    """регистр и пробелы по краям не важны"""
+    assert find_duplicates(['Petr', ' petr ']) == ['petr']
+
+def test_unique():
+    """повторов нет"""
+    assert find_duplicates(['a', 'b', 'c']) == []
+
+def test_order_of_detection():
+    """порядок — в котором повтор обнаружился"""
+    assert find_duplicates(['x', 'y', 'y', 'x']) == ['y', 'x']
+
+def test_empty():
+    """пустой список"""
+    assert find_duplicates([]) == []
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(L) в среднем · память O(L)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">find_duplicates</span>(logins):
+    seen = <span class="k">set</span>()
+    reported = <span class="k">set</span>()
+    result = []
+    <span class="k">for</span> login <span class="k">in</span> logins:
+        key = login.strip().casefold()
+        <span class="k">if</span> key <span class="k">in</span> seen <span class="k">and</span> key <span class="k">not in</span> reported:
+            reported.add(key)
+            result.append(key)
+        seen.add(key)
+    <span class="k">return</span> result</pre>
+        </figure>
+        <div class="tracer" data-trace="dups" data-title="find_duplicates(['ivan', 'Olga', ' IVAN', 'petr', 'olga', 'ivan'])"></div>
+        <p>Логин « IVAN» после нормализации — <code>'ivan'</code>, и он первым попадает в ответ. Третье вхождение ivan отсеивает <code>reported</code>. Ответ — <code>['ivan', 'olga']</code>, в порядке обнаружения повторов. Время — O(L), где L — общая длина логинов: на каждый логин строится ключ, проверки во множествах стоят в среднем O(1). Две из трёх строк, на которых держится ответ, легко потерять.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Граничные входы</h2>
+        <p>Граничные входы задач занятия — повтор трижды, повтор в разном регистре и повтор во входе пересечения. Ещё два — числа, у которых порядок ячеек не совпадает с порядком входа, и одна длинная серия. Порядок ячеек и длинная серия разобраны в главах 19.2 и 19.3. Ниже ещё три версии с изменённой строкой.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>Функции с изменённой строкой</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>без reported</button>
+            <button>ключ без нормализации</button>
+            <button>пересечение без seen</button>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>find_duplicates</code> нет множества <code>reported</code>: повтор записывается при каждом вхождении.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_no_reported" data-title="без reported"></div>
+            <p class="demo__verdict"><b>['ivan', 'olga', 'ivan']</b>ivan встретился трижды и записан дважды. На входе, где каждый логин повторяется не больше двух раз, ответ верный, поэтому в тестах есть <code>['a', 'a', 'a']</code>.</p>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>find_duplicates</code> ключ — сам логин: <code>key = login</code>.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_raw_login" data-title="key = login"></div>
+            <p class="demo__verdict"><b>['ivan']</b>«Olga» и «olga», «ivan» и « IVAN» — разные строки, и повтор Ольги не найден. Это тот же пропуск дубликатов, что в задаче о клиентах из главы 17.4.</p>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>common_users</code> нет множества <code>seen</code>. Вход — <code>[5, 3, 8, 3, 1, 8]</code> и <code>[1, 8, 9]</code>.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_no_seen" data-title="без seen"></div>
+            <p class="demo__verdict"><b>[8, 1, 8]</b>Повтор восьмёрки в a дал повтор в ответе.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="common" data-title="с seen"></div>
+            <p class="demo__verdict"><b>[8, 1]</b>Вторая восьмёрка отсеяна множеством <code>seen</code>.</p>
+          </div>
+        </div>
+        <p>У трёх ошибок общая черта: множество отвечает на свой вопрос верно, но вопросов в задаче два. «Встречался ли логин» и «записан ли он уже в ответ» — разные вопросы, и на каждый нужно своё множество. Ошибки видны только на входах, где элемент встречается три раза или в разной записи.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Сводка ошибок по симптомам</h2>
+        <p>Когда тест падает, первым видно неверный ответ. По симптому в таблице находят строку кода и вход, на котором ошибку видно.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Симптом</th><th>Где искать</th><th>Вход, который её показывает</th><th>Прогон</th></tr></thead>
+            <tbody>
+              <tr><td>Общие пользователи верные, порядок другой</td><td><code>list(set(a) &amp; set(b))</code> вместо прохода по a</td><td><code>[30, 1, 9, 16]</code>, <code>[16, 1, 9]</code></td><td><a href="02-obshchie.html#s5">19.2, §5</a></td></tr>
+              <tr><td>Пользователь в ответе дважды</td><td>Нет <code>seen</code></td><td>Повтор в a</td><td><a href="#s2">19.4, §2</a></td></tr>
+              <tr><td>Общие пользователи ищутся минутами</td><td>Проверка <code>u in b</code> по списку</td><td>Списки по 10<sup>5</sup></td><td><a href="02-obshchie.html#s4">19.2, §4</a></td></tr>
+              <tr><td>Серия верная, но длинный вход идёт секунды</td><td>Нет <code>if x - 1 not in s</code></td><td>Одна серия из 5000 чисел</td><td><a href="03-posledovatelnost.html#s5">19.3, §5</a></td></tr>
+              <tr><td>Тот же симптом при многих повторах</td><td>Цикл по <code>nums</code>, а не по <code>s</code></td><td><code>[0] * 5000 + list(range(5000))</code></td><td>—</td></tr>
+              <tr><td>Серия длиннее, чем есть</td><td>Длина считается по позициям, повторы удлиняют серию</td><td><code>[1, 2, 2, 3]</code></td><td>—</td></tr>
+              <tr><td>Повтор в отчёте дважды</td><td>Нет <code>reported</code></td><td>Логин трижды</td><td><a href="#s2">19.4, §2</a></td></tr>
+              <tr><td>Повтор в другом регистре не найден</td><td>Ключ без <code>strip</code> и <code>casefold</code></td><td><code>'Olga'</code>, <code>'olga'</code></td><td><a href="#s2">19.4, §2</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Ошибки делятся на три группы. Первая — порядок: ответ собран из множества вместо прохода по входу. Вторая — повторы: не хватает второго множества. Третья — время: множество есть, но проверка в списке или лишний проход делают решение O(n²). Первые две находят тесты, которые сравнивают ответ целиком, третью — тесты на длинных входах. Окно ниже проверяет все три.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Исправьте функции</h2>
+        <p>В окне три функции модуля, в каждой одна ошибка из таблицы. Сначала запустите тесты и посмотрите, какие падают. Затем по симптому найдите строку и исправьте её.</p>
+        <div class="sandbox" data-title="Исправьте common_users, longest_consecutive и find_duplicates" data-call="print(common_users([30, 1, 9, 16], [16, 1, 9]), find_duplicates(['a', 'a', 'a']))">
+<script type="text/plain" class="sandbox__start">
+def common_users(a, b):
+    return list(set(a) & set(b))
+
+def longest_consecutive(nums):
+    s = set(nums)
+    best = 0
+    for x in s:
+        y = x
+        while y + 1 in s:
+            y += 1
+        best = max(best, y - x + 1)
+    return best
+
+def find_duplicates(logins):
+    seen = set()
+    result = []
+    for login in logins:
+        key = login.strip().casefold()
+        if key in seen:
+            result.append(key)
+        seen.add(key)
+    return result
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_common_order():
+    """порядок — как в a"""
+    r = common_users([30, 1, 9, 16], [16, 1, 9])
+    assert r == [1, 9, 16], f"ожидалось [1, 9, 16], получено {r!r}"
+
+def test_common_repeats():
+    """повтор в a — в ответе один раз"""
+    assert common_users([8, 8, 1], [1, 8]) == [8, 1]
+
+def test_consecutive_answer():
+    """пример LeetCode"""
+    assert longest_consecutive([100, 4, 200, 1, 3, 2]) == 4
+
+def test_consecutive_time():
+    """одна серия из 5000 чисел — за доли секунды"""
+    import time
+    start = time.perf_counter()
+    assert longest_consecutive(list(range(5000))) == 5000
+    took = time.perf_counter() - start
+    assert took < 0.1, f"{took:.1f} с — проход идёт от каждого числа"
+
+def test_duplicates_once():
+    """логин трижды — в ответе один раз"""
+    r = find_duplicates(['a', 'a', 'a'])
+    assert r == ['a'], f"ожидалось ['a'], получено {r!r}"
+</script>
+</div>
+        <p>В <code>common_users</code> исправление — не одна строка: нужен проход по a с множеством из b, как в главе 19.2. Две другие функции исправляются добавлением одной проверки. Когда тесты зелёные, остаётся объяснить решение.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Как объяснить решение</h2>
+        <p>Контроль КТП: объяснить, почему решение O(n), и не полагаться на порядок множества. На собеседовании ответ строится в таком порядке.</p>
+        <ol class="steps">
+          <li><b>Что хранит множество и на какой вопрос отвечает.</b> «in_b — пользователи приложения, отвечает „есть ли“ за O(1). Порядок ответа беру из прохода по a». Если вопросов два — «встречался ли» и «записан ли» — множеств два.</li>
+          <li><b>Почему O(n).</b> «Множество строится за O(n), каждая проверка — O(1)». Для серий: «while запускается только от начала серии, серии не пересекаются, поэтому всего 2n проверок, а не n²».</li>
+          <li><b>Почему ответ не зависит от порядка множества.</b> «Ответ собирается проходом по входу» или «ответ — число, длина серии, и порядок обхода на него не влияет». Затем назвать граничные тесты.</li>
+        </ol>
+        <div class="speech">
+          <div class="speech__item">
+            <p class="speech__said">«Кладу все числа во множество. Для каждого числа проверяю, есть ли x − 1. Если нет, это начало серии, и от него иду вверх, пока x + 1 есть во множестве. Каждое число проходится вверх один раз — внутри своей серии, поэтому проверок 2n, время O(n), память O(n). Порядок обхода множества на длину серии не влияет».</p>
+            <p class="speech__note"><b>Что показывает</b>Почему цикл в цикле здесь O(n) и почему порядок множества не важен.</p>
+          </div>
+          <div class="speech__item">
+            <p class="speech__said">«По оценке сортировка хуже, O(n log n), но в Python на случайных числах она не медленнее: sorted идёт на C. Тесты: пример LeetCode, повторы [1, 2, 2, 3], отрицательные числа, пустой список. Ещё одна серия из 5000 чисел: на ней видно, если проход идёт от каждого числа».</p>
+            <p class="speech__note"><b>Что показывает</b>Сравнение решений по оценке и по замеру, граничные тесты.</p>
+          </div>
+        </div>
+        <p>Эти три шага — тот же порядок, по которому проверяется работа на паре. Её задачи, стартовый набор и домашнее задание — в главе 19.5.</p>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>КТП ОП.04, занятие 19: «контроль уникальности», контроль занятия</li>
+            <li>Прогоны собраны скриптом make_traces.py настоящим запуском Python 3.12.12</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="03-posledovatelnost.html">← 19.3 Самая длинная последовательность</a><a href="05-praktika-i-dz.html">19.5 Практика и ДЗ →</a></div>
+        <div class="colophon">
+          <span>Модуль 19 · Множества · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../hesh.js"></script>
+</body>
+</html>

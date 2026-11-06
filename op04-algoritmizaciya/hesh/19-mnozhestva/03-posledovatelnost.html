@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>19.3 Самая длинная последовательность · Хеш-структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../hesh.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 19 · Множества · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Хеш-структуры</a> · модуль 19 · множества</p>
+          <p class="running__folio">Глава 19.3</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">19.3</span>
+          <h1>Самая длинная<br>последовательность</h1>
+          <p class="lead">Вторая задача занятия 19 — длина самой длинной серии подряд идущих чисел, LeetCode 128. Сортировка решает её за O(n log n), множество — за O(n). Контроль КТП требует объяснить, почему решение со множеством O(n), хотя в нём цикл внутри цикла. В главе — идея, подсчёт проверок, код, сравнение с сортировкой замером и ошибка, которая превращает решение в O(n²).</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Соседи по значению</a></li>
+            <li><a href="#s2">Почему O(n): идти только от начала серии</a></li>
+            <li><a href="#s3">Код и пошаговый прогон</a></li>
+            <li><a href="#s4">Множество или сортировка: замер</a></li>
+            <li><a href="#s5">Идти от каждого числа</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Соседи по значению</h2>
+        <p>В раздевалке бассейна шкафчики пронумерованы, и часть из них занята. Нужно найти самый длинный ряд занятых шкафчиков подряд. Дежурный не сортирует номерки посетителей. Он подходит к занятому шкафчику и смотрит, занят ли соседний слева. Если занят, этот шкафчик — не начало ряда. Если свободен, дежурный идёт вправо и считает, сколько занятых подряд.</p>
+        <p>Серия подряд идущих чисел — значения x, x + 1, x + 2, …, которые все есть во входе. Позиции не важны: в <code>[100, 4, 200, 1, 3, 2]</code> серия 1, 2, 3, 4 разбросана по списку. Множество из всех чисел отвечает на вопрос «есть ли x + 1» в среднем за O(1). <span class="term">Начало серии</span> — число x, у которого нет x − 1: от него серию можно пройти вверх до конца. В схеме к примеру добавлены 6 и 5, чтобы серия была длиннее. Впишите и свои числа.</p>
+        <div class="consec" data-nums="[100, 4, 200, 1, 3, 2, 6, 5]" data-title="Серии подряд идущих чисел"></div>
+        <p>Серий три: 1…6, 100 и 200. Начала серий выделены зелёным: у 1 нет 0, у 100 нет 99, у 200 нет 199. У чисел от 2 до 6 сосед слева есть, поэтому от них вверх не идут: их серию уже прошло число 1. Схема считает, сколько раз выполнена проверка <code>in</code>: 16 для восьми чисел. Переключите режим на «идти вверх от каждого числа» — проверок станет 23.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Почему O(n): идти только от начала серии</h2>
+        <p>В решении два цикла: внешний по числам множества и внутренний <code>while</code>, который идёт вверх по серии. Обычно цикл в цикле — это O(n²). Здесь — нет, и вот почему. Посчитаем проверки <code>in</code> по одной на каждое число.</p>
+        <ol class="steps">
+          <li><b>Проверка «начало ли».</b> Для каждого числа один раз проверяется <code>x - 1 not in s</code>. Это n проверок.</li>
+          <li><b>Проход вверх.</b> Внутренний цикл запускается только от начала серии и проходит её один раз. Каждое число лежит ровно в одной серии, поэтому внутренний цикл в сумме по всем сериям проходит каждое число один раз. Это ещё n проверок: по одной на каждое число серии, считая последнюю, которая не нашла продолжения.</li>
+          <li><b>Итого.</b> 2n проверок, каждая в среднем O(1), и O(n) на построение множества. Время O(n).</li>
+        </ol>
+        <p>Так же считали стоимость роста таблицы в главе 0.5: отдельный шаг бывает дорогим, но в сумме по всем шагам работа ограничена. Внутренний цикл от числа 1 сделал шесть проверок, зато от чисел 2…6 он не запускался совсем. Подсчёт запуском на одной серии из n чисел, перемешанных случайно, совпадает с оценкой.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>n</th><th>только от начала серии</th><th>от каждого числа</th></tr></thead>
+            <tbody>
+              <tr><td>1&nbsp;000</td><td>2&nbsp;000 проверок</td><td>500&nbsp;500 проверок</td></tr>
+              <tr><td>8&nbsp;000</td><td>16&nbsp;000 проверок</td><td>32&nbsp;004&nbsp;000 проверок</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Без проверки начала каждое число серии проходит её остаток: n + (n − 1) + … + 1 = n(n + 1)/2 проверок. Для серии из 8000 чисел это 32 миллиона против 16 тысяч. Одна строка <code>if x - 1 not in s</code> отделяет O(n) от O(n²). Так это выглядит в коде.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Код и пошаговый прогон</h2>
+        <p>Напишите функцию сами. Тесты проверяют пример LeetCode, повторы, отрицательные числа, пустой список и длинную серию: решение без проверки начала её не пройдёт за разумное время.</p>
+        <div class="sandbox" data-title="Напишите longest_consecutive сами" data-call="print(longest_consecutive([100, 4, 200, 1, 3, 2]))">
+<script type="text/plain" class="sandbox__start">
+def longest_consecutive(nums):
+    s = set(nums)
+    best = 0
+    for x in s:
+        # Если x — начало серии, пройдите её вверх и обновите best.
+        pass
+    return best
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """пример LeetCode"""
+    r = longest_consecutive([100, 4, 200, 1, 3, 2])
+    assert r == 4, f"ожидалось 4, получено {r!r}"
+
+def test_example2():
+    """серия с нулём и повтором"""
+    assert longest_consecutive([0, 3, 7, 2, 5, 8, 4, 6, 0, 1]) == 9
+
+def test_repeats():
+    """повторы не удлиняют серию"""
+    assert longest_consecutive([1, 2, 2, 3]) == 3
+
+def test_negative():
+    """отрицательные числа"""
+    assert longest_consecutive([-1, -2, 0, 5]) == 3
+
+def test_empty():
+    """пустой список"""
+    assert longest_consecutive([]) == 0
+
+def test_long_run():
+    """одна серия из 5000 чисел: решение должно быть O(n)"""
+    import random, time
+    nums = list(range(5000))
+    random.Random(128).shuffle(nums)
+    start = time.perf_counter()
+    r = longest_consecutive(nums)
+    took = time.perf_counter() - start
+    assert r == 5000
+    assert took < 0.1, f"{took:.1f} с — похоже, проход идёт от каждого числа"
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) в среднем · память O(n)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">longest_consecutive</span>(nums):
+    s = <span class="k">set</span>(nums)
+    best = <span class="n">0</span>
+    <span class="k">for</span> x <span class="k">in</span> s:
+        <span class="k">if</span> x - <span class="n">1</span> <span class="k">not in</span> s:
+            y = x
+            <span class="k">while</span> y + <span class="n">1</span> <span class="k">in</span> s:
+                y += <span class="n">1</span>
+            best = <span class="k">max</span>(best, y - x + <span class="n">1</span>)
+    <span class="k">return</span> best</pre>
+        </figure>
+        <p>Прогон выполнен настоящим запуском на примере LeetCode. Цикл идёт по множеству, и порядок, в котором он обходит числа, на ответ не влияет.</p>
+        <div class="tracer" data-trace="consec" data-title="longest_consecutive([100, 4, 200, 1, 3, 2])"></div>
+        <p>Множество обошло числа в порядке 1, 2, 3, 100, 4, 200 — это порядок ячеек таблицы. Ответ от этого порядка не зависит: серию 1…4 найдёт число 1, когда бы до него ни дошла очередь. Это и требует контроль КТП: решение не полагается на порядок множества. Цикл идёт по <code>s</code>, и это тоже нужно: при обходе <code>nums</code> повторы во входе дали бы повторные проходы. Сортировка решает ту же задачу короче, но по оценке дороже.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Множество или сортировка: замер</h2>
+        <p>Второе решение сортирует разные числа и идёт по ним, считая, сколько раз подряд следующее больше предыдущего на 1.</p>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n log n)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">longest_consecutive_sorted</span>(nums):
+    <span class="k">if not</span> nums:
+        <span class="k">return</span> <span class="n">0</span>
+    s = <span class="k">sorted</span>(<span class="k">set</span>(nums))
+    best = run = <span class="n">1</span>
+    <span class="k">for</span> i <span class="k">in</span> <span class="k">range</span>(<span class="n">1</span>, <span class="k">len</span>(s)):
+        <span class="k">if</span> s[i] == s[i - <span class="n">1</span>] + <span class="n">1</span>:
+            run += <span class="n">1</span>
+            best = <span class="k">max</span>(best, run)
+        <span class="k">else</span>:
+            run = <span class="n">1</span>
+    <span class="k">return</span> best</pre>
+        </figure>
+        <p>В замере два вида входа. Первый — одна серия из n чисел, перемешанных случайно. Второй — n случайных разных чисел из диапазона 3n: серии короткие, их много.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Вход</th><th>n</th><th>множество, мс</th><th>сортировка, мс</th><th>от каждого числа, мс</th></tr></thead>
+            <tbody>
+              <tr><td>одна серия</td><td>1&nbsp;000</td><td>0,053</td><td>0,104</td><td>13,7</td></tr>
+              <tr><td>одна серия</td><td>8&nbsp;000</td><td>0,483</td><td>0,898</td><td>972,9</td></tr>
+              <tr><td>случайные</td><td>100&nbsp;000</td><td>12,1</td><td>9,5</td><td>—</td></tr>
+              <tr><td>случайные</td><td>1&nbsp;000&nbsp;000</td><td>153,6</td><td>140,4</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Замер выполнен на ноутбуке автора, Python 3.12.12, Apple M4, медиана трёх запусков. На одной серии множество вдвое быстрее сортировки. На случайных числах сортировка немного быстрее, хотя по оценке O(n log n) против O(n). Причина та же, что в модуле 18: <code>sorted</code> работает кодом на C, а проверки <code>in</code> в цикле выполняет интерпретатор. Множитель log n на миллионе чисел — около 20, и код на C его перекрывает.</p>
+        <p>Отсюда ответ на собеседовании. Оценка O(n) у множества верна, и интервьюер спрашивает о ней: «Можно ли без сортировки?». Но на практике в Python сортировка не медленнее, и код с ней проще проверить. Называют оба решения, объясняют, почему у множества O(n), и показывают замер. Последний столбец таблицы — третье решение, которое не годится ни в каком виде.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Идти от каждого числа</h2>
+        <p>Частая ошибка — пропустить строку <code>if x - 1 not in s</code>. Ответ остаётся верным, а время — O(n²) на длинной серии: от каждого числа внутренний цикл проходит остаток серии. Ниже обе версии запущены на <code>[3, 2, 1, 4]</code>.</p>
+        <span class="run-label">изменённая версия</span>
+        <div class="tracer tracer--bug" data-trace="bug_every" data-title="без if x - 1 not in s"></div>
+        <span class="run-label run-label--fix">верная версия</span>
+        <div class="tracer" data-trace="fix_every" data-title="только от начала серии"></div>
+        <p>Изменённая версия делает 33 шага против 22 у верной уже на четырёх числах: серию проходят 1, 2, 3 и 4, каждый — до конца. На серии из 8000 чисел она работает почти секунду против половины миллисекунды. Обычный тест на пример LeetCode эту ошибку не находит: ответ тот же. Её находит тест на время с одной длинной серией — <code>test_long_run</code> в песочнице §3. Обе задачи занятия решены. Третья — контроль уникальности — вместе с граничными входами модуля разобрана в главе 19.4.</p>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Почему решение со множеством O(n), хотя в нём <code>while</code> внутри <code>for</code>?</div><ul class="quiz__opts">
+          <li><button>while выполняется не больше одного раза за итерацию for</button><p class="quiz__why">От начала серии длины 1000 while делает 1000 шагов. Ограничена сумма шагов, а не каждый запуск.</p></li>
+          <li data-ok><button>while запускается только от начала серии, и каждое число проходится им один раз за всё решение</button><p class="quiz__why">Верно. Серии не пересекаются, поэтому сумма шагов всех while — n. Вместе с проверками начала — 2n.</p></li>
+          <li><button>Множество обходит числа по возрастанию, и while сразу кончается</button><p class="quiz__why">Множество обходит ячейки, а не числа по возрастанию. Ответ от порядка обхода не зависит.</p></li>
+          <li><button>Проверка in стоит O(1), поэтому любой цикл с ней — O(n)</button><p class="quiz__why">Без проверки начала те же O(1)-проверки складываются в n(n + 1)/2 на одной серии.</p></li>
+        </ul></div>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Что вернёт <code>longest_consecutive([5, 5, 6, 6, 7, 9])</code>?</div><ul class="quiz__opts">
+          <li><button>5: пять чисел от 5 до 7 с повторами</button><p class="quiz__why">Серия — значения, а не позиции. Повторы 5 и 6 серию не удлиняют.</p></li>
+          <li data-ok><button>3: серия 5, 6, 7</button><p class="quiz__why">Верно. Множество {5, 6, 7, 9}, серии 5…7 и 9.</p></li>
+          <li><button>4: числа от 5 до 9</button><p class="quiz__why">8 нет во входе, поэтому 9 — отдельная серия.</p></li>
+          <li><button>1: подряд одинаковые числа не считаются</button><p class="quiz__why">Одинаковые числа превращаются во множестве в одно, а 5, 6, 7 идут подряд по значению.</p></li>
+        </ul></div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>LeetCode 128 «Longest Consecutive Sequence» — условие по данным сайта</li>
+            <li>КТП ОП.04, занятие 19: «Объяснить, почему решение O(n), и не полагаться на порядок множества»</li>
+            <li>Замер и подсчёт проверок: Python 3.12.12, Apple M4, 06.11.2026; прогоны собраны скриптом make_traces.py настоящим запуском</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="02-obshchie.html">← 19.2 Общие пользователи</a><a href="04-unikalnost-i-oshibki.html">19.4 Уникальность и ошибки →</a></div>
+        <div class="colophon">
+          <span>Модуль 19 · Множества · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../hesh.js"></script>
+</body>
+</html>

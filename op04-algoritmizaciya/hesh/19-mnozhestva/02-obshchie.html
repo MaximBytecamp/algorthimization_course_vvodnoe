@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>19.2 Общие пользователи · Хеш-структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../hesh.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 19 · Множества · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Хеш-структуры</a> · модуль 19 · множества</p>
+          <p class="running__folio">Глава 19.2</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">19.2</span>
+          <h1>Общие пользователи:<br>пересечение с порядком</h1>
+          <p class="lead">Первая задача занятия 19 — пользователи, которые есть и на сайте, и в приложении, LeetCode 349. Пересечение множеств находит их за O(n + m), но теряет порядок и повторы входа. В главе ответ собирается проходом по исходному списку, множество отвечает только на вопрос «есть ли». Отдельно — разность, замер против поиска в списке и две ошибки, которые дают верный состав в неверном виде.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Состав из множества, порядок из списка</a></li>
+            <li><a href="#s2">Код и пошаговый прогон</a></li>
+            <li><a href="#s3">Разность: кто ушёл</a></li>
+            <li><a href="#s4">Список или множество: замер</a></li>
+            <li><a href="#s5">Верный состав, неверный вид</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Состав из множества, порядок из списка</h2>
+        <p>Кассир сверяет очередь покупателей со списком владельцев скидочной карты. Список карт он держит отсортированным в картотеке и находит фамилию сразу. Очередь он проходит по порядку, и тех, у кого карта есть, отмечает в том же порядке, в котором они стоят. Картотека отвечает «есть ли карта», очередь задаёт порядок ответа.</p>
+        <p>Решение задачи устроено так же. Множество из b — картотека: оно строится один раз, и проверка <code>u in in_b</code> стоит в среднем O(1). Список a — очередь: проход по нему задаёт порядок ответа. Пользователь, который встречается в a несколько раз, должен попасть в ответ один раз, поэтому записанных отмечают во втором множестве <code>seen</code>. На схеме — состав двух списков из примера главы.</p>
+        <div class="setops" data-a="[5, 3, 8, 1]" data-b="[1, 8, 9]" data-names='["сайт", "приложение"]' data-vars='["a", "b"]' data-title="Пользователи сайта и приложения"></div>
+        <p>Пересечение — 8 и 1, разность <code>a - b</code> — 5 и 3. Схема показывает элементы в порядке списков, Python печатает множества в своём порядке. Задача занятия требует ответ в порядке a: <code>[8, 1]</code>, потому что 8 стоит в a раньше 1.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Код и пошаговый прогон</h2>
+        <p>Напишите функцию сами. Тесты проверяют порядок первого появления в a, повторы во входе, пустые списки и совпадение с перебором на трёхстах случайных входах.</p>
+        <div class="sandbox" data-title="Напишите common_users сами" data-call="print(common_users([5, 3, 8, 3, 1, 8], [1, 8, 9]))">
+<script type="text/plain" class="sandbox__start">
+def common_users(a, b):
+    in_b = set(b)
+    seen = set()
+    result = []
+    for u in a:
+        # Если u есть в b и ещё не записан — записать.
+        pass
+    return result
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """пример из главы"""
+    r = common_users([5, 3, 8, 3, 1, 8], [1, 8, 9])
+    assert r == [8, 1], f"ожидалось [8, 1], получено {r!r}"
+
+def test_order_of_a():
+    """порядок — как в a, а не как в множестве"""
+    r = common_users([30, 1, 9, 16], [16, 1, 9])
+    assert r == [1, 9, 16], f"ожидалось [1, 9, 16], получено {r!r}"
+
+def test_repeats():
+    """повторы во входе — в ответе один раз"""
+    assert common_users([8, 8, 8], [8, 8]) == [8]
+
+def test_empty():
+    """пустые списки"""
+    assert common_users([], [1]) == []
+    assert common_users([1], []) == []
+
+def test_strings():
+    """id-строки"""
+    assert common_users(['u7', 'u2', 'u5'], ['u5', 'u7']) == ['u7', 'u5']
+
+def test_matches_brute():
+    """300 случайных входов: совпадает с перебором"""
+    import random
+    rnd = random.Random(349)
+    for _ in range(300):
+        a = [rnd.randint(0, 9) for _ in range(rnd.randint(0, 10))]
+        b = [rnd.randint(0, 9) for _ in range(rnd.randint(0, 10))]
+        want = []
+        for u in a:
+            if u in b and u not in want:
+                want.append(u)
+        assert common_users(a, b) == want, f"common_users({a}, {b}): ожидалось {want}"
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n + m) в среднем · память O(m + k)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">common_users</span>(a, b):
+    in_b = <span class="k">set</span>(b)
+    seen = <span class="k">set</span>()
+    result = []
+    <span class="k">for</span> u <span class="k">in</span> a:
+        <span class="k">if</span> u <span class="k">in</span> in_b <span class="k">and</span> u <span class="k">not in</span> seen:
+            seen.add(u)
+            result.append(u)
+    <span class="k">return</span> result</pre>
+        </figure>
+        <p>Прогон выполнен настоящим запуском на <code>a = [5, 3, 8, 3, 1, 8]</code> и <code>b = [1, 8, 9]</code>. В a тройка и восьмёрка повторяются.</p>
+        <div class="tracer" data-trace="common" data-title="common_users([5, 3, 8, 3, 1, 8], [1, 8, 9])"></div>
+        <p>Вторая тройка снова не проходит проверку: её нет в b. Вторая восьмёрка есть в b, но уже есть и в <code>seen</code>, поэтому в ответ не попадает. Время: O(m) на множество из b и O(n) на проход по a с двумя проверками за O(1). Память: O(m) на <code>in_b</code> и O(k) на <code>seen</code> и ответ, где k — число общих пользователей. Тот же проход с обратным условием даёт вторую функцию контракта.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Разность: кто ушёл</h2>
+        <p>Пользователи, которые были на сайте, но не установили приложение, — разность <code>a - b</code>. Код отличается от <code>common_users</code> одним словом в условии: <code>not in</code> вместо <code>in</code>.</p>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n + m) в среднем</span></figcaption>
+<pre><span class="k">def</span> <span class="f">left_users</span>(a, b):
+    in_b = <span class="k">set</span>(b)
+    seen = <span class="k">set</span>()
+    result = []
+    <span class="k">for</span> u <span class="k">in</span> a:
+        <span class="k">if</span> u <span class="k">not in</span> in_b <span class="k">and</span> u <span class="k">not in</span> seen:
+            seen.add(u)
+            result.append(u)
+    <span class="k">return</span> result</pre>
+        </figure>
+        <p>Для того же входа ответ — <code>[5, 3]</code>: вторая тройка отсеяна множеством <code>seen</code>. Обе функции — один приём с разным условием, и так же пишется любая операция над множествами с сохранением порядка. Объединение в порядке появления — проход сначала по a, потом по b, с одним <code>seen</code>. Без множества тот же проход стоит O(n · m).</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Список или множество: замер</h2>
+        <p>Простое решение проверяет каждого пользователя a прямо в списке b: <code>if u in b and u not in result</code>. Ответ тот же, но каждая проверка в списке — O(m). В замере a и b — по n разных id из диапазона 4n, общих примерно четверть.</p>
+        <div class="bench" data-title="Общие пользователи двух списков по n" data-xlabel="длина списков n"
+          data-series='[{"name":"проверка в списке","color":"#B3261E","pts":[[1000,4.5],[2000,18.1],[4000,74.8],[8000,293.8]]},{"name":"множество","color":"#2D7FC1","pts":[[1000,0.035],[2000,0.073],[4000,0.167],[8000,0.328]]}]'></div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>n</th><th>проверка в списке, мс</th><th>множество, мс</th></tr></thead>
+            <tbody>
+              <tr><td>1&nbsp;000</td><td>4,5</td><td>0,035</td></tr>
+              <tr><td>2&nbsp;000</td><td>18,1</td><td>0,073</td></tr>
+              <tr><td>4&nbsp;000</td><td>74,8</td><td>0,167</td></tr>
+              <tr><td>8&nbsp;000</td><td>293,8</td><td>0,328</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Замер выполнен на ноутбуке автора, Python 3.12.12, Apple M4, медиана трёх запусков по пять повторов. Проверка в списке растёт вчетверо при удвоении n, множество — вдвое. На 8000 пользователей множество быстрее в 900 раз. Списки из ответа интервьюера — до миллиона id: там проверка в списке заняла бы часы. Состав ответа у обоих решений один. Ошибки этой задачи — в другом.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Верный состав, неверный вид</h2>
+        <p>Первая ошибка — вернуть пересечение множеств как список: <code>return list(set(a) &amp; set(b))</code>. Ниже обе версии запущены на <code>a = [30, 1, 9, 16]</code>, <code>b = [16, 1, 9]</code>.</p>
+        <span class="run-label">изменённая версия</span>
+        <div class="tracer tracer--bug" data-trace="bug_set_result" data-title="list(set(a) &amp; set(b))"></div>
+        <span class="run-label run-label--fix">верная версия</span>
+        <div class="tracer" data-trace="fix_set_result" data-title="проход по a"></div>
+        <p>Изменённая версия вернула <code>[16, 1, 9]</code>: число 16 лежит в ячейке 0, поэтому идёт первым. Верная — <code>[1, 9, 16]</code>, как в a. На входе, где числа маленькие и идут по возрастанию, порядок ячеек может случайно совпасть с порядком a, и тест эту ошибку не найдёт. Поэтому в тестах занятия есть вход с числом 16, которое ложится в ячейку 0.</p>
+        <p>Вторая ошибка — забыть <code>seen</code>. Тогда повтор пользователя в a даёт повтор в ответе.</p>
+        <span class="run-label">изменённая версия</span>
+        <div class="tracer tracer--bug" data-trace="bug_no_seen" data-title="без seen"></div>
+        <p>Ответ <code>[8, 1, 8]</code>: восьмёрка записана дважды. Если ответ потом идёт в рассылку, пользователь получит два письма. Обе ошибки не меняют состав, поэтому их видно только в тестах, которые сравнивают ответ целиком: с порядком и с повторами во входе. Вторая задача занятия использует множество иначе — для проверки соседних значений, глава 19.3.</p>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Что вернёт верная <code>common_users([4, 2, 4, 7], [7, 4])</code>?</div><ul class="quiz__opts">
+          <li><button><code>[4, 4, 7]</code></button><p class="quiz__why">Повтор 4 в a должен попасть в ответ один раз: для этого и нужно множество seen.</p></li>
+          <li data-ok><button><code>[4, 7]</code></button><p class="quiz__why">Верно. 4 и 7 есть в b, порядок — как в a, 2 в b нет, вторая 4 отсеяна.</p></li>
+          <li><button><code>[7, 4]</code></button><p class="quiz__why">Это порядок b. Контракт требует порядок первого появления в a.</p></li>
+          <li><button><code>[2]</code></button><p class="quiz__why">Это разность a − b, её возвращает left_users.</p></li>
+        </ul></div>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Почему множество строится из b, а не из a?</div><ul class="quiz__opts">
+          <li data-ok><button>По b только проверяют «есть ли», а по a идут, чтобы взять порядок ответа</button><p class="quiz__why">Верно. Множество нужно той стороне, где ищут. Список, который задаёт порядок, проходится как есть.</p></li>
+          <li><button>Так быстрее: b всегда короче a</button><p class="quiz__why">Длины могут быть любыми. Выбор определяется ролью списка.</p></li>
+          <li><button>Множество из a потеряло бы общих пользователей</button><p class="quiz__why">Состав не потерялся бы, потерялся бы порядок a.</p></li>
+          <li><button>Разницы нет, можно из любого</button><p class="quiz__why">Если строить множество из a и идти по b, ответ будет в порядке b, а контракт требует порядок a.</p></li>
+        </ul></div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>LeetCode 349 «Intersection of Two Arrays» — условие по данным сайта</li>
+            <li>КТП ОП.04, занятие 19: «общие пользователи», «не полагаться на порядок множества»</li>
+            <li>Замер: Python 3.12.12, Apple M4, 06.11.2026; прогоны собраны скриптом make_traces.py настоящим запуском</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="01-uznat-zadachu.html">← 19.1 Как узнать задачу</a><a href="03-posledovatelnost.html">19.3 Самая длинная последовательность →</a></div>
+        <div class="colophon">
+          <span>Модуль 19 · Множества · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../hesh.js"></script>
+</body>
+</html>
