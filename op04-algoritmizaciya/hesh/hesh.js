@@ -17,7 +17,8 @@
      4. .setops — операции над двумя множествами
      5. .groupby — группировка слов по ключу: отсортированные буквы или частоты
      6. .buckets — частоты и вёдра «частота → элементы» для k самых частых
-     7. .consec — серии подряд идущих чисел и число проверок in        */
+     7. .consec — серии подряд идущих чисел и число проверок in
+     8. .lru — ограниченный кэш: порядок от старого к новому, LRU и FIFO */
 (() => {
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const json = (node, name) => { try { return JSON.parse(node.dataset[name]); } catch (_) { return null; } };
@@ -370,5 +371,77 @@
     root.querySelector('.cs-nums').addEventListener('input', draw);
     root.querySelectorAll('.hx-ctrl .btn').forEach(b => b.addEventListener('click', () => { mode = b.dataset.m; draw(); }));
     draw();
+  });
+
+  /* ── 8. Ограниченный кэш ───────────────────────────────────── */
+  /* data-cap — ёмкость, data-ops — операции для кнопки «следующая»:
+     строки 'get 1' или 'put 1'. Значение ключа на схеме — сам ключ.
+     LRU при попадании переносит ключ в конец, FIFO — нет; при
+     переполнении оба вытесняют ключ из начала. */
+  document.querySelectorAll('.lru').forEach(root => {
+    const cap0 = +(root.dataset.cap || 3);
+    const queue = json(root, 'ops') || ['put 1', 'put 2', 'put 3', 'get 1', 'put 4', 'get 2', 'get 3'];
+    let mode = root.dataset.mode || 'lru', cache, next, hits, misses, log;
+    root.classList.add('widget');
+    root.innerHTML = `
+      <div class="widget__head"><b>${esc(root.dataset.title || 'Ограниченный кэш')}</b><span>ёмкость ${cap0}</span></div>
+      <div class="widget__body">
+        <div class="hx-ctrl"><button type="button" class="btn" data-m="lru">LRU: обращение переносит в конец</button><button type="button" class="btn" data-m="fifo">FIFO: порядок записи</button></div>
+        <div class="hx-ctrl"><button type="button" class="btn btn--main lr-next"></button><button type="button" class="btn lr-reset">сначала</button></div>
+        <div class="hx-ctrl">
+          <label class="hx-field hx-field--short"><span>ключ =</span><input class="hx-input lr-key" inputmode="numeric" value="5"></label>
+          <button type="button" class="btn lr-get">get</button><button type="button" class="btn lr-put">put</button>
+        </div>
+        <h4 class="bk-h">Кэш: слева — давно не нужный, справа — последний</h4>
+        <div class="so-chips lr-row"></div>
+        <p class="hx-count lr-stat"></p>
+        <ul class="hx-log lr-log"></ul>
+        <div class="legend"><span><i class="l-hit"></i>попадание или запись</span><span><i class="l-probe"></i>вытеснен</span></div>
+      </div>
+      <div class="widget__foot hx-note"></div>`;
+    const btnNext = root.querySelector('.lr-next');
+    function draw(mark, evicted, note) {
+      const row = root.querySelector('.lr-row');
+      row.innerHTML = cache.map(k => `<span class="so-chip ${k === mark ? 'so-both' : ''}">${k}</span>`).join('')
+        + (evicted !== null && evicted !== undefined ? `<span class="so-chip bk-off" title="вытеснен">${evicted} ✕</span>` : '')
+        + Array(Math.max(0, cap0 - cache.length)).fill('<span class="so-chip lr-empty">&nbsp;</span>').join('');
+      const total = hits + misses;
+      root.querySelector('.lr-stat').innerHTML = `попаданий: <b>${hits}</b> · промахов: <b>${misses}</b>` + (total ? ` · доля попаданий ${Math.round(hits / total * 100)}%` : '');
+      root.querySelector('.lr-log').innerHTML = log.slice(0, 6).map(l => `<li>${l}</li>`).join('');
+      const left = queue.slice(next);
+      btnNext.textContent = left.length ? `следующая: ${left[0]}` : 'операции из списка выполнены';
+      btnNext.disabled = !left.length;
+      root.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('btn--main', b.dataset.m === mode));
+      root.querySelector('.hx-note').innerHTML = note || '';
+    }
+    function apply(op, key) {
+      let mark = key, evicted = null, line;
+      if (op === 'get') {
+        const at = cache.indexOf(key);
+        if (at >= 0) {
+          hits++;
+          if (mode === 'lru') { cache.splice(at, 1); cache.push(key); line = `get ${key}: попадание, ключ перенесён в конец`; }
+          else line = `get ${key}: попадание, порядок не меняется`;
+        } else { misses++; mark = null; line = `get ${key}: промах, кэш не меняется`; }
+      } else {
+        const at = cache.indexOf(key);
+        if (at >= 0) { cache.splice(at, 1); cache.push(key); line = `put ${key}: ключ уже есть — значение обновлено, ключ в конце`; }
+        else {
+          cache.push(key);
+          if (cache.length > cap0) { evicted = cache.shift(); line = `put ${key}: места нет — вытеснен ${evicted}, самый ${mode === 'lru' ? 'давно не нужный' : 'старый по записи'}`; }
+          else line = `put ${key}: записан в конец`;
+        }
+      }
+      log.unshift(line);
+      draw(mark, evicted, mode === 'lru' ? 'LRU (least recently used) вытесняет ключ, к которому дольше всего не обращались. Порядок от старого к новому хранит OrderedDict, перенос — move_to_end.' : 'FIFO (first in, first out) вытесняет ключ, записанный раньше всех, даже если к нему только что обращались.');
+    }
+    function reset() { cache = []; next = 0; hits = 0; misses = 0; log = []; draw(null, null, `Кэш пуст. Ёмкость — ${cap0} ${plural(cap0, 'ключ', 'ключа', 'ключей')}.`); }
+    btnNext.addEventListener('click', () => { if (next < queue.length) { const [op, k] = queue[next++].split(' '); apply(op, +k); } });
+    root.querySelector('.lr-reset').addEventListener('click', reset);
+    const own = op => () => { const k = readInt(root.querySelector('.lr-key').value); if (k === null) { root.querySelector('.hx-note').innerHTML = '<span class="hx-err">Впишите целый ключ.</span>'; return; } apply(op, k); };
+    root.querySelector('.lr-get').addEventListener('click', own('get'));
+    root.querySelector('.lr-put').addEventListener('click', own('put'));
+    root.querySelectorAll('[data-m]').forEach(b => b.addEventListener('click', () => { mode = b.dataset.m; reset(); }));
+    reset();
   });
 })();

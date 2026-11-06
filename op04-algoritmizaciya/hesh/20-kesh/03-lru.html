@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>20.3 LRU-кэш · Хеш-структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../hesh.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 20 · Кэш и индекс · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Хеш-структуры</a> · модуль 20 · кэш и индекс</p>
+          <p class="running__folio">Глава 20.3</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">20.3</span>
+          <h1>LRU-кэш<br>на OrderedDict</h1>
+          <p class="lead">Задача КТП занятия 20 — упрощённый LRU-кэш, LeetCode 146. Словарь находит ключ за O(1), но LRU нужен ещё порядок обращений, и менять его тоже нужно за O(1). В главе этот порядок хранит <code>OrderedDict</code>. Разобрано, как устроен <code>OrderedDict</code> внутри и как то же сделать словарём и двусвязным списком, — это продвинутый уровень контроля КТП. Замер сравнивает три реализации.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Порядок обращений за O(1)</a></li>
+            <li><a href="#s2">Код и пошаговый прогон</a></li>
+            <li><a href="#s3">Что внутри OrderedDict</a></li>
+            <li><a href="#s4">Три реализации: замер</a></li>
+            <li><a href="#s5">get без переноса в конец</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Порядок обращений за O(1)</h2>
+        <p>На полке у кассира помещаются пять коробок. Коробку, которую только что брали, он ставит с правого края. Когда приносят шестую, он убирает коробку с левого края — к ней дольше всех не обращались. Чтобы найти коробку, он смотрит на подписи и полку не перебирает.</p>
+        <p>LRU-кэш требует трёх операций за O(1): найти ключ, перенести ключ в конец порядка, убрать ключ из начала. Словарь даёт первую. Порядок в списке ключей не годится: <code>order.remove(key)</code> ищет ключ перебором, это O(n). Обычный словарь хранит порядок вставки, но перенести ключ в конец можно только удалив и вставив заново. <code>OrderedDict</code> из модуля <code>collections</code> умеет все три операции напрямую.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; from collections import OrderedDict
+&gt;&gt;&gt; d = OrderedDict()
+&gt;&gt;&gt; d['болт'] = 40; d['гайка'] = 50; d['шайба'] = 50
+&gt;&gt;&gt; d.move_to_end('болт')
+&gt;&gt;&gt; list(d)
+['гайка', 'шайба', 'болт']
+&gt;&gt;&gt; d['гайка'] = 55
+&gt;&gt;&gt; list(d)
+['гайка', 'шайба', 'болт']
+&gt;&gt;&gt; d.popitem(last=False)
+('гайка', 55)
+&gt;&gt;&gt; list(d)
+['шайба', 'болт']</pre>
+        </figure>
+        <p><code>move_to_end(key)</code> переносит ключ в конец. <code>popitem(last=False)</code> удаляет и возвращает первую пару — это и есть вытеснение. Вторая запись в выводе показывает подвох: присваивание существующему ключу меняет значение, но не двигает ключ. Гайка обновилась до 55 и осталась первой. Поэтому <code>put</code> существующего ключа должен сам вызвать <code>move_to_end</code>, иначе обновлённый ключ вытеснят первым. Как это складывается в класс, видно в коде.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Код и пошаговый прогон</h2>
+        <p>Напишите класс сами. Тесты проверяют пример LeetCode с ответом None вместо −1, обновление существующего ключа, промах, ёмкость 1 и ошибку при ёмкости 0. Ещё один тест сравнивает класс с простой моделью на трёхстах случайных сценариях.</p>
+        <div class="sandbox" data-title="Напишите LRUCache сами" data-call="c = LRUCache(2); c.put(1, 'a'); c.put(2, 'b'); print(c.get(1)); c.put(3, 'c'); print(c.get(2), c.get(3))">
+<script type="text/plain" class="sandbox__start">
+from collections import OrderedDict
+
+class LRUCache:
+    def __init__(self, capacity):
+        if capacity < 1:
+            raise ValueError('capacity должна быть не меньше 1')
+        self.capacity = capacity
+        self.data = OrderedDict()
+
+    def get(self, key):
+        # Промах — None. Попадание — ключ в конец и значение.
+        return None
+
+    def put(self, key, value):
+        # Ключ в конец, запись, при переполнении — вытеснить первый.
+        self.data[key] = value
+
+    def __len__(self):
+        return len(self.data)
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_leetcode():
+    """пример LeetCode 146, промах — None"""
+    c = LRUCache(2)
+    c.put(1, 1); c.put(2, 2)
+    assert c.get(1) == 1
+    c.put(3, 3)
+    assert c.get(2) is None, "ключ 2 должен быть вытеснен"
+    c.put(4, 4)
+    assert c.get(1) is None, "ключ 1 должен быть вытеснен"
+    assert c.get(3) == 3 and c.get(4) == 4
+
+def test_update_is_use():
+    """обновление существующего ключа делает его свежим"""
+    c = LRUCache(2)
+    c.put('a', 1); c.put('b', 2); c.put('a', 10); c.put('c', 3)
+    assert c.get('a') == 10, "a обновили последним, вытеснен должен быть b"
+    assert c.get('b') is None
+
+def test_update_no_evict():
+    """обновление никого не вытесняет"""
+    c = LRUCache(2)
+    c.put('a', 1); c.put('b', 2); c.put('b', 20)
+    assert len(c) == 2 and c.get('a') == 1
+
+def test_miss_no_change():
+    """промах не меняет кэш"""
+    c = LRUCache(2)
+    c.put('a', 1); c.get('zzz')
+    assert len(c) == 1
+
+def test_capacity_one():
+    """ёмкость 1"""
+    c = LRUCache(1)
+    c.put('a', 1); c.put('b', 2)
+    assert c.get('a') is None and c.get('b') == 2
+
+def test_capacity_zero():
+    """ёмкость 0 — ValueError"""
+    try:
+        LRUCache(0)
+    except ValueError:
+        return
+    raise AssertionError('LRUCache(0) должен бросать ValueError')
+
+def test_matches_model():
+    """300 случайных сценариев: совпадает с моделью на списке"""
+    import random
+    rnd = random.Random(146)
+    for _ in range(300):
+        cap = rnd.randint(1, 4)
+        c, order, vals = LRUCache(cap), [], {}
+        for _ in range(rnd.randint(0, 20)):
+            k = rnd.randint(0, 5)
+            if rnd.random() < 0.5:
+                want = None
+                if k in vals:
+                    order.remove(k); order.append(k); want = vals[k]
+                assert c.get(k) == want
+            else:
+                v = rnd.randint(0, 9)
+                if k in vals:
+                    order.remove(k)
+                order.append(k); vals[k] = v
+                if len(order) > cap:
+                    del vals[order.pop(0)]
+                c.put(k, v)
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>get и put — O(1) в среднем · память O(capacity)</span></figcaption>
+<pre><span class="k">from</span> collections <span class="k">import</span> OrderedDict
+
+<span class="k">class</span> <span class="f">LRUCache</span>:
+    <span class="k">def</span> <span class="f">__init__</span>(self, capacity):
+        <span class="k">if</span> capacity &lt; <span class="n">1</span>:
+            <span class="k">raise</span> ValueError(<span class="s">'capacity должна быть не меньше 1'</span>)
+        self.capacity = capacity
+        self.data = OrderedDict()
+
+    <span class="k">def</span> <span class="f">get</span>(self, key):
+        <span class="k">if</span> key <span class="k">not in</span> self.data:
+            <span class="k">return</span> <span class="k">None</span>
+        self.data.move_to_end(key)
+        <span class="k">return</span> self.data[key]
+
+    <span class="k">def</span> <span class="f">put</span>(self, key, value):
+        <span class="k">if</span> key <span class="k">in</span> self.data:
+            self.data.move_to_end(key)
+        self.data[key] = value
+        <span class="k">if</span> <span class="k">len</span>(self.data) &gt; self.capacity:
+            self.data.popitem(last=<span class="k">False</span>)
+
+    <span class="k">def</span> <span class="f">__len__</span>(self):
+        <span class="k">return</span> <span class="k">len</span>(self.data)</pre>
+        </figure>
+        <p>Пошаговый прогон идёт по одной функции, поэтому ниже те же действия записаны сценарием. Это цикл по операциям: ветка <code>get</code> повторяет метод <code>get</code>, ветка <code>put</code> — метод <code>put</code>. Ёмкость 2, значение товара — <code>load(key)</code> из главы 20.2.</p>
+        <div class="tracer" data-trace="lru" data-label="операции" data-title="LRU на 2 ключа"></div>
+        <p>После <code>get 'болт'</code> порядок — гайка, болт. Шайба переполняет кэш, и вытесняется гайка: к ней дольше всех не обращались. Поэтому <code>get 'гайка'</code> — промах, а последний <code>get 'болт'</code> — попадание. Проверка размера стоит после записи: так обновление существующего ключа никого не вытесняет. Каждая операция — несколько действий над <code>OrderedDict</code>, каждое за O(1). Почему они O(1), видно по устройству <code>OrderedDict</code>.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Что внутри OrderedDict</h2>
+        <p>Продвинутый уровень контроля КТП — объяснить, откуда O(1) у <code>get</code> и <code>put</code>. <code>OrderedDict</code> — это словарь и <span class="term">двусвязный список</span>: цепочка узлов, где каждый узел хранит ссылки на соседа слева и соседа справа. Словарь по ключу находит узел. Через ссылки узел вынимается из цепочки и ставится в конец, не трогая остальные узлы.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает словарь</th><th>Что делает цепочка</th><th>Время</th></tr></thead>
+            <tbody>
+              <tr><td>найти ключ</td><td>ячейка по хешу</td><td>—</td><td>O(1) в среднем</td></tr>
+              <tr><td>перенести в конец</td><td>ячейка по хешу → узел</td><td>соседи узла связываются друг с другом, узел ставится перед хвостом</td><td>O(1)</td></tr>
+              <tr><td>вытеснить первый</td><td>удалить ключ</td><td>узел после головы вынимается</td><td>O(1)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Список Python так не может: удалить элемент из середины списка — значит сдвинуть все элементы правее, O(n). В цепочке узлов сдвигать нечего: меняются только четыре ссылки. Ниже — та же схема, написанная вручную. По КТП это углубление: на собеседовании её просят, когда готовый <code>OrderedDict</code> брать нельзя. Подробно связный список разбирается на занятии 21.</p>
+        <details class="pyhint"><summary>Углубление: LRU на словаре и двусвязном списке</summary><div><p>Голова и хвост — пустые узлы-ограничители. С ними у каждого настоящего узла всегда есть оба соседа, и проверки на край не нужны. <code>_unlink</code> вынимает узел, связывая его соседей. <code>_append</code> ставит узел перед хвостом. Код проверен на трёх тысячах случайных сценариев: ответы и порядок ключей совпадают с версией на <code>OrderedDict</code>.</p><pre><span class="k">class</span> <span class="f">Node</span>:
+    <span class="k">def</span> <span class="f">__init__</span>(self, key=<span class="k">None</span>, value=<span class="k">None</span>):
+        self.key, self.value = key, value
+        self.prev = self.next = <span class="k">None</span>
+
+<span class="k">class</span> <span class="f">LRUCacheLinked</span>:
+    <span class="k">def</span> <span class="f">__init__</span>(self, capacity):
+        self.capacity = capacity
+        self.nodes = {}                              <span class="c"># ключ → узел</span>
+        self.head, self.tail = Node(), Node()
+        self.head.next, self.tail.prev = self.tail, self.head
+
+    <span class="k">def</span> <span class="f">_unlink</span>(self, node):
+        node.prev.next, node.next.prev = node.next, node.prev
+
+    <span class="k">def</span> <span class="f">_append</span>(self, node):
+        node.prev, node.next = self.tail.prev, self.tail
+        self.tail.prev.next = node
+        self.tail.prev = node
+
+    <span class="k">def</span> <span class="f">get</span>(self, key):
+        node = self.nodes.get(key)
+        <span class="k">if</span> node <span class="k">is</span> <span class="k">None</span>:
+            <span class="k">return</span> <span class="k">None</span>
+        self._unlink(node)
+        self._append(node)
+        <span class="k">return</span> node.value
+
+    <span class="k">def</span> <span class="f">put</span>(self, key, value):
+        node = self.nodes.get(key)
+        <span class="k">if</span> node <span class="k">is not</span> <span class="k">None</span>:
+            node.value = value
+            self._unlink(node)
+        <span class="k">else</span>:
+            node = Node(key, value)
+            self.nodes[key] = node
+        self._append(node)
+        <span class="k">if</span> <span class="k">len</span>(self.nodes) &gt; self.capacity:
+            oldest = self.head.next
+            self._unlink(oldest)
+            <span class="k">del</span> self.nodes[oldest.key]
+
+    <span class="k">def</span> <span class="f">__len__</span>(self):
+        <span class="k">return</span> <span class="k">len</span>(self.nodes)</pre></div></details>
+        <p>Узел хранит свой ключ, и это не лишнее: при вытеснении берут узел после головы, а удалить его из словаря можно только по ключу. Обе реализации — O(1) на операцию. Какая быстрее на практике, вместе с двумя более простыми, показывает замер.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Три реализации: замер</h2>
+        <p>В замере 200&nbsp;000 операций над 5000 ключей: 70% — <code>get</code>, 30% — <code>put</code>. Сравниваются <code>OrderedDict</code>, обычный словарь с переносом через удаление и вставку и словарь со списком порядка, где перенос — <code>order.remove(key)</code>.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Ёмкость</th><th><code>OrderedDict</code>, мс</th><th>словарь, мс</th><th>словарь и список, мс</th></tr></thead>
+            <tbody>
+              <tr><td>100</td><td>13,2</td><td>14,4</td><td>13,1</td></tr>
+              <tr><td>1&nbsp;000</td><td>14,7</td><td>21,9</td><td>124,3</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Замер выполнен на ноутбуке автора, Python 3.12.12, Apple M4, медиана трёх запусков. При ёмкости 100 разницы нет: список из ста ключей <code>remove</code> проходит быстро. При ёмкости 1000 список медленнее в 8,5 раза — проявляется его O(n). Обычный словарь медленнее <code>OrderedDict</code> в 1,5 раза. Причина — вытеснение через <code>next(iter(self.data))</code>: после многих удалений из начала словаря поиск первого живого ключа проходит через места удалённых, пока таблица не перестроится. <code>OrderedDict</code> берёт первый узел цепочки сразу.</p>
+        <p>Отсюда защита выбора, которой требует контроль КТП. <code>OrderedDict</code> — короткий код, O(1) на операцию и лучшее время из трёх. Словарь со связным списком — то же O(1), но втрое больше кода, и он медленнее. В замере стартового набора на ёмкости 1000 он занял 25,2 мс против 14,9 мс у <code>OrderedDict</code>, у которого цепочка написана на C. Его пишут, когда готовой структуры нет. Список порядка годится только для очень маленьких кэшей. Самая частая ошибка в LRU — забыть перенос ключа при чтении.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>get без переноса в конец</h2>
+        <p>Если в <code>get</code> нет строки <code>move_to_end</code>, кэш продолжает работать, но обращения не меняют порядок. LRU превращается в FIFO. Ниже обе версии запущены на одном сценарии.</p>
+        <span class="run-label">изменённая версия</span>
+        <div class="tracer tracer--bug" data-trace="bug_no_move" data-label="операции" data-title="get без move_to_end"></div>
+        <span class="run-label run-label--fix">верная версия</span>
+        <div class="tracer" data-trace="lru" data-label="операции" data-title="get с move_to_end"></div>
+        <p>Изменённая версия при записи шайбы вытесняет болт, хотя к нему только что обращались. Ответы — <code>[40, 50, None]</code> вместо <code>[40, None, 40]</code>. Тест «положить два ключа, прочитать первый, положить третий» эту ошибку находит, а тест, где нет чтения перед вытеснением, — нет. В тестах занятия такой есть: <code>test_leetcode</code>. Ещё две ошибки LRU сидят в <code>put</code>, они разобраны с граничными входами в главе 20.4.</p>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Почему порядок обращений в LRU не хранят в обычном списке ключей?</div><ul class="quiz__opts">
+          <li><button>Список не хранит порядок</button><p class="quiz__why">Хранит. Проблема — в цене переноса ключа из середины в конец.</p></li>
+          <li data-ok><button>Перенос ключа в конец требует <code>remove</code>, а он ищет ключ перебором и сдвигает элементы: O(n)</button><p class="quiz__why">Верно. На ёмкости 1000 это в 8,5 раза медленнее OrderedDict, где перенос — O(1).</p></li>
+          <li><button>В список нельзя класть ключи-строки</button><p class="quiz__why">В список можно класть что угодно. Ограничение — во времени операций.</p></li>
+          <li><button>Список занимает больше памяти, чем OrderedDict</button><p class="quiz__why">Наоборот, OrderedDict тяжелее: у каждого ключа узел со ссылками. Выбор делают ради времени.</p></li>
+        </ul></div>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Что останется в <code>OrderedDict</code> после <code>d = OrderedDict(a=1, b=2)</code>, <code>d['a'] = 10</code>, <code>d.popitem(last=False)</code>?</div><ul class="quiz__opts">
+          <li><button><code>{'a': 10}</code></button><p class="quiz__why">Присваивание не переносит a в конец, поэтому первым вытесняется a.</p></li>
+          <li data-ok><button><code>{'b': 2}</code></button><p class="quiz__why">Верно. a обновился, но остался первым, и popitem(last=False) удалил его. Поэтому put вызывает move_to_end.</p></li>
+          <li><button>KeyError</button><p class="quiz__why">popitem на непустом словаре не бросает ошибку.</p></li>
+          <li><button><code>{'a': 1, 'b': 2}</code></button><p class="quiz__why">popitem удаляет одну пару, а присваивание уже заменило 1 на 10.</p></li>
+        </ul></div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>LeetCode 146 «LRU Cache» — условие по данным сайта</li>
+            <li>Документация Python: collections.OrderedDict — move_to_end, popitem — <a href="https://docs.python.org/3/library/collections.html#collections.OrderedDict" target="_blank" rel="noopener">docs.python.org/3/library/collections.html</a></li>
+            <li>КТП ОП.04, занятие 20: «упрощённый LRU на OrderedDict либо dict+двусвязная схема как углубление»; «продвинутый — O(1) get/put»</li>
+            <li>Замер: Python 3.12.12, Apple M4, 06.11.2026; прогоны собраны скриптом make_traces.py настоящим запуском</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="02-indeks-i-kesh.html">← 20.2 Индекс и кэш</a><a href="04-granicy-i-oshibki.html">20.4 Границы и ошибки →</a></div>
+        <div class="colophon">
+          <span>Модуль 20 · Кэш и индекс · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../hesh.js"></script>
+</body>
+</html>

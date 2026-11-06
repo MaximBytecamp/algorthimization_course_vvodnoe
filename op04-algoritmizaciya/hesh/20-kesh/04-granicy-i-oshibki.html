@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>20.4 Границы и ошибки · Хеш-структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../hesh.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 20 · Кэш и индекс · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Хеш-структуры</a> · модуль 20 · кэш и индекс</p>
+          <p class="running__folio">Глава 20.4</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">20.4</span>
+          <h1>Границы<br>и ошибки</h1>
+          <p class="lead">Контроль занятия 20 по КТП: базовый уровень — корректный контракт кэша, продвинутый — O(1) для get и put, и защита выбора. В этой главе — граничные входы кэша и ошибки, которые видны только на них, сводка ошибок модуля по симптомам, окно для исправления кода и схема объяснения решения.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Граничные входы</a></li>
+            <li><a href="#s2">Сводка ошибок по симптомам</a></li>
+            <li><a href="#s3">Исправьте код</a></li>
+            <li><a href="#s4">Как объяснить решение</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Граничные входы</h2>
+        <p>У кэша граничные входы связаны с моментом, когда он полон. Повторная запись существующего ключа, чтение перед вытеснением, ёмкость 1, значение None или 0. Чтение без переноса в конец разобрано в главе 20.3. Ниже ещё две версии LRU, в которых по-другому записан <code>put</code>. Обе работают, пока кэш не полон или ключи не повторяются.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>put с изменёнными строками</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>put без move_to_end</button>
+            <button>вытеснение до записи</button>
+          </div>
+          <div class="demo__pane">
+            <p>В <code>put</code> нет строк <code>if key in cache: cache.move_to_end(key)</code>. Сценарий: put болт, put гайка, put болт, put шайба, get болт. Ёмкость 2.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_put_no_move" data-label="операции" data-title="put без move_to_end"></div>
+            <p class="demo__verdict"><b>[None]</b>Повторная запись болта обновила значение, но болт остался первым: присваивание в <code>OrderedDict</code> ключ не сдвигает. Шайба вытеснила болт, хотя его только что записали. По контракту запись — тоже обращение.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_put_no_move" data-label="операции" data-title="put с move_to_end"></div>
+            <p class="demo__verdict"><b>[40]</b>После повторной записи порядок — гайка, болт, и шайба вытесняет гайку.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Вытеснение стоит до записи: <code>if len(cache) &gt;= capacity: cache.popitem(last=False)</code>, затем <code>cache[key] = …</code>. Сценарий: put болт, put гайка, put гайка, get болт. Ёмкость 2.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_evict_first" data-label="операции" data-title="вытеснение до записи"></div>
+            <p class="demo__verdict"><b>[None]</b>Повторная запись гайки нашла кэш полным и вытеснила болт, хотя гайка уже в кэше и новое место ей не нужно. После этого в кэше один ключ при ёмкости 2. Код выглядит естественно — «сначала освободить место», — поэтому ошибка частая.</p>
+            <span class="run-label run-label--fix">верная версия</span>
+            <div class="tracer" data-trace="fix_evict_first" data-label="операции" data-title="вытеснение после записи"></div>
+            <p class="demo__verdict"><b>[40]</b>Проверка после записи: гайка обновилась, ключей по-прежнему два, никого вытеснять не нужно.</p>
+          </div>
+        </div>
+        <p>Обе ошибки видны только при повторной записи существующего ключа в полный кэш. Пример LeetCode 146 такого не содержит, поэтому в тестах занятия есть <code>test_update_is_use</code> и <code>test_update_no_evict</code>. Ещё две ошибки модуля — в индексе и в кэше с подсчётом — собраны вместе с этими в таблицу.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Сводка ошибок по симптомам</h2>
+        <p>Когда тест падает, первым видно неверный ответ. По симптому в таблице находят строку кода и вход, на котором ошибку видно.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Симптом</th><th>Где искать</th><th>Вход, который её показывает</th><th>Прогон</th></tr></thead>
+            <tbody>
+              <tr><td>Из индекса пропала запись, ошибки нет</td><td><code>index[key] = rec</code> без проверки повтора</td><td>Два товара с одним кодом</td><td><a href="02-indeks-i-kesh.html#s1">20.2, §1</a></td></tr>
+              <tr><td>load вызывается снова для уже загруженного ключа</td><td>Попадание проверяется через значение: <code>if self.data.get(key)</code></td><td>Значение None, 0 или <code>''</code></td><td><a href="02-indeks-i-kesh.html#s3">20.2, §3</a></td></tr>
+              <tr><td>Вытеснен ключ, к которому только что обращались</td><td>Нет <code>move_to_end</code> в <code>get</code></td><td>put a, put b, get a, put c</td><td><a href="03-lru.html#s5">20.3, §5</a></td></tr>
+              <tr><td>Вытеснен ключ, который только что обновили</td><td>Нет <code>move_to_end</code> в <code>put</code></td><td>put a, put b, put a, put c</td><td><a href="#s1">20.4, §1</a></td></tr>
+              <tr><td>Ключей меньше ёмкости после обновления</td><td>Вытеснение до записи</td><td>Повторная запись в полный кэш</td><td><a href="#s1">20.4, §1</a></td></tr>
+              <tr><td>Кэш больше ёмкости</td><td>Нет вытеснения или <code>popitem()</code> без <code>last=False</code> удаляет последний</td><td>capacity + 1 разных ключей</td><td>—</td></tr>
+              <tr><td>Кэш медленный на большой ёмкости</td><td>Порядок в списке: <code>order.remove(key)</code></td><td>Ёмкость 1000 и выше</td><td><a href="03-lru.html#s4">20.3, §4</a></td></tr>
+              <tr><td>Кэш с ёмкостью 0 молча ничего не хранит</td><td>Нет проверки в <code>__init__</code></td><td><code>LRUCache(0)</code></td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Ошибки делятся на три группы. Первая — что считается обращением: перенос в конец забыт в <code>get</code> или в <code>put</code>. Вторая — когда вытеснять: до записи, без проверки, не тот конец. Третья — контракт: индекс молча теряет запись, кэш путает значение None с промахом, ёмкость не проверена. Первые две группы находят тесты с повторной записью в полный кэш, третью — тесты на границах контракта. Окно ниже проверяет все три.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Исправьте код</h2>
+        <p>В окне класс LRU с тремя ошибками из таблицы: в <code>__init__</code>, в <code>get</code> и в <code>put</code>. Сначала запустите тесты и посмотрите, какие падают. Затем по симптому найдите строку и исправьте её.</p>
+        <div class="sandbox" data-title="Исправьте LRUCache" data-call="c = LRUCache(2); c.put('a', 1); c.put('b', 2); c.get('a'); c.put('c', 3); print(c.get('a'), c.get('b'))">
+<script type="text/plain" class="sandbox__start">
+from collections import OrderedDict
+
+class LRUCache:
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.data = OrderedDict()
+
+    def get(self, key):
+        if key not in self.data:
+            return None
+        return self.data[key]
+
+    def put(self, key, value):
+        if len(self.data) >= self.capacity:
+            self.data.popitem(last=False)
+        self.data[key] = value
+
+    def __len__(self):
+        return len(self.data)
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_get_is_use():
+    """чтение делает ключ свежим"""
+    c = LRUCache(2)
+    c.put('a', 1); c.put('b', 2); c.get('a'); c.put('c', 3)
+    assert c.get('a') == 1, "a читали последним, вытеснен должен быть b"
+    assert c.get('b') is None
+
+def test_update_no_evict():
+    """обновление никого не вытесняет"""
+    c = LRUCache(2)
+    c.put('a', 1); c.put('b', 2); c.put('b', 20)
+    assert len(c) == 2, f"после обновления ключей {len(c)}, ожидалось 2"
+    assert c.get('a') == 1
+
+def test_update_is_use():
+    """обновление делает ключ свежим"""
+    c = LRUCache(2)
+    c.put('a', 1); c.put('b', 2); c.put('a', 10); c.put('c', 3)
+    assert c.get('a') == 10 and c.get('b') is None
+
+def test_capacity_zero():
+    """ёмкость 0 — ValueError"""
+    try:
+        LRUCache(0)
+    except ValueError:
+        return
+    raise AssertionError('LRUCache(0) должен бросать ValueError')
+
+def test_size_limit():
+    """ключей не больше ёмкости"""
+    c = LRUCache(3)
+    for k in range(10):
+        c.put(k, k)
+    assert len(c) == 3 and c.get(9) == 9 and c.get(6) is None
+</script>
+</div>
+        <p>Исправление <code>put</code> — не одна строка: проверка размера переносится после записи, а перед записью появляется <code>move_to_end</code> для существующего ключа. Обе правки нужны: первая чинит <code>test_update_no_evict</code>, вторая — <code>test_update_is_use</code>. Когда тесты зелёные, остаётся объяснить решение.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Как объяснить решение</h2>
+        <p>Контроль КТП проверяет два уровня. Базовый — контракт кэша: что делают операции на граничных входах. Продвинутый — почему get и put стоят O(1), и защита выбора реализации. На собеседовании ответ строится так.</p>
+        <ol class="steps">
+          <li><b>Контракт.</b> «get возвращает значение или None и делает ключ свежим; промах кэш не меняет. put записывает или обновляет, ключ становится свежим, обновление никого не вытесняет. Ёмкость не меньше 1».</li>
+          <li><b>Почему O(1).</b> «OrderedDict — словарь и двусвязный список. Словарь находит узел за O(1), перенос в конец и удаление первого меняют несколько ссылок, без сдвига остальных».</li>
+          <li><b>Защита выбора.</b> «OrderedDict — короче всего и по замеру быстрее всего. Список порядка даёт O(n) на перенос, при ёмкости 1000 он в 8,5 раза медленнее. Связный список вручную — то же O(1), если готовый OrderedDict брать нельзя». Затем назвать граничные тесты.</li>
+        </ol>
+        <div class="speech">
+          <div class="speech__item">
+            <p class="speech__said">«Храню данные в OrderedDict: слева ключ, к которому дольше всех не обращались, справа — последний. Дальше get: если ключа нет — None, иначе move_to_end и значение. put: если ключ есть — move_to_end, потом записываю значение, и если ключей больше ёмкости — popitem(last=False). Проверка размера после записи, поэтому обновление никого не вытесняет».</p>
+            <p class="speech__note"><b>Что показывает</b>Контракт кэша и порядок строк, на котором держатся граничные случаи.</p>
+          </div>
+          <div class="speech__item">
+            <p class="speech__said">«Обе операции O(1): внутри OrderedDict — словарь и двусвязный список, перенос и вытеснение меняют ссылки соседей. Если OrderedDict нельзя, пишу то же вручную: словарь «ключ → узел» и цепочку с узлами-ограничителями. Тесты: пример LeetCode, обновление существующего ключа в полный кэш, чтение перед вытеснением, ёмкость 1 и 0».</p>
+            <p class="speech__note"><b>Что показывает</b>Продвинутый уровень: откуда O(1), запасной вариант и граничные тесты.</p>
+          </div>
+        </div>
+        <p>Эти шаги — тот же порядок, по которому проверяется работа на паре. Её задачи, стартовый набор и домашнее задание — в главе 20.5.</p>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>КТП ОП.04, занятие 20: «базовый уровень — корректный cache contract; продвинутый — O(1) get/put. Защита trade-off»</li>
+            <li>Прогоны собраны скриптом make_traces.py настоящим запуском Python 3.12.12</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="03-lru.html">← 20.3 LRU-кэш</a><a href="05-praktika-i-dz.html">20.5 Практика и ДЗ →</a></div>
+        <div class="colophon">
+          <span>Модуль 20 · Кэш и индекс · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../hesh.js"></script>
+</body>
+</html>

@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>20.2 Индекс и кэш · Хеш-структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../hesh.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 20 · Кэш и индекс · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Хеш-структуры</a> · модуль 20 · кэш и индекс</p>
+          <p class="running__folio">Глава 20.2</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">20.2</span>
+          <h1>Индекс по ключу<br>и кэш с подсчётом</h1>
+          <p class="lead">Два словаря из главы 20.1 в коде. Индекс строится один раз по всем записям и отвечает на поиск по полю за O(1); замер показывает, во сколько раз это быстрее перебора. Кэш заполняется по ходу работы и считает попадания и промахи. В главе — оба, контракт индекса при повторе ключа и причина, по которой кэшу без ограничения нужна ёмкость.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Индекс по полю</a></li>
+            <li><a href="#s2">Индекс или перебор: замер</a></li>
+            <li><a href="#s3">Кэш над медленной функцией</a></li>
+            <li><a href="#s4">Кэш, который только растёт</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Индекс по полю</h2>
+        <p>Записи из базы приходят списком словарей: у каждого товара код и цена. Найти товар по коду в списке — значит перебрать список, O(n) на каждый поиск. Индекс по полю <code>code</code> — словарь «код → запись». Его строят одним проходом, и дальше каждый поиск стоит в среднем O(1).</p>
+        <p>Первое решение при построении — что делать, если два товара получили один код. Простое присваивание <code>index[key] = rec</code> молча оставит последний, и первый товар пропадёт из индекса. Ошибку в данных никто не заметит. Контракт из главы 20.1 требует бросить <code>ValueError</code>: повтор ключа в индексе — повод разбираться с данными, и выбирать одну запись за пользователя нельзя. Напишите функцию сами.</p>
+        <div class="sandbox" data-title="Напишите build_index сами" data-call="print(build_index([{'code': 'болт', 'price': 12}, {'code': 'гайка', 'price': 5}], 'code'))">
+<script type="text/plain" class="sandbox__start">
+def build_index(records, field):
+    index = {}
+    for rec in records:
+        key = rec[field]
+        # Повтор ключа — ValueError. Иначе — запись в индекс.
+    return index
+</script>
+<script type="text/plain" class="sandbox__tests">
+GOODS = [{'code': 'болт', 'price': 12}, {'code': 'гайка', 'price': 5}, {'code': 'шайба', 'price': 2}]
+
+def test_lookup():
+    """запись находится по ключу"""
+    idx = build_index(GOODS, 'code')
+    assert idx['гайка'] == {'code': 'гайка', 'price': 5}
+    assert len(idx) == 3
+
+def test_other_field():
+    """индекс по другому полю"""
+    idx = build_index(GOODS, 'price')
+    assert idx[2]['code'] == 'шайба'
+
+def test_duplicate():
+    """повтор ключа — ValueError"""
+    try:
+        build_index(GOODS + [{'code': 'гайка', 'price': 6}], 'code')
+    except ValueError:
+        return
+    raise AssertionError('повтор ключа должен давать ValueError')
+
+def test_same_record():
+    """в индексе — та же запись, а не копия"""
+    idx = build_index(GOODS, 'code')
+    assert idx['болт'] is GOODS[0]
+
+def test_empty():
+    """пустой список"""
+    assert build_index([], 'code') == {}
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(n)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">build_index</span>(records, field):
+    index = {}
+    <span class="k">for</span> rec <span class="k">in</span> records:
+        key = rec[field]
+        <span class="k">if</span> key <span class="k">in</span> index:
+            <span class="k">raise</span> ValueError(f<span class="s">'повтор ключа {key!r}'</span>)
+        index[key] = rec
+    <span class="k">return</span> index</pre>
+        </figure>
+        <p>Прогоны выполнены настоящим запуском. В первом три товара с разными кодами, во втором к ним добавлена вторая гайка. На ленте — коды записей.</p>
+        <div class="tracer" data-trace="index" data-label="коды записей" data-title="build_index(GOODS, 'code')"></div>
+        <div class="tracer tracer--bug" data-trace="index_dup" data-label="коды записей" data-title="вторая гайка"></div>
+        <p>В индексе лежат сами записи, копий нет: тест <code>test_same_record</code> проверяет это через <code>is</code>. Индекс занимает O(n) памяти только на словарь ссылок, сами товары не дублируются. Бывает, что ключ по смыслу не уникален: в индексе по цене у двух товаров может быть цена 5. Тогда строят словарь «ключ → список записей», как группировку из модуля 18. Насколько индекс ускоряет поиск, видно на замере.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Индекс или перебор: замер</h2>
+        <p>В замере n товаров в случайном порядке и 1000 поисков по коду. Перебор проходит список до нужной записи, индекс строится один раз, затем 1000 раз читается.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Записей</th><th>1000 поисков перебором, мс</th><th>построение индекса, мс</th><th>1000 поисков по индексу, мс</th></tr></thead>
+            <tbody>
+              <tr><td>10&nbsp;000</td><td>92,6</td><td>0,52</td><td>0,017</td></tr>
+              <tr><td>100&nbsp;000</td><td>3&nbsp;050,7</td><td>26,2</td><td>0,024</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Замер выполнен на ноутбуке автора, Python 3.12.12, Apple M4, медиана трёх запусков. На 100&nbsp;000 записей перебор занял три секунды, индекс — 26 мс на построение и 0,024 мс на все поиски. Построение — это O(n), как один проход перебора, поэтому индекс окупается уже со второго-третьего поиска. В индексе ответ на любой запрос готов заранее. В кэше ответы появляются по одному.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Кэш над медленной функцией</h2>
+        <p>Теперь цены приходят по одной из медленной функции <code>load(code)</code> — запроса к базе. Кэш оборачивает эту функцию. При запросе он сначала смотрит в словарь. Если ответ есть — попадание, база не нужна. Если нет — промах: кэш вызывает <code>load</code>, запоминает ответ и возвращает его. Счётчики показывают, сколько раз кэш помог. Ниже — сценарий из шести запросов, записанный одним циклом.</p>
+        <figure class="code">
+          <figcaption><span>Сценарий для прогона</span><span>те же действия, что в CountingCache.get</span></figcaption>
+<pre><span class="k">def</span> <span class="f">serve</span>(requests):
+    cache = {}
+    hits = misses = <span class="n">0</span>
+    <span class="k">for</span> key <span class="k">in</span> requests:
+        <span class="k">if</span> key <span class="k">in</span> cache:
+            hits += <span class="n">1</span>
+        <span class="k">else</span>:
+            misses += <span class="n">1</span>
+            cache[key] = load(key)
+    <span class="k">return</span> hits, misses</pre>
+        </figure>
+        <div class="tracer" data-trace="serve" data-label="запросы" data-title="serve(['болт', 'гайка', 'болт', 'болт', 'шайба', 'гайка'])"></div>
+        <p>Шесть запросов дали три промаха — по одному на каждый товар — и три попадания. База вызвалась три раза вместо шести. Чем чаще повторяются запросы, тем выше доля попаданий. В классе те же действия разложены по методу <code>get</code>, а счётчики хранятся в полях объекта. Напишите класс сами.</p>
+        <div class="sandbox" data-title="Напишите CountingCache сами" data-call="c = CountingCache(lambda code: len(code) * 10); print(c.get('болт'), c.get('болт'), c.hits, c.misses)">
+<script type="text/plain" class="sandbox__start">
+class CountingCache:
+    def __init__(self, load):
+        self.load = load
+        self.data = {}
+        self.hits = 0
+        self.misses = 0
+
+    def get(self, key):
+        # Попадание: hits += 1 и значение из data.
+        # Промах: misses += 1, вызвать load, запомнить и вернуть.
+        return self.load(key)
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_counts():
+    """попадания и промахи"""
+    c = CountingCache(lambda code: len(code) * 10)
+    for code in ['болт', 'гайка', 'болт', 'болт', 'шайба', 'гайка']:
+        c.get(code)
+    assert (c.hits, c.misses) == (3, 3), f"получено hits={c.hits}, misses={c.misses}"
+
+def test_load_once():
+    """load вызывается один раз на ключ"""
+    calls = []
+    def load(key):
+        calls.append(key)
+        return key.upper()
+    c = CountingCache(load)
+    assert c.get('a') == 'A' and c.get('a') == 'A' and c.get('b') == 'B'
+    assert calls == ['a', 'b'], f"load вызван для {calls}"
+
+def test_none_value():
+    """None — тоже ответ, который кэшируется"""
+    calls = []
+    def load(key):
+        calls.append(key)
+        return None
+    c = CountingCache(load)
+    c.get('x'); c.get('x')
+    assert calls == ['x'], f"load вызван {len(calls)} раза"
+</script>
+</div>
+        <p>Тест <code>test_none_value</code> ловит частую ошибку: проверку попадания через <code>if self.data.get(key):</code>. Для значений None, 0 или пустой строки она даёт ложный промах, и <code>load</code> вызывается снова. Попадание проверяют через <code>key in self.data</code> — так спрашивают о ключе, значение не участвует.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Кэш, который только растёт</h2>
+        <p>У <code>CountingCache</code> нет ёмкости: каждый промах добавляет запись, и ни одна не удаляется. Если запросов миллионы и ключи разные, кэш займёт память, сравнимую со всей базой. Тот же кэш даёт <code>functools.lru_cache(maxsize=None)</code>: при <code>maxsize=None</code> он тоже не ограничен.</p>
+        <p>Ограничение ёмкости требует решить, кого вытеснить, и в главе 20.1 замер показал, что LRU попадает чаще FIFO. Для LRU словаря мало: нужен ещё порядок обращений, и он должен меняться за O(1) при каждом <code>get</code>. Как это сделать, разобрано в главе 20.3.</p>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Почему в <code>build_index</code> повтор ключа — ошибка, а не замена записи?</div><ul class="quiz__opts">
+          <li><button>Словарь Python не умеет заменять значение по ключу</button><p class="quiz__why">Умеет: присваивание по существующему ключу заменяет значение. Решение — в контракте, а не в возможностях словаря.</p></li>
+          <li data-ok><button>Замена молча потеряла бы одну из записей, и ошибку в данных никто бы не увидел</button><p class="quiz__why">Верно. Индекс обещает, что по ключу находится единственная запись. Если записей две, лучше сообщить, чем выбрать одну за пользователя.</p></li>
+          <li><button>Иначе индекс станет O(n²)</button><p class="quiz__why">Замена — та же операция O(1). Время не меняется.</p></li>
+          <li><button>ValueError быстрее присваивания</button><p class="quiz__why">Скорость здесь ни при чём: выбор — что делать с плохими данными.</p></li>
+        </ul></div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Документация Python: functools.lru_cache — параметр maxsize — <a href="https://docs.python.org/3/library/functools.html#functools.lru_cache" target="_blank" rel="noopener">docs.python.org/3/library/functools.html</a></li>
+            <li>КТП ОП.04, занятие 20: «индекс по ключу; cache hit/miss»</li>
+            <li>Замер: Python 3.12.12, Apple M4, 06.11.2026; прогоны собраны скриптом make_traces.py настоящим запуском</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="01-uznat-zadachu.html">← 20.1 Как узнать задачу</a><a href="03-lru.html">20.3 LRU-кэш →</a></div>
+        <div class="colophon">
+          <span>Модуль 20 · Кэш и индекс · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../hesh.js"></script>
+</body>
+</html>
