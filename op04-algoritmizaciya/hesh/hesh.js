@@ -14,7 +14,9 @@
      2. .lookup — поиск номера в списке и в хеш-таблице
      3. .htable — таблица из m ячеек: вставка и поиск по шагам,
         с data-grow — рост таблицы и перекладка ключей (resize/rehash)
-     4. .setops — операции над двумя множествами                     */
+     4. .setops — операции над двумя множествами
+     5. .groupby — группировка слов по ключу: отсортированные буквы или частоты
+     6. .buckets — частоты и вёдра «частота → элементы» для k самых частых */
 (() => {
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const json = (node, name) => { try { return JSON.parse(node.dataset[name]); } catch (_) { return null; } };
@@ -230,5 +232,93 @@
     };
     btns.forEach((b, i) => b.addEventListener('click', () => pick(i)));
     pick(1);
+  });
+
+  /* ── 5. Группировка слов по ключу ───────────────────────────── */
+  /* data-words — слова через запятую или JSON-список. Ключ —
+     отсортированные буквы ''.join(sorted(w)) или частоты букв; частоты
+     показаны только ненулевыми, в Python это кортеж из 33 чисел. */
+  const RU = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя';
+  const pySorted = w => [...w].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)).join('');
+  const countKey = w => { const c = {}; for (const ch of w) c[ch] = (c[ch] || 0) + 1; return [...RU, ...Object.keys(c).filter(ch => !RU.includes(ch)).sort()].filter(ch => c[ch]).map(ch => `${ch}${c[ch]}`).join(' '); };
+  document.querySelectorAll('.groupby').forEach(root => {
+    const start = (json(root, 'words') || ['листок', 'кот', 'слиток', 'ток', 'столик', 'окт', 'кот']).join(', ');
+    let mode = 'sorted';
+    root.classList.add('widget');
+    root.innerHTML = `
+      <div class="widget__head"><b>${esc(root.dataset.title || 'Группировка слов по ключу')}</b><span>впишите слова</span></div>
+      <div class="widget__body">
+        <label class="hx-field"><span>words =</span><input class="hx-input gb-input" value="${esc(start)}"></label>
+        <div class="hx-ctrl"><button type="button" class="btn" data-m="sorted">ключ: отсортированные буквы</button><button type="button" class="btn" data-m="counts">ключ: частоты букв</button></div>
+        <div class="table-scroll"><table class="gb-keys"><thead><tr><th>Слово</th><th>Ключ</th><th>Группа</th></tr></thead><tbody></tbody></table></div>
+        <div class="gb-groups"></div>
+      </div>
+      <div class="widget__foot hx-note"></div>`;
+    const inp = root.querySelector('.gb-input');
+    const draw = () => {
+      const words = inp.value.split(',').map(w => w.trim().toLowerCase());
+      if (inp.value.trim() === '') words.length = 0;
+      const key = mode === 'sorted' ? pySorted : countKey;
+      const groups = new Map();
+      const rows = words.map(w => {
+        const k = key(w);
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(w);
+        return `<tr><td><code>'${esc(w)}'</code></td><td><code>${mode === 'sorted' ? `'${esc(k)}'` : esc(k || 'все нули')}</code></td><td>${[...groups.keys()].indexOf(k) + 1}</td></tr>`;
+      });
+      root.querySelectorAll('.hx-ctrl .btn').forEach(b => b.classList.toggle('btn--main', b.dataset.m === mode));
+      root.querySelector('.gb-keys tbody').innerHTML = rows.join('');
+      root.querySelector('.gb-groups').innerHTML = [...groups.values()].map((g, i) => `<div class="gb-group"><span class="gb-num">группа ${i + 1}</span><div class="so-chips">${g.map(w => `<span class="so-chip so-both">${esc(w) || ' '}</span>`).join('')}</div></div>`).join('');
+      const dup = words.length - new Set(words).size;
+      root.querySelector('.hx-note').innerHTML = `${words.length} ${plural(words.length, 'слово', 'слова', 'слов')}, ${groups.size} ${plural(groups.size, 'группа', 'группы', 'групп')}. `
+        + (mode === 'sorted' ? 'Ключ — строка из тех же букв по алфавиту: <code>\'\'.join(sorted(w))</code>.' : 'Ключ — сколько раз встречается каждая буква. На схеме показаны только ненулевые частоты, в Python это кортеж из 33 чисел.')
+        + ` Группы идут в порядке первого появления ключа, слова в группе — в порядке входа.` + (dup ? ` Повторы слов сохраняются: в группах ${dup} ${plural(dup, 'повтор', 'повтора', 'повторов')}.` : '');
+    };
+    inp.addEventListener('input', draw);
+    root.querySelectorAll('.hx-ctrl .btn').forEach(b => b.addEventListener('click', () => { mode = b.dataset.m; draw(); }));
+    draw();
+  });
+
+  /* ── 6. Частоты и вёдра ─────────────────────────────────────── */
+  /* data-nums — числа, data-k — сколько самых частых вернуть. Ведро
+     с номером c хранит числа с частотой c в порядке первого появления. */
+  document.querySelectorAll('.buckets').forEach(root => {
+    const nums0 = (json(root, 'nums') || [3, 1, 1, 2, 2, 3, 4, 1]).join(', ');
+    root.classList.add('widget');
+    root.innerHTML = `
+      <div class="widget__head"><b>${esc(root.dataset.title || 'Частоты и вёдра')}</b><span>впишите числа и k</span></div>
+      <div class="widget__body">
+        <label class="hx-field"><span>nums =</span><input class="hx-input bk-nums" value="${esc(nums0)}"></label>
+        <label class="hx-field"><span>k =</span><input class="hx-input bk-k" inputmode="numeric" value="${esc(root.dataset.k || 2)}" style="max-width:90px"></label>
+        <h4 class="bk-h">Частотный словарь <code>count</code></h4>
+        <div class="so-chips bk-count"></div>
+        <h4 class="bk-h">Вёдра: частота → числа</h4>
+        <div class="bk-rows"></div>
+        <div class="legend"><span><i class="l-hit"></i>попало в ответ</span><span><i class="l-probe"></i>не вошло: ответ уже из k чисел</span></div>
+      </div>
+      <div class="widget__foot hx-note"></div>`;
+    const draw = () => {
+      const raw = root.querySelector('.bk-nums').value.split(',').map(v => v.trim()).filter(Boolean);
+      const k = readInt(root.querySelector('.bk-k').value);
+      const nums = raw.map(readInt);
+      const note = root.querySelector('.hx-note');
+      if (nums.some(v => v === null) || k === null || k < 1) { note.innerHTML = '<span class="hx-err">Впишите целые числа через запятую и k ≥ 1.</span>'; return; }
+      const count = new Map();
+      nums.forEach(x => count.set(x, (count.get(x) || 0) + 1));
+      root.querySelector('.bk-count').innerHTML = [...count].map(([x, c]) => `<span class="so-chip">${x}: ${c}</span>`).join('') || '<span class="so-empty">пустой словарь</span>';
+      const result = [], rows = [];
+      for (let c = nums.length; c >= 1; c--) {
+        const inB = [...count].filter(([, cc]) => cc === c).map(([x]) => x);
+        if (!inB.length) continue;
+        const chips = inB.map(x => { const take = result.length < k; if (take) result.push(x); return `<span class="so-chip ${take ? 'so-both' : 'bk-off'}">${x}</span>`; });
+        rows.push(`<div class="so-row"><span class="so-name">частота ${c}</span><div class="so-chips">${chips.join('')}</div></div>`);
+      }
+      root.querySelector('.bk-rows').innerHTML = rows.join('') || '<span class="so-empty">вёдер нет</span>';
+      note.innerHTML = `${count.size} ${plural(count.size, 'разное число', 'разных числа', 'разных чисел')}. Вёдра просматриваются от большей частоты к меньшей, ответ: <code>[${result.join(', ')}]</code>.`
+        + (count.size < k ? ` Разных чисел меньше k, поэтому в ответе все ${count.size}.` : '')
+        + ' Числа с одинаковой частотой стоят в ведре в порядке первого появления.';
+    };
+    root.querySelectorAll('.hx-input').forEach(i => i.addEventListener('input', draw));
+    draw();
   });
 })();

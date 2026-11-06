@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>18.2 Группы анаграмм · Хеш-структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../hesh.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 18 · Счётчики и группировка · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Хеш-структуры</a> · модуль 18 · счётчики и группировка</p>
+          <p class="running__folio">Глава 18.2</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">18.2</span>
+          <h1>Группы анаграмм:<br>два ключа группировки</h1>
+          <p class="lead">Первая задача занятия 18 — разбить слова на группы анаграмм, LeetCode 49. Решение строит для каждого слова ключ, одинаковый у всех анаграмм, и складывает слова в словарь по ключу. Контроль КТП требует сравнить два подхода к ключу: отсортированные буквы и частоты букв. В главе — оба ключа, замер и две ошибки, которые делают ключ негодным.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Ключ, одинаковый у анаграмм</a></li>
+            <li><a href="#s2">Код и пошаговый прогон</a></li>
+            <li><a href="#s3">Второй ключ: частоты букв</a></li>
+            <li><a href="#s4">Два ключа: замер</a></li>
+            <li><a href="#s5">Ключ, который не годится</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Ключ, одинаковый у анаграмм</h2>
+        <p>В библиотеке книги расставляют по шифру: у всех книг одного раздела шифр одинаковый, и они стоят на одной полке. Библиотекарь не сравнивает новую книгу со всеми, что уже стоят. Он вычисляет шифр и ставит книгу на полку с этим шифром.</p>
+        <p>Слова — анаграммы, если состоят из одних и тех же букв в одинаковом количестве: «листок», «слиток», «столик». Простое решение сравнивает каждое слово с каждым, это O(n²) сравнений. Вместо этого каждому слову вычисляют ключ — «шифр», одинаковый у всех анаграмм и разный у слов из разных букв. Первый такой ключ — буквы слова, отсортированные по алфавиту: у «листок» и «слиток» это <code>'иклост'</code>.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; sorted('листок'), ''.join(sorted('листок')), ''.join(sorted('слиток'))
+(['и', 'к', 'л', 'о', 'с', 'т'], 'иклост', 'иклост')
+&gt;&gt;&gt; ''.join(sorted('ёж')), ''.join(sorted('жё')), ''.join(sorted('еж'))
+('жё', 'жё', 'еж')</pre>
+        </figure>
+        <p><code>sorted</code> возвращает список букв, <code>''.join</code> склеивает его в строку. Буква ё в Unicode стоит после я, поэтому в ключе она идёт последней. «Еж» получает другой ключ: по контракту ё и е — разные буквы. Впишите свои слова в схему ниже. Таблица показывает ключ каждого слова, а под ней — группы, которые из этих ключей получаются. Кнопка «ключ: частоты букв» переключает на второй ключ, о нём §3.</p>
+        <div class="groupby" data-words='["листок", "кот", "слиток", "ток", "столик", "окт", "кот"]' data-title="Слова и их ключи"></div>
+        <p>Слово «кот» встречается дважды, и оба раза попадает в одну группу: группа — список, повторы в нём сохраняются. Группы идут в том порядке, в котором встретилось их первое слово, потому что словарь хранит порядок вставки ключей. Это и есть устойчивый результат из контракта главы 18.1.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Код и пошаговый прогон</h2>
+        <p>Функция проходит слова один раз. Для каждого вычисляет ключ, при первом появлении ключа создаёт пустую группу и добавляет слово в группу своего ключа. В конце возвращает группы без ключей. Напишите функцию сами: тесты проверяют порядок групп и слов, повторы, пустое слово и букву ё.</p>
+        <div class="sandbox" data-title="Напишите group_anagrams сами" data-call="print(group_anagrams(['кот', 'листок', 'ток', 'слиток', 'окт']))">
+<script type="text/plain" class="sandbox__start">
+def group_anagrams(words):
+    groups = {}
+    for w in words:
+        key = ''.join(sorted(w))
+        # Создайте группу при первом появлении ключа и добавьте в неё w.
+    return list(groups.values())
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """пример из главы"""
+    r = group_anagrams(['кот', 'листок', 'ток', 'слиток', 'окт'])
+    assert r == [['кот', 'ток', 'окт'], ['листок', 'слиток']], f"получено {r!r}"
+
+def test_order():
+    """группы в порядке первого слова, слова в порядке входа"""
+    r = group_anagrams(['бра', 'кот', 'араб', 'ток', 'раба', 'абр'])
+    assert r == [['бра', 'абр'], ['кот', 'ток'], ['араб', 'раба']], f"получено {r!r}"
+
+def test_duplicates():
+    """повторы слов сохраняются"""
+    assert group_anagrams(['кот', 'кот', 'ток']) == [['кот', 'кот', 'ток']]
+
+def test_empty_word():
+    """пустое слово — своя группа"""
+    assert group_anagrams(['', 'а', '']) == [['', ''], ['а']]
+
+def test_yo():
+    """ё и е — разные буквы"""
+    assert group_anagrams(['ёж', 'жё', 'еж']) == [['ёж', 'жё'], ['еж']]
+
+def test_empty_list():
+    """пустой список слов"""
+    assert group_anagrams([]) == []
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n · m log m) · память O(n · m)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">group_anagrams</span>(words):
+    groups = {}
+    <span class="k">for</span> w <span class="k">in</span> words:
+        key = <span class="s">''</span>.join(<span class="k">sorted</span>(w))
+        <span class="k">if</span> key <span class="k">not in</span> groups:
+            groups[key] = []
+        groups[key].append(w)
+    <span class="k">return</span> <span class="k">list</span>(groups.values())</pre>
+        </figure>
+        <p>Прогон выполнен настоящим запуском на пяти словах. Следите за словарём <code>groups</code> в таблице переменных: на каждом шаге слово попадает в группу своего ключа.</p>
+        <div class="tracer" data-trace="group" data-title="group_anagrams(['кот', 'листок', 'ток', 'слиток', 'окт'])"></div>
+        <p>Слово «ток» получает ключ <code>'кот'</code> и находит группу, созданную для «кот», «окт» — тоже. Сравнений слов друг с другом нет совсем: каждое слово сравнивается только с ключами в словаре, и эта проверка в среднем O(1). Время уходит на ключи: сортировка букв слова длины m стоит O(m log m), всего — O(n · m log m). Память — O(n · m): словарь хранит все слова и по ключу на каждую группу. Сортировка — не единственный способ получить ключ.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Второй ключ: частоты букв</h2>
+        <p>Анаграммы совпадают по частотам: в «листок» и «слиток» по одной букве и, к, л, о, с, т. Частоты можно записать в список из 33 чисел — по числу букв алфавита: на месте буквы стоит, сколько раз она встретилась. Такой список одинаков у всех анаграмм. Порядок букв в слове на него не влияет, поэтому сортировать не нужно.</p>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>ключ за O(m + 33)</span></figcaption>
+<pre>RU = <span class="s">'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'</span>
+POS = {ch: i <span class="k">for</span> i, ch <span class="k">in</span> <span class="k">enumerate</span>(RU)}          <span class="c"># буква → её место в списке</span>
+
+<span class="k">def</span> <span class="f">anagram_key_counts</span>(word):
+    counts = [<span class="n">0</span>] * <span class="k">len</span>(RU)
+    <span class="k">for</span> ch <span class="k">in</span> word:
+        counts[POS[ch]] += <span class="n">1</span>
+    <span class="k">return</span> <span class="k">tuple</span>(counts)
+
+<span class="k">def</span> <span class="f">group_anagrams_counts</span>(words):
+    groups = defaultdict(<span class="k">list</span>)
+    <span class="k">for</span> w <span class="k">in</span> words:
+        groups[anagram_key_counts(w)].append(w)
+    <span class="k">return</span> <span class="k">list</span>(groups.values())</pre>
+        </figure>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; key = anagram_key_counts('кот')
+&gt;&gt;&gt; len(key), key[POS['к']], key[POS['о']], key[POS['т']], sum(key)
+(33, 1, 1, 1, 3)
+&gt;&gt;&gt; anagram_key_counts('кот') == anagram_key_counts('ток')
+True</pre>
+        </figure>
+        <p>Ключ — кортеж. Список для этого не подходит: он изменяем, у него нет хеша, и ключом словаря он быть не может — глава 0.6. Словарь <code>POS</code> заменяет поиск буквы в строке: <code>RU.index(ch)</code> просматривал бы алфавит для каждой буквы. Группы собираются через <code>defaultdict(list)</code> из главы 18.1, и проверка «есть ли ключ» не нужна.</p>
+        <p>Переключите схему из §1 на «ключ: частоты букв». Группы те же, меняется только запись ключа: схема показывает ненулевые частоты, например <code>к1 о1 т1</code>. Ключ из частот строится за один проход по слову и ещё 33 шага на кортеж, O(m + 33) против O(m log m) у сортировки. По оценке он выгоднее на длинных словах. Насколько, показывает замер.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Два ключа: замер</h2>
+        <p>В замере 200 000 случайных русских букв разбиты на слова одной длины m. При m = 5 это 40 000 слов, при m = 10 000 — 20 слов. Общий объём текста один, меняется только длина слова.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Длина слова m</th><th>Слов</th><th>ключ <code>sorted</code>, мс</th><th>ключ из частот, мс</th></tr></thead>
+            <tbody>
+              <tr><td>5</td><td>40&nbsp;000</td><td>15,5</td><td>33,1</td></tr>
+              <tr><td>20</td><td>10&nbsp;000</td><td>10,8</td><td>13,6</td></tr>
+              <tr><td>100</td><td>2&nbsp;000</td><td>13,6</td><td>8,5</td></tr>
+              <tr><td>1&nbsp;000</td><td>200</td><td>17,1</td><td>7,5</td></tr>
+              <tr><td>10&nbsp;000</td><td>20</td><td>19,0</td><td>7,9</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Замер выполнен на ноутбуке автора, Python 3.12.12, Apple M4, медиана трёх запусков по пять повторов. На коротких словах сортировка быстрее вдвое. Каждое слово требует нового списка из 33 нулей и кортежа из 33 чисел, а сортировка пяти букв выполняется кодом на C почти мгновенно. Между 20 и 100 буквами способы меняются местами. На длинных словах ключ из частот быстрее в 2,3–2,4 раза: множитель log m у сортировки растёт, а 33 шага на кортеж уже ничего не стоят.</p>
+        <p>Из этого следует ответ на контрольный вопрос КТП о двух подходах. Для слов обычной длины — до двух десятков букв — короче и быстрее <code>''.join(sorted(w))</code>. Ключ из частот выгоден на длинных строках и нужен, когда алфавит известен и мал. Если во входе могут быть любые символы Unicode, список из 33 мест не подходит. Тогда ключом служит <code>tuple(sorted(Counter(w).items()))</code> или та же сортировка. На собеседовании называют оба ключа и их оценки, а выбор объясняют длиной слов.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Ключ, который не годится</h2>
+        <p>У ключа группировки два требования: он хешируемый, и он одинаков только у элементов одной группы. Каждое из них нарушается одной строкой. Первая ошибка — забыть <code>''.join</code>: тогда ключ — список букв.</p>
+        <span class="run-label">изменённая версия</span>
+        <div class="tracer tracer--bug" data-trace="bug_list_key" data-title="key = sorted(w)"></div>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; {sorted('кот'): 1}
+TypeError: unhashable type: 'list'</pre>
+        </figure>
+        <p>Эта ошибка видна сразу: функция падает на первом слове. Вторая опаснее — функция работает и возвращает неверные группы. Это ключ из множества букв: <code>''.join(sorted(set(w)))</code>. Множество хранит каждую букву один раз, и «аб» с «абб» получают один ключ <code>'аб'</code>. Ниже обе версии запущены на словах «аб», «абб», «ба».</p>
+        <span class="run-label">изменённая версия</span>
+        <div class="tracer tracer--bug" data-trace="bug_set_key" data-title="key = ''.join(sorted(set(w)))"></div>
+        <span class="run-label run-label--fix">верная версия</span>
+        <div class="tracer" data-trace="fix_set_key" data-title="key = ''.join(sorted(w))"></div>
+        <p>Версия с множеством кладёт все три слова в одну группу, хотя «абб» на одну букву длиннее. Верная версия даёт две группы. На словах без повторяющихся букв, «кот» и «ток», обе версии отвечают одинаково. Поэтому в тестах занятия есть слова с повтором буквы: «араб» и «раба», «аб» и «абб». Эта же ошибка встречалась в анаграммах модуля 13: множество теряет частоты. Вторая задача занятия — самые частые элементы — опирается на частоты целиком, глава 18.3.</p>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Какой ключ годится для групп анаграмм?</div><ul class="quiz__opts">
+          <li><button><code>sorted(w)</code></button><p class="quiz__why">Это список, у него нет хеша: словарь бросит TypeError на первом слове.</p></li>
+          <li><button><code>frozenset(w)</code></button><p class="quiz__why">Множество теряет частоты: у «аб» и «абб» ключ один.</p></li>
+          <li data-ok><button><code>tuple(sorted(w))</code></button><p class="quiz__why">Верно. Кортеж хешируем и хранит все буквы с повторами. Это тот же ключ, что <code>''.join(sorted(w))</code>, только в виде кортежа.</p></li>
+          <li><button><code>len(w)</code></button><p class="quiz__why">Длина одинакова у анаграмм, но и у «кот» с «дом» тоже. Ключ должен различать разные группы.</p></li>
+        </ul></div>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Слов 10 000, каждое — 6 букв. Какой ключ быстрее по замеру из §4 и почему?</div><ul class="quiz__opts">
+          <li data-ok><button>Сортировка букв: на коротких словах она идёт кодом на C, а ключ из частот каждый раз строит 33 места</button><p class="quiz__why">Верно. При m = 5 сортировка вдвое быстрее. Множитель log m на шести буквах почти не виден.</p></li>
+          <li><button>Ключ из частот: он O(m), а сортировка O(m log m)</button><p class="quiz__why">По оценке так, но при малом m решает постоянный множитель: 33 шага на кортеж дороже сортировки шести букв.</p></li>
+          <li><button>Одинаково: оба ключа O(1)</button><p class="quiz__why">Оба ключа зависят от длины слова: сортировка — O(m log m), частоты — O(m + 33).</p></li>
+          <li><button>Сортировка, потому что ключ из частот даёт неверные группы</button><p class="quiz__why">Группы одинаковы, тест это проверяет. Различается только время.</p></li>
+        </ul></div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>LeetCode 49 «Group Anagrams» — условие по данным сайта</li>
+            <li>КТП ОП.04, занятие 18: «Сравнить два подхода к ключу группировки. Проверка стабильности и дубликатов»</li>
+            <li>Замер: Python 3.12.12, Apple M4, 06.11.2026; прогоны собраны скриптом make_traces.py настоящим запуском</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="01-uznat-zadachu.html">← 18.1 Как узнать задачу</a><a href="03-chastye.html">18.3 Самые частые элементы →</a></div>
+        <div class="colophon">
+          <span>Модуль 18 · Счётчики и группировка · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../hesh.js"></script>
+</body>
+</html>

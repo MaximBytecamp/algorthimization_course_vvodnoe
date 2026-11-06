@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>18.1 Как узнать задачу · Хеш-структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../hesh.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 18 · Счётчики и группировка · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Хеш-структуры</a> · модуль 18 · счётчики и группировка</p>
+          <p class="running__folio">Глава 18.1</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">18.1</span>
+          <h1>Счётчики и группировка:<br>как узнать задачу</h1>
+          <p class="lead">Задачи занятия 18 — сгруппировать анаграммы и найти самые частые элементы. В обеих словарь не отвечает «было ли», как в модуле 17, а накапливает результат: число вхождений или список элементов. В главе разобраны два готовых инструмента для этого — <code>Counter</code> и <code>defaultdict</code>, признаки задачи, вопросы до кода и контракты функций модуля.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Словарь, который накапливает</a></li>
+            <li><a href="#s2">Counter и defaultdict</a></li>
+            <li><a href="#s3">Как узнать задачу по условию</a></li>
+            <li><a href="#s4">Вопросы до кода</a></li>
+            <li><a href="#s5">Контракты функций</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Словарь, который накапливает</h2>
+        <p>Почтальон раскладывает письма по ячейкам с номерами домов. Он не ищет, было ли письмо в этот дом раньше. Он кладёт письмо в нужную ячейку, и к концу смены в каждой ячейке лежит стопка писем одного дома. Если вместо писем класть в ячейку счётные палочки, к концу смены будет видно, сколько писем пришло в каждый дом.</p>
+        <p>Словарь в задачах модуля работает так же. Ключ — номер ячейки, значение — то, что в ней накопилось. Если значение — число вхождений, это <span class="term">частотный словарь</span>, или счётчик, он знаком по модулю 13 книги о строках. Если значение — список элементов с одним ключом, это <span class="term">группировка</span>. Ключ, по которому элементы попадают в одну ячейку, называют <span class="term">ключом группировки</span>.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Значение в словаре</th><th>Что накапливается</th><th>Пример</th></tr></thead>
+            <tbody>
+              <tr><td>Число</td><td>Сколько раз встретился ключ</td><td><code>{'болт': 3, 'гайка': 2}</code> — продажи по товарам</td></tr>
+              <tr><td>Список</td><td>Все элементы с этим ключом</td><td><code>{'иклост': ['листок', 'слиток']}</code> — слова из одних букв</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>В обоих случаях первое появление ключа требует отдельного действия: счётчик надо начать с нуля, список — создать пустым. В модуле 17 для этого писали <code>if key not in groups: groups[key] = []</code>. В модуле <code>collections</code> есть два типа, которые делают это сами.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Counter и defaultdict</h2>
+        <p><code>Counter</code> — словарь для подсчёта. Он строится из последовательности за один проход и для отсутствующего ключа возвращает 0. Метод <code>most_common(k)</code> отдаёт k самых частых пар «ключ — частота». <code>defaultdict</code> — словарь, который при обращении к отсутствующему ключу сам создаёт для него значение. Какое значение создать, задаёт аргумент: <code>defaultdict(list)</code> создаёт пустой список, <code>defaultdict(int)</code> — ноль.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; from collections import Counter, defaultdict
+&gt;&gt;&gt; sales = ['болт', 'гайка', 'болт', 'шайба', 'болт', 'гайка']
+&gt;&gt;&gt; count = Counter(sales)
+&gt;&gt;&gt; count
+Counter({'болт': 3, 'гайка': 2, 'шайба': 1})
+&gt;&gt;&gt; count['болт'], count['винт']
+(3, 0)
+&gt;&gt;&gt; count.most_common(2)
+[('болт', 3), ('гайка', 2)]
+&gt;&gt;&gt; by_letter = defaultdict(list)
+&gt;&gt;&gt; for item in sales:
+...     by_letter[item[0]].append(item)
+...
+&gt;&gt;&gt; dict(by_letter)
+{'б': ['болт', 'болт', 'болт'], 'г': ['гайка', 'гайка'], 'ш': ['шайба']}</pre>
+        </figure>
+        <p>В цикле нет проверки, есть ли уже буква в словаре: для новой буквы <code>by_letter[item[0]]</code> создаёт пустой список, и <code>append</code> добавляет в него товар. Повторы сохраняются: болт продан трижды, и в группе три болта.</p>
+        <p>У этого удобства есть цена. Чтение отсутствующего ключа в <code>defaultdict</code> тоже создаёт ключ.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; len(by_letter)
+3
+&gt;&gt;&gt; by_letter['в']
+[]
+&gt;&gt;&gt; len(by_letter)
+4
+&gt;&gt;&gt; 'д' in by_letter, len(by_letter)
+(False, 4)</pre>
+        </figure>
+        <p>Простая проверка «есть ли товары на букву в» добавила в словарь пустую группу. Если потом вернуть все группы, в ответе окажется лишняя. Проверяют наличие ключа через <code>in</code> — он ключ не создаёт. <code>Counter</code> при чтении отсутствующего ключа возвращает 0 и ключ не добавляет.</p>
+        <p>На занятии словари пишутся и вручную, и через эти типы. Ручная запись показывает, что происходит на каждом шаге, а на собеседовании часто просят решение без готового <code>Counter</code>.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Как узнать задачу по условию</h2>
+        <p>Задачу на счётчики и группировку узнают по трём признакам.</p>
+        <ol class="steps">
+          <li><b>Ответ — сводка по значениям.</b> В условии встречаются слова «сгруппируйте», «разбейте на классы», «сколько раз», «самые частые», «чаще всего», «по количеству». Где стоял элемент, для ответа не важно.</li>
+          <li><b>Элементы с одним признаком нужно собрать вместе.</b> Признак — ключ группировки: отсортированные буквы слова, первая буква, домен почты, частота. Простое решение сравнивает каждую пару элементов, O(n²). Словарь по ключу собирает группы за один проход.</li>
+          <li><b>После подсчёта нужно восстановить ответ.</b> Частоты — промежуточный результат. Вернуть нужно элементы: «три самых частых числа», а не «частоты 5, 4, 4». Этот шаг называют <span class="term">восстановлением ответа</span>, и в нём часто ошибаются: возвращают пары или теряют порядок.</li>
+        </ol>
+        <p>В таблице — задачи LeetCode этого вида. Первые две — задачи занятия, остальные — для самостоятельной практики.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Задача</th><th>Что найти</th><th>Что хранить</th></tr></thead>
+            <tbody>
+              <tr><td><a href="https://leetcode.com/problems/group-anagrams/" target="_blank" rel="noopener">49</a> · задача 1 КТП</td><td>Разбить слова на группы анаграмм</td><td>Словарь «ключ → список слов»</td></tr>
+              <tr><td><a href="https://leetcode.com/problems/top-k-frequent-elements/" target="_blank" rel="noopener">347</a> · задача 2 КТП</td><td>k самых частых чисел</td><td>Частотный словарь, затем сортировка или вёдра</td></tr>
+              <tr><td><a href="https://leetcode.com/problems/sort-characters-by-frequency/" target="_blank" rel="noopener">451</a></td><td>Переставить буквы по убыванию частоты</td><td>Частотный словарь</td></tr>
+              <tr><td><a href="https://leetcode.com/problems/top-k-frequent-words/" target="_blank" rel="noopener">692</a></td><td>k самых частых слов, при равной частоте — по алфавиту</td><td>Частотный словарь и сортировка по двум ключам</td></tr>
+              <tr><td><a href="https://leetcode.com/problems/find-lucky-integer-in-an-array/" target="_blank" rel="noopener">1394</a></td><td>Число, равное своей частоте</td><td>Частотный словарь</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Если нужен только один самый частый элемент, сортировка не нужна: <code>max(count, key=count.get)</code> проходит словарь один раз. Бывает, что ответ зависит от того, где стоят элементы: «самая длинная серия одинаковых подряд», «первая буква без пары». Тогда одного счётчика мало, нужен ещё проход по исходной последовательности, как в первой уникальной букве из модуля 13.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Вопросы до кода</h2>
+        <p>Первая задача КТП — группы анаграмм. На LeetCode слова состоят из строчных латинских букв, а порядок групп в ответе любой. Контроль занятия требует проверить стабильность и дубликаты, поэтому до кода их нужно уточнить. Слева — условие в том виде, в каком его произнёс интервьюер. Справа — вопросы.</p>
+        <div class="widget ask">
+          <div class="widget__head"><b>Группы анаграмм</b><span class="ask__count"></span></div>
+          <div class="ask__layout">
+            <div class="ask__task">
+              <span class="tracer__label">условие от интервьюера</span>
+              <p>«Дан список слов. Сгруппируйте слова, которые являются анаграммами друг друга».</p>
+              <span class="tracer__label">уточнено</span>
+              <ul class="ask__facts"></ul>
+            </div>
+            <div class="ask__side">
+              <div class="ask__qs">
+                <button data-answer="Строчные русские буквы, ё — отдельная буква." data-fact="Алфавит — 33 строчные русские буквы." data-code="Нормализации нет. Ключ из частот — кортеж из 33 чисел. Тест: 'ёж' и 'жё' — анаграммы, 'еж' — нет.">Какие символы бывают в словах?</button>
+                <button data-answer="Да. Повтор — отдельное слово, он остаётся в своей группе." data-fact="Повторы слов сохраняются." data-code="Группа — список, а не множество. Тест: ['кот', 'кот'] → [['кот', 'кот']].">Бывают ли одинаковые слова?</button>
+                <button data-answer="Группы — в порядке, в котором встретилось первое слово группы. Слова в группе — в порядке входа." data-fact="Результат устойчив: порядок групп и слов — как во входе." data-code="Словарь хранит порядок вставки, сортировать группы не нужно. Тест сравнивает списки целиком, без сортировки.">В каком порядке вернуть группы и слова?</button>
+                <button data-answer="Да. Пустая строка — слово, у неё своя группа." data-fact="Пустое слово допустимо." data-code="Ключ пустого слова — '' или кортеж из нулей. Тест: ['', ''] → [['', '']].">Бывает ли пустое слово?</button>
+                <button data-answer="Слов до 10⁴, длина каждого — до 100 букв. Бывают и списки из длинных слов." data-fact="Слова короткие и длинные." data-code="Два ключа: сортировка букв O(m log m) и частоты O(m + 33). Какой быстрее, решает замер.">Какой длины слова?</button>
+              </div>
+              <div class="ask__log" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+        <p>Ответ про порядок делает задачу строже, чем на LeetCode: там тест сравнивает группы без учёта порядка, а здесь сравнивает списки целиком. Это и есть проверка стабильности из контроля КТП. <span class="term">Устойчивым</span>, или стабильным, называют результат, который сохраняет порядок входа там, где условие не требует другого. Вопросы ко второй задаче — самым частым числам — задаются так же, ответы записаны в контракт ниже.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Контракты функций</h2>
+        <p>На этих контрактах построены код и тесты модуля. Для каждой задачи по два решения: контроль КТП требует сравнить два подхода к ключу, а для самых частых чисел есть сортировка и вёдра.</p>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>контракты после уточнений</span></figcaption>
+<pre><span class="k">def</span> <span class="f">group_anagrams</span>(words):
+    <span class="s">"""Группы анаграмм, LeetCode 49. Ключ — отсортированные буквы.
+
+    Слова — строчные русские буквы, ё отдельно; пустое слово допустимо.
+    Группы — в порядке первого появления ключа, слова в группе — в порядке
+    входа, повторы сохраняются. Время O(n · m log m), память O(n · m).
+    """</span>
+
+
+<span class="k">def</span> <span class="f">group_anagrams_counts</span>(words):
+    <span class="s">"""То же, ключ — кортеж из 33 частот букв. Время O(n · (m + 33)).
+    """</span>
+
+
+<span class="k">def</span> <span class="f">top_k_frequent</span>(nums, k):
+    <span class="s">"""k самых частых чисел, LeetCode 347. Через сортировку частот.
+
+    k &gt;= 1. Список чисел по убыванию частоты; при равной частоте — в порядке
+    первого появления в nums. Разных чисел меньше k — вернуть все.
+    Время O(n + d log d), где d — число разных чисел, память O(d).
+    """</span>
+
+
+<span class="k">def</span> <span class="f">top_k_bucket</span>(nums, k):
+    <span class="s">"""То же, через вёдра «частота → числа». Время O(n), память O(n).
+    """</span></pre>
+        </figure>
+        <p>Правило «при равной частоте — в порядке первого появления» нужно, чтобы ответ был однозначным. На LeetCode условие гарантирует, что ответ единственный, и равных частот на границе k не бывает. В задаче занятия они бывают: для <code>[5, 5, 2, 2, 7]</code> и k = 1 подходят и 5, и 2. Контракт выбирает 5 — она встретилась первой. Первая задача — группы анаграмм, глава 18.2.</p>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>После строк <code>d = defaultdict(int)</code> и <code>if d['x'] &gt; 0: print('есть')</code> что даст <code>len(d)</code>?</div><ul class="quiz__opts">
+          <li><button>0: ничего не печаталось, значит, и ключей нет</button><p class="quiz__why">Чтение <code>d['x']</code> в defaultdict создаёт ключ со значением по умолчанию, даже если результат только сравнивается.</p></li>
+          <li data-ok><button>1: чтение d['x'] создало ключ со значением 0</button><p class="quiz__why">Верно. Чтобы не создавать ключ, проверяют <code>'x' in d</code> или пишут <code>d.get('x', 0)</code>.</p></li>
+          <li><button>KeyError: ключа 'x' нет</button><p class="quiz__why">KeyError даёт обычный словарь. defaultdict для отсутствующего ключа создаёт значение.</p></li>
+          <li><button>TypeError: int нельзя вызвать без аргумента</button><p class="quiz__why"><code>int()</code> без аргумента возвращает 0, это и есть значение по умолчанию.</p></li>
+        </ul></div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Документация Python: collections.Counter, collections.defaultdict — <a href="https://docs.python.org/3/library/collections.html" target="_blank" rel="noopener">docs.python.org/3/library/collections.html</a></li>
+            <li>LeetCode — условия задач 49, 347, 451, 692, 1394 по данным сайта</li>
+            <li>КТП ОП.04, занятие 18: задачи и контроль</li>
+            <li>Вывод примеров получен в Python 3.12.12 и сверен через doctest</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="../17-vybor/06-mok-intervyu.html">← Модуль 17</a><a href="02-anagrammy.html">18.2 Группы анаграмм →</a></div>
+        <div class="colophon">
+          <span>Модуль 18 · Счётчики и группировка · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../hesh.js"></script>
+</body>
+</html>

@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>18.3 Самые частые элементы · Хеш-структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../hesh.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 18 · Счётчики и группировка · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Хеш-структуры</a> · модуль 18 · счётчики и группировка</p>
+          <p class="running__folio">Глава 18.3</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">18.3</span>
+          <h1>Самые частые<br>элементы</h1>
+          <p class="lead">Вторая задача занятия 18 — k самых частых чисел, LeetCode 347. Решение идёт в две фазы: частотный словарь, затем восстановление ответа по частотам. В главе два способа восстановить ответ — сортировка частот и вёдра, замер, который расходится с оценкой, и правило для равных частот, на котором держится стабильность результата.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Подсчёт и восстановление ответа</a></li>
+            <li><a href="#s2">Сортировка частот</a></li>
+            <li><a href="#s3">Вёдра «частота → числа»</a></li>
+            <li><a href="#s4">Сортировка, вёдра и Counter: замер</a></li>
+            <li><a href="#s5">Равные частоты</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Подсчёт и восстановление ответа</h2>
+        <p>На выборах старосты группы сначала считают бюллетени: напротив каждой фамилии ставят число голосов. Это первая фаза. Затем по числам составляют список: кто на первом месте, кто на втором. Это вторая фаза. Если двое набрали поровну, заранее нужно договориться, кого записать выше.</p>
+        <p>Задача о самых частых числах устроена так же. Первая фаза — частотный словарь за один проход, O(n). Вторая — по частотам выбрать k чисел. Вернуть нужно сами числа, а не частоты: это восстановление ответа из главы 18.1. Готовый <code>Counter</code> делает обе фазы, но возвращает пары «число — частота», и числа из пар приходится доставать.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; from collections import Counter
+&gt;&gt;&gt; nums = [3, 1, 1, 2, 2, 3, 4, 1]
+&gt;&gt;&gt; Counter(nums)
+Counter({1: 3, 3: 2, 2: 2, 4: 1})
+&gt;&gt;&gt; Counter(nums).most_common(2)
+[(1, 3), (3, 2)]
+&gt;&gt;&gt; [x for x, c in Counter(nums).most_common(2)]
+[1, 3]</pre>
+        </figure>
+        <p>Числа 3 и 2 встречаются по два раза, и в ответ попала тройка: она встретилась раньше. Документация <code>Counter</code> это гарантирует — элементы с равной частотой идут в порядке первого появления. Контракт из главы 18.1 требует того же. Ниже обе фазы написаны вручную, без <code>Counter</code>, — так их просят написать на собеседовании.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Сортировка частот</h2>
+        <p>Первый способ второй фазы — отсортировать разные числа по убыванию частоты и взять первые k. Сортируются только d разных чисел — ключи словаря. Напишите функцию сами: тесты проверяют порядок при равных частотах, k больше числа разных и пустой список.</p>
+        <div class="sandbox" data-title="Напишите top_k_frequent сами" data-call="print(top_k_frequent([3, 1, 1, 2, 2, 3, 4, 1], 2), top_k_frequent([5, 5, 2, 2, 7], 1))">
+<script type="text/plain" class="sandbox__start">
+def top_k_frequent(nums, k):
+    count = {}
+    for x in nums:
+        count[x] = count.get(x, 0) + 1
+    # Отсортируйте ключи count по убыванию частоты и верните первые k.
+    return []
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_example():
+    """пример из главы"""
+    r = top_k_frequent([3, 1, 1, 2, 2, 3, 4, 1], 2)
+    assert r == [1, 3], f"ожидалось [1, 3], получено {r!r}"
+
+def test_ties_first_seen():
+    """равные частоты — в порядке первого появления"""
+    r = top_k_frequent([5, 5, 2, 2, 7], 1)
+    assert r == [5], f"ожидалось [5], получено {r!r}"
+    assert top_k_frequent([9, 8, 7], 3) == [9, 8, 7]
+
+def test_k_larger():
+    """разных чисел меньше k"""
+    assert top_k_frequent([4, 4, 1], 5) == [4, 1]
+
+def test_empty():
+    """пустой список"""
+    assert top_k_frequent([], 2) == []
+
+def test_numbers_not_counts():
+    """в ответе числа, а не частоты"""
+    assert top_k_frequent([7, 7, 7, 0], 1) == [7]
+
+def test_matches_counter():
+    """300 случайных списков: ответ совпадает с Counter.most_common"""
+    import random
+    from collections import Counter
+    rnd = random.Random(347)
+    for _ in range(300):
+        a = [rnd.randint(-3, 6) for _ in range(rnd.randint(0, 12))]
+        k = rnd.randint(1, 5)
+        want = [x for x, _ in Counter(a).most_common(k)]
+        assert top_k_frequent(a, k) == want, f"top_k_frequent({a}, {k}): ожидалось {want}"
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n + d log d) · память O(d)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">top_k_frequent</span>(nums, k):
+    count = {}
+    <span class="k">for</span> x <span class="k">in</span> nums:
+        count[x] = count.get(x, <span class="n">0</span>) + <span class="n">1</span>
+    order = <span class="k">sorted</span>(count, key=<span class="k">lambda</span> x: -count[x])
+    <span class="k">return</span> order[:k]</pre>
+        </figure>
+        <details class="pyhint"><summary>Python в этой строке: <code>sorted(count, key=lambda x: -count[x])</code></summary><div><p><code>sorted(count)</code> перебирает ключи словаря. Аргумент <code>key</code> задаёт, по чему сравнивать: для каждого ключа <code>x</code> вычисляется <code>-count[x]</code>, и сортировка идёт по этим числам по возрастанию. Минус превращает «по убыванию частоты» в «по возрастанию». <code>lambda x: -count[x]</code> — короткая запись функции одной строкой.</p><p>Сортировка в Python <span class="term">устойчивая</span>: элементы с равным ключом сохраняют исходный порядок. Ниже слова длины 2 и 3 остались в том порядке, в котором стояли.</p><pre>&gt;&gt;&gt; sorted(['кот', 'ёж', 'дом', 'ус'], key=len)
+['ёж', 'ус', 'кот', 'дом']</pre></div></details>
+        <p>Прогон выполнен настоящим запуском на <code>[3, 1, 1, 2, 2, 3, 4, 1]</code> и k = 2.</p>
+        <div class="tracer" data-trace="top" data-title="top_k_frequent([3, 1, 1, 2, 2, 3, 4, 1], 2)"></div>
+        <p>После первой фазы <code>count = {3: 2, 1: 3, 2: 2, 4: 1}</code>: ключи стоят в порядке первого появления. Сортировка ставит единицу первой, а 3 и 2 с равной частотой оставляет в том порядке, в котором они стоят в словаре. Поэтому правило контракта для равных частот выполняется без дополнительного кода: его дают порядок словаря и устойчивость <code>sorted</code>. Время — O(n) на подсчёт и O(d log d) на сортировку d разных чисел. Множитель log d можно убрать.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Вёдра «частота → числа»</h2>
+        <p>Частота числа — целое от 1 до n. Поэтому числа можно разложить по <span class="term">вёдрам</span>: ведро с номером c хранит числа с частотой c. Сортировка не нужна — вёдра уже идут по номерам. Остаётся пройти их от n вниз к 1 и собрать первые k чисел. Впишите в схему свои числа и k.</p>
+        <div class="buckets" data-nums="[3, 1, 1, 2, 2, 3, 4, 1]" data-k="2" data-title="Частоты и вёдра"></div>
+        <p>Числа 3 и 2 лежат в одном ведре в порядке первого появления: вёдра заполняются проходом по словарю <code>count</code>, а он хранит этот порядок. Ответ <code>[1, 3]</code> совпадает с сортировкой. Если k больше числа разных, схема соберёт все числа и остановится на последнем ведре.</p>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) · память O(n)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">top_k_bucket</span>(nums, k):
+    count = {}
+    <span class="k">for</span> x <span class="k">in</span> nums:
+        count[x] = count.get(x, <span class="n">0</span>) + <span class="n">1</span>
+    buckets = [[] <span class="k">for</span> _ <span class="k">in</span> <span class="k">range</span>(<span class="k">len</span>(nums) + <span class="n">1</span>)]
+    <span class="k">for</span> x, c <span class="k">in</span> count.items():
+        buckets[c].append(x)
+    result = []
+    <span class="k">for</span> c <span class="k">in</span> <span class="k">range</span>(<span class="k">len</span>(nums), <span class="n">0</span>, -<span class="n">1</span>):
+        <span class="k">for</span> x <span class="k">in</span> buckets[c]:
+            <span class="k">if</span> <span class="k">len</span>(result) == k:
+                <span class="k">return</span> result
+            result.append(x)
+    <span class="k">return</span> result</pre>
+        </figure>
+        <div class="tracer" data-trace="bucket" data-title="top_k_bucket([3, 1, 1, 2, 2, 3, 4, 1], 2)"></div>
+        <p>Вёдер n + 1, по номеру от 0 до n: ведро 0 никогда не заполняется, но так номер ведра равен частоте без сдвига. Прогон показывает, что вёдра 8…4 пустые, и проход по ним — лишняя работа. По оценке её немного: всего вёдер n + 1, и каждое число попадает ровно в одно. Время O(n), память O(n). Насколько это быстрее сортировки, показывает замер.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Сортировка, вёдра и Counter: замер</h2>
+        <p>В замере миллион случайных чисел из диапазона d, k = 10. При d = 100 разных чисел сто, при d = 10<sup>6</sup> — 631&nbsp;862.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Разных чисел</th><th>словарь и <code>sorted</code>, мс</th><th>вёдра, мс</th><th><code>Counter.most_common</code>, мс</th></tr></thead>
+            <tbody>
+              <tr><td>100</td><td>31,0</td><td>167,2</td><td>20,8</td></tr>
+              <tr><td>10&nbsp;000</td><td>40,6</td><td>168,5</td><td>26,0</td></tr>
+              <tr><td>631&nbsp;862</td><td>140,4</td><td>237,4</td><td>86,9</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Замер выполнен на ноутбуке автора, Python 3.12.12, Apple M4, медиана трёх запусков по три повтора. Результат расходится с оценкой: вёдра O(n) медленнее сортировки O(n + d log d) при любом d. Причина — строка <code>buckets = [[] for _ in range(len(nums) + 1)]</code>. Она создаёт миллион пустых списков, и только это занимает около 100 мс. Сортировка же упорядочивает только d разных чисел: при d = 100 это сто чисел.</p>
+        <p>Вёдра можно ускорить: создавать их по наибольшей частоте, <code>max(count.values()) + 1</code>. Тогда при d = 100 вёдер около 10 тысяч, и функция укладывается примерно в 29 мс, наравне с сортировкой. <code>Counter</code> быстрее всех: подсчёт в нём идёт кодом на C, а <code>most_common(k)</code> при малом k выбирает k наибольших через кучу и не сортирует всё.</p>
+        <p>Отсюда ответ на собеседовании. Вёдра — единственное решение O(n), и о нём спрашивают как об улучшении сортировки: «Можно ли быстрее, чем O(n log n)?». В Python на практике быстрее <code>Counter(nums).most_common(k)</code>, а постоянный множитель у вёдер большой. Называют оба решения, а выбор объясняют замером. Обе версии дают одинаковый ответ, пока частоты разные. Для равных частот правило задаёт контракт.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Равные частоты</h2>
+        <p>Частая ошибка — при равной частоте сравнивать сами числа: <code>key=lambda x: (-count[x], x)</code>. Код выглядит аккуратнее, ответ однозначен, но он противоречит контракту: при равной частоте контракт требует порядок первого появления, а эта версия ставит меньшее число выше.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; count = {5: 2, 2: 2, 7: 1}
+&gt;&gt;&gt; sorted(count, key=lambda x: -count[x])
+[5, 2, 7]
+&gt;&gt;&gt; sorted(count, key=lambda x: (-count[x], x))
+[2, 5, 7]</pre>
+        </figure>
+        <span class="run-label">изменённая версия</span>
+        <div class="tracer tracer--bug" data-trace="bug_ties_by_value" data-title="key=lambda x: (-count[x], x)"></div>
+        <span class="run-label run-label--fix">верная версия</span>
+        <div class="tracer" data-trace="fix_ties" data-title="key=lambda x: -count[x]"></div>
+        <p>На <code>[5, 5, 2, 2, 7]</code> и k = 1 изменённая версия возвращает <code>[2]</code>, верная — <code>[5]</code>. На LeetCode обе приняты: там ответ гарантированно единственный, и равных частот на границе k нет. Здесь равные частоты бывают, и устойчивость результата — часть контракта. Сортировка по значению нужна в другой задаче, LeetCode 692: там при равной частоте слова прямо требуют упорядочить по алфавиту. Правило для равных частот всегда берут из условия, а если в условии его нет, — спрашивают до кода.</p>
+        <p>Вторая ошибка той же фазы — вернуть не те данные: пары <code>most_common</code> вместо чисел или частоты вместо чисел. Тест <code>test_numbers_not_counts</code> в песочнице §2 ловит её на <code>[7, 7, 7, 0]</code>: ответ <code>[7]</code>, а не <code>[3]</code> и не <code>[(7, 3)]</code>. Обе задачи занятия решены. Граничные входы и ошибки модуля собраны в главе 18.4.</p>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Что вернёт верная <code>top_k_frequent([4, 6, 6, 4, 9], 1)</code>?</div><ul class="quiz__opts">
+          <li data-ok><button><code>[4]</code></button><p class="quiz__why">Верно. У 4 и 6 частота 2, и 4 встретилась раньше. Устойчивая сортировка оставляет её первой.</p></li>
+          <li><button><code>[6]</code></button><p class="quiz__why">6 встретилась позже четвёрки. При равной частоте контракт требует порядок первого появления.</p></li>
+          <li><button><code>[2]</code></button><p class="quiz__why">2 — это частота. В ответе должны быть числа из списка, это восстановление ответа.</p></li>
+          <li><button><code>[4, 6]</code></button><p class="quiz__why">k = 1: в ответе одно число.</p></li>
+        </ul></div>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Почему вёдра в замере §4 медленнее сортировки, хотя оценка у них лучше?</div><ul class="quiz__opts">
+          <li><button>Оценка O(n) у вёдер неверная, на самом деле они O(n²)</button><p class="quiz__why">Оценка верная: каждое число попадает в одно ведро, вёдер n + 1. Дело в постоянном множителе.</p></li>
+          <li data-ok><button>Вёдра создают n + 1 пустых списков, а сортируются только d разных чисел</button><p class="quiz__why">Верно. Миллион пустых списков — около 100 мс. Сортировка ста разных чисел почти ничего не стоит.</p></li>
+          <li><button>sorted работает за O(1), потому что написан на C</button><p class="quiz__why">Код на C уменьшает множитель, но сортировка остаётся O(d log d).</p></li>
+          <li><button>Вёдра проходят список дважды, а сортировка — один раз</button><p class="quiz__why">Обе версии строят частотный словарь одним проходом. Разница — во второй фазе.</p></li>
+        </ul></div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>LeetCode 347 «Top K Frequent Elements», 692 «Top K Frequent Words» — условия по данным сайта</li>
+            <li>Документация Python: collections.Counter.most_common — порядок элементов с равной частотой; Sorting Techniques — устойчивость сортировки — <a href="https://docs.python.org/3/howto/sorting.html" target="_blank" rel="noopener">docs.python.org/3/howto/sorting.html</a></li>
+            <li>КТП ОП.04, занятие 18: «top frequency; восстановление ответа», «проверка стабильности и дубликатов»</li>
+            <li>Замер: Python 3.12.12, Apple M4, 06.11.2026; прогоны собраны скриптом make_traces.py настоящим запуском</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="02-anagrammy.html">← 18.2 Группы анаграмм</a><a href="04-granicy-i-oshibki.html">18.4 Границы и ошибки →</a></div>
+        <div class="colophon">
+          <span>Модуль 18 · Счётчики и группировка · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../hesh.js"></script>
+</body>
+</html>
