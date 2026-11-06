@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>17.3 Пара с суммой · Хеш-структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../hesh.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 17 · Hash map и set: выбор структуры · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Хеш-структуры</a> · модуль 17 · выбор структуры</p>
+          <p class="running__folio">Глава 17.3</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">17.3</span>
+          <h1>Пара с суммой:<br>словарь «число → индекс»</h1>
+          <p class="lead">Вторая задача занятия 17 — индексы двух чисел с заданной суммой, LeetCode 1. От задачи о повторах она отличается одним: в ответе нужен индекс найденной пары, поэтому вместо множества нужен словарь. В главе разобраны идея и код, замер против перебора пар, ошибка с порядком строк и правило, какой индекс хранить при повторе числа.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Идея: пара для каждого числа</a></li>
+            <li><a href="#s2">Код и пошаговый прогон</a></li>
+            <li><a href="#s3">Перебор пар или словарь: замер</a></li>
+            <li><a href="#s4">Число нашло само себя</a></li>
+            <li><a href="#s5">Первое вхождение или последнее</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Идея: пара для каждого числа</h2>
+        <p>Покупатель хочет потратить подарочный сертификат на 9000 рублей целиком, купив ровно два товара. Он берёт товар за 5000 и сразу знает, что второй должен стоить 4000. Ему не нужно складывать цену с каждой другой ценой: достаточно спросить у продавца, есть ли товар за 4000 и где он лежит.</p>
+        <p>Так же устроено решение. Для числа <code>x</code> пара известна заранее: <code>need = target - x</code>. Остаётся узнать, встречалось ли <code>need</code> левее, и если встречалось — на каком индексе. Вопрос «встречалось ли» из главы 17.2 решало множество. Здесь ответ должен содержать индекс, поэтому числа левее хранятся в словаре <code>index</code>: ключ — число, значение — его индекс.</p>
+        <p>Порядок действий на шаге тот же, что в главе 17.2: сначала найти пару для <code>x</code> среди чисел левее, потом записать <code>x</code> в словарь. Если пары нет и после прохода, функция возвращает None.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Код и пошаговый прогон</h2>
+        <p>Напишите функцию сами. Тесты проверяют шесть ответов интервьюера из главы 17.1 и сравнивают результат с перебором пар на трёхстах случайных списках.</p>
+        <div class="sandbox" data-title="Напишите two_sum сами" data-call="print(two_sum([3, 8, 4, 5], 9), two_sum([3, 5], 6))">
+<script type="text/plain" class="sandbox__start">
+def two_sum(nums, target):
+    index = {}
+    for j, x in enumerate(nums):
+        need = target - x
+        # Если need встречалось левее — вернуть пару индексов.
+        # Иначе запомнить x, если его ещё нет в index.
+        pass
+    return None
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_basic():
+    """пара в конце списка"""
+    assert two_sum([3, 8, 4, 5], 9) == (2, 3)
+
+def test_not_twice():
+    """одно число дважды не берётся"""
+    r = two_sum([3, 5], 6)
+    assert r is None, f"ожидалось None, получено {r!r}"
+
+def test_equal_numbers():
+    """одинаковые числа с разными индексами"""
+    assert two_sum([3, 3], 6) == (0, 1)
+
+def test_no_pair():
+    """пустой список, один элемент, пары нет"""
+    assert two_sum([], 1) is None
+    assert two_sum([5], 10) is None
+    assert two_sum([1, 2, 4], 100) is None
+
+def test_smallest_j():
+    """из нескольких пар — с наименьшим j"""
+    r = two_sum([1, 4, 2, 3], 5)
+    assert r == (0, 1), f"ожидалось (0, 1), получено {r!r}"
+
+def test_smallest_i():
+    """для наименьшего j — наименьший i"""
+    r = two_sum([2, 2, 4], 6)
+    assert r == (0, 2), f"ожидалось (0, 2), получено {r!r}"
+
+def test_negative():
+    """отрицательные числа и ноль"""
+    assert two_sum([-2, 7], 5) == (0, 1)
+    assert two_sum([0, 4, 0], 0) == (0, 2)
+
+def test_matches_brute():
+    """300 случайных списков: ответ совпадает с перебором пар"""
+    import random
+    rnd = random.Random(1)
+    for _ in range(300):
+        a = [rnd.randint(-5, 5) for _ in range(rnd.randint(0, 9))]
+        t = rnd.randint(-8, 8)
+        want = next(((i, j) for j in range(len(a)) for i in range(j) if a[i] + a[j] == t), None)
+        assert two_sum(a, t) == want, f"two_sum({a}, {t}): ожидалось {want}"
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) в среднем · память O(n)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">two_sum</span>(nums, target):
+    index = {}
+    <span class="k">for</span> j, x <span class="k">in</span> <span class="k">enumerate</span>(nums):
+        need = target - x
+        <span class="k">if</span> need <span class="k">in</span> index:
+            <span class="k">return</span> (index[need], j)
+        <span class="k">if</span> x <span class="k">not in</span> index:
+            index[x] = j
+    <span class="k">return</span> <span class="k">None</span></pre>
+        </figure>
+        <details class="pyhint"><summary>Python в этой строке: <code>for j, x in enumerate(nums)</code></summary><div><p><code>enumerate</code> на каждом шаге даёт пару: индекс и элемент. Запись <code>j, x</code> раскладывает пару на две переменные. Так в цикле доступны и число, и его место в списке.</p><pre>&gt;&gt;&gt; list(enumerate([3, 8, 4]))
+[(0, 3), (1, 8), (2, 4)]</pre></div></details>
+        <p>Прогон выполнен настоящим запуском на списке <code>[3, 8, 4, 5]</code> и target 9. Пара — 4 и 5, она стоит в конце, поэтому словарь успевает заполниться.</p>
+        <div class="tracer" data-trace="two_sum" data-label="список nums" data-title="two_sum([3, 8, 4, 5], 9)"></div>
+        <p>Для первых трёх чисел пары левее нет: 6, 1 и 5 в словаре не встречаются. Каждое число записывается в словарь: для чисел правее оно может стать парой. Для пятёрки нужна четвёрка, она в словаре с индексом 2, и ответ (2, 3). Перебор пар нашёл бы тот же ответ, сложив шесть пар; словарь сделал четыре проверки.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Перебор пар или словарь: замер</h2>
+        <p>Перебор пар для каждого <code>j</code> проверяет все <code>i &lt; j</code>. В замере список из n чётных чисел, а target равен −1: сумма двух чётных чисел нечётной не бывает, и пары нет. Это худший случай — оба решения проходят список до конца.</p>
+        <figure class="code">
+          <figcaption><span>bench.py</span><span>перебор пар</span></figcaption>
+<pre><span class="k">def</span> <span class="f">two_sum_brute</span>(nums, target):        <span class="c"># O(n²), память O(1)</span>
+    <span class="k">for</span> j <span class="k">in</span> <span class="k">range</span>(<span class="k">len</span>(nums)):
+        <span class="k">for</span> i <span class="k">in</span> <span class="k">range</span>(j):
+            <span class="k">if</span> nums[i] + nums[j] == target:
+                <span class="k">return</span> (i, j)
+    <span class="k">return</span> <span class="k">None</span></pre>
+        </figure>
+        <div class="bench" data-title="Пары нет: n чётных чисел, target −1" data-xlabel="длина списка n"
+          data-series='[{"name":"перебор пар","color":"#B3261E","pts":[[1000,10.936],[2000,40.36],[4000,167.242],[8000,669.565]]},{"name":"словарь","color":"#2D7FC1","pts":[[1000,0.053],[2000,0.101],[4000,0.206],[8000,0.415]]}]'></div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>n</th><th>перебор пар, мс</th><th>словарь, мс</th></tr></thead>
+            <tbody>
+              <tr><td>1&nbsp;000</td><td>10,9</td><td>0,053</td></tr>
+              <tr><td>2&nbsp;000</td><td>40,4</td><td>0,101</td></tr>
+              <tr><td>4&nbsp;000</td><td>167,2</td><td>0,206</td></tr>
+              <tr><td>8&nbsp;000</td><td>669,6</td><td>0,415</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Замер выполнен на ноутбуке автора, Python 3.12.12, Apple M4, медиана трёх запусков по пятнадцать повторов. Перебор растёт вчетверо при удвоении n, словарь — вдвое. На 8000 чисел перебор работает две трети секунды, словарь — 0,4 мс, в 1600 раз быстрее. Словарь медленнее множества из главы 17.2 примерно в 2,5 раза на том же n. На каждом шаге решение вычисляет <code>need</code>, делает две проверки и хранит индекс.</p>
+        <p>Плата — память O(n): словарь хранит все числа, у которых пока нет пары. На собеседовании эту плату называют вместе с ответом: «Время O(n) в среднем, память O(n). Если бы список был отсортирован и индексы не нужны, хватило бы двух указателей с памятью O(1)».</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Число нашло само себя</h2>
+        <p>Та же ошибка, что в главе 17.2: строку <code>index[x] = j</code> ставят перед поиском пары. Для чисел, у которых <code>need</code> равно самому <code>x</code>, — это <code>x = target / 2</code> — поиск находит в словаре сам <code>x</code>. Ниже обе версии запущены на <code>[3, 4, 2]</code> и target 6.</p>
+        <span class="run-label">изменённая версия</span>
+        <div class="tracer tracer--bug" data-trace="bug_index_first" data-label="список nums" data-title="index[x] = j до поиска пары"></div>
+        <span class="run-label run-label--fix">верная версия</span>
+        <div class="tracer" data-trace="fix_index_first" data-label="список nums" data-title="поиск пары, затем index[x] = j"></div>
+        <p>Изменённая версия возвращает (0, 0): тройка в сумме с собой даёт 6. Верная версия на первом шаге пары не находит, записывает тройку и находит пару 4 + 2 на индексах 1 и 2. На входах без числа <code>target / 2</code> обе версии отвечают одинаково. Поэтому в тестах занятия есть <code>[3, 5]</code> и target 6 — первый ответ интервьюера из главы 17.1.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Первое вхождение или последнее</h2>
+        <p>Строка <code>if x not in index</code> перед записью нужна для правила из контракта: из пар с одинаковым <code>j</code> вернуть пару с наименьшим <code>i</code>. Если число повторяется, в словаре остаётся индекс его первого вхождения. На <code>[2, 2, 4]</code> и target 6 подходят пары (0, 2) и (1, 2).</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; two_sum([2, 2, 4], 6)          <span class="c"># if x not in index: index[x] = j</span>
+(0, 2)
+&gt;&gt;&gt; two_sum_last([2, 2, 4], 6)     <span class="c"># index[x] = j без проверки</span>
+(1, 2)</pre>
+        </figure>
+        <p>Без проверки вторая двойка перезаписывает индекс, и ответ — (1, 2). Это тоже пара с суммой 6, и на LeetCode, где пара единственная, обе версии принимаются. По контракту занятия верна только первая. Правило выбора пары — пример ответа интервьюера, который меняет код: без вопроса «какую пару вернуть, если их несколько» обе версии кажутся одинаковыми.</p>
+        <p>Задача о повторах и задача о паре решены одним приёмом. Структура хранит то, что уже пройдено, и отвечает на вопрос о текущем элементе в среднем за O(1). Дальше этот приём применяется к данным, где ключ нужно сначала построить: почта клиента с пробелами, в разном регистре или пустая.</p>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Почему в <code>two_sum</code> нельзя взять множество вместо словаря?</div><ul class="quiz__opts">
+          <li><button>Проверка <code>in</code> во множестве медленнее O(1)</button><p class="quiz__why">Умеет, это та же хеш-таблица. Скорость одинаковая, разница — в том, что нужно вернуть.</p></li>
+          <li data-ok><button>Множество ответит, что пара есть, но не скажет, на каком она индексе</button><p class="quiz__why">Верно. Ответ — индексы, а множество хранит только числа. Индекс хранится значением словаря.</p></li>
+          <li><button>Во множестве нельзя хранить отрицательные числа</button><p class="quiz__why">Можно: любое целое число хешируемо, отрицательное тоже.</p></li>
+          <li><button>Множество не хранит одинаковые числа, а в списке они бывают</button><p class="quiz__why">Словарь тоже хранит каждое число один раз, как ключ. Для пары [3, 3] это не мешает: первая тройка лежит в словаре, вторая находит её.</p></li>
+        </ul></div>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Что вернёт верная <code>two_sum([5, 1, 5], 10)</code>?</div><ul class="quiz__opts">
+          <li><button><code>(0, 0)</code></button><p class="quiz__why">Так ответила бы версия, которая записывает число до поиска пары. Верная версия на первом шаге пары не находит.</p></li>
+          <li data-ok><button><code>(0, 2)</code></button><p class="quiz__why">Верно. На шаге j = 2 нужна пятёрка, она в словаре с индексом 0.</p></li>
+          <li><button><code>(2, 2)</code></button><p class="quiz__why">Индексы в паре разные: один элемент дважды не берётся.</p></li>
+          <li><button><code>None</code></button><p class="quiz__why">Пара есть: элементы с индексами 0 и 2, 5 + 5 = 10.</p></li>
+        </ul></div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>LeetCode 1 «Two Sum» — условие по данным сайта</li>
+            <li>КТП ОП.04, занятие 17: «решить задачу на … индекс пары с суммой», контроль занятия</li>
+            <li>Замер: Python 3.12.12, Apple M4, 06.11.2026; прогоны собраны скриптом make_traces.py настоящим запуском</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="02-dublikaty.html">← 17.2 Повторы</a><a href="04-granicy-i-oshibki.html">17.4 Границы и ошибки →</a></div>
+        <div class="colophon">
+          <span>Модуль 17 · Hash map и set: выбор структуры · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../hesh.js"></script>
+</body>
+</html>

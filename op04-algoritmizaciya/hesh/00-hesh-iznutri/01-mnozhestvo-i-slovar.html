@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>0.1 Множество и словарь · Хеш-структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../hesh.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 0 · Хеш-таблица изнутри · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Хеш-структуры</a> · модуль 0 · теория</p>
+          <p class="running__folio">Глава 0.1</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">0.1</span>
+          <h1>Множество<br>и словарь</h1>
+          <p class="lead">Модуль 0 — теория к занятиям 17–20 о хеш-структурах. Хеш-структур в Python две: множество <code>set</code> и словарь <code>dict</code>. В этой главе разобрано, что это за структуры, как их создают и меняют и какие операции у них есть. Как они устроены внутри и почему поиск в них быстрый, разобрано в следующих главах.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Множество</a></li>
+            <li><a href="#s2">Изменение множества</a></li>
+            <li><a href="#s3">Операции над множествами</a></li>
+            <li><a href="#s4">Словарь</a></li>
+            <li><a href="#s5">Обход словаря</a></li>
+            <li><a href="#s6">Что общего у множества и словаря</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Множество</h2>
+        <p>На проходной офиса турникет записывает номер пропуска при каждом входе. За день сотрудник с пропуском 12 вошёл три раза, и в журнале его номер стоит трижды. Охране нужен другой ответ: кто сегодня был в здании. Для этого ответа важно только, встречался ли номер, а сколько раз и в каком порядке — нет.</p>
+        <p>Такой набор называют <span class="term">множеством</span>. Это слово из математики: множество — набор различных элементов, у которого нет порядка. Каждый элемент в нём либо есть, либо его нет. В Python множество — тип <code>set</code>. Его создают из любой последовательности функцией <code>set()</code> или записывают элементы в фигурных скобках через запятую.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; passes = [12, 7, 12, 30, 7, 12]
+&gt;&gt;&gt; visited = set(passes)
+&gt;&gt;&gt; visited
+{12, 30, 7}
+&gt;&gt;&gt; len(visited), 30 in visited, 5 in visited
+(3, True, False)
+&gt;&gt;&gt; visited[0]
+TypeError: 'set' object is not subscriptable
+&gt;&gt;&gt; type({}), type(set())
+(&lt;class 'dict'&gt;, &lt;class 'set'&gt;)</pre>
+        </figure>
+        <p>На схеме — тот же журнал и множество, построенное из него. Зелёные записи — первое появление номера, оранжевые — повторы.</p>
+        <div class="widget">
+          <div class="widget__head"><b>Журнал проходной и множество visited</b><span>set(passes)</span></div>
+          <div class="widget__body">
+            <div class="hx-pair">
+              <section><h4>Список <code>passes</code>, 6 записей</h4><div class="cells"><div class="cell is-hit"><span class="cell__idx">0</span><span class="cell__val">12</span><span class="cell__tags"></span></div><div class="cell is-hit"><span class="cell__idx">1</span><span class="cell__val">7</span><span class="cell__tags"></span></div><div class="cell is-probe"><span class="cell__idx">2</span><span class="cell__val">12</span><span class="cell__tags"></span></div><div class="cell is-hit"><span class="cell__idx">3</span><span class="cell__val">30</span><span class="cell__tags"></span></div><div class="cell is-probe"><span class="cell__idx">4</span><span class="cell__val">7</span><span class="cell__tags"></span></div><div class="cell is-probe"><span class="cell__idx">5</span><span class="cell__val">12</span><span class="cell__tags"></span></div></div></section>
+              <section><h4>Множество <code>visited</code>, 3 номера</h4><div class="cells"><div class="cell is-hit"><span class="cell__idx">&nbsp;</span><span class="cell__val">12</span><span class="cell__tags"></span></div><div class="cell is-hit"><span class="cell__idx">&nbsp;</span><span class="cell__val">30</span><span class="cell__tags"></span></div><div class="cell is-hit"><span class="cell__idx">&nbsp;</span><span class="cell__val">7</span><span class="cell__tags"></span></div></div></section>
+            </div>
+            <div class="legend"><span><i class="l-hit"></i>первое появление — номер попадает во множество</span><span><i class="l-probe"></i>повтор — множество не меняется</span></div>
+          </div>
+        </div>
+        <p>В журнале шесть записей, во множестве — три номера: повторы исчезли при создании. Функция <code>len</code> даёт число разных элементов, оператор <code>in</code> отвечает, есть ли элемент. Порядок номеров в выводе другой, чем в журнале. Обратиться к элементу по индексу нельзя: у множества нет первого и второго элемента. Порядок, в котором Python печатает множество, от порядка в журнале не зависит, и опираться на него нельзя.</p>
+        <p>Последняя строка показывает частую ошибку. Пустые фигурные скобки <code>{}</code> создают пустой словарь. Пустое множество записывается только как <code>set()</code>.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Изменение множества</h2>
+        <p>Множество можно менять: добавлять и удалять элементы. Метод <code>add</code> добавляет элемент. Если элемент уже есть, ничего не происходит, и ошибки нет. Удаляют элемент двумя методами, и разница между ними — в том, что происходит, когда элемента нет.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; visited.add(5)
+&gt;&gt;&gt; visited.add(12)
+&gt;&gt;&gt; len(visited)
+4
+&gt;&gt;&gt; visited.discard(99)
+&gt;&gt;&gt; visited.remove(99)
+KeyError: 99
+&gt;&gt;&gt; visited.remove(5)
+&gt;&gt;&gt; visited
+{12, 30, 7}</pre>
+        </figure>
+        <p>Номер 12 уже был, поэтому после двух вызовов <code>add</code> элементов четыре. Метод <code>discard</code> удаляет элемент, если он есть, и молча ничего не делает, если его нет. Метод <code>remove</code> в этом случае бросает <code>KeyError</code>. Выбирают по смыслу программы: если отсутствие элемента означает ошибку в данных, берут <code>remove</code>, и ошибка будет видна сразу. Если элемента может не быть, берут <code>discard</code>.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Операции над множествами</h2>
+        <p>Множества сравнивают и объединяют операторами. Пусть <code>yesterday</code> — покупатели магазина вчера, <code>today</code> — сегодня. Вопросы «кто приходил оба дня», «кто вчера был, а сегодня нет», «сколько всего разных покупателей за два дня» решаются одной операцией каждый. На схеме выберите операцию: в строках <code>yesterday</code> и <code>today</code> останутся яркими элементы, которые попали в результат.</p>
+        <div class="setops" data-a='["Аня", "Борис", "Вера", "Глеб"]' data-b='["Вера", "Глеб", "Дина"]' data-names='["вчера", "сегодня"]' data-vars='["yesterday", "today"]' data-title="Покупатели вчера и сегодня"></div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Запись</th><th>Название</th><th>Что в результате</th></tr></thead>
+            <tbody>
+              <tr><td><code>a | b</code></td><td>объединение</td><td>элементы, которые есть хотя бы в одном множестве</td></tr>
+              <tr><td><code>a &amp; b</code></td><td>пересечение</td><td>элементы, которые есть в обоих</td></tr>
+              <tr><td><code>a - b</code></td><td>разность</td><td>элементы <code>a</code>, которых нет в <code>b</code></td></tr>
+              <tr><td><code>a ^ b</code></td><td>симметрическая разность</td><td>элементы, которые есть ровно в одном из двух</td></tr>
+              <tr><td><code>a &lt;= b</code></td><td>подмножество</td><td>True, если каждый элемент <code>a</code> есть в <code>b</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; yesterday = {'Аня', 'Борис', 'Вера', 'Глеб'}
+&gt;&gt;&gt; today = {'Вера', 'Глеб', 'Дина'}
+&gt;&gt;&gt; sorted(yesterday &amp; today)
+['Вера', 'Глеб']
+&gt;&gt;&gt; sorted(yesterday - today), sorted(today - yesterday)
+(['Аня', 'Борис'], ['Дина'])
+&gt;&gt;&gt; len(yesterday | today), sorted(yesterday ^ today)
+(5, ['Аня', 'Борис', 'Дина'])
+&gt;&gt;&gt; {'Вера', 'Глеб'} &lt;= yesterday
+True</pre>
+        </figure>
+        <p>Результат каждой операции — новое множество, исходные не меняются. Разность зависит от порядка: <code>yesterday - today</code> и <code>today - yesterday</code> — разные множества. В примере результаты обёрнуты в <code>sorted</code>: множество строк Python печатает в порядке, который меняется от запуска к запуску, а отсортированный список печатается одинаково. Пересечение и разность — основа задач занятия 19 по КТП.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Словарь</h2>
+        <p>Кладовщик ведёт карточку остатков: напротив каждого товара записано, сколько его на складе. «Болт — 120, гайка — 80». Чтобы узнать остаток гаек, он находит строку «гайка» и читает число рядом. Название товара здесь — то, по чему ищут, а число — то, что находят.</p>
+        <p>Такая карточка в Python — <span class="term">словарь</span>, тип <code>dict</code>. Словарь хранит пары «ключ — значение». <span class="term">Ключ</span> — то, по чему ищут, в карточке это название товара. <span class="term">Значение</span> — то, что связано с ключом, здесь остаток. Словарь записывают в фигурных скобках: пары через запятую, ключ и значение через двоеточие.</p>
+        <p>В таблице — карточка кладовщика, записанная как словарь <code>{'болт': 120, 'гайка': 80}</code>. Каждая строка — одна пара.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Ключ — название товара</th><th>Значение — остаток</th><th>Как прочитать</th></tr></thead>
+            <tbody>
+              <tr><td><code>'болт'</code></td><td>120</td><td><code>stock['болт']</code> → 120</td></tr>
+              <tr><td><code>'гайка'</code></td><td>80</td><td><code>stock['гайка']</code> → 80</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Ниже — как читать, добавлять, менять и удалять пары.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; stock = {'болт': 120, 'гайка': 80}
+&gt;&gt;&gt; stock['болт']
+120
+&gt;&gt;&gt; stock['шайба'] = 50
+&gt;&gt;&gt; stock['гайка'] = 75
+&gt;&gt;&gt; stock
+{'болт': 120, 'гайка': 75, 'шайба': 50}
+&gt;&gt;&gt; stock['винт']
+KeyError: 'винт'
+&gt;&gt;&gt; stock.get('винт'), stock.get('винт', 0)
+(None, 0)
+&gt;&gt;&gt; 'гайка' in stock, 75 in stock, len(stock)
+(True, False, 3)
+&gt;&gt;&gt; del stock['шайба']
+&gt;&gt;&gt; stock.pop('гайка')
+75
+&gt;&gt;&gt; stock
+{'болт': 120}</pre>
+        </figure>
+        <p>Разберём по строкам. Запись <code>stock['болт']</code> читает значение по ключу. Присваивание <code>stock['шайба'] = 50</code> добавляет новую пару, потому что ключа <code>'шайба'</code> не было. Такое же присваивание для гайки заменяет значение 80 на 75: ключ в словаре один, и у него одно значение. Чтение по ключу, которого нет, бросает <code>KeyError</code>. Метод <code>get</code> в этом случае возвращает None или второй аргумент.</p>
+        <p>Оператор <code>in</code> для словаря проверяет ключи: <code>75 in stock</code> даёт False, хотя остаток 75 в словаре есть. Удаляют пару инструкцией <code>del</code> или методом <code>pop</code>, который ещё и возвращает удалённое значение.</p>
+        <p>Словарь часто собирают из двух списков одинаковой длины: функция <code>zip</code> составляет пары из элементов с одним индексом. Есть и короткая запись цикла — генератор словаря.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; names = ['болт', 'гайка', 'шайба']
+&gt;&gt;&gt; counts = [120, 80, 50]
+&gt;&gt;&gt; stock = dict(zip(names, counts))
+&gt;&gt;&gt; stock
+{'болт': 120, 'гайка': 80, 'шайба': 50}
+&gt;&gt;&gt; {name: len(name) for name in names}
+{'болт': 4, 'гайка': 5, 'шайба': 5}</pre>
+        </figure>
+        <details class="pyhint"><summary>Python в этой строке: <code>{name: len(name) for name in names}</code></summary><div><p>Генератор словаря строит словарь за один проход. Запись читается так: «для каждого <code>name</code> из <code>names</code> — пара с ключом <code>name</code> и значением <code>len(name)</code>». Это короткая форма такого цикла:</p><pre>&gt;&gt;&gt; lengths = {}
+&gt;&gt;&gt; for name in names:
+...     lengths[name] = len(name)
+...
+&gt;&gt;&gt; lengths
+{'болт': 4, 'гайка': 5, 'шайба': 5}</pre></div></details>
+
+        <h2 id="s5"><span class="sec">§5</span>Обход словаря</h2>
+        <p>Цикл <code>for</code> по словарю перебирает ключи. Когда в цикле нужны и ключ, и значение, перебирают пары методом <code>items</code>. На каждом шаге он даёт кортеж из ключа и значения, и кортеж сразу раскладывают на две переменные. Метод <code>values</code> даёт только значения, <code>keys</code> — только ключи.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; for name in stock:
+...     print(name, stock[name])
+...
+болт 120
+гайка 80
+шайба 50
+&gt;&gt;&gt; for name, count in stock.items():
+...     print(name, count)
+...
+болт 120
+гайка 80
+шайба 50
+&gt;&gt;&gt; sum(stock.values()), list(stock.keys())
+(250, ['болт', 'гайка', 'шайба'])</pre>
+        </figure>
+        <p>Ключи идут в том порядке, в котором их добавляли. Это гарантия языка, начиная с Python 3.7. У множества такой гарантии нет, это видно в §1.</p>
+        <p>Пока цикл идёт по словарю, ключи в нём добавлять и удалять нельзя. Допустим, со склада нужно убрать товары, которых меньше ста штук.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; for name in stock:
+...     if stock[name] &lt; 100:
+...         del stock[name]
+...
+RuntimeError: dictionary changed size during iteration
+&gt;&gt;&gt; stock
+{'болт': 120, 'шайба': 50}
+&gt;&gt;&gt; stock = {'болт': 120, 'гайка': 80, 'шайба': 50}
+&gt;&gt;&gt; for name in list(stock):
+...     if stock[name] &lt; 100:
+...         del stock[name]
+...
+&gt;&gt;&gt; stock
+{'болт': 120}</pre>
+        </figure>
+        <p>Первый цикл удалил гайку, на следующем шаге заметил, что размер словаря изменился, и остановился с ошибкой. Шайба осталась: словарь изменён наполовину. Во втором цикле <code>list(stock)</code> сначала копирует ключи в список, и цикл идёт по копии. Поэтому словарь в таком цикле можно менять. Менять значения у существующих ключей в цикле можно и без копии: размер словаря от этого не меняется.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Что общего у множества и словаря</h2>
+        <p>Множество похоже на словарь, в котором есть только ключи. У обеих структур три общих свойства.</p>
+        <ol class="steps">
+          <li><b>Каждый ключ хранится один раз.</b> Повторный <code>add</code> во множество ничего не меняет, повторное присваивание в словарь заменяет значение.</li>
+          <li><b>Ключ должен быть неизменяемым.</b> Числа, строки и кортежи годятся в ключи, список и другой словарь — нет. Значение в словаре может быть любым, в том числе списком.</li>
+          <li><b>Поиск по ключу быстрый.</b> Оператор <code>in</code>, чтение <code>d[k]</code>, <code>add</code> и удаление не перебирают все элементы.</li>
+        </ol>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; {['болт', 'M6']: 120}
+TypeError: unhashable type: 'list'
+&gt;&gt;&gt; {('болт', 'M6'): 120, ('болт', 'M8'): 40}[('болт', 'M8')]
+40
+&gt;&gt;&gt; {'болт': [120, 'склад 2']}['болт']
+[120, 'склад 2']</pre>
+        </figure>
+        <p>Список в роли ключа даёт ошибку со словом <span class="term">unhashable</span> — «нехешируемый». Кортеж из тех же двух строк работает: так ключом становится пара «товар и размер». Список в роли значения допустим. Слово «хешируемый» объясняет, на чём держатся все три свойства: и множество, и словарь — хеш-таблицы. Чтобы понять, откуда берётся быстрый поиск, дальше он сравнивается с поиском в списке — это глава 0.2.</p>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>В журнале доступа <code>log = [7, 12, 7, 30, 12, 7]</code> записаны номера пропусков в порядке входа. Что даст <code>len(set(log))</code>?</div><ul class="quiz__opts">
+          <li><button>6</button><p class="quiz__why">6 — длина журнала. Во множество каждый номер попадает один раз, повторы 7 и 12 не сохраняются.</p></li>
+          <li data-ok><button>3</button><p class="quiz__why">Верно. Разных номеров три: 7, 12 и 30. Множество хранит каждый из них один раз.</p></li>
+          <li><button>7, потому что это первый номер</button><p class="quiz__why"><code>len</code> возвращает число элементов, а не элемент. Первого элемента у множества нет: порядка в нём нет.</p></li>
+          <li><button>TypeError: у множества нет длины</button><p class="quiz__why"><code>len</code> работает со множеством и даёт число разных элементов. Ошибку даёт обращение по индексу, например <code>visited[0]</code>.</p></li>
+        </ul></div>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>После строк <code>stock = {'болт': 120}</code> и <code>stock['болт'] = 40</code> что напечатает <code>print(stock)</code>?</div><ul class="quiz__opts">
+          <li><button><code>{'болт': 120, 'болт': 40}</code></button><p class="quiz__why">Двух одинаковых ключей в словаре не бывает. Присваивание по существующему ключу заменяет значение.</p></li>
+          <li><button><code>{'болт': 160}</code></button><p class="quiz__why">Присваивание не складывает значения. Чтобы прибавить, пишут <code>stock['болт'] += 40</code>.</p></li>
+          <li data-ok><button><code>{'болт': 40}</code></button><p class="quiz__why">Верно. Ключ <code>'болт'</code> уже был, поэтому новая пара не появилась: прежнее значение 120 заменено на 40.</p></li>
+          <li><button>KeyError, потому что ключ уже есть</button><p class="quiz__why">KeyError бывает при чтении отсутствующего ключа. Присваивание по существующему ключу ошибки не даёт.</p></li>
+        </ul></div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Документация Python: Set Types — set, frozenset; Mapping Types — dict — <a href="https://docs.python.org/3/library/stdtypes.html#set-types-set-frozenset" target="_blank" rel="noopener">docs.python.org/3/library/stdtypes.html</a></li>
+            <li>Учебник Python: Data Structures — Sets, Dictionaries, Looping Techniques — <a href="https://docs.python.org/3/tutorial/datastructures.html#sets" target="_blank" rel="noopener">docs.python.org/3/tutorial/datastructures.html</a></li>
+            <li>Вывод всех примеров получен в Python 3.12.12 и сверен через doctest</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="../index.html">← Хеш-структуры</a><a href="02-poisk-po-klyuchu.html">0.2 Поиск по ключу →</a></div>
+        <div class="colophon">
+          <span>Модуль 0 · Хеш-таблица изнутри · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../hesh.js"></script>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>0.4 Коллизии и худший случай · Хеш-структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../hesh.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 0 · Хеш-таблица изнутри · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Хеш-структуры</a> · модуль 0 · теория</p>
+          <p class="running__folio">Глава 0.4</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">0.4</span>
+          <h1>Коллизии<br>и худший случай</h1>
+          <p class="lead">В главе 0.3 коллизия удлиняла путь ключа на одну-две ячейки. В этой главе разобрано, что происходит, когда в одну ячейку попадают все ключи: поиск превращается в перебор, а построение множества — в квадратичный алгоритм. Худший случай показан на схеме и замером, отдельно — почему на обычных данных его не бывает и как записывать оценку.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Все ключи в одной ячейке</a></li>
+            <li><a href="#s2">Худший случай в Python</a></li>
+            <li><a href="#s3">Плохая хеш-функция</a></li>
+            <li><a href="#s4">Почему в среднем O(1)</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Все ключи в одной ячейке</h2>
+        <p>В подъезде из главы 0.3 письмо кладут в ящик по последней цифре номера квартиры. Если в доме живут только жильцы квартир 10, 20, 30 и 40, все их письма попадают в ящик 0, а остальные девять ящиков пустуют. Жилец квартиры 40 перебирает все письма в ящике, пока не найдёт своё, — как в стопке накладных из главы 0.2.</p>
+        <p>С хеш-таблицей происходит то же, когда у ключей одинаковый остаток. У номеров 8, 16, 24, 32 и 40 остаток от деления на 8 равен нулю. Вставьте их по очереди и посмотрите на путь каждого ключа.</p>
+        <div class="htable" data-keys="[8, 16, 24, 32, 40]" data-m="8" data-title="Пять ключей с одной ячейкой 0"></div>
+        <p>Ключ 8 ложится в ячейку 0 сразу. Ключ 16 проходит две ячейки, 24 — три, 40 — пять. Каждый новый ключ проходит путь всех предыдущих и ещё одну ячейку. Найдите 48: у него тоже остаток 0, и поиск проверит шесть ячеек, прежде чем дойдёт до пустой. Таблица перестала вычислять место — она перебирает ключи по порядку, как список.</p>
+        <p>Посчитаем стоимость. Вставка i-го ключа проверяет i ячеек. Вставка n ключей проверяет 1 + 2 + … + n = n(n + 1) / 2 ячеек, то есть O(n²). Один поиск — до n проверок, O(n). Это и есть <span class="term">худший случай</span> хеш-таблицы: все ключи попали на один путь.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Худший случай в Python</h2>
+        <p>Для целых чисел хеш в Python равен самому числу только до границы 2<sup>61</sup> − 1. Хеш большого числа — остаток от его деления на 2<sup>61</sup> − 1: так хеш всегда помещается в машинное слово. Значит, у всех чисел, кратных 2<sup>61</sup> − 1, хеш равен нулю.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; P = 2**61 - 1
+&gt;&gt;&gt; P
+2305843009213693951
+&gt;&gt;&gt; hash(P), hash(2 * P), hash(3 * P), hash(P + 5)
+(0, 0, 0, 5)</pre>
+        </figure>
+        <p>Это разные числа с одинаковым хешем. Во множестве из таких чисел все ключи попадают на один путь, как на схеме выше. Замер ниже строит множество из n обычных чисел <code>range(n)</code> и из n чисел <code>i * P</code>.</p>
+        <figure class="code">
+          <figcaption><span>bench_collisions.py</span><span>построение множества</span></figcaption>
+<pre>P = <span class="n">2</span>**<span class="n">61</span> - <span class="n">1</span>
+good = <span class="k">list</span>(<span class="k">range</span>(n))                <span class="c"># хеши 0, 1, 2, … — ячейки разные</span>
+bad = [i * P <span class="k">for</span> i <span class="k">in</span> <span class="k">range</span>(n)]       <span class="c"># хеш у всех 0 — одна ячейка</span>
+<span class="k">set</span>(good)
+<span class="k">set</span>(bad)</pre>
+        </figure>
+        <div class="bench" data-title="Построение множества из n ключей" data-xlabel="число ключей n"
+          data-series='[{"name":"все хеши 0","color":"#B3261E","pts":[[1000,4.2],[2000,16.8],[4000,67.2],[8000,262.8]]},{"name":"обычные числа","color":"#2F7D4F","pts":[[1000,0.006],[2000,0.014],[4000,0.024],[8000,0.052]]}]'></div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>n</th><th>обычные числа, мс</th><th>все хеши 0, мс</th></tr></thead>
+            <tbody>
+              <tr><td>1&nbsp;000</td><td>0,006</td><td>4,2</td></tr>
+              <tr><td>2&nbsp;000</td><td>0,014</td><td>16,8</td></tr>
+              <tr><td>4&nbsp;000</td><td>0,024</td><td>67,2</td></tr>
+              <tr><td>8&nbsp;000</td><td>0,052</td><td>262,8</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Замер выполнен в Python 3.12.12 на Apple M4, каждое число — медиана трёх запусков по семь повторов. Обычные числа строятся за O(n): вдвое больше ключей — примерно вдвое дольше. Числа с одним хешем при удвоении n строятся вчетверо дольше — это O(n²). На восьми тысячах ключей разница уже в пять тысяч раз.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Плохая хеш-функция</h2>
+        <p>Числа вида <code>i * P</code> в обычной программе не встречаются. На практике худший случай чаще создаёт сам программист, когда пишет хеш для своего класса. Метод <code>__hash__</code> задаёт хеш объекта, метод <code>__eq__</code> — сравнение через <code>==</code>. Здесь — класс детали, у которой хеш всегда равен единице. Счётчик в <code>__eq__</code> показывает, сколько раз таблица сравнивала ключи.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; class Part:
+...     comparisons = 0
+...     def __init__(self, code):
+...         self.code = code
+...     def __eq__(self, other):
+...         Part.comparisons += 1
+...         return self.code == other.code
+...     def __hash__(self):
+...         return 1
+...
+&gt;&gt;&gt; for n in (100, 200, 400):
+...     Part.comparisons = 0
+...     parts = {Part(i) for i in range(n)}
+...     print(n, Part.comparisons)
+...
+100 5982
+200 22355
+400 93893</pre>
+        </figure>
+        <p>Множество получилось правильным: все детали разные, и все они в нём есть. Но для 400 деталей понадобилось почти 94 тысячи сравнений, и при каждом удвоении n их становится вчетверо больше. Хеш, одинаковый у всех объектов, не нарушает правило из главы 0.3: равные объекты по-прежнему имеют равные хеши. Он только отнимает у таблицы возможность разнести ключи по разным ячейкам.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Почему в среднем O(1)</h2>
+        <p>Худший случай требует, чтобы много ключей получили один номер ячейки. У стандартных типов Python этого не происходит на обычных данных по трём причинам.</p>
+        <ol class="steps">
+          <li><b>Хеш-функция разносит ключи равномерно.</b> Хеш строки зависит от всех её символов, хеш кортежа — от всех элементов. Похожие ключи — <code>'болт1'</code> и <code>'болт2'</code> — получают далёкие друг от друга хеши.</li>
+          <li><b>Таблица не заполняется до конца.</b> Словарь занимает не больше двух третей ячеек и при заполнении растёт. Пока пустых ячеек много, путь до пустой короткий.</li>
+          <li><b>Хеш строки меняется между запусками.</b> Из главы 0.3: Python подмешивает в хеш строки случайное число. Злоумышленник не может заранее подобрать тысячи строк с одной ячейкой и замедлить сервис, как в замере выше.</li>
+        </ol>
+        <p>Поэтому оценку хеш-таблицы записывают двумя числами. Поиск, вставка и удаление стоят <b>в среднем O(1)</b> и <b>в худшем случае O(n)</b>, когда ключи попадают на один путь. Контроль занятия 17 по КТП требует назвать обе оценки. На собеседовании ответ звучит так: «Проверка <code>x in seen</code> в среднем O(1), весь проход — O(n). Худший случай — O(n) на поиск, если ключи коллизируют, для целых чисел и строк на обычных данных его не бывает».</p>
+        <p>Эти оценки опираются на то, что таблица всегда наполовину пуста. Но ключи добавляются, и таблица должна расти. Глава 0.5 — о том, как она растёт и сколько это стоит.</p>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Класс <code>Order</code> хранит номер заказа, а <code>__hash__</code> возвращает <code>self.num % 10</code>. Во множество добавляют 100 000 заказов с разными номерами. Что произойдёт?</div><ul class="quiz__opts">
+          <li><button>Множество потеряет заказы с одинаковым хешем</button><p class="quiz__why">Одинаковый хеш не делает ключи равными: таблица сравнивает их через <code>==</code> и хранит все разные заказы.</p></li>
+          <li data-ok><button>Множество будет правильным, но построение замедлится примерно до O(n²)</button><p class="quiz__why">Верно. Хешей всего десять, поэтому на каждом пути окажется около 10 000 заказов. Каждая вставка проходит длинный путь, построение близко к O(n²).</p></li>
+          <li><button>Python бросит TypeError: хеш повторяется</button><p class="quiz__why">Повтор хеша — обычная коллизия, ошибки нет. TypeError бывает у нехешируемых объектов, например у списка.</p></li>
+          <li><button>Ничего не изменится: поиск во множестве всегда O(1)</button><p class="quiz__why">O(1) — средняя оценка при равномерно разнесённых ключах. Здесь ключи попадают всего на десять путей.</p></li>
+        </ul></div>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Как правильно записать стоимость проверки <code>x in s</code>, где <code>s</code> — множество из n целых чисел?</div><ul class="quiz__opts">
+          <li><button>Всегда O(1)</button><p class="quiz__why">При коллизиях путь длиннее. Оценка без оговорки «в среднем» неточна: замер в §2 показывает, что бывает и O(n).</p></li>
+          <li><button>O(log n), как двоичный поиск</button><p class="quiz__why">Двоичный поиск идёт по отсортированному массиву. Хеш-таблица вычисляет ячейку сразу и не делит массив пополам.</p></li>
+          <li data-ok><button>В среднем O(1), в худшем случае O(n)</button><p class="quiz__why">Верно. Обычно путь короткий, но если все ключи попали на один путь, проверка проходит их все.</p></li>
+          <li><button>Всегда O(n), как у списка</button><p class="quiz__why">У списка O(n) — обычный случай. У множества O(n) бывает, только когда ключи коллизируют.</p></li>
+        </ul></div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Документация Python: Hashing of numeric types — модуль 2<sup>61</sup> − 1 в хеше целых чисел — <a href="https://docs.python.org/3/library/stdtypes.html#hashing-of-numeric-types" target="_blank" rel="noopener">docs.python.org/3/library/stdtypes.html</a></li>
+            <li>Python Wiki: TimeComplexity — средняя и худшая оценки операций set и dict — <a href="https://wiki.python.org/moin/TimeComplexity" target="_blank" rel="noopener">wiki.python.org/moin/TimeComplexity</a></li>
+            <li>Документация Python: object.__hash__ — <a href="https://docs.python.org/3/reference/datamodel.html#object.__hash__" target="_blank" rel="noopener">docs.python.org/3/reference/datamodel.html</a></li>
+            <li>Замер и вывод примеров: Python 3.12.12, Apple M4, 06.11.2026</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="03-hesh-i-yachejki.html">← 0.3 Хеш и номер ячейки</a><a href="05-rost-tablicy.html">0.5 Рост таблицы →</a></div>
+        <div class="colophon">
+          <span>Модуль 0 · Хеш-таблица изнутри · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../hesh.js"></script>
+</body>
+</html>

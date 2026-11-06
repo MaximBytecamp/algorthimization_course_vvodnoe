@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>0.6 Ключи и порядок · Хеш-структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../hesh.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 0 · Хеш-таблица изнутри · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Хеш-структуры</a> · модуль 0 · теория</p>
+          <p class="running__folio">Глава 0.6</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">0.6</span>
+          <h1>Какие объекты годятся<br>в ключи и порядок обхода</h1>
+          <p class="lead">В главе 0.1 список не подошёл в ключ словаря. В этой главе разобрано почему: что значит «хешируемый объект», что ломается, если ключ изменить, и как сделать ключом свой класс. Вторая половина главы — о порядке: словарь помнит порядок вставки, множество — нет, и задачи, где порядок важен, решают отдельно.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Хешируемые объекты</a></li>
+            <li><a href="#s2">Что ломает изменённый ключ</a></li>
+            <li><a href="#s3">Свой класс в роли ключа</a></li>
+            <li><a href="#s4">Порядок словаря</a></li>
+            <li><a href="#s5">Порядок множества</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Хешируемые объекты</h2>
+        <p>Объект годится в ключ, если у него есть хеш и этот хеш не меняется, пока объект живёт. Такой объект называют <span class="term">хешируемым</span>. У стандартных типов это совпадает с неизменяемостью: числа, строки, кортежи и <code>frozenset</code> хешируемы, а список, словарь и множество — нет.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; hash('болт') == hash('болт'), hash((1, 'M6')) == hash((1, 'M6'))
+(True, True)
+&gt;&gt;&gt; hash([1, 2])
+TypeError: unhashable type: 'list'
+&gt;&gt;&gt; hash({1: 2})
+TypeError: unhashable type: 'dict'
+&gt;&gt;&gt; hash((1, [2]))
+TypeError: unhashable type: 'list'
+&gt;&gt;&gt; {frozenset({'болт', 'гайка'}): 'набор 1'}[frozenset({'гайка', 'болт'})]
+'набор 1'</pre>
+        </figure>
+        <p>Кортеж хешируем, только если хешируемы все его элементы: хеш кортежа вычисляется из хешей элементов, и список внутри даёт ту же ошибку. <code>frozenset</code> — неизменяемое множество. Его применяют, когда ключом должен быть набор без порядка: «болт и гайка» и «гайка и болт» дают один ключ.</p>
+        <p>Когда ключом нужен список, его превращают в кортеж: <code>tuple(parts)</code>. Когда нужен набор без порядка — во <code>frozenset</code> или в отсортированный кортеж. Так строят ключи группировки на занятии 18.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Что ломает изменённый ключ</h2>
+        <p>В главе 0.3 таблица нашла ключ, потому что при поиске вычислила ту же ячейку, что при вставке. Если ключ после вставки изменился, его хеш другой, и поиск идёт в другую ячейку. Python запрещает списки в роли ключей, чтобы так не случилось. Класс <code>Box</code> ниже обходит запрет: он изменяемый, но хеш вычисляется по полю <code>v</code>.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; class Box:
+...     def __init__(self, v):
+...         self.v = v
+...     def __eq__(self, other):
+...         return self.v == other.v
+...     def __hash__(self):
+...         return hash(self.v)
+...
+&gt;&gt;&gt; key = Box(1)
+&gt;&gt;&gt; d = {key: 'ящик'}
+&gt;&gt;&gt; key.v = 2
+&gt;&gt;&gt; len(d), key in d, Box(1) in d, Box(2) in d
+(1, False, False, False)</pre>
+        </figure>
+        <p>В словаре одна пара, но найти её нельзя никаким ключом. Ключ лежит в ячейке 1, вычисленной по старому значению. Поиск <code>key</code> и <code>Box(2)</code> идёт в ячейку по хешу 2 и находит там пустоту. Поиск <code>Box(1)</code> приходит в нужную ячейку, но сравнение <code>==</code> отвечает False: у ключа в ячейке теперь <code>v</code> равно 2. Пара потеряна, хотя занимает место. Поэтому правило: <b>ключ после вставки не меняют</b>.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Свой класс в роли ключа</h2>
+        <p>Объект обычного класса хешируем: Python берёт хеш по адресу объекта в памяти, а <code>==</code> сравнивает, тот ли это объект. Для ключа это обычно не то, что нужно.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; class Order:
+...     def __init__(self, num):
+...         self.num = num
+...
+&gt;&gt;&gt; a, b = Order(42), Order(42)
+&gt;&gt;&gt; a == b, len({a, b})
+(False, 2)
+&gt;&gt;&gt; from dataclasses import dataclass
+&gt;&gt;&gt; @dataclass(frozen=True)
+... class OrderKey:
+...     shop: str
+...     num: int
+...
+&gt;&gt;&gt; x, y = OrderKey('msk', 42), OrderKey('msk', 42)
+&gt;&gt;&gt; x == y, len({x, y})
+(True, 1)
+&gt;&gt;&gt; x.num = 43
+dataclasses.FrozenInstanceError: cannot assign to field 'num'</pre>
+        </figure>
+        <p>Два заказа с номером 42 для множества разные: это два разных объекта. Если номер заказа должен быть ключом, нужны <code>__eq__</code> и <code>__hash__</code> по номеру. Их пишет декоратор <code>@dataclass(frozen=True)</code>: он сравнивает объекты по полям, вычисляет хеш из кортежа полей и запрещает менять поля после создания. Это три условия хорошего ключа сразу: равные объекты равны по <code>==</code>, у них равные хеши, и ключ нельзя изменить.</p>
+        <p>Чаще всего свой класс не нужен: ключом служит кортеж полей, например <code>('msk', 42)</code>. Решать приходится другое: какие поля входят в ключ. Если два разных клиента записаны как «Иванов И.» и «иванов и.», а ключ — строка без нормализации, они станут двумя ключами. Если нормализовать слишком сильно, разные клиенты с одной фамилией сольются в один. Так выглядит ошибочный сценарий КТП занятия 17: разные записи с одинаковым нормализованным ключом.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Порядок словаря</h2>
+        <p>Словарь отдаёт ключи в порядке вставки. CPython хранит пары в отдельном массиве в том порядке, в котором их добавили, а хеш-таблица хранит номера строк этого массива. Обход идёт по массиву, поэтому порядок — порядок вставки. С Python 3.7 это гарантия языка.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; d = {}
+&gt;&gt;&gt; d['c'] = 1; d['a'] = 2; d['b'] = 3
+&gt;&gt;&gt; list(d)
+['c', 'a', 'b']
+&gt;&gt;&gt; d['c'] = 10
+&gt;&gt;&gt; list(d)
+['c', 'a', 'b']
+&gt;&gt;&gt; del d['c']; d['c'] = 1
+&gt;&gt;&gt; list(d)
+['a', 'b', 'c']
+&gt;&gt;&gt; {'a': 1, 'b': 2} == {'b': 2, 'a': 1}
+True</pre>
+        </figure>
+        <p>Замена значения не двигает ключ: <code>'c'</code> остался первым. Удаление и повторная вставка ставят ключ в конец. Сравнение словарей порядок не учитывает: два словаря равны, если у них одинаковые пары. На этом держится упрощённый кэш из занятия 20: ключ, к которому обратились, удаляют и вставляют заново, и самый старый ключ оказывается первым.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Порядок множества</h2>
+        <p>У множества отдельного массива нет: элементы лежат прямо в ячейках таблицы, и обход идёт по ячейкам от нулевой. Вставьте номера 10, 2, 33 и 8 в том порядке, в котором они стоят в списке.</p>
+        <div class="htable" data-keys="[10, 2, 33, 8]" data-m="8" data-title="Множество из 4 номеров"></div>
+        <p>Номер 10 лёг в ячейку 2, номер 2 — в ячейку 3 после коллизии, 33 — в ячейку 1, 8 — в ячейку 0. Если пройти по ячейкам от нулевой, получится 8, 33, 10, 2. В таком порядке Python и печатает это множество. Если вставить те же номера в другом порядке, 2 займёт ячейку 2 раньше, чем 10, и порядок обхода изменится.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; set([10, 2, 33, 8]), set([8, 2, 33, 10])
+({8, 33, 10, 2}, {8, 33, 2, 10})</pre>
+        </figure>
+        <p>Для строк порядок меняется ещё и между запусками: хеш строки, как показано в главе 0.3, при каждом запуске новый, и ячейки у строк другие.</p>
+        <figure class="code">
+          <figcaption><span>терминал</span><span>два запуска подряд</span></figcaption>
+<pre>$ python3 -c "print({'болт', 'гайка', 'шайба'})"
+{'шайба', 'гайка', 'болт'}
+$ python3 -c "print({'болт', 'гайка', 'шайба'})"
+{'гайка', 'шайба', 'болт'}</pre>
+        </figure>
+        <p>Отсюда правило из контроля занятия 19 по КТП: <b>на порядок множества не полагаются</b>. Программа, которая печатает множество строк, на проверке даст другой ответ, чем у автора. Если ответ должен идти в определённом порядке, множество сортируют или порядок хранят отдельно. Частая задача — убрать повторы и сохранить порядок первого появления. Это изменение условия занятия 17. Её решает словарь: <code>dict.fromkeys</code> делает ключами элементы списка в порядке вставки, повторный ключ на месте не двигается.</p>
+        <figure class="code">
+          <figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; items = ['болт', 'гайка', 'болт', 'шайба', 'гайка']
+&gt;&gt;&gt; list(dict.fromkeys(items))
+['болт', 'гайка', 'шайба']</pre>
+        </figure>
+        <p>Это O(n) по времени и памяти, и результат одинаков при любом запуске. Тот же ответ даёт цикл со множеством уже встреченных элементов: множество отвечает «было ли», а порядок хранит список ответа. В главе 0.7 устройство таблицы связано с задачами: какие четыре вида задач решаются на занятиях 17–20 и какая структура нужна каждому.</p>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Какие из этих объектов можно сделать ключами одного словаря: <code>(1, 2)</code>, <code>[1, 2]</code>, <code>'12'</code>, <code>frozenset({1, 2})</code>, <code>(1, [2])</code>?</div><ul class="quiz__opts">
+          <li><button>Все пять: в Python ключом может быть любой объект</button><p class="quiz__why">Список и кортеж со списком внутри дают TypeError: unhashable type: 'list'.</p></li>
+          <li data-ok><button><code>(1, 2)</code>, <code>'12'</code> и <code>frozenset({1, 2})</code></button><p class="quiz__why">Верно. Кортеж из чисел, строка и неизменяемое множество хешируемы. Список нехешируем, и кортеж с ним внутри — тоже.</p></li>
+          <li><button>Только <code>'12'</code>: ключом бывает только строка</button><p class="quiz__why">Ключом может быть любой хешируемый объект: число, кортеж, frozenset, объект своего класса.</p></li>
+          <li><button><code>(1, 2)</code>, <code>'12'</code>, <code>frozenset({1, 2})</code> и <code>(1, [2])</code></button><p class="quiz__why">Хеш кортежа вычисляется из хешей элементов. У списка <code>[2]</code> хеша нет, поэтому у кортежа тоже.</p></li>
+        </ul></div>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Функция должна вернуть список уникальных логинов в порядке первого входа. Студент пишет <code>return list(set(logins))</code>. Тесты у него проходят, на проверке падают. Почему?</div><ul class="quiz__opts">
+          <li><button><code>set</code> не убирает повторы строк</button><p class="quiz__why">Убирает: каждая строка во множестве хранится один раз. Ошибка в порядке.</p></li>
+          <li data-ok><button>Порядок множества строк не совпадает с порядком входа и меняется между запусками</button><p class="quiz__why">Верно. Порядок определяется ячейками, а хеш строки при каждом запуске новый. Порядок первого появления сохраняет <code>list(dict.fromkeys(logins))</code>.</p></li>
+          <li><button><code>list(set(...))</code> сортирует логины по алфавиту</button><p class="quiz__why">Множество ничего не сортирует. Порядок его обхода — порядок ячеек таблицы.</p></li>
+          <li><button>Множество теряет логины при коллизиях</button><p class="quiz__why">При коллизии таблица берёт другую ячейку, все разные логины сохраняются.</p></li>
+        </ul></div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>Документация Python, глоссарий: hashable — <a href="https://docs.python.org/3/glossary.html#term-hashable" target="_blank" rel="noopener">docs.python.org/3/glossary.html</a></li>
+            <li>Документация Python: dataclasses, параметр frozen и генерация __hash__ — <a href="https://docs.python.org/3/library/dataclasses.html" target="_blank" rel="noopener">docs.python.org/3/library/dataclasses.html</a></li>
+            <li>Документация Python: Mapping Types — dict, порядок вставки — <a href="https://docs.python.org/3/library/stdtypes.html#mapping-types-dict" target="_blank" rel="noopener">docs.python.org/3/library/stdtypes.html</a></li>
+            <li>Вывод всех примеров получен в Python 3.12.12 и сверен через doctest</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="05-rost-tablicy.html">← 0.5 Рост таблицы</a><a href="07-chetyre-vida-zadach.html">0.7 Четыре вида задач →</a></div>
+        <div class="colophon">
+          <span>Модуль 0 · Хеш-таблица изнутри · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../hesh.js"></script>
+</body>
+</html>

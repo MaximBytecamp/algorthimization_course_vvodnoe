@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>17.4 Границы и ошибки · Хеш-структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../hesh.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 17 · Hash map и set: выбор структуры · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Хеш-структуры</a> · модуль 17 · выбор структуры</p>
+          <p class="running__folio">Глава 17.4</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">17.4</span>
+          <h1>Границы<br>и ошибки</h1>
+          <p class="lead">Ошибочный сценарий КТП занятия 17 — дубликаты, пустой ключ и разные записи с одинаковым нормализованным ключом. В этой главе он разобран на задаче о клиентах с одинаковой почтой. Затем — сводка ошибок модуля по симптомам, окно для исправления трёх функций и схема объяснения решения интервьюеру.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Ключ строится из записи</a></li>
+            <li><a href="#s2">Код и пошаговый прогон</a></li>
+            <li><a href="#s3">Граничные входы</a></li>
+            <li><a href="#s4">Сводка ошибок по симптомам</a></li>
+            <li><a href="#s5">Исправьте функции</a></li>
+            <li><a href="#s6">Как объяснить решение</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Ключ строится из записи</h2>
+        <p>В регистратуре поликлиники карточки стоят по фамилиям. Новая медсестра завела карточку «ИВАНОВ» рядом с уже существующей «Иванов», а у третьей карточки фамилия записана с пробелом в начале и стоит в начале ящика. Пациент один, карточек три. Чтобы найти такие повторы, фамилии сначала приводят к единому виду, а потом сравнивают.</p>
+        <p>В задачах 17.2 и 17.3 ключом был сам элемент. В данных из форм и таблиц ключ приходится строить: из записи берут поле и приводят к единому виду. Такой ключ называют <span class="term">нормализованным</span>. Для почты нормализация — <code>email.strip().casefold()</code>: убрать пробелы по краям и привести буквы к нижнему регистру. Тогда <code>'Ivan@Mail.ru'</code>, <code>' ivan@mail.ru'</code> и <code>'IVAN@mail.ru '</code> дают один ключ <code>'ivan@mail.ru'</code>.</p>
+        <p>Правила нормализации задаёт условие или заказчик. Слишком слабая нормализация пропускает повторы. Слишком сильная сливает разных людей. Если, например, удалять из почты все точки, <code>ivan.petrov@mail.ru</code> и <code>ivanpetrov@mail.ru</code> станут одним клиентом, хотя на многих почтовых сервисах это разные ящики. Поэтому правило записывают в контракт до кода, как в главе 17.1.</p>
+        <p>У построенного ключа есть граница, которой не было у чисел: он может оказаться пустым. Почта <code>''</code> и почта из одних пробелов после <code>strip</code> дают <code>''</code>. Если считать пустую строку обычным ключом, все клиенты без почты окажутся дубликатами друг друга. Контракт из главы 17.1 выносит их в отдельный список <code>no_email</code>.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Код и пошаговый прогон</h2>
+        <p>Функция строит словарь «ключ → список id». Для каждого клиента вычисляется ключ. Пустой ключ отправляет id в <code>no_email</code>. Иначе id добавляется в список своего ключа, и если ключа ещё не было, сначала создаётся пустой список. В конце остаются только группы, где id больше одного. Напишите функцию сами: тесты проверяют все три условия ошибочного сценария.</p>
+        <div class="sandbox" data-title="Напишите duplicate_clients сами" data-call="print(duplicate_clients([(1, 'Ivan@Mail.ru'), (2, ' ivan@mail.ru'), (3, ''), (4, 'olga@mail.ru'), (5, '  ')]))">
+<script type="text/plain" class="sandbox__start">
+def duplicate_clients(clients):
+    groups = {}
+    no_email = []
+    for cid, email in clients:
+        key = email.strip().casefold()
+        # Пустой ключ: id в no_email, клиент в groups не попадает.
+        # Иначе: добавить cid в список groups[key], создав список при первом появлении ключа.
+    dups = {key: ids for key, ids in groups.items() if len(ids) > 1}
+    return dups, no_email
+</script>
+<script type="text/plain" class="sandbox__tests">
+CLIENTS = [(1, 'Ivan@Mail.ru'), (2, ' ivan@mail.ru'), (3, ''), (4, 'olga@mail.ru'), (5, '  ')]
+
+def test_example():
+    """пример из главы"""
+    assert duplicate_clients(CLIENTS) == ({'ivan@mail.ru': [1, 2]}, [3, 5])
+
+def test_normalized_key():
+    """регистр и пробелы по краям не важны"""
+    dups, _ = duplicate_clients([(1, 'A@B.RU'), (2, 'a@b.ru  '), (3, ' A@b.ru')])
+    assert dups == {'a@b.ru': [1, 2, 3]}, f"получено {dups!r}"
+
+def test_empty_key():
+    """клиенты без почты — не дубликаты друг друга"""
+    dups, no_email = duplicate_clients([(7, ''), (8, '   '), (9, '\t')])
+    assert dups == {}, f"пустая почта стала ключом: {dups!r}"
+    assert no_email == [7, 8, 9]
+
+def test_single_not_duplicate():
+    """клиент с уникальной почтой — не дубликат"""
+    dups, _ = duplicate_clients([(1, 'a@b.ru'), (2, 'c@d.ru')])
+    assert dups == {}, f"получено {dups!r}"
+
+def test_order():
+    """группы в порядке первого появления ключа, id — в порядке входа"""
+    dups, _ = duplicate_clients([(5, 'z@z'), (2, 'a@a'), (9, 'Z@z'), (1, 'a@a'), (3, 'z@z')])
+    assert list(dups) == ['z@z', 'a@a']
+    assert dups['z@z'] == [5, 9, 3]
+
+def test_empty_input():
+    """пустой список клиентов"""
+    assert duplicate_clients([]) == ({}, [])
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) в среднем · память O(n)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">duplicate_clients</span>(clients):
+    groups = {}
+    no_email = []
+    <span class="k">for</span> cid, email <span class="k">in</span> clients:
+        key = email.strip().casefold()
+        <span class="k">if not</span> key:
+            no_email.append(cid)
+            <span class="k">continue</span>
+        <span class="k">if</span> key <span class="k">not in</span> groups:
+            groups[key] = []
+        groups[key].append(cid)
+    dups = {key: ids <span class="k">for</span> key, ids <span class="k">in</span> groups.items() <span class="k">if</span> <span class="k">len</span>(ids) &gt; <span class="n">1</span>}
+    <span class="k">return</span> dups, no_email</pre>
+        </figure>
+        <details class="pyhint"><summary>Python в этой строке: <code>if not key: … continue</code></summary><div><p>Пустая строка в условии ложна, непустая — истинна. Поэтому <code>if not key</code> читается «если ключ пустой». Инструкция <code>continue</code> заканчивает текущий шаг цикла: строки ниже не выполняются, цикл переходит к следующему клиенту.</p><pre>&gt;&gt;&gt; bool(''), bool('  '.strip()), bool('a@b')
+(False, False, True)</pre></div></details>
+        <p>Прогон выполнен настоящим запуском на пяти клиентах из теста. На ленте — пары [id, почта], кавычки показывают пробелы в почте.</p>
+        <div class="tracer" data-trace="clients" data-title="duplicate_clients(CLIENTS)"></div>
+        <p>Клиенты 1 и 2 записаны по-разному, но ключ у них один, и на шаге 12 второй клиент находит группу первого. Клиенты 3 и 5 пропущены: их ключи пустые. Ольга после прохода — группа из одного id, и последний шаг её отбрасывает. Ответ — одна группа дубликатов и два клиента без почты. Каждая из трёх частей кода отвечает за одно условие ошибочного сценария. Если убрать любую из них, ответ на этом же входе станет неверным.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Граничные входы</h2>
+        <p>Ниже три версии функции, в каждой убрана или изменена одна часть кода. Вход тот же — пять клиентов из §2. Верный ответ на нём: <code>({'ivan@mail.ru': [1, 2]}, [3, 5])</code>.</p>
+        <div class="demo" data-demo>
+          <p class="demo__head"><b>duplicate_clients с изменённой строкой</b><span>переключите вкладку</span></p>
+          <div class="demo__tabs" role="tablist">
+            <button>ключ без нормализации</button>
+            <button>без проверки пустого</button>
+            <button>без отбора групп</button>
+          </div>
+          <div class="demo__pane">
+            <p>Строка <code>key = email.strip().casefold()</code> заменена на <code>key = email</code>.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_raw_key" data-title="key = email"></div>
+            <p class="demo__verdict"><b>({}, [3])</b>У клиентов 1 и 2 ключи <code>'Ivan@Mail.ru'</code> и <code>' ivan@mail.ru'</code> — разные строки, и дубликат не найден. Почта из двух пробелов не пустая и стала отдельной группой, поэтому клиент 5 не попал в <code>no_email</code>. На входе, где почты набраны одинаково, эта версия отвечает верно.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Удалены строки <code>if not key: no_email.append(cid); continue</code>.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_empty_key" data-title="без if not key"></div>
+            <p class="demo__verdict"><b>({'ivan@mail.ru': [1, 2], '': [3, 5]}, [])</b>Пустая строка стала обычным ключом. Клиенты 3 и 5 — разные люди без почты, но в ответе они записаны дубликатами. Если такой отчёт уйдёт в отдел, где сливают дубликаты в одну карточку, два клиента станут одним.</p>
+          </div>
+          <div class="demo__pane">
+            <p>Вместо отбора групп возвращается весь словарь: <code>return groups, no_email</code>.</p>
+            <span class="run-label">изменённая версия</span>
+            <div class="tracer tracer--bug" data-trace="bug_no_filter" data-title="return groups, no_email"></div>
+            <p class="demo__verdict"><b>({'ivan@mail.ru': [1, 2], 'olga@mail.ru': [4]}, [3, 5])</b>Ольга — единственный клиент со своей почтой, но в ответе её группа стоит рядом с группой дубликатов. Тест, где у каждого клиента есть пара, эту ошибку не находит: нужен вход с клиентом без пары.</p>
+          </div>
+        </div>
+        <span class="run-label run-label--fix">верная версия</span>
+        <div class="tracer" data-trace="clients" data-title="duplicate_clients(CLIENTS)"></div>
+        <p>Ошибки видны только на определённых входах: почта в разном регистре, почта из пробелов, клиент без пары. Поэтому в тестах занятия есть все три случая, и пример из §2 собран так, чтобы показать их сразу. Ошибки двух других задач модуля видны на своих входах. Все они собраны в таблицу ниже.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Сводка ошибок по симптомам</h2>
+        <p>Когда тест падает, первым видно неверный ответ. По симптому в таблице находят строку кода и вход, на котором ошибку видно. В последнем столбце — где ошибка запущена по шагам.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Симптом</th><th>Где искать</th><th>Вход, который её показывает</th><th>Прогон</th></tr></thead>
+            <tbody>
+              <tr><td><code>has_duplicate</code> отвечает True на любом непустом списке</td><td><code>seen.add(x)</code> стоит до проверки</td><td><code>[1, 2]</code></td><td><a href="02-dublikaty.html#s4">17.2, §4</a></td></tr>
+              <tr><td><code>has_duplicate</code> медленный на длинном списке с повтором в начале</td><td><code>len(set(items))</code> без раннего выхода</td><td>Повтор третьим элементом в списке из 10<sup>6</sup></td><td><a href="02-dublikaty.html#s3">17.2, §3</a></td></tr>
+              <tr><td>Порядок уникальных элементов меняется между запусками</td><td><code>list(set(items))</code> вместо списка ответа</td><td>Строки, два запуска</td><td>глава 0.6</td></tr>
+              <tr><td><code>two_sum</code> возвращает пару из одного индекса</td><td><code>index[x] = j</code> стоит до поиска пары</td><td><code>[3, 5]</code>, 6</td><td><a href="03-para-s-summoj.html#s4">17.3, §4</a></td></tr>
+              <tr><td><code>two_sum</code> возвращает не тот первый индекс</td><td>Индекс перезаписывается при повторе числа</td><td><code>[2, 2, 4]</code>, 6</td><td><a href="03-para-s-summoj.html#s5">17.3, §5</a></td></tr>
+              <tr><td>Дубликат клиента не найден</td><td>Ключ без <code>strip</code> или <code>casefold</code></td><td><code>'Ivan@Mail.ru'</code>, <code>' ivan@mail.ru'</code></td><td><a href="#s3">17.4, §3</a></td></tr>
+              <tr><td>Клиенты без почты записаны дубликатами</td><td>Нет проверки пустого ключа</td><td><code>''</code>, <code>'  '</code></td><td><a href="#s3">17.4, §3</a></td></tr>
+              <tr><td>В ответе группы из одного клиента</td><td>Нет отбора <code>len(ids) &gt; 1</code></td><td>Клиент с уникальной почтой</td><td><a href="#s3">17.4, §3</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Ошибки таблицы делятся на две группы. Первая — что лежит в структуре на момент проверки: текущий элемент добавлен слишком рано или индекс перезаписан. Её находят тесты, где ответ зависит от одного элемента: <code>[1, 2]</code>, <code>[3, 5]</code>. Вторая — как построен ключ: без нормализации, с пустым ключом. Её находят тесты с данными, набранными по-разному. Окно ниже проверяет обе группы.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Исправьте функции</h2>
+        <p>В окне три функции модуля, в каждой одна ошибка из таблицы. Сначала запустите тесты и посмотрите, какие падают. Затем по симптому найдите строку и исправьте её.</p>
+        <div class="sandbox" data-title="Исправьте has_duplicate, two_sum и duplicate_clients" data-call="print(has_duplicate([1, 2]), two_sum([3, 5], 6), duplicate_clients([(1, ''), (2, '')]))">
+<script type="text/plain" class="sandbox__start">
+def has_duplicate(items):
+    seen = set()
+    for x in items:
+        seen.add(x)
+        if x in seen:
+            return True
+    return False
+
+def two_sum(nums, target):
+    index = {}
+    for j, x in enumerate(nums):
+        index[x] = j
+        need = target - x
+        if need in index:
+            return (index[need], j)
+    return None
+
+def duplicate_clients(clients):
+    groups = {}
+    no_email = []
+    for cid, email in clients:
+        key = email.strip().casefold()
+        if key not in groups:
+            groups[key] = []
+        groups[key].append(cid)
+    dups = {key: ids for key, ids in groups.items() if len(ids) > 1}
+    return dups, no_email
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_dup_two_different():
+    """два разных элемента — не повтор"""
+    r = has_duplicate([1, 2])
+    assert r is False, f"ожидалось False, получено {r!r}"
+
+def test_dup_repeat():
+    """повтор есть"""
+    assert has_duplicate([4, 1, 7, 1]) is True
+
+def test_sum_not_twice():
+    """одно число дважды не берётся"""
+    r = two_sum([3, 5], 6)
+    assert r is None, f"ожидалось None, получено {r!r}"
+
+def test_sum_smallest_i():
+    """при повторе числа — первый индекс"""
+    r = two_sum([2, 2, 4], 6)
+    assert r == (0, 2), f"ожидалось (0, 2), получено {r!r}"
+
+def test_clients_empty():
+    """клиенты без почты — не дубликаты"""
+    r = duplicate_clients([(1, ''), (2, '  ')])
+    assert r == ({}, [1, 2]), f"получено {r!r}"
+
+def test_clients_normalized():
+    """регистр и пробелы"""
+    dups, _ = duplicate_clients([(1, 'Ivan@Mail.ru'), (2, ' ivan@mail.ru')])
+    assert dups == {'ivan@mail.ru': [1, 2]}
+</script>
+</div>
+        <p>В <code>two_sum</code> одна ошибка ломает два теста: при записи до поиска пары перезаписывается и индекс повторного числа. Исправление тоже одно — перенести запись после поиска и не перезаписывать уже записанное число. Когда все тесты зелёные, остаётся объяснить решение.</p>
+
+        <h2 id="s6"><span class="sec">§6</span>Как объяснить решение</h2>
+        <p>Контроль занятия 17 по КТП: обосновать структуру данных, назвать память O(n), средний и худший случай и объяснить смысл редкого resize. На собеседовании ответ строится в таком порядке.</p>
+        <ol class="steps">
+          <li><b>Какая операция должна быть быстрой.</b> «Для каждого элемента проверяю, встречалось ли значение или его пара левее. Перебор пар — O(n²), поэтому храню пройденное в хеш-структуре». Для ответа «да или нет» — множество, для индекса или списка id — словарь.</li>
+          <li><b>Что хранится между итерациями.</b> «В seen — элементы левее текущего, сам текущий добавляется после проверки». Для клиентов: «в groups — id по нормализованному ключу, пустой ключ в словарь не попадает».</li>
+          <li><b>Оценки и цена.</b> «Время O(n) в среднем: каждая проверка в среднем O(1). Худший случай — O(n²), если ключи коллизируют, на обычных данных его нет. Память O(n). Словарь иногда растёт и перекладывает все ключи, но таблица удваивается, поэтому рост редкий, и в сумме вставки стоят O(n)». Затем назвать граничные тесты.</li>
+        </ol>
+        <div class="speech">
+          <div class="speech__item">
+            <p class="speech__said">«Пара должна давать target, значит, для x я ищу target − x среди чисел левее. Нужен индекс, поэтому словарь «число → индекс». Сначала ищу пару, потом записываю x, иначе x найдёт сам себя. При повторе числа оставляю первый индекс — так требует правило выбора пары. Время O(n) в среднем, память O(n)».</p>
+            <p class="speech__note"><b>Что показывает</b>Почему словарь, а не множество; порядок строк в цикле; правило из уточнения условия.</p>
+          </div>
+          <div class="speech__item">
+            <p class="speech__said">«В худшем случае, если все ключи коллизируют, проверка стоит O(n), и проход — O(n²). Для целых чисел и строк на обычных данных этого не бывает. Рост словаря стоит O(n), но случается всё реже, амортизированно вставка O(1). Тесты: [3, 5] и 6 — одно число дважды, [3, 3] и 6, [2, 2, 4] и 6 — первый индекс, пустой список».</p>
+            <p class="speech__note"><b>Что показывает</b>Средний и худший случай, смысл редкого resize, граничные тесты.</p>
+          </div>
+        </div>
+        <p>Эти три шага — тот же порядок, по которому проверяется работа на паре. Её задачи, стартовый набор и домашнее задание — в главе 17.5.</p>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>КТП ОП.04, занятие 17: ошибочный сценарий и контроль занятия</li>
+            <li>Документация Python: str.strip, str.casefold — <a href="https://docs.python.org/3/library/stdtypes.html#str.casefold" target="_blank" rel="noopener">docs.python.org/3/library/stdtypes.html</a></li>
+            <li>Прогоны собраны скриптом make_traces.py настоящим запуском Python 3.12.12</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="03-para-s-summoj.html">← 17.3 Пара с суммой</a><a href="05-praktika-i-dz.html">17.5 Практика и ДЗ →</a></div>
+        <div class="colophon">
+          <span>Модуль 17 · Hash map и set: выбор структуры · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../hesh.js"></script>
+</body>
+</html>

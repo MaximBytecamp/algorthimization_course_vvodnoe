@@ -17,8 +17,13 @@ tags:
 
 ## Точки входа
 
-- [op04-algoritmizaciya/hesh/00-hesh-iznutri/01-poisk-po-klyuchu.html](../../../op04-algoritmizaciya/hesh/00-hesh-iznutri/01-poisk-po-klyuchu.html)
-- [op04-algoritmizaciya/hesh/00-hesh-iznutri/02-hesh-i-yachejki.html](../../../op04-algoritmizaciya/hesh/00-hesh-iznutri/02-hesh-i-yachejki.html)
+- [op04-algoritmizaciya/hesh/00-hesh-iznutri/01-mnozhestvo-i-slovar.html](../../../op04-algoritmizaciya/hesh/00-hesh-iznutri/01-mnozhestvo-i-slovar.html)
+- [op04-algoritmizaciya/hesh/00-hesh-iznutri/02-poisk-po-klyuchu.html](../../../op04-algoritmizaciya/hesh/00-hesh-iznutri/02-poisk-po-klyuchu.html)
+- [op04-algoritmizaciya/hesh/00-hesh-iznutri/03-hesh-i-yachejki.html](../../../op04-algoritmizaciya/hesh/00-hesh-iznutri/03-hesh-i-yachejki.html)
+- [op04-algoritmizaciya/hesh/00-hesh-iznutri/04-kollizii.html](../../../op04-algoritmizaciya/hesh/00-hesh-iznutri/04-kollizii.html)
+- [op04-algoritmizaciya/hesh/00-hesh-iznutri/05-rost-tablicy.html](../../../op04-algoritmizaciya/hesh/00-hesh-iznutri/05-rost-tablicy.html)
+- [op04-algoritmizaciya/hesh/00-hesh-iznutri/06-klyuchi-i-poryadok.html](../../../op04-algoritmizaciya/hesh/00-hesh-iznutri/06-klyuchi-i-poryadok.html)
+- [op04-algoritmizaciya/hesh/00-hesh-iznutri/07-chetyre-vida-zadach.html](../../../op04-algoritmizaciya/hesh/00-hesh-iznutri/07-chetyre-vida-zadach.html)
 
 ## Связанная память
 

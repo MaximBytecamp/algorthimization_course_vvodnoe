@@ -12,7 +12,9 @@
    Части файла:
      1. общие функции: хеш целого числа, размещение ключей
      2. .lookup — поиск номера в списке и в хеш-таблице
-     3. .htable — таблица из m ячеек: вставка и поиск по шагам       */
+     3. .htable — таблица из m ячеек: вставка и поиск по шагам,
+        с data-grow — рост таблицы и перекладка ключей (resize/rehash)
+     4. .setops — операции над двумя множествами                     */
 (() => {
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const json = (node, name) => { try { return JSON.parse(node.dataset[name]); } catch (_) { return null; } };
@@ -86,7 +88,7 @@
       root.querySelector('.hx-count--set').innerHTML = `проверено ячеек: <b>${p.path.length}</b>`;
       root.querySelector('.hx-note').innerHTML = at === -1
         ? `Номера ${q} нет. Список сравнил его со всеми ${keys.length} элементами: только так можно убедиться, что номера нет. Таблица вычислила ячейку <code>${q} % ${m} = ${p.start}</code>${p.path.length > 1 ? `, прошла ${cellsN(p.path.length)} до пустой` : ''} и остановилась на пустой ячейке: если бы номер был в таблице, он лежал бы там.`
-        : `Номер ${q} найден. Список дошёл до него за ${seen} ${plural(seen, 'сравнение', 'сравнения', 'сравнений')}: столько, на каком месте номер стоит. Таблица сразу вычислила ячейку <code>${q} % ${m} = ${p.start}</code> и нашла номер ${p.path.length === 1 ? 'в ней' : `за ${p.path.length} ${plural(p.path.length, 'проверку', 'проверки', 'проверок')}`}. Как вычисляется ячейка, разобрано в главе 0.2.`;
+        : `Номер ${q} найден. Список дошёл до него за ${seen} ${plural(seen, 'сравнение', 'сравнения', 'сравнений')}: столько, на каком месте номер стоит. Таблица сразу вычислила ячейку <code>${q} % ${m} = ${p.start}</code> и нашла номер ${p.path.length === 1 ? 'в ней' : `за ${p.path.length} ${plural(p.path.length, 'проверку', 'проверки', 'проверок')}`}.`;
     };
     inp.addEventListener('input', draw);
     root.querySelectorAll('.hx-quick .btn').forEach(b => b.addEventListener('click', () => { inp.value = b.dataset.k; draw(); }));
@@ -98,12 +100,16 @@
      data-m — число ячеек. Свой ключ можно вставить или поискать. */
   document.querySelectorAll('.htable').forEach(root => {
     const queue = json(root, 'keys') || [42, 17, 1042, 300, 25];
-    const m = +(root.dataset.m || 8);
-    const usable = Math.floor(m * 2 / 3);
-    let slots, next, log;
+    const m0 = +(root.dataset.m || 8);
+    const grow = 'grow' in root.dataset;
+    /* Словарь CPython заполняет таблицу не больше чем на 2/3. Когда
+       ключ не помещается, новая таблица — ближайшая степень двойки
+       не меньше 3 · (число ключей); все ключи раскладываются заново. */
+    const usableOf = m => Math.floor(m * 2 / 3);
+    let m, usable, slots, next, log, inserted;
     root.classList.add('widget');
     root.innerHTML = `
-      <div class="widget__head"><b>${esc(root.dataset.title || `Хеш-таблица из ${m} ячеек`)}</b><span>вставка и поиск</span></div>
+      <div class="widget__head"><b>${esc(root.dataset.title || `Хеш-таблица из ${m0} ячеек`)}</b><span>${grow ? 'вставка и рост таблицы' : 'вставка и поиск'}</span></div>
       <div class="widget__body">
         <div class="hx-ctrl">
           <button type="button" class="btn btn--main hx-next"></button>
@@ -130,7 +136,8 @@
       btnNext.disabled = !left.length;
       const used = slots.filter(k => k !== null).length;
       root.querySelector('.hx-note').innerHTML = (note ? note + ' ' : '')
-        + `Занято ${used} из ${m} ячеек.` + (used > usable ? ` <b>В словаре Python таблица из ${m} ячеек вмещает не больше ${usable} ключей: ключ № ${usable + 1} он записал бы уже в увеличенную таблицу. Это разобрано в главе 0.4.</b>` : '');
+        + `Занято ${used} из ${m} ячеек.` + (grow ? ` Таблица из ${m} ячеек вмещает ${usable} ${plural(usable, 'ключ', 'ключа', 'ключей')}.`
+          : used > usable ? ` <b>В словаре Python таблица из ${m} ячеек вмещает не больше ${usable} ключей: ключ № ${usable + 1} он записал бы уже в увеличенную таблицу.</b>` : '');
     }
     function pathMark(p, kind) {
       const mark = { order: {} };
@@ -143,14 +150,25 @@
       p.path.slice(0, -1).forEach(i => parts.push(`ячейка ${i} занята ключом ${slots[i]}`));
       return parts;
     }
+    function resize() {
+      const old = m, n = inserted.length;
+      m = 8; while (m < n * 3) m *= 2;
+      usable = usableOf(m);
+      slots = place(inserted, m);
+      const moved = inserted.map(k => `${k} → ${slots.indexOf(k)}`).join(', ');
+      log.unshift(`<b>таблица заполнена: ${n} ${plural(n, 'ключ', 'ключа', 'ключей')} из ${n} возможных → новая таблица из ${m} ячеек, ключи разложены заново по <code>hash % ${m}</code>: ${moved}</b>`);
+      return old;
+    }
     function insert(key) {
-      const p = probe(slots, key);
+      let p = probe(slots, key), grew = null;
+      if (grow && !p.found && inserted.length + 1 > usable) { grew = resize(); p = probe(slots, key); }
       if (p.found) return show(pathMark(p, 'is-hit'), `${steps(key, p).join(' → ')} → ключ ${key} уже есть, второй раз не записывается`, `Ключ ${key} уже в таблице: в множестве и в ключах словаря каждый ключ хранится один раз.`);
       if (p.end === null) return show(pathMark(p, 'is-probe'), `${key}: свободных ячеек нет`, 'Все ячейки заняты.');
-      slots[p.end] = key;
+      slots[p.end] = key; inserted.push(key);
       const coll = p.path.length > 1;
+      const grewNote = grew ? `Ключ № ${inserted.length} не поместился в таблицу из ${grew} ячеек. Таблица выросла до ${m} ячеек, и все ${inserted.length - 1} прежних ключей переложены: от числа ячеек зависит остаток, поэтому ячейки у ключей новые. ` : '';
       show(pathMark(p, 'is-hit'), `${steps(key, p).join(' → ')} → ячейка ${p.end} свободна, ключ ${key} записан`,
-        coll ? `Коллизия: ячейка ${p.start} уже занята, ключ ${key} лёг в ячейку ${p.end}. При поиске ${key} таблица пройдёт тот же путь.` : `Ячейка ${p.start} была свободна, ключ записан сразу.`);
+        grewNote + (coll ? `Коллизия: ячейка ${p.start} уже занята, ключ ${key} лёг в ячейку ${p.end}. При поиске ${key} таблица пройдёт тот же путь.` : `Ячейка ${p.start} была свободна, ключ записан сразу.`));
     }
     function find(key) {
       const p = probe(slots, key);
@@ -159,7 +177,7 @@
       show(mark, `поиск: ${steps(key, p).join(' → ')} → ${tail}`,
         p.found ? `Поиск прошёл ${p.path.length === 1 ? 'одну ячейку' : `${cellsN(p.path.length)} — тот же путь, что при вставке`}.` : 'Пустая ячейка на пути означает, что ключа нет: при вставке он лёг бы в неё или раньше.');
     }
-    function reset() { slots = Array(m).fill(null); next = 0; log = []; show({}, '', `Таблица пустая. Ключи из списка: ${queue.join(', ')}.`); }
+    function reset() { m = m0; usable = usableOf(m); slots = Array(m).fill(null); next = 0; log = []; inserted = []; show({}, '', `Таблица пустая. Ключи из списка: ${queue.join(', ')}.`); }
 
     btnNext.addEventListener('click', () => { if (next < queue.length) insert(queue[next++]); });
     root.querySelector('.hx-reset').addEventListener('click', reset);
@@ -167,5 +185,50 @@
     root.querySelector('.hx-add').addEventListener('click', own(insert));
     root.querySelector('.hx-find').addEventListener('click', own(find));
     reset();
+  });
+
+  /* ── 4. Операции над двумя множествами ──────────────────────── */
+  /* data-a, data-b — элементы двух множеств (строки или числа),
+     data-names — подписи множеств, data-vars — имена переменных. */
+  document.querySelectorAll('.setops').forEach(root => {
+    const A = json(root, 'a') || [], B = json(root, 'b') || [];
+    const [na, nb] = json(root, 'names') || ['A', 'B'];
+    const [va, vb] = json(root, 'vars') || ['a', 'b'];
+    const inA = new Set(A), inB = new Set(B);
+    const all = [...A, ...B.filter(x => !inA.has(x))];
+    const zone = x => inA.has(x) && inB.has(x) ? 'both' : inA.has(x) ? 'a' : 'b';
+    const ops = [
+      ['|', 'объединение', x => true, `все элементы, которые есть хотя бы в одном из множеств`],
+      ['&', 'пересечение', x => zone(x) === 'both', `элементы, которые есть в обоих множествах`],
+      ['-', 'разность', x => zone(x) === 'a', `элементы ${va}, которых нет в ${vb}`],
+      ['-', 'разность', x => zone(x) === 'b', `элементы ${vb}, которых нет в ${va}`, true],
+      ['^', 'симметрическая разность', x => zone(x) !== 'both', `элементы, которые есть ровно в одном из множеств`],
+    ];
+    root.classList.add('widget');
+    root.innerHTML = `
+      <div class="widget__head"><b>${esc(root.dataset.title || 'Операции над множествами')}</b><span>выберите операцию</span></div>
+      <div class="widget__body">
+        <div class="hx-ctrl">${ops.map((o, i) => `<button type="button" class="btn" data-i="${i}"><code>${o[4] ? `${vb} ${o[0]} ${va}` : `${va} ${o[0]} ${vb}`}</code></button>`).join('')}</div>
+        <div class="so-rows">
+          <div class="so-row"><span class="so-name"><code>${esc(va)}</code> · ${esc(na)}</span><div class="so-chips">${A.map(x => `<span class="so-chip so-${zone(x)}" data-x="${esc(x)}">${esc(x)}</span>`).join('')}</div></div>
+          <div class="so-row"><span class="so-name"><code>${esc(vb)}</code> · ${esc(nb)}</span><div class="so-chips">${B.map(x => `<span class="so-chip so-${zone(x)}" data-x="${esc(x)}">${esc(x)}</span>`).join('')}</div></div>
+          <div class="so-row so-row--res"><span class="so-name so-res-name"></span><div class="so-chips so-res"></div></div>
+        </div>
+        <div class="legend"><span><i class="l-a"></i>только в <code>${esc(va)}</code></span><span><i class="l-both"></i>в обоих</span><span><i class="l-b"></i>только в <code>${esc(vb)}</code></span></div>
+      </div>
+      <div class="widget__foot hx-note"></div>`;
+    const btns = root.querySelectorAll('.hx-ctrl .btn');
+    const pick = i => {
+      const [sym, name, keep, what, rev] = ops[i];
+      const res = all.filter(keep);
+      btns.forEach((b, j) => b.classList.toggle('btn--main', j === i));
+      root.querySelectorAll('.so-rows .so-row:not(.so-row--res) .so-chip').forEach(c => c.classList.toggle('is-off', !res.map(String).includes(c.dataset.x)));
+      const expr = rev ? `${vb} ${sym} ${va}` : `${va} ${sym} ${vb}`;
+      root.querySelector('.so-res-name').innerHTML = `<code>${esc(expr)}</code>`;
+      root.querySelector('.so-res').innerHTML = res.length ? res.map(x => `<span class="so-chip so-${zone(x)}">${esc(x)}</span>`).join('') : '<span class="so-empty">set() — пустое множество</span>';
+      root.querySelector('.hx-note').innerHTML = `<b>${name[0].toUpperCase() + name.slice(1)}</b> <code>${esc(expr)}</code> — ${what}: ${res.length} ${plural(res.length, 'элемент', 'элемента', 'элементов')}. Каждый элемент в результате один раз, даже если он был в обоих множествах.`;
+    };
+    btns.forEach((b, i) => b.addEventListener('click', () => pick(i)));
+    pick(1);
   });
 })();

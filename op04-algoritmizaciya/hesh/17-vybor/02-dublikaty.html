@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>17.2 Повторы · Хеш-структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../hesh.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 17 · Hash map и set: выбор структуры · ОП.04</span></div>
+
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Хеш-структуры</a> · модуль 17 · выбор структуры</p>
+          <p class="running__folio">Глава 17.2</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">17.2</span>
+          <h1>Повторы:<br>множество уже встреченных</h1>
+          <p class="lead">Первая задача занятия 17 — есть ли в списке повтор, LeetCode 217. В главе она решена проходом со множеством уже встреченных элементов. Решение сравнено замером с перебором пар, сортировкой и короткой записью через <code>len(set(...))</code>. Отдельно разобраны частая ошибка в порядке строк и изменение условия — убрать повторы, сохранив порядок.</p>
+        </header>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Идея: что уже встречалось</a></li>
+            <li><a href="#s2">Код и пошаговый прогон</a></li>
+            <li><a href="#s3">Четыре способа: замер</a></li>
+            <li><a href="#s4">Добавить до проверки</a></li>
+            <li><a href="#s5">Порядок первого появления</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Идея: что уже встречалось</h2>
+        <p>Простое решение сравнивает каждый элемент со всеми, что стоят правее: для <code>i</code> перебираются все <code>j &gt; i</code>. Если пара равных нашлась, повтор есть. Пар n(n − 1)/2, поэтому это O(n²). Внутренний цикл здесь только ищет: есть ли значение, равное <code>items[i]</code>.</p>
+        <p>Этот поиск можно перевернуть. Вместо вопроса «есть ли такой элемент правее» задают вопрос «был ли такой элемент левее». Элементы левее уже пройдены, и их можно складывать во множество <code>seen</code>. Тогда на каждом шаге нужна одна проверка <code>x in seen</code>, в среднем O(1), и весь проход стоит O(n). Так работает кассир из главы 17.1: он смотрит в список пробитых номеров и чеки не перечитывает.</p>
+        <p>В таблице — проход по списку <code>[4, 1, 7, 1, 3]</code>: что лежит в <code>seen</code> перед проверкой каждого элемента.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Индекс</th><th>x</th><th><code>seen</code> до проверки</th><th><code>x in seen</code></th><th>Действие</th></tr></thead>
+            <tbody>
+              <tr><td>0</td><td>4</td><td><code>set()</code></td><td>False</td><td>добавить 4</td></tr><tr><td>1</td><td>1</td><td><code>{4}</code></td><td>False</td><td>добавить 1</td></tr><tr><td>2</td><td>7</td><td><code>{1, 4}</code></td><td>False</td><td>добавить 7</td></tr><tr><td>3</td><td>1</td><td><code>{1, 4, 7}</code></td><td>True</td><td>ответ True, проход остановлен</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Порядок действий на шаге — сначала проверить, потом добавить. Если <code>x</code> уже есть в <code>seen</code>, это повтор, и ответ True. Если нет, <code>x</code> добавляется, и проход идёт дальше. Пройденный до конца список повторов не содержит.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Код и пошаговый прогон</h2>
+        <p>Напишите функцию сами. Тесты проверяют контракт из главы 17.1: пустой список, список без повторов, остановку на первом повторе и совпадение с перебором пар на трёхстах случайных списках.</p>
+        <div class="sandbox" data-title="Напишите has_duplicate сами" data-call="print(has_duplicate([4, 1, 7, 1, 3]), has_duplicate([4, 1, 7]))">
+<script type="text/plain" class="sandbox__start">
+def has_duplicate(items):
+    seen = set()
+    for x in items:
+        # Если x уже встречался — повтор найден.
+        # Иначе запомнить x.
+        pass
+    return False
+</script>
+<script type="text/plain" class="sandbox__tests">
+def test_repeat():
+    """повтор в середине списка"""
+    assert has_duplicate([4, 1, 7, 1, 3]) is True
+
+def test_unique():
+    """повторов нет"""
+    r = has_duplicate([4, 1, 7])
+    assert r is False, f"ожидалось False, получено {r!r}"
+
+def test_short():
+    """пустой список и один элемент"""
+    assert has_duplicate([]) is False
+    assert has_duplicate([5]) is False
+
+def test_two_different():
+    """два разных элемента — не повтор"""
+    r = has_duplicate([1, 2])
+    assert r is False, f"ожидалось False, получено {r!r}"
+
+def test_strings():
+    """строки тоже хешируемы"""
+    assert has_duplicate(['болт', 'гайка', 'болт']) is True
+
+def test_stops_early():
+    """проход останавливается на первом повторе"""
+    def items():
+        yield 1
+        yield 1
+        raise AssertionError('функция пошла дальше первого повтора')
+    assert has_duplicate(items()) is True
+
+def test_matches_brute():
+    """300 случайных списков: ответ совпадает с перебором пар"""
+    import random
+    rnd = random.Random(217)
+    for _ in range(300):
+        a = [rnd.randint(-9, 9) for _ in range(rnd.randint(0, 9))]
+        want = any(a[i] == a[j] for i in range(len(a)) for j in range(i + 1, len(a)))
+        assert has_duplicate(a) == want, f"has_duplicate({a}): ожидалось {want}"
+</script>
+</div>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) в среднем · память O(n)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">has_duplicate</span>(items):
+    seen = <span class="k">set</span>()
+    <span class="k">for</span> x <span class="k">in</span> items:
+        <span class="k">if</span> x <span class="k">in</span> seen:
+            <span class="k">return</span> <span class="k">True</span>
+        seen.add(x)
+    <span class="k">return</span> <span class="k">False</span></pre>
+        </figure>
+        <p>Прогон ниже выполнен настоящим запуском Python на списке <code>[4, 1, 7, 1, 3]</code>. Нажимайте «шаг →» и следите за множеством <code>seen</code> в таблице переменных: перед проверкой в нём ровно те элементы, что стоят левее текущего.</p>
+        <div class="tracer" data-trace="dup" data-label="список items" data-title="has_duplicate([4, 1, 7, 1, 3])"></div>
+        <p>На четвёртом элементе, единице, проверка находит её во множестве — единица стояла на индексе 1. Тройка в конце списка не проверяется: ответ уже известен. Во втором прогоне повторов нет, и цикл доходит до конца. Множество к этому моменту содержит все элементы списка — это и есть O(n) памяти из контракта.</p>
+        <div class="tracer" data-trace="dup_none" data-label="список items" data-title="has_duplicate([4, 1, 7])"></div>
+
+        <h2 id="s3"><span class="sec">§3</span>Четыре способа: замер</h2>
+        <p>Занятие 17 требует сравнить поиск в списке и в хеш-структуре. Ниже — четыре решения одной задачи. Перебор пар ищет в списке, сортировка ставит равные элементы рядом, два последних решения ищут во множестве.</p>
+        <figure class="code">
+          <figcaption><span>bench.py</span><span>четыре решения</span></figcaption>
+<pre><span class="k">def</span> <span class="f">has_duplicate_brute</span>(items):          <span class="c"># O(n²), память O(1)</span>
+    <span class="k">for</span> i <span class="k">in</span> <span class="k">range</span>(<span class="k">len</span>(items)):
+        <span class="k">for</span> j <span class="k">in</span> <span class="k">range</span>(i + <span class="n">1</span>, <span class="k">len</span>(items)):
+            <span class="k">if</span> items[i] == items[j]:
+                <span class="k">return</span> <span class="k">True</span>
+    <span class="k">return</span> <span class="k">False</span>
+
+<span class="k">def</span> <span class="f">has_duplicate_sorted</span>(items):         <span class="c"># O(n log n), память O(n)</span>
+    s = <span class="k">sorted</span>(items)
+    <span class="k">for</span> i <span class="k">in</span> <span class="k">range</span>(<span class="n">1</span>, <span class="k">len</span>(s)):
+        <span class="k">if</span> s[i] == s[i - <span class="n">1</span>]:
+            <span class="k">return</span> <span class="k">True</span>
+    <span class="k">return</span> <span class="k">False</span>
+
+<span class="k">def</span> <span class="f">has_duplicate_len</span>(items):            <span class="c"># O(n), память O(n), без раннего выхода</span>
+    <span class="k">return</span> <span class="k">len</span>(<span class="k">set</span>(items)) != <span class="k">len</span>(items)</pre>
+        </figure>
+        <p>В замере список из n разных чисел, перемешанных случайно. Повторов нет, поэтому каждое решение работает до конца — это худший случай для всех четырёх.</p>
+        <div class="bench" data-title="Список из n разных чисел" data-xlabel="длина списка n"
+          data-series='[{"name":"перебор пар","color":"#B3261E","pts":[[1000,9.112],[2000,31.402],[4000,121.047],[8000,517.902]]},{"name":"сортировка","color":"#B4531F","pts":[[1000,0.049],[2000,0.103],[4000,0.241],[8000,0.602]]},{"name":"множество в цикле","color":"#2D7FC1","pts":[[1000,0.019],[2000,0.039],[4000,0.081],[8000,0.161]]},{"name":"len(set(...))","color":"#2F7D4F","pts":[[1000,0.008],[2000,0.018],[4000,0.029],[8000,0.063]]}]'></div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>n</th><th>перебор пар, мс</th><th>сортировка, мс</th><th>множество в цикле, мс</th><th><code>len(set(...))</code>, мс</th></tr></thead>
+            <tbody>
+              <tr><td>1&nbsp;000</td><td>9,1</td><td>0,049</td><td>0,019</td><td>0,008</td></tr>
+              <tr><td>2&nbsp;000</td><td>31,4</td><td>0,103</td><td>0,039</td><td>0,018</td></tr>
+              <tr><td>4&nbsp;000</td><td>121,0</td><td>0,241</td><td>0,081</td><td>0,029</td></tr>
+              <tr><td>8&nbsp;000</td><td>517,9</td><td>0,602</td><td>0,161</td><td>0,063</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Замер выполнен на ноутбуке автора, Python 3.12.12, Apple M4. Каждое число — медиана трёх запусков, в каждом запуске — медиана пятнадцати повторов. Перебор пар при удвоении n замедляется вчетверо: на 8000 чисел он в 3200 раз медленнее множества. Сортировка и множество растут примерно вдвое. Сортировка медленнее множества в 2,5–4 раза: множитель log n и построение нового списка.</p>
+        <p>Короткая запись <code>len(set(items))</code> быстрее цикла в 2–3 раза. Множество в ней строится кодом на C, а цикл <code>for</code> выполняет интерпретатор Python. Но у короткой записи нет раннего выхода: она строит множество из всего списка, даже если повтор стоит в начале. На списке из миллиона чисел, где повтор — третий элемент, цикл отвечает за 0,2 мкс, а <code>len(set(...))</code> — за 7,4 мс. Контракт из главы 17.1 требует остановки на первом повторе, поэтому тест <code>test_stops_early</code> короткую запись не пропускает. Если ранний выход не нужен, а входы небольшие, короткая запись — нормальный ответ на собеседовании, но о нём стоит сказать.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Добавить до проверки</h2>
+        <p>Частая ошибка — поменять местами две строки тела цикла: сначала <code>seen.add(x)</code>, потом <code>if x in seen</code>. Код выглядит так же, но смысл проверки меняется: она спрашивает о множестве, в которое <code>x</code> уже положили. Ниже обе версии запущены на списке без повторов.</p>
+        <span class="run-label">изменённая версия</span>
+        <div class="tracer tracer--bug" data-trace="bug_add_first" data-label="список items" data-title="seen.add(x) до проверки"></div>
+        <span class="run-label run-label--fix">верная версия</span>
+        <div class="tracer" data-trace="dup_none" data-label="список items" data-title="проверка, затем seen.add(x)"></div>
+        <p>Изменённая версия отвечает True на первом же элементе любого непустого списка. Тест на список с повтором её пропускает, поэтому в тестах занятия есть <code>[4, 1, 7]</code> и <code>[1, 2]</code>: на них ответ должен быть False. Правило переносится на все задачи этого вида: во множестве на момент проверки должны быть только элементы левее текущего.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Порядок первого появления</h2>
+        <p>КТП занятия 17 меняет условие: вернуть элементы без повторов, сохранив порядок их первого появления. Запись <code>list(set(items))</code> не подходит: порядок множества определяется ячейками таблицы, глава 0.6. Порядок хранят отдельно — в списке ответа. Множество отвечает на вопрос «был ли элемент», список хранит ответ.</p>
+        <figure class="code">
+          <figcaption><span>solution.py</span><span>время O(n) в среднем · память O(n)</span></figcaption>
+<pre><span class="k">def</span> <span class="f">unique_in_order</span>(items):
+    seen = <span class="k">set</span>()
+    result = []
+    <span class="k">for</span> x <span class="k">in</span> items:
+        <span class="k">if</span> x <span class="k">not in</span> seen:
+            seen.add(x)
+            result.append(x)
+    <span class="k">return</span> result</pre>
+        </figure>
+        <div class="tracer" data-trace="unique" data-label="список items" data-title="unique_in_order([4, 1, 4, 7, 1])"></div>
+        <p>Повторная четвёрка и повторная единица проверку не проходят, и в ответ попадают только первые вхождения: <code>[4, 1, 7]</code>. Тот же ответ даёт <code>list(dict.fromkeys(items))</code> из главы 0.6 — словарь хранит порядок вставки сам. Цикл со множеством длиннее, но его легко изменить: например, сравнивать элементы без учёта регистра, проверяя во множестве <code>x.casefold()</code>, а в ответ добавляя исходный <code>x</code>. Вторая задача занятия — пара с заданной суммой — устроена так же, но в ответе нужен индекс, и множества ей мало. Это глава 17.3.</p>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Студент решил задачу так: <code>return len(set(items)) &lt; len(items)</code>. На каком входе его ответ не совпадёт с контрактом <code>has_duplicate</code>?</div><ul class="quiz__opts">
+          <li><button>На пустом списке</button><p class="quiz__why">0 &lt; 0 — False, как и требует контракт.</p></li>
+          <li><button>На списке строк</button><p class="quiz__why">Строки хешируемы, множество строится так же, ответ верный.</p></li>
+          <li data-ok><button>Ответ всегда верный, но нарушена остановка на первом повторе</button><p class="quiz__why">Верно. Значение True или False совпадает с контрактом на любом списке. Но множество строится из всего входа, и тест на ранний выход не проходит.</p></li>
+          <li><button>На списке из одного элемента</button><p class="quiz__why">1 &lt; 1 — False: повтора нет, ответ верный.</p></li>
+        </ul></div>
+
+        <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Сколько дополнительной памяти использует <code>has_duplicate</code> на списке из n разных чисел?</div><ul class="quiz__opts">
+          <li><button>O(1): множество — одна переменная</button><p class="quiz__why">Переменная одна, но к концу прохода в множестве лежат все n чисел.</p></li>
+          <li data-ok><button>O(n): к концу прохода во множестве все n чисел</button><p class="quiz__why">Верно. Повторов нет, поэтому каждое число добавляется в <code>seen</code>. Это худший случай по памяти.</p></li>
+          <li><button>O(n²): множество хранит пары</button><p class="quiz__why">Множество хранит элементы, а не пары. Пары перебирает решение за O(n²), но памяти оно не берёт.</p></li>
+          <li><button>O(log n), как сортировка</button><p class="quiz__why">Сортировка в Python строит новый список, это O(n). Множество тоже O(n).</p></li>
+        </ul></div>
+
+        <div class="sources">
+          <b>Источники главы</b>
+          <ol>
+            <li>LeetCode 217 «Contains Duplicate» — условие по данным сайта</li>
+            <li>КТП ОП.04, занятие 17: «Сравнить list lookup, set и dict», изменение условия — порядок первого появления</li>
+            <li>Замер: Python 3.12.12, Apple M4, 06.11.2026; прогоны собраны скриптом make_traces.py настоящим запуском</li>
+          </ol>
+        </div>
+
+        <div class="pager"><a href="01-uznat-zadachu.html">← 17.1 Как узнать задачу</a><a href="03-para-s-summoj.html">17.3 Пара с суммой →</a></div>
+        <div class="colophon">
+          <span>Модуль 17 · Hash map и set: выбор структуры · ОП.04 · 3 курс</span>
+          <span class="author-line">Автор: Макаров Максим Николаевич</span>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="traces.js"></script>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+  <script src="../hesh.js"></script>
+</body>
+</html>
