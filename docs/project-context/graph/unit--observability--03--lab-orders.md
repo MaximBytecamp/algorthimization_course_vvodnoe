@@ -21,8 +21,10 @@ tags:
 - [observability/lab-orders/app.py](../../../observability/lab-orders/app.py)
 - [observability/lab-orders/console.html](../../../observability/lab-orders/console.html)
 - [observability/lab-orders/metrics.py](../../../observability/lab-orders/metrics.py)
+- [observability/lab-orders/phases.py](../../../observability/lab-orders/phases.py)
 - [observability/lab-orders/prometheus.yml](../../../observability/lab-orders/prometheus.yml)
 - [observability/lab-orders/run_experiment.py](../../../observability/lab-orders/run_experiment.py)
 - [observability/lab-orders/tasks.py](../../../observability/lab-orders/tasks.py)
+- [observability/lab-orders/watch.py](../../../observability/lab-orders/watch.py)
 
 _Узел создан автоматически. Факты о состоянии работы храните в тематической заметке или `CURRENT.md`._
