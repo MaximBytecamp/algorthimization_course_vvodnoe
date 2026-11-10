@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>1.5 Что измерять · Метрики и наблюдаемость</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="book">
+  <div class="book__body">
+    <div class="spine"><span>Часть 1 · Основы наблюдаемости</span></div>
+    <main class="leaf">
+  <div class="running">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Метрики и наблюдаемость</a> · часть 1 · основы наблюдаемости</p>
+    <p class="running__folio">Лекция 1.5</p>
+  </div>
+
+  <header class="chapter-head">
+    <span class="chapter-num">1.5</span>
+    <h1>Что измерять: золотые сигналы, RED, USE</h1>
+    <p class="lead">Лекции 1.2–1.4 разобрали, как измерять и хранить. Остался вопрос, что измерять у сервиса, чтобы не пропустить проблему. В лекции — три известных набора показателей: четыре золотых сигнала, RED для запросов и USE для ресурсов. Все три проверены на стенде заказов: API принимает заказ, а оплачивает его фоновый обработчик. На нём видно, как один набор остаётся зелёным, пока другой показывает сбой.</p>
+  </header>
+  <dl class="passport">
+    <div><dt>Тема</dt><dd>Основы наблюдаемости</dd></div>
+    <div><dt>Стенд</dt><dd><code>lab-orders</code>: FastAPI, очередь Redis, обработчик Celery</dd></div>
+    <div><dt>Опирается на</dt><dd>лекции 1.1–1.4: четыре свойства сервиса, окно, доля, сигналы</dd></div>
+    <div><dt>Результат</dt><dd>Составить набор показателей для сервиса с API и фоновой обработкой</dd></div>
+  </dl>
+
+  <div class="reader-start">
+    <div>
+      <b>Режим чтения</b>
+      <p>Лекция откроется по одному разделу: на экране одна мысль, кнопка «Дальше» ведёт к следующей. Стрелки ← → на клавиатуре тоже листают, Esc возвращает всю лекцию.</p>
+    </div>
+    <div class="reader-start__btns">
+      <button type="button" data-reader-start="continue" hidden></button>
+      <button type="button" class="primary" data-reader-start="begin">Читать по шагам</button>
+    </div>
+  </div>
+
+  <nav class="contents">
+    <b>В этой лекции</b>
+    <ol>
+      <li><a href="#s1"><span class="csec">§1</span>Стандартный осмотр</a></li>
+      <li><a href="#s2"><span class="csec">§2</span>Стенд заказов</a></li>
+      <li><a href="#s3"><span class="csec">§3</span>Четыре золотых сигнала</a></li>
+      <li><a href="#s4"><span class="csec">§4</span>RED: показатели запросов</a></li>
+      <li><a href="#s5"><span class="csec">§5</span>Наплыв заказов: RED молчит</a></li>
+      <li><a href="#s6"><span class="csec">§6</span>USE: показатели ресурсов</a></li>
+      <li><a href="#s7"><span class="csec">§7</span>Отказ платёжного шлюза</a></li>
+      <li><a href="#s8"><span class="csec">§8</span>Задержка успешных и ошибочных запросов</a></li>
+      <li><a href="#s9"><span class="csec">§9</span>Карта показателей сервиса</a></li>
+      <li><a href="#s10"><span class="csec">§10</span>Частые ошибки</a></li>
+      <li><a href="#s11"><span class="csec">§11</span>Практика</a></li>
+      <li><a href="#s12"><span class="csec">§12</span>Проверьте себя</a></li>
+      <li><a href="#s13"><span class="csec">§13</span>Шпаргалка</a></li>
+      <li><a href="#s14"><span class="csec">§14</span>Глоссарий</a></li>
+    </ol>
+  </nav>
+
+  <section class="part" id="s1">
+    <h2><span class="sec">§1</span>Стандартный осмотр</h2>
+    <p class="about">Почему у показателей сервиса есть стандартный набор.</p>
+    <p>На медосмотре врач не измеряет всё, что можно измерить. У него стандартный набор: пульс, давление, температура. Набор небольшой, но по нему видно большинство проблем, и после него ясно, какие анализы назначать дальше. У сервиса тоже есть стандартные наборы показателей. Их составили инженеры, которые разбирали сбои многих систем и заметили, что почти каждый сбой виден на нескольких одних и тех же числах.</p>
+    <p>Наборы опираются на то, что сервис обещает пользователю. В лекции 1.1 таких обещаний было четыре: доступность, производительность, надёжность и корректность. Показатель нужен там, где обещание может нарушиться незаметно. Разберём три набора:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Три набора показателей: золотые сигналы — для любого сервиса, RED — для всего, что обрабатывает запросы, USE — для каждого ресурса"><rect class="sc-acc" x="10" y="20" width="196" height="100" rx="8"/><text class="tb tc" x="108" y="46">золотые сигналы</text><text class="t tc" x="108" y="70">задержка, трафик,</text><text class="t tc" x="108" y="88">ошибки, насыщение</text><text class="t tc" x="108" y="110">любой сервис</text><rect class="sc-acc" x="222" y="20" width="196" height="100" rx="8"/><text class="tb tc" x="320" y="46">RED</text><text class="t tc" x="320" y="70">частота, ошибки,</text><text class="t tc" x="320" y="88">длительность</text><text class="t tc" x="320" y="110">то, что принимает запросы</text><rect class="sc-box" x="434" y="20" width="196" height="100" rx="8"/><text class="tb tc" x="532" y="46">USE</text><text class="t tc" x="532" y="70">загрузка, насыщение,</text><text class="t tc" x="532" y="88">ошибки</text><text class="t tc" x="532" y="110">каждый ресурс</text><text class="t tc" x="320" y="142">наборы пересекаются и дополняют друг друга</text></svg>
+      <figcaption>Три набора показателей и к чему каждый применяют.</figcaption>
+    </figure>
+    <p>Первые два набора, голубые, описывают работу сервиса со стороны запросов: сколько их, сколько ошибок, сколько ждать. Третий, белый, описывает её со стороны ресурсов: процессора, памяти, обработчиков, соединений с базой. Названия RED и USE составлены из первых букв английских слов.</p>
+    <p class="next">Чтобы сравнить наборы, нужен сервис, у которого есть и запросы, и ресурсы, способные кончиться. Опишем стенд.</p>
+  </section>
+
+  <section class="part" id="s2">
+    <h2><span class="sec">§2</span>Стенд заказов</h2>
+    <p class="about">Как устроен сервис заказов и где в нём могут возникнуть проблемы.</p>
+    <p>Стенд <code>lab-orders</code> принимает заказы. API на FastAPI не оплачивает заказ сам: он записывает заказ, ставит задание в <span class="term">очередь</span> — список заданий, которые ждут обработки, — и сразу отвечает кодом <code>202 Accepted</code> («принято»). Оплату выполняет отдельный процесс — <span class="term">обработчик очереди</span> (воркер) Celery. Он берёт задания из очереди и обращается к платёжному шлюзу. Путь заказа:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Клиент отправляет POST /orders в API, API отвечает 202 и кладёт задание в очередь Redis; обработчик с двумя слотами берёт задания и обращается к платёжному шлюзу"><g class="sc-person"><circle cx="34" cy="60" r="10"/><rect x="23" y="74" width="22" height="32" rx="8"/></g><text class="t tc" x="34" y="126">клиент</text><path class="sc-arrow" d="M56 74 L120 74"/><path class="sc-arrow" d="M112 78 L120 74 L112 70"/><text class="tm tc" x="88" y="66">POST</text><path class="sc-arrow" d="M120 96 L56 96"/><path class="sc-arrow" d="M64 100 L56 96 L64 92"/><text class="tm tc ta" x="88" y="112">202</text><rect class="sc-acc" x="124" y="56" width="110" height="56" rx="8"/><text class="tb tc" x="179" y="80">API</text><text class="t tc" x="179" y="98">~2 мс</text><path class="sc-arrow" d="M238 84 L274 84"/><path class="sc-arrow" d="M266 88 L274 84 L266 80"/><rect class="sc-amb" x="278" y="56" width="140" height="56" rx="8"/><text class="tb tc" x="348" y="78">очередь</text><rect class="sc-box" x="290" y="88" width="14" height="14" rx="2"/><rect class="sc-box" x="308" y="88" width="14" height="14" rx="2"/><rect class="sc-box" x="326" y="88" width="14" height="14" rx="2"/><rect class="sc-box" x="344" y="88" width="14" height="14" rx="2"/><path class="sc-arrow" d="M422 84 L458 84"/><path class="sc-arrow" d="M450 88 L458 84 L450 80"/><rect class="sc-acc" x="462" y="40" width="80" height="90" rx="8"/><text class="t tc" x="502" y="60">обработчик</text><rect class="sc-box" x="474" y="72" width="56" height="20" rx="4"/><text class="tm tc" x="502" y="86">слот 1</text><rect class="sc-box" x="474" y="98" width="56" height="20" rx="4"/><text class="tm tc" x="502" y="112">слот 2</text><path class="sc-arrow" d="M546 84 L574 84"/><path class="sc-arrow" d="M566 88 L574 84 L566 80"/><rect class="sc-box" x="578" y="56" width="56" height="56" rx="8"/><text class="t tc" x="606" y="80">шлюз</text><text class="t tc" x="606" y="98">оплаты</text><text class="t tc" x="502" y="152">одно задание ≈ 0,4 с</text></svg>
+      <figcaption>Путь заказа на стенде: ответ клиенту и оплата разделены очередью.</figcaption>
+    </figure>
+    <p>Слева клиент получает ответ <code>202</code> за пару миллисекунд: API только записал заказ и положил задание в очередь. Дальше заказ ждёт в очереди, пока освободится один из двух <span class="term">слотов</span> обработчика — мест, где задание выполняется. Одно задание занимает слот около 0,4 секунды: проверка заказа 0,05 с, обращение к шлюзу 0,25 с, запись результата 0,1 с. Шлюз смоделирован: долю его отказов можно задать, и обработчик повторяет неудачное обращение до трёх раз. Вот как API принимает заказ:</p>
+    <figure class="code">
+      <figcaption><span>app.py</span><span>обработчик POST /orders</span></figcaption>
+<pre>@app.<span class="f">post</span>(<span class="s">"/orders"</span>, tags=[<span class="s">"Заказы"</span>])
+<span class="k">def</span> <span class="f">create_order</span>(channel: Literal[<span class="s">"web"</span>, <span class="s">"mobile"</span>, <span class="s">"partner"</span>] = <span class="s">"web"</span>):
+    order_id = uuid.<span class="f">uuid4</span>().hex[:<span class="n">12</span>]
+    amount = AMOUNTS[channel]
+    store.<span class="f">hset</span>(<span class="s">f"lab:order:{order_id}"</span>, mapping={<span class="s">"state"</span>: <span class="s">"accepted"</span>, <span class="s">"amount_rub"</span>: amount})
+    process_order.<span class="f">apply_async</span>(args=[order_id, amount, channel, time.<span class="f">time</span>()], queue=QUEUE)
+    metrics.orders_created.<span class="f">labels</span>(channel).<span class="f">inc</span>()
+    store.<span class="f">incr</span>(AWAITING_KEY)
+    <span class="k">return</span> <span class="f">JSONResponse</span>({<span class="s">"order_id"</span>: order_id, <span class="s">"state"</span>: <span class="s">"accepted"</span>, <span class="s">"amount_rub"</span>: amount},
+                        status_code=<span class="n">202</span>, headers={<span class="s">"X-Order-Id"</span>: order_id})</pre>
+    </figure>
+    <div class="walk">
+      <div><code>store.hset(...)</code><span>Записать заказ в Redis со статусом <code>accepted</code> — «принят».</span></div>
+      <div><code>process_order.apply_async(...)</code><span>Поставить задание оплаты в очередь. Последний аргумент <code>time.time()</code> — момент постановки: по нему обработчик потом посчитает, сколько задание ждало.</span></div>
+      <div><code>orders_created...inc()</code><span>Прибавить единицу к числу принятых заказов.</span></div>
+      <div><code>status_code=202</code><span>Ответ «принято»: заказ записан, но ещё не оплачен.</span></div>
+    </div>
+    <p>Код ответа <code>202</code> не говорит, оплачен ли заказ. Он говорит только, что заказ попал в очередь. Поэтому на этом стенде видно, где одни показатели молчат, а другие нет. Стенд запускается так (Redis уже работает на порту 6389, зависимости из <code>requirements.txt</code> установлены):</p>
+    <figure class="code">
+      <figcaption><span>Терминал</span><span>два процесса стенда</span></figcaption>
+<pre>python -m uvicorn app:app --host 127.0.0.1 --port 8025
+celery -A tasks worker --pool threads --concurrency 2 -Q orders</pre>
+    </figure>
+    <p><code>--concurrency 2</code> задаёт два слота, <code>--pool threads</code> — выполнять задания в потоках одного процесса, чтобы его <code>/metrics</code> на порту 8026 видел, сколько слотов занято. У API свой <code>/metrics</code> на порту 8025.</p>
+    <p class="next">Стенд описан. Начнём с самого общего набора показателей.</p>
+  </section>
+
+  <section class="part" id="s3">
+    <h2><span class="sec">§3</span>Четыре золотых сигнала</h2>
+    <p class="about">Какие четыре показателя нужны почти любому сервису.</p>
+    <div class="def">
+      <div class="def__term">Четыре золотых сигнала<i>four golden signals</i></div>
+      <dl><dt>Что это</dt><dd>Набор из четырёх показателей, который инженеры Google предложили в книге о надёжности сервисов (Site Reliability Engineering, 2016): задержка, трафик, ошибки, насыщение.</dd><dt>Что даёт</dt><dd>Если можно измерить только четыре числа, по ним видно большинство проблем сервиса, который отвечает пользователям.</dd><dt>Пример</dt><dd>Для API стенда: длительность ответа, запросов в секунду, доля ответов 5xx, длина очереди.</dd></dl>
+    </div>
+    <p>Разберём каждый сигнал и найдём его на стенде заказов:</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Сигнал</th><th>Вопрос</th><th>На стенде</th></tr></thead>
+        <tbody>
+          <tr><td>задержка (latency)</td><td>сколько ждать ответа</td><td>длительность <code>POST /orders</code>; время ожидания задания в очереди</td></tr>
+          <tr><td>трафик (traffic)</td><td>сколько работы поступает</td><td>запросов в секунду; принятых заказов в секунду</td></tr>
+          <tr><td>ошибки (errors)</td><td>какая доля работы не удалась</td><td>доля ответов 5xx; отказы шлюза и отклонённые заказы</td></tr>
+          <tr><td>насыщение (saturation)</td><td>насколько заняты ограниченные ресурсы</td><td>занятые слоты обработчика; длина очереди</td></tr>
+        </tbody>
+      </table></div>
+    <p>Первые три сигнала описывают поток работы, четвёртый — запас. Насыщение отвечает на вопрос «сколько ещё выдержит сервис». Пока ресурс занят наполовину, лишняя нагрузка поместится. Когда он занят полностью, новая работа встаёт в очередь, и задержка растёт. Поэтому насыщение часто предупреждает о проблеме раньше, чем растёт задержка. На схеме — как насыщение связано с остальными тремя сигналами:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Трафик поступает в ресурс; пока ресурс не насыщен, задержка мала; когда насыщен, работа встаёт в очередь, растут задержка и ошибки"><rect class="sc-box" x="10" y="50" width="110" height="50" rx="8"/><text class="tb tc" x="65" y="72">трафик</text><text class="t tc" x="65" y="90">поступает</text><path class="sc-arrow" d="M124 75 L176 75"/><path class="sc-arrow" d="M168 79 L176 75 L168 71"/><rect class="sc-amb" x="180" y="40" width="130" height="70" rx="8"/><text class="tb tc" x="245" y="64">ресурс</text><text class="t tc" x="245" y="84">насыщение:</text><text class="t tc" x="245" y="100">сколько занято</text><path class="sc-arrow" d="M314 60 L392 34"/><path class="sc-arrow" d="M383 34 L392 34 L386 41"/><path class="sc-arrow" d="M314 90 L392 116"/><path class="sc-arrow" d="M386 109 L392 116 L383 116"/><rect class="sc-acc" x="396" y="14" width="230" height="42" rx="8"/><text class="t tc" x="511" y="40">есть запас → задержка мала</text><rect class="sc-wrn" x="396" y="94" width="230" height="42" rx="8"/><text class="t tc" x="511" y="113">занят полностью → очередь,</text><text class="t tc" x="511" y="129">растут задержка и ошибки</text></svg>
+      <figcaption>Насыщение стоит между трафиком и задержкой.</figcaption>
+    </figure>
+    <p>Трафик слева приходит в ресурс. Если у ресурса есть запас, верхняя стрелка: работа выполняется сразу, задержка мала. Если ресурс занят полностью, нижняя стрелка: работа ждёт, задержка растёт, а когда клиенты перестают ждать, появляются ошибки. Отсюда правило: задержку и ошибки смотрят вместе с насыщением, иначе не понять, почему они выросли.</p>
+    <div class="key"><b>Вывод</b><p>Задержка, трафик и ошибки описывают поток работы, насыщение — запас ресурсов. Насыщение растёт раньше, чем задержка.</p></div>
+    <p class="next">Золотые сигналы — общий набор. Для частей сервиса, которые принимают запросы, есть более узкий набор — RED.</p>
+  </section>
+
+  <section class="part" id="s4">
+    <h2><span class="sec">§4</span>RED: показатели запросов</h2>
+    <p class="about">Три показателя для всего, что принимает запросы.</p>
+    <div class="def">
+      <div class="def__term">RED<i>Rate, Errors, Duration</i></div>
+      <dl><dt>Что это</dt><dd>Три показателя для каждой части сервиса, которая принимает запросы: частота запросов (rate), ошибки (errors), длительность (duration). Набор предложил Том Уилки в 2015 году.</dd><dt>Что даёт</dt><dd>Одинаковый набор для каждого маршрута, сервиса и обработчика заданий: панели всех сервисов устроены одинаково.</dd><dt>Пример</dt><dd>У <code>POST /orders</code>: запросов в секунду, ответов 5xx, миллисекунд на запрос.</dd></dl>
+    </div>
+    <p>RED — это первые три золотых сигнала, сформулированные для одного вида работы: запроса. Насыщения в нём нет, потому что запрос — не ресурс. Посчитаем RED для API стенда. Программа <code>watch.py</code> каждые 5 секунд читает <code>/metrics</code> API и обработчика и печатает разницу с прошлым измерением — как <code>collect.py</code> и <code>window.py</code> в лекции 1.2:</p>
+    <figure class="code">
+      <figcaption><span>watch.py</span><span>основное; файл целиком — в папке стенда lab-orders</span></figcaption>
+<pre><span class="k">def</span> <span class="f">snapshot</span>():
+    api, worker = <span class="f">read</span>(API), <span class="f">read</span>(WORKER)
+    <span class="k">return</span> {
+        <span class="s">"http"</span>: <span class="f">total</span>(api, <span class="s">"orders_http_requests_total"</span>, <span class="s">'route="/orders"'</span>),
+        <span class="s">"http_5xx"</span>: <span class="f">total</span>(api, <span class="s">"orders_http_requests_total"</span>, <span class="s">'status="5'</span>),
+        <span class="s">"http_sec"</span>: <span class="f">total</span>(api, <span class="s">"orders_http_request_duration_seconds_sum"</span>, <span class="s">'"/orders"'</span>),
+        <span class="s">"queue"</span>: <span class="f">total</span>(api, <span class="s">"orders_queue_depth"</span>),
+        <span class="s">"busy"</span>: <span class="f">total</span>(worker, <span class="s">"orders_worker_busy_slots"</span>),
+        <span class="c"># ... принятые, оплаченные, отклонённые, повторы, ожидание в очереди</span>
+    }
+
+before = <span class="f">snapshot</span>()
+<span class="k">while</span> ...:
+    time.<span class="f">sleep</span>(INTERVAL)
+    now = <span class="f">snapshot</span>()
+    d = {k: now[k] - before[k] <span class="k">for</span> k <span class="k">in</span> now}
+    rate = d[<span class="s">"http"</span>] / INTERVAL
+    ms = d[<span class="s">"http_sec"</span>] / d[<span class="s">"http"</span>] * <span class="n">1000</span> <span class="k">if</span> d[<span class="s">"http"</span>] <span class="k">else</span> <span class="n">0</span>
+    <span class="c"># ... печать строки</span>
+    before = now</pre>
+    </figure>
+    <div class="walk">
+      <div><code>read(url)</code><span>Читает текст <code>/metrics</code> и возвращает словарь «строка ряда → число».</span></div>
+      <div><code>total(values, prefix, part)</code><span>Складывает все ряды, имя которых начинается с <code>prefix</code> и содержит <code>part</code>. Так из рядов по кодам ответа получается общее число запросов к <code>/orders</code>.</span></div>
+      <div><code>d = {k: now[k] - before[k] ...}</code><span>Разница двух измерений — сколько прибавилось за 5 секунд. Это окно из лекции 1.2.</span></div>
+      <div><code>rate</code>, <code>d["http_5xx"]</code>, <code>ms</code><span>Три буквы RED: запросов в секунду, ошибок за окно, средняя длительность — сумма секунд, делённая на число запросов.</span></div>
+    </div>
+    <p>Нагрузку подаёт программа <code>phases.py</code> из той же папки: четыре фазы с разным числом заказов в секунду. Во время первой фазы на стенд шло 3 заказа в секунду. Колонки RED из вывода <code>watch.py</code>:</p>
+    <figure class="code code--out"><figcaption><span>Вывод watch.py</span><span>обычная нагрузка, выбранные строки, колонки RED</span></figcaption><pre>время  запр/с  5xx  мс/запр
+  10с     3.0    0      2.0
+  20с     3.0    0      2.1
+  30с     3.0    0      2.0
+  40с     2.8    0      2.9</pre></figure>
+    <p>Частота — 3 запроса в секунду, как и задано. Ошибок 0. Средняя длительность ответа — 2–3 мс. По RED API в полном порядке.</p>
+    <div class="key"><b>Вывод</b><p>RED — частота, ошибки и длительность — одинаково считается для любого маршрута и любого обработчика. Его берут из счётчика запросов и суммы длительностей за окно.</p></div>
+    <p class="next">Посмотрим, что покажет RED, когда заказов станет больше, чем обработчик успевает оплатить.</p>
+  </section>
+
+  <section class="part" id="s5">
+    <h2><span class="sec">§5</span>Наплыв заказов: RED молчит</h2>
+    <p class="about">Что происходит с очередью, пока API отвечает за 2 мс.</p>
+    <p>Во второй фазе опыта на стенд 30 секунд шло 11 заказов в секунду. Два слота по 0,4 секунды на задание теоретически оплачивают 5 заказов в секунду; на стенде вышло 4. Затем 50 секунд шёл 1 заказ в секунду, и очередь разбиралась. Выведем RED API вместе с очередью и временем ожидания в ней:</p>
+    <figure class="code code--out"><figcaption><span>Вывод watch.py</span><span>наплыв и разбор очереди, выбранные строки и колонки</span></figcaption><pre>время  запр/с  5xx  мс/запр  очередь  занято  ждали,с  принято/с  оплачено/с
+  45с    11.0    0      2.1       31  2 из 2      1.4       11.0         4.2
+  55с    11.2    0      1.7       98  2 из 2      7.8       11.2         4.0
+  65с    11.0    0      1.7      168  2 из 2     14.2       11.0         4.0
+  70с    10.6    0      1.7      201  2 из 2     17.4       10.6         4.0
+  80с     1.0    0      3.3      169  2 из 2     23.7        1.0         4.0
+ 100с     1.0    0      2.7      109  2 из 2     36.4        1.0         4.0
+ 120с     0.8    0      2.2       49  2 из 2     49.2        0.8         4.0</pre></figure>
+    <p>Колонки RED — частота, ошибки, длительность — в порядке: 11 запросов в секунду, 0 ошибок, 2 мс. А правее всё иначе. Принято 11 заказов в секунду, оплачено 4. Разница копится в очереди: за 30 секунд наплыва она выросла до 201 задания. Время ожидания в очереди дошло до 49 секунд. Покажем это двумя рисунками на общей шкале времени. Сначала то, что показывает RED:</p>
+    <div class="story">
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Запросов в секунду: 3, затем 11, затем 1, затем 2,5; длительность ответа около 2 мс во всех фазах, ошибок 0"><line class="sc-grid" x1="168" y1="14" x2="168" y2="140"/><line class="sc-grid" x1="249" y1="14" x2="249" y2="140"/><line class="sc-grid" x1="384" y1="14" x2="384" y2="140"/><line class="sc-grid" x1="549" y1="14" x2="549" y2="140"/><line class="sc-axis" x1="60" y1="140" x2="600" y2="140"/><text class="tm tr" x="54" y="43">11</text><text class="tm tr" x="54" y="116">3</text><text class="tm tr" x="54" y="144">0</text><polyline class="sc-plot" points="60,112 168,112 168,39 249,39 249,131 384,131 384,117 549,117 549,140 600,140"/><text class="t" x="176" y="30">наплыв</text><text class="t" x="258" y="30">разбор</text><text class="t" x="392" y="30">шлюз отказывает</text><text class="t ta" x="66" y="100">запросов/с</text><text class="t ta" x="260" y="80">длительность ответа ≈ 2 мс, ошибок 0</text><text class="tm tc" x="60" y="160">0</text><text class="tm tc" x="168" y="160">40</text><text class="tm tc" x="249" y="160">70</text><text class="tm tc" x="384" y="160">120</text><text class="tm tc" x="549" y="160">181 с</text></svg>
+      <figcaption><b>RED у API.</b> Частота меняется по фазам, ошибок нет, длительность не меняется.</figcaption>
+    </figure>
+      <p>Синяя ступенька — частота запросов по фазам: 3, 11, 1 и 2,5 в секунду. Длительность ответа всё время около 2 мс, ошибок ноль. По этому рисунку сбоя нет. Теперь на той же шкале — очередь:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Очередь: ноль до 40 секунд, рост до 201 к 70-й секунде, спад до 49 к 120-й, около 50 до 181-й, ноль к 196-й"><line class="sc-grid" x1="168" y1="14" x2="168" y2="160"/><line class="sc-grid" x1="249" y1="14" x2="249" y2="160"/><line class="sc-grid" x1="384" y1="14" x2="384" y2="160"/><line class="sc-grid" x1="549" y1="14" x2="549" y2="160"/><line class="sc-axis" x1="60" y1="160" x2="600" y2="160"/><text class="tm tr" x="54" y="34">201</text><text class="tm tr" x="54" y="164">0</text><polyline class="sc-plot" style="stroke:var(--warn)" points="60,160 168,160 182,140 195,117 209,97 222,74 236,51 249,30 263,41 276,51 303,70 330,90 357,109 384,128 398,128 438,130 492,126 549,130 562,145 576,157 589,160 600,160"/><circle class="sc-dot-w" cx="249" cy="30" r="5"/><text class="tm tw" x="258" y="28">201 задание, ждали 17 с</text><circle class="sc-dot-w" cx="384" cy="128" r="5"/><text class="tm tw" x="392" y="118">49, ждали 49 с</text><text class="t" x="70" y="150">очередь пуста</text></svg>
+      <figcaption><b>Очередь заказов.</b> Та же шкала времени, что на рисунке выше.</figcaption>
+    </figure>
+    </div>
+    <p>Во время наплыва оранжевая линия очереди поднимается почти прямо: каждые 5 секунд в очередь прибавляется около 35 заданий — 11 пришло в секунду, 4 ушло. На пике 201 задание. Когда наплыв кончился, линия идёт вниз со скоростью около 3 заданий в секунду — обработчик оплачивает 4, приходит 1. Ожидание продолжает расти: задания, попавшие в конец очереди на пике, стоят дольше всех, и последние из них ждали 49 секунд. Пользователь, который оформил заказ в этот момент, ответ <code>202</code> получил за 2 мс, а оплату — почти через минуту.</p>
+    <div class="key key--warn"><b>Вывод</b><p>RED у API показывает только приём заказов. Проблема оказалась за очередью: обработчик был занят полностью, задания копились, ожидание дошло до 49 секунд. Чтобы её увидеть, нужны показатели ресурса — обработчика и его очереди.</p></div>
+    <p class="next">Показатели ресурсов собирает третий набор — USE.</p>
+  </section>
+
+  <section class="part" id="s6">
+    <h2><span class="sec">§6</span>USE: показатели ресурсов</h2>
+    <p class="about">Три вопроса к каждому ресурсу.</p>
+    <p>У кассы в магазине три состояния, о которых стоит знать управляющему. Как часто кассир занят. Сколько людей стоит в очереди. Сколько раз за день касса ломалась. Если кассир занят всё время и очередь растёт, нужна вторая касса, даже если каждый покупатель обслуживается быстро. То же спрашивают о любом ресурсе сервиса.</p>
+    <div class="def">
+      <div class="def__term">USE<i>Utilization, Saturation, Errors</i></div>
+      <dl><dt>Что это</dt><dd>Три вопроса к каждому ресурсу: загрузка (utilization) — какую долю времени ресурс занят; насыщение (saturation) — сколько работы ждёт, потому что ресурс занят; ошибки (errors) — сколько раз ресурс отказал. Метод описал Брендан Грегг в 2012 году.</dd><dt>Что даёт</dt><dd>Ресурс, который кончился, находят перебором: для каждого ресурса — три числа.</dd><dt>Пример</dt><dd>Обработчик стенда: занято 2 слота из 2, в очереди 201 задание, отказов шлюза 0.</dd></dl>
+    </div>
+    <p>Применим USE к обработчику стенда в момент пика наплыва, на 70-й секунде:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 160" role="img" aria-label="USE обработчика на 70-й секунде: загрузка 2 из 2 слотов, 100 процентов; насыщение — 201 задание в очереди; ошибки — 0"><rect class="sc-acc" x="10" y="20" width="196" height="120" rx="8"/><text class="tb tc" x="108" y="44">U · загрузка</text><rect class="sc-wrn" x="40" y="60" width="60" height="30" rx="4"/><rect class="sc-wrn" x="116" y="60" width="60" height="30" rx="4"/><text class="tm tc" x="70" y="80">слот 1</text><text class="tm tc" x="146" y="80">слот 2</text><text class="t tc" x="108" y="120">2 из 2 — 100%</text><rect class="sc-acc" x="222" y="20" width="196" height="120" rx="8"/><text class="tb tc" x="320" y="44">S · насыщение</text><rect class="sc-box" x="240" y="62" width="10" height="26"/><rect class="sc-box" x="254" y="62" width="10" height="26"/><rect class="sc-box" x="268" y="62" width="10" height="26"/><rect class="sc-box" x="282" y="62" width="10" height="26"/><rect class="sc-box" x="296" y="62" width="10" height="26"/><rect class="sc-box" x="310" y="62" width="10" height="26"/><rect class="sc-box" x="324" y="62" width="10" height="26"/><rect class="sc-box" x="338" y="62" width="10" height="26"/><text class="tm" x="356" y="80">… 201</text><text class="t tc tw" x="320" y="120">201 задание ждёт</text><rect class="sc-acc" x="434" y="20" width="196" height="120" rx="8"/><text class="tb tc" x="532" y="44">E · ошибки</text><text class="tb tc" x="532" y="84">0</text><text class="t tc" x="532" y="120">отказов шлюза нет</text></svg>
+      <figcaption>Три числа USE для обработчика на пике наплыва.</figcaption>
+    </figure>
+    <p>Слева оба слота оранжевые: загрузка 100%. Сама по себе полная загрузка — ещё не беда: значит, обработчик работает без простоя. Беду показывает средний блок: 201 задание ждёт, потому что свободных слотов нет. Это насыщение. Справа ошибок ноль: ресурс не ломался, его не хватило. Вывод из трёх чисел: обработчику нужно больше слотов или больше экземпляров. RED API к этому выводу не вёл.</p>
+    <p>USE применяют к каждому ресурсу, который может кончиться. Для типичного сервиса:</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Ресурс</th><th>Загрузка</th><th>Насыщение</th><th>Ошибки</th></tr></thead>
+        <tbody>
+          <tr><td>обработчик очереди</td><td>занятые слоты из всех</td><td>длина очереди, время ожидания в ней</td><td>отказы заданий</td></tr>
+          <tr><td>процессор</td><td>доля времени занят</td><td>процессы, ждущие процессора</td><td>редки; чаще не смотрят</td></tr>
+          <tr><td>память</td><td>занятая доля</td><td>вытеснение на диск</td><td>процесс убит из-за нехватки памяти</td></tr>
+          <tr><td>соединения с базой</td><td>занятые из пула</td><td>запросы, ждущие свободного соединения</td><td>ошибки подключения</td></tr>
+        </tbody>
+      </table></div>
+    <div class="key"><b>Вывод</b><p>USE задаёт три вопроса каждому ресурсу. Полная загрузка без очереди — нормальная работа; загрузка вместе с растущей очередью — нехватка ресурса.</p></div>
+    <p class="next">В третьей фазе опыта ресурс в порядке, но отказывает внешняя система. Посмотрим, что видно на этот раз.</p>
+  </section>
+
+  <section class="part" id="s7">
+    <h2><span class="sec">§7</span>Отказ платёжного шлюза</h2>
+    <p class="about">Где видны ошибки, которые не доходят до HTTP.</p>
+    <p>В последней фазе опыта 60 секунд шло 2,5 заказа в секунду, а платёжный шлюз отказывал в половине обращений. Обработчик повторяет неудачное обращение до трёх раз, и только после четвёртой неудачи отклоняет заказ. Колонки вывода:</p>
+    <figure class="code code--out"><figcaption><span>Вывод watch.py</span><span>шлюз отказывает в 50% обращений, выбранные строки и колонки</span></figcaption><pre>время  запр/с  5xx  мс/запр  очередь  занято  принято/с  оплачено/с  отклонено  повторы
+ 125с     2.6    0      2.2       50  2 из 2        2.6         2.2          0       14
+ 140с     2.4    0      2.3       47  2 из 2        2.4         3.0          0       40
+ 160с     2.4    0      2.0       52  2 из 2        2.4         1.8          1       87
+ 171с     2.6    0      2.4       50  2 из 2        2.6         2.8          4      105
+ 181с     2.2    0      2.0       46  2 из 2        2.2         2.6          4      122</pre></figure>
+    <p>RED у API опять в порядке: 0 ошибок, 2 мс. Клиент на каждый заказ получил <code>202</code>. Но за минуту набралось 122 повтора обращения к шлюзу, и 4 заказа отклонены окончательно. Очередь не уходит ниже 46: каждый повтор снова занимает слот, и обработчику не хватает мощности даже на 2,5 заказа в секунду. Посмотрим, на каком уровне видна каждая проблема:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 180" role="img" aria-label="Уровни: HTTP API — 0 ошибок; задание обработчика — 122 повтора и 4 отказа; бизнес — 4 заказа не оплачены"><rect class="sc-acc" x="10" y="14" width="620" height="44" rx="8"/><text class="tb" x="26" y="41">HTTP API</text><text class="tm" x="180" y="41">202 на каждый · 5xx: 0 · 2 мс</text><text class="t ta" x="520" y="41">всё в порядке</text><rect class="sc-amb" x="10" y="68" width="620" height="44" rx="8"/><text class="tb" x="26" y="95">задание оплаты</text><text class="tm" x="180" y="95">повторов: 122 · очередь ≈ 50</text><text class="t tw" x="520" y="95">видно здесь</text><rect class="sc-wrn" x="10" y="122" width="620" height="44" rx="8"/><text class="tb" x="26" y="149">бизнес</text><text class="tm" x="180" y="149">отклонено заказов: 4</text><text class="t tw" x="520" y="149">оплаты нет</text></svg>
+      <figcaption>Одна проблема на трёх уровнях сервиса.</figcaption>
+    </figure>
+    <p>На верхнем уровне — HTTP — проблемы нет: API только принимает заказы и к шлюзу не обращается. На среднем уровне — задание оплаты — она видна по повторам и насыщению. На нижнем — бизнес — виден результат: 4 заказа не оплачены. Отсюда два правила. Первое: RED считают не только для HTTP, но и для каждого вида заданий — частота заданий, отказы и повторы, длительность выполнения. Второе: кроме технических показателей, нужны <span class="term">бизнес-метрики</span> — числа о том, ради чего сервис существует: принятые, оплаченные и отклонённые заказы.</p>
+    <div class="key key--warn"><b>Вывод</b><p>Ошибка внутри фоновой обработки не попадает в HTTP-код. Её видно по RED заданий и по бизнес-метрикам: повторы, отказы, разница между принятыми и оплаченными заказами.</p></div>
+    <p class="next">Остался один подвох внутри самого RED: как считать длительность, если часть запросов падает.</p>
+  </section>
+
+  <section class="part" id="s8">
+    <h2><span class="sec">§8</span>Задержка успешных и ошибочных запросов</h2>
+    <p class="about">Почему длительность успешных и неуспешных запросов меряют отдельно.</p>
+    <p>Ошибка часто возвращается быстро. Если база не принимает подключения, запрос падает за 5 мс вместо обычных 300. В книге Google поэтому советуют считать задержку успешных и ошибочных запросов отдельно. Посчитаем на примере: 90 успешных запросов по 300 мс и 10 ошибок по 5 мс. Числа придуманы для примера:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>средняя длительность с ошибками и без</span></figcaption>
+<pre>ok = [<span class="n">300</span>] * <span class="n">90</span>                     <span class="c"># успешные запросы, мс</span>
+err = [<span class="n">5</span>] * <span class="n">10</span>                      <span class="c"># быстрые ошибки, мс</span>
+all_requests = ok + err
+<span class="f">print</span>(<span class="s">f"все запросы: {sum(all_requests) / len(all_requests):.1f} мс"</span>)
+<span class="f">print</span>(<span class="s">f"только успешные: {sum(ok) / len(ok):.1f} мс"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>две средние</span></figcaption><pre>все запросы: 270.5 мс
+только успешные: 300.0 мс</pre></figure>
+    <p>Успешные запросы как шли 300 мс, так и идут. Но средняя по всем запросам упала до 270,5 мс: быстрые ошибки потянули её вниз. Если на панели одна общая линия длительности, сбой выглядит как ускорение:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 140" role="img" aria-label="До сбоя средняя 300 мс; во время сбоя общая средняя 270,5 мс выглядит как ускорение, средняя успешных — по-прежнему 300 мс"><text class="t" x="10" y="34">до сбоя</text><rect class="sc-acc" x="170" y="20" width="400" height="20"/><text class="tm" x="576" y="35">300</text><text class="t" x="10" y="74">сбой, все</text><rect class="sc-acc" x="170" y="60" width="361" height="20"/><text class="tm tw" x="538" y="75">270,5 ↓</text><text class="t" x="10" y="114">сбой, успешные</text><rect class="sc-acc" x="170" y="100" width="400" height="20"/><text class="tm" x="576" y="115">300</text></svg>
+      <figcaption>Средняя длительность в мс. Шкала общая для трёх строк.</figcaption>
+    </figure>
+    <p>Верхняя и нижняя полосы одинаковые: для успешных запросов ничего не изменилось. Средняя полоса короче — общая средняя «улучшилась» как раз во время сбоя. Поэтому длительность в RED делят по результату: отдельно для успешных запросов, отдельно для ошибочных, а ошибки считают отдельным показателем.</p>
+    <div class="key"><b>Вывод</b><p>Быстрые ошибки снижают общую длительность. Длительность успешных и ошибочных запросов показывают раздельно.</p></div>
+    <p class="next">Все три набора разобраны. Соберём из них карту показателей стенда.</p>
+  </section>
+
+  <section class="part" id="s9">
+    <h2><span class="sec">§9</span>Карта показателей сервиса</h2>
+    <p class="about">Какой набор к какой части сервиса применять.</p>
+    <p>Наборы не соревнуются: каждый применяют к своей части сервиса. На схеме стенд из §2 с подписями — какой набор где:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 190" role="img" aria-label="Карта: RED — для API и для задания оплаты; USE — для обработчика, очереди и соединений; бизнес-метрики — принято, оплачено, отклонено"><rect class="sc-acc" x="10" y="40" width="130" height="56" rx="8"/><text class="tb tc" x="75" y="64">API</text><text class="t tc" x="75" y="84">POST /orders</text><path class="sc-arrow" d="M144 68 L176 68"/><path class="sc-arrow" d="M168 72 L176 68 L168 64"/><rect class="sc-amb" x="180" y="40" width="130" height="56" rx="8"/><text class="tb tc" x="245" y="74">очередь</text><path class="sc-arrow" d="M314 68 L346 68"/><path class="sc-arrow" d="M338 72 L346 68 L338 64"/><rect class="sc-acc" x="350" y="40" width="130" height="56" rx="8"/><text class="tb tc" x="415" y="64">обработчик</text><text class="t tc" x="415" y="84">задание оплаты</text><path class="sc-arrow" d="M484 68 L516 68"/><path class="sc-arrow" d="M508 72 L516 68 L508 64"/><rect class="sc-box" x="520" y="40" width="110" height="56" rx="8"/><text class="tb tc" x="575" y="74">шлюз</text><text class="tm tc" x="75" y="22">RED</text><text class="tm tc" x="245" y="22">USE: S</text><text class="tm tc" x="415" y="22">RED + USE</text><text class="tm tc" x="575" y="22">RED вызовов</text><rect class="sc-wrn" x="10" y="130" width="620" height="44" rx="8"/><text class="tb" x="26" y="157">бизнес</text><text class="tm" x="140" y="157">принято · оплачено · отклонено · выручка</text></svg>
+      <figcaption>Где на стенде какой набор показателей.</figcaption>
+    </figure>
+    <p>Над каждым блоком — набор, который к нему применяют. API принимает запросы — для него RED. Очередь — это насыщение обработчика, её длину и время ожидания относят к USE. Обработчик и принимает работу, и сам является ресурсом, поэтому у него оба набора: RED заданий и USE слотов. Обращения к шлюзу — тоже запросы, только исходящие: для них RED вызовов — сколько, сколько неудачных, как долго. Снизу во всю ширину — бизнес-метрики: они не привязаны к одному блоку и показывают результат всего пути. Вот эти показатели в виде таблицы, с именами метрик стенда:</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Часть</th><th>Набор</th><th>Метрики стенда</th></tr></thead>
+        <tbody>
+          <tr><td>API</td><td>RED</td><td><code>orders_http_requests_total</code>, <code>orders_http_request_duration_seconds</code></td></tr>
+          <tr><td>очередь</td><td>USE: насыщение</td><td><code>orders_queue_depth</code>, <code>orders_task_queue_wait_seconds</code></td></tr>
+          <tr><td>обработчик</td><td>USE: загрузка</td><td><code>orders_worker_busy_slots</code>, <code>orders_worker_concurrency</code></td></tr>
+          <tr><td>задание оплаты</td><td>RED</td><td><code>orders_tasks_finished_total</code>, <code>orders_task_retries_total</code>, <code>orders_task_duration_seconds</code></td></tr>
+          <tr><td>шлюз</td><td>RED вызовов: ошибки</td><td><code>orders_gateway_failures_total</code></td></tr>
+          <tr><td>бизнес</td><td>результат</td><td><code>orders_created_total</code>, <code>orders_paid_total</code>, <code>orders_rejected_total</code>, <code>orders_revenue_rub_total</code></td></tr>
+        </tbody>
+      </table></div>
+    <div class="key"><b>Вывод</b><p>RED — каждому, кто принимает или отправляет запросы. USE — каждому ресурсу, который может кончиться. Бизнес-метрики — результату всего пути. Вместе они закрывают все четыре золотых сигнала.</p></div>
+  </section>
+
+  <section class="part" id="s10">
+    <h2><span class="sec">§10</span>Частые ошибки</h2>
+    <p class="about">Что делают неправильно и как исправить.</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Что делают</th><th>Что произойдёт</th><th>Как правильно</th></tr></thead>
+        <tbody>
+          <tr><td>измеряют только RED у HTTP</td><td>сбой фоновой обработки не виден: API отвечает 202 за 2 мс</td><td>RED для заданий, USE для обработчика, бизнес-метрики</td></tr>
+          <tr><td>считают полную загрузку ресурса бедой</td><td>тревога при нормальной работе без простоя</td><td>смотреть загрузку вместе с насыщением — очередью и ожиданием</td></tr>
+          <tr><td>измеряют длину очереди без времени ожидания</td><td>непонятно, сколько ждёт пользователь</td><td>измерять и длину, и время от постановки до начала выполнения</td></tr>
+          <tr><td>смешивают длительность успешных и ошибочных запросов</td><td>быстрые ошибки выглядят как ускорение</td><td>показывать длительность раздельно по результату</td></tr>
+          <tr><td>считают повтор и окончательный отказ одним событием</td><td>122 повтора выглядят как 122 потерянных заказа</td><td>разные счётчики: повторы, отклонённые заказы</td></tr>
+          <tr><td>не заводят бизнес-метрик</td><td>технически всё зелёное, а оплат нет</td><td>считать принятые, оплаченные и отклонённые</td></tr>
+        </tbody>
+      </table></div>
+  </section>
+
+  <section class="part" id="s11">
+    <h2><span class="sec">§11</span>Практика</h2>
+    <p class="about">Три задачи на то, что разобрано в лекции. Решение спрятано под задачей.</p>
+    <h3>Задача 1. Разложите показатели по наборам</h3>
+    <p>Ситуация: у сервиса рассылки писем есть показатели:</p>
+    <ul>
+      <li>писем отправлено в секунду;</li>
+      <li>доля писем, которые почтовый сервер не принял;</li>
+      <li>занятые соединения с почтовым сервером из 10;</li>
+      <li>сколько писем ждёт отправки;</li>
+      <li>время от постановки письма до отправки.</li>
+    </ul>
+    <div class="key"><b>Что нужно сделать</b><p>Для каждого показателя назвать набор (RED или USE) и букву.</p></div>
+    <details><summary>Решение</summary>
+    <p>Писем в секунду — RED, R (частота). Доля непринятых — RED, E (ошибки). Занятые соединения — USE, U (загрузка). Ждущие письма — USE, S (насыщение). Время до отправки — задержка письма, RED, D. Если она растёт вместе с числом ждущих писем, это признак насыщения.</p>
+    </details>
+
+    <h3>Задача 2. Сколько ждать</h3>
+    <p>Ситуация: обработчик стенда оплачивает 4 заказа в секунду. В очереди 120 заданий, новые заказы не поступают.</p>
+    <div class="key"><b>Что нужно сделать</b><p>Посчитать, сколько секунд будет ждать последнее задание очереди, и сколько — если число слотов увеличить вдвое.</p></div>
+    <details><summary>Решение</summary>
+    <p>120 / 4 = 30 секунд. Если удвоить слоты, обработчик будет оплачивать около 8 заказов в секунду: 120 / 8 = 15 секунд. Это оценка: на стенде два слота дали 4 заказа в секунду вместо расчётных 5, и при большем числе слотов узким местом может стать сам шлюз.</p>
+    </details>
+
+    <h3>Задача 3. Всё зелёное</h3>
+    <p>Ситуация: на панели сервиса заказов — только RED API. Все три показателя в норме. Поддержка получает жалобы, что заказы висят в статусе «принят».</p>
+    <div class="key"><b>Что нужно сделать</b><p>Назвать три показателя, которые нужно посмотреть первыми, и что каждый может показать.</p></div>
+    <details><summary>Решение</summary>
+    <p>Длину очереди и время ожидания в ней — насыщение обработчика, как в §5. Занятые слоты обработчика — если 0 из 2, обработчик остановлен; если 2 из 2, ему не хватает мощности. Разницу между принятыми и оплаченными заказами и число отклонённых — бизнес-результат, как в §7.</p>
+    </details>
+  </section>
+
+  <section class="part" id="s12">
+    <h2><span class="sec">§12</span>Проверьте себя</h2>
+    <p class="about">Вопросы по лекции. Ответ раскрывается щелчком.</p>
+    <details><summary>Назовите четыре золотых сигнала.</summary><p>Задержка, трафик, ошибки, насыщение.</p></details>
+    <details><summary>Почему во время наплыва RED у API был в норме?</summary><p>API только записывает заказ и ставит задание в очередь — это занимает 2 мс при любой нагрузке. Нехватка мощности была у обработчика, за очередью.</p></details>
+    <details><summary>Обработчик занят на 100%, очередь пуста. Это проблема?</summary><p>Нет. Обработчик работает без простоя и успевает. Проблема — когда к полной загрузке добавляется растущая очередь.</p></details>
+    <details><summary>Почему 122 повтора не означают 122 потерянных заказа?</summary><p>Повтор — это новая попытка обращения к шлюзу. Заказ отклоняется только после четырёх неудачных попыток; таких на стенде было 4.</p></details>
+    <details><summary>Почему средняя длительность может упасть во время сбоя?</summary><p>Ошибки часто возвращаются быстрее успешных запросов. В общей средней они тянут её вниз.</p></details>
+  </section>
+
+  <section class="part" id="s13">
+    <h2><span class="sec">§13</span>Шпаргалка</h2>
+    <p class="about">Опорные понятия лекции одним списком.</p>
+    <div class="cheat">
+      <div><b>Золотые сигналы</b><code>задержка</code><code>трафик</code><code>ошибки</code><code>насыщение</code></div>
+      <div><b>RED — запросам</b><code>rate</code><code>errors</code><code>duration</code></div>
+      <div><b>USE — ресурсам</b><code>utilization</code><code>saturation</code><code>errors</code></div>
+      <div><b>Фоновая обработка</b><code>длина очереди</code><code>время ожидания</code><code>повторы ≠ отказы</code></div>
+      <div><b>Бизнес-метрики</b><code>принято</code><code>оплачено</code><code>отклонено</code></div>
+      <div><b>Длительность</b><code>успешные отдельно</code><code>ошибочные отдельно</code></div>
+    </div>
+  </section>
+
+  <section class="part" id="s14">
+    <h2><span class="sec">§14</span>Глоссарий</h2>
+    <p class="about">Термины лекции, включая понятия из лекций 1.1–1.4: формулировка, пример и рисунок.</p>
+    <div class="glossary">
+      <article class="gl" id="g-metric">
+        <div class="gl__text">
+          <h3>Метрика<i>metric</i></h3>
+          <p class="gl__def">Число, которое описывает много событий сразу и хранится как временной ряд.</p>
+          <p class="gl__ex"><b>Пример</b><code>orders_queue_depth</code> — заданий в очереди.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.4, §2</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Метрика"><rect class="sc-box" x="10" y="30" width="60" height="70" rx="6"/><text class="t tc" x="40" y="70">много</text><path class="sc-arrow" d="M76 65 L150 65"/><path class="sc-arrow" d="M142 69 L150 65 L142 61"/><rect class="sc-acc" x="156" y="44" width="94" height="42" rx="8"/><text class="tm tc" x="203" y="70">число</text></svg></figure>
+      </article>
+      <article class="gl" id="g-window">
+        <div class="gl__text">
+          <h3>Окно времени<i>time window</i></h3>
+          <p class="gl__def">Промежуток, за который складывают измерения. Количество за окно — разница двух измерений растущего числа.</p>
+          <p class="gl__ex"><b>Пример</b><code>watch.py</code> считает запросы за 5 секунд.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.2, §7</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Окно времени"><line class="sc-axis" x1="10" y1="100" x2="250" y2="100"/><rect class="sc-amb" x="100" y="40" width="60" height="54" rx="4"/><text class="tm tc" x="130" y="120">5 с</text></svg></figure>
+      </article>
+      <article class="gl" id="g-golden">
+        <div class="gl__text">
+          <h3>Четыре золотых сигнала<i>four golden signals</i></h3>
+          <p class="gl__def">Задержка, трафик, ошибки и насыщение — общий набор показателей для сервиса, который отвечает пользователям.</p>
+          <p class="gl__ex"><b>Пример</b>2 мс, 11 запросов/с, 0 ошибок, 201 задание в очереди.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.5, §3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Четыре золотых сигнала"><rect class="sc-acc" x="10" y="20" width="114" height="40" rx="6"/><text class="t tc" x="67" y="45">задержка</text><rect class="sc-acc" x="136" y="20" width="114" height="40" rx="6"/><text class="t tc" x="193" y="45">трафик</text><rect class="sc-acc" x="10" y="70" width="114" height="40" rx="6"/><text class="t tc" x="67" y="95">ошибки</text><rect class="sc-amb" x="136" y="70" width="114" height="40" rx="6"/><text class="t tc" x="193" y="95">насыщение</text></svg></figure>
+      </article>
+      <article class="gl" id="g-red">
+        <div class="gl__text">
+          <h3>RED<i>Rate, Errors, Duration</i></h3>
+          <p class="gl__def">Частота, ошибки и длительность — набор для каждой части сервиса, которая принимает или отправляет запросы.</p>
+          <p class="gl__ex"><b>Пример</b><code>POST /orders</code>: 11 запросов/с, 0 ошибок, 2 мс.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.5, §4</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="RED"><rect class="sc-acc" x="10" y="40" width="74" height="50" rx="6"/><text class="tb tc" x="47" y="70">R</text><rect class="sc-acc" x="93" y="40" width="74" height="50" rx="6"/><text class="tb tc" x="130" y="70">E</text><rect class="sc-acc" x="176" y="40" width="74" height="50" rx="6"/><text class="tb tc" x="213" y="70">D</text><text class="t tc" x="130" y="114">запросы</text></svg></figure>
+      </article>
+      <article class="gl" id="g-use">
+        <div class="gl__text">
+          <h3>USE<i>Utilization, Saturation, Errors</i></h3>
+          <p class="gl__def">Загрузка, насыщение и ошибки — три вопроса к каждому ресурсу, который может кончиться.</p>
+          <p class="gl__ex"><b>Пример</b>обработчик: 2 из 2 слотов, 201 задание ждёт, 0 ошибок.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.5, §6</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="USE"><rect class="sc-box" x="10" y="40" width="74" height="50" rx="6"/><text class="tb tc" x="47" y="70">U</text><rect class="sc-box" x="93" y="40" width="74" height="50" rx="6"/><text class="tb tc" x="130" y="70">S</text><rect class="sc-box" x="176" y="40" width="74" height="50" rx="6"/><text class="tb tc" x="213" y="70">E</text><text class="t tc" x="130" y="114">ресурсы</text></svg></figure>
+      </article>
+      <article class="gl" id="g-saturation">
+        <div class="gl__text">
+          <h3>Насыщение<i>saturation</i></h3>
+          <p class="gl__def">Сколько работы ждёт, потому что ресурс занят полностью. Обычно видно по длине очереди и времени ожидания.</p>
+          <p class="gl__ex"><b>Пример</b>на пике наплыва 201 задание ждало до 49 секунд.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.5, §3, §6</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Насыщение"><rect class="sc-box" x="10" y="50" width="16" height="30"/><rect class="sc-box" x="30" y="50" width="16" height="30"/><rect class="sc-box" x="50" y="50" width="16" height="30"/><rect class="sc-box" x="70" y="50" width="16" height="30"/><rect class="sc-box" x="90" y="50" width="16" height="30"/><path class="sc-arrow" d="M112 65 L150 65"/><rect class="sc-wrn" x="156" y="40" width="94" height="50" rx="8"/><text class="t tc" x="203" y="70">занят</text></svg></figure>
+      </article>
+      <article class="gl" id="g-queue">
+        <div class="gl__text">
+          <h3>Очередь и обработчик<i>queue, worker</i></h3>
+          <p class="gl__def">Очередь — список заданий, которые ждут обработки. Обработчик — процесс, который берёт задания из очереди и выполняет их в слотах.</p>
+          <p class="gl__ex"><b>Пример</b>Redis-очередь <code>orders</code> и обработчик Celery с двумя слотами.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.5, §2</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Очередь и обработчик"><rect class="sc-amb" x="10" y="40" width="110" height="50" rx="8"/><text class="t tc" x="65" y="70">очередь</text><path class="sc-arrow" d="M124 65 L150 65"/><rect class="sc-acc" x="156" y="30" width="94" height="70" rx="8"/><text class="tm tc" x="203" y="58">слот 1</text><text class="tm tc" x="203" y="82">слот 2</text></svg></figure>
+      </article>
+      <article class="gl" id="g-business">
+        <div class="gl__text">
+          <h3>Бизнес-метрика<i>business metric</i></h3>
+          <p class="gl__def">Число о том, ради чего сервис существует: заказы, оплаты, выручка. Показывает результат всего пути от заказа до оплаты.</p>
+          <p class="gl__ex"><b>Пример</b><code>orders_rejected_total</code>: 4 заказа отклонены при 0 ошибок HTTP.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.5, §7</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Бизнес-метрика"><rect class="sc-acc" x="10" y="30" width="110" height="34" rx="6"/><text class="tm tc" x="65" y="52">принято</text><rect class="sc-acc" x="140" y="30" width="110" height="34" rx="6"/><text class="tm tc" x="195" y="52">оплачено</text><rect class="sc-wrn" x="75" y="78" width="110" height="34" rx="6"/><text class="tm tc" x="130" y="100">отклонено</text></svg></figure>
+      </article>
+      <article class="gl" id="g-latency">
+        <div class="gl__text">
+          <h3>Длительность<i>latency, duration</i></h3>
+          <p class="gl__def">Время от начала до конца операции. У успешных и ошибочных запросов её показывают раздельно.</p>
+          <p class="gl__ex"><b>Пример</b>с быстрыми ошибками общая средняя 270,5 мс, у успешных — 300 мс.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.1, §7; лекция 1.5, §8</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Длительность"><rect class="sc-acc" x="10" y="30" width="200" height="22"/><text class="tm" x="214" y="46">300</text><rect class="sc-acc" x="10" y="74" width="180" height="22"/><text class="tm tw" x="194" y="90">270,5</text></svg></figure>
+      </article>
+    </div>
+  </section>
+
+  <section class="part">
+    <h3>Итог лекции</h3>
+    <p>Что измерять, подсказывают три набора. Четыре золотых сигнала — задержка, трафик, ошибки, насыщение — общий набор для любого сервиса. RED — частота, ошибки, длительность — для всего, что принимает или отправляет запросы. USE — загрузка, насыщение, ошибки — для каждого ресурса. На стенде заказов RED у API весь опыт был в норме: 0 ошибок, около 2 мс. Во время наплыва обработчик был занят полностью, очередь выросла до 201 задания, а ожидание — до 49 секунд; это показал USE. При отказах шлюза набралось 122 повтора и 4 отклонённых заказа; это показали RED заданий и бизнес-метрики. Длительность успешных и ошибочных запросов показывают раздельно, иначе быстрые ошибки выглядят как ускорение.</p>
+    <h3>Источники</h3>
+    <ul class="sources">
+      <li>Google SRE Book. Monitoring Distributed Systems: The Four Golden Signals — sre.google/sre-book/monitoring-distributed-systems</li>
+      <li>Tom Wilkie. The RED Method: How to Instrument Your Services — grafana.com/blog/2018/08/02/the-red-method-how-to-instrument-your-services</li>
+      <li>Brendan Gregg. The USE Method — brendangregg.com/usemethod.html</li>
+      <li>Вывод <code>watch.py</code> снят на стенде lab-orders (FastAPI 0.115.6, Celery 5.4.0, kombu 5.4.2, Redis 8) 10.11.2026: обычная нагрузка 3 заказа/с — 40 с, наплыв 11/с — 30 с, разбор 1/с — 50 с, отказ шлюза 50% при 2,5/с — 60 с</li>
+    </ul>
+  </section>
+
+  <div class="pager">
+    <a href="1-4-signaly.html">← 1.4 Сигналы</a>
+    <a href="index.html">К содержанию справочника</a>
+    <span class="pager__soon">1.6 Разбор инцидента · готовится →</span>
+  </div>
+  <div class="colophon">
+    <span>Лекция 1.5 · Что измерять · Метрики и наблюдаемость</span>
+    <span class="author-line">Автор: Макаров Максим Николаевич</span>
+  </div>
+    </main>
+  </div>
+</div>
+<script src="reader.js"></script>
+</body>
+</html>
