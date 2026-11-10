@@ -216,18 +216,18 @@ render     по часам: 0.05 с  процессор: 0.05 с</pre></figure>
     <p><b>Прогон на живых данных.</b> Напечатаем показания обоих таймеров до ожидания, после него и после сборки списка, а заодно — что лежит в <code>rows</code> и что вернул <code>json.dumps</code>:</p>
     <figure class="code">
       <figcaption><span>Python</span><span>таймеры по шагам</span></figcaption>
-<pre>import json
-import time
+<pre><span class="k">import</span> json
+<span class="k">import</span> time
 
-wall, cpu = time.perf_counter(), time.process_time()
-print(f&quot;старт:        perf_counter = {wall:.3f}  process_time = {cpu:.3f}&quot;)
-time.sleep(0.5)
-print(f&quot;после sleep:  perf_counter = {time.perf_counter():.3f}  process_time = {time.process_time():.3f}&quot;)
-rows = [{&quot;id&quot;: i, &quot;name&quot;: f&quot;товар {i}&quot;} for i in range(200_000)]
-print(f&quot;после списка: perf_counter = {time.perf_counter():.3f}  process_time = {time.process_time():.3f}&quot;)
-print(&quot;rows[:2] =&quot;, rows[:2], &quot; len =&quot;, len(rows))
-text = json.dumps(rows, ensure_ascii=False)
-print(&quot;json:&quot;, text[:46], &quot;… всего&quot;, len(text), &quot;символов&quot;)</pre>
+wall, cpu = time.<span class="f">perf_counter</span>(), time.<span class="f">process_time</span>()
+<span class="f">print</span>(<span class="s">f&quot;старт:        perf_counter = {wall:.3f}  process_time = {cpu:.3f}&quot;</span>)
+time.<span class="f">sleep</span>(<span class="n">0.5</span>)
+<span class="f">print</span>(<span class="s">f&quot;после sleep:  perf_counter = {time.perf_counter():.3f}  process_time = {time.process_time():.3f}&quot;</span>)
+rows = [{<span class="s">&quot;id&quot;</span>: i, <span class="s">&quot;name&quot;</span>: <span class="s">f&quot;товар {i}&quot;</span>} <span class="k">for</span> i <span class="k">in</span> <span class="f">range</span>(<span class="n">200_000</span>)]
+<span class="f">print</span>(<span class="s">f&quot;после списка: perf_counter = {time.perf_counter():.3f}  process_time = {time.process_time():.3f}&quot;</span>)
+<span class="f">print</span>(<span class="s">&quot;rows[:2] =&quot;</span>, rows[:<span class="n">2</span>], <span class="s">&quot; len =&quot;</span>, <span class="f">len</span>(rows))
+text = json.<span class="f">dumps</span>(rows, ensure_ascii=<span class="k">False</span>)
+<span class="f">print</span>(<span class="s">&quot;json:&quot;</span>, text[:<span class="n">46</span>], <span class="s">&quot;… всего&quot;</span>, <span class="f">len</span>(text), <span class="s">&quot;символов&quot;</span>)</pre>
     </figure>
     <figure class="code code--out"><figcaption><span>Вывод</span><span>показания таймеров</span></figcaption><pre>старт:        perf_counter = 514789.079  process_time = 0.036
 после sleep:  perf_counter = 514789.585  process_time = 0.036
@@ -273,29 +273,29 @@ pstats.<span class="f">Stats</span>(profiler).<span class="f">strip_dirs</span>(
     <p><b>Прогон на живых данных.</b> Посмотрим, что профилировщик хранит внутри: сколько вызовов он записал и какие числа у трёх функций из отчёта:</p>
     <figure class="code">
       <figcaption><span>Python</span><span>содержимое pstats.Stats</span></figcaption>
-<pre>import cProfile
-import pstats
-import time
-import json
+<pre><span class="k">import</span> cProfile
+<span class="k">import</span> pstats
+<span class="k">import</span> time
+<span class="k">import</span> json
 
-def load_rows():
-    time.sleep(0.5)
-    return [{&quot;id&quot;: i, &quot;name&quot;: f&quot;товар {i}&quot;} for i in range(200_000)]
+<span class="k">def</span> <span class="f">load_rows</span>():
+    time.<span class="f">sleep</span>(<span class="n">0.5</span>)
+    <span class="k">return</span> [{<span class="s">&quot;id&quot;</span>: i, <span class="s">&quot;name&quot;</span>: <span class="s">f&quot;товар {i}&quot;</span>} <span class="k">for</span> i <span class="k">in</span> <span class="f">range</span>(<span class="n">200_000</span>)]
 
-def render(rows):
-    return json.dumps(rows, ensure_ascii=False)
+<span class="k">def</span> <span class="f">render</span>(rows):
+    <span class="k">return</span> json.<span class="f">dumps</span>(rows, ensure_ascii=<span class="k">False</span>)
 
-def report():
-    return render(load_rows())
+<span class="k">def</span> <span class="f">report</span>():
+    <span class="k">return</span> <span class="f">render</span>(<span class="f">load_rows</span>())
 
-profiler = cProfile.Profile(time.process_time)
-profiler.runcall(report)
-stats = pstats.Stats(profiler)
-print(&quot;вызовов записано:&quot;, stats.total_calls)
-for (file, line, name), (cc, nc, tt, ct, callers) in sorted(stats.stats.items(), key=lambda x: -x[1][2]):
-    if name not in (&quot;iterencode&quot;, &quot;load_rows&quot;, &quot;&lt;built-in method time.sleep&gt;&quot;):
-        continue
-    print(f&quot;{name:&lt;28} вызовов {nc}  tottime {tt:.3f}  cumtime {ct:.3f}&quot;)</pre>
+profiler = cProfile.<span class="f">Profile</span>(time.process_time)
+profiler.<span class="f">runcall</span>(report)
+stats = pstats.<span class="f">Stats</span>(profiler)
+<span class="f">print</span>(<span class="s">&quot;вызовов записано:&quot;</span>, stats.total_calls)
+<span class="k">for</span> (file, line, name), (cc, nc, tt, ct, callers) <span class="k">in</span> <span class="f">sorted</span>(stats.stats.<span class="f">items</span>(), key=<span class="k">lambda</span> x: -x[<span class="n">1</span>][<span class="n">2</span>]):
+    <span class="k">if</span> name <span class="k">not</span> <span class="k">in</span> (<span class="s">&quot;iterencode&quot;</span>, <span class="s">&quot;load_rows&quot;</span>, <span class="s">&quot;&lt;built-in method time.sleep&gt;&quot;</span>):
+        <span class="k">continue</span>
+    <span class="f">print</span>(<span class="s">f&quot;{name:&lt;28} вызовов {nc}  tottime {tt:.3f}  cumtime {ct:.3f}&quot;</span>)</pre>
     </figure>
     <figure class="code code--out"><figcaption><span>Вывод</span><span>записанные вызовы</span></figcaption><pre>вызовов записано: 12
 iterencode                   вызовов 1  tottime 0.062  cumtime 0.062
@@ -345,19 +345,19 @@ total = <span class="n">20</span>                                   <span class=
     <p><b>Прогон на живых данных.</b> Проверим на свежем стенде, откуда берутся 460 байт на запрос. Отправим один запрос, затем второй и сравним размеры:</p>
     <figure class="code">
       <figcaption><span>Python</span><span>один и два запроса</span></figcaption>
-<pre>import json
-from urllib.request import urlopen
+<pre><span class="k">import</span> json
+<span class="k">from</span> urllib.request <span class="k">import</span> urlopen
 
-BASE = &quot;http://127.0.0.1:8015&quot;
-urlopen(BASE + &quot;/products?scenario=fast&quot;).read()
-metrics = urlopen(BASE + &quot;/metrics&quot;).read()
-events = urlopen(BASE + &quot;/events&quot;).read()
-print(&quot;/metrics:&quot;, len(metrics), &quot;байт,&quot;, len(metrics.decode().splitlines()), &quot;строк&quot;)
-print(&quot;/events: &quot;, len(events), &quot;байт, записей:&quot;, len(json.loads(events)[&quot;events&quot;]))
-one = json.dumps(json.loads(events)[&quot;events&quot;][0])
-print(&quot;одна запись:&quot;, len(one), &quot;байт&quot;)
-urlopen(BASE + &quot;/products?scenario=fast&quot;).read()
-print(&quot;после второго запроса: /metrics&quot;, len(urlopen(BASE + &quot;/metrics&quot;).read()), &quot;байт, /events&quot;, len(urlopen(BASE + &quot;/events&quot;).read()), &quot;байт&quot;)</pre>
+BASE = <span class="s">&quot;http://127.0.0.1:8015&quot;</span>
+<span class="f">urlopen</span>(BASE + <span class="s">&quot;/products?scenario=fast&quot;</span>).<span class="f">read</span>()
+metrics = <span class="f">urlopen</span>(BASE + <span class="s">&quot;/metrics&quot;</span>).<span class="f">read</span>()
+events = <span class="f">urlopen</span>(BASE + <span class="s">&quot;/events&quot;</span>).<span class="f">read</span>()
+<span class="f">print</span>(<span class="s">&quot;/metrics:&quot;</span>, <span class="f">len</span>(metrics), <span class="s">&quot;байт,&quot;</span>, <span class="f">len</span>(metrics.<span class="f">decode</span>().<span class="f">splitlines</span>()), <span class="s">&quot;строк&quot;</span>)
+<span class="f">print</span>(<span class="s">&quot;/events: &quot;</span>, <span class="f">len</span>(events), <span class="s">&quot;байт, записей:&quot;</span>, <span class="f">len</span>(json.<span class="f">loads</span>(events)[<span class="s">&quot;events&quot;</span>]))
+one = json.<span class="f">dumps</span>(json.<span class="f">loads</span>(events)[<span class="s">&quot;events&quot;</span>][<span class="n">0</span>])
+<span class="f">print</span>(<span class="s">&quot;одна запись:&quot;</span>, <span class="f">len</span>(one), <span class="s">&quot;байт&quot;</span>)
+<span class="f">urlopen</span>(BASE + <span class="s">&quot;/products?scenario=fast&quot;</span>).<span class="f">read</span>()
+<span class="f">print</span>(<span class="s">&quot;после второго запроса: /metrics&quot;</span>, <span class="f">len</span>(<span class="f">urlopen</span>(BASE + <span class="s">&quot;/metrics&quot;</span>).<span class="f">read</span>()), <span class="s">&quot;байт, /events&quot;</span>, <span class="f">len</span>(<span class="f">urlopen</span>(BASE + <span class="s">&quot;/events&quot;</span>).<span class="f">read</span>()), <span class="s">&quot;байт&quot;</span>)</pre>
     </figure>
     <figure class="code code--out"><figcaption><span>Вывод</span><span>размеры после первого и второго запроса</span></figcaption><pre>/metrics: 810 байт, 15 строк
 /events:  544 байт, записей: 1

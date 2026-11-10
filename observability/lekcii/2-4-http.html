@@ -86,21 +86,21 @@ orders_total 7.0</pre></figure>
     <p><b>Прогон на живых данных.</b> Запросим <code>/metrics</code> до запуска сервера, после запуска и после <code>inc(7)</code>:</p>
     <figure class="code">
       <figcaption><span>Python</span><span>три момента</span></figcaption>
-<pre>from urllib.request import urlopen
-from prometheus_client import CollectorRegistry, Counter, start_http_server
+<pre><span class="k">from</span> urllib.request <span class="k">import</span> urlopen
+<span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, start_http_server
 
-registry = CollectorRegistry()
-orders = Counter(&quot;orders&quot;, &quot;Принятые заказы&quot;, registry=registry)
-try:
-    urlopen(&quot;http://localhost:8000/metrics&quot;)
-except OSError as error:
-    print(&quot;до start_http_server:&quot;, type(error).__name__)
-start_http_server(8000, registry=registry)
-line = [l for l in urlopen(&quot;http://localhost:8000/metrics&quot;).read().decode().splitlines() if l.startswith(&quot;orders_total&quot;)]
-print(&quot;после start_http_server, до inc:&quot;, line)
-orders.inc(7)
-raw = urlopen(&quot;http://localhost:8000/metrics&quot;).read()
-print(&quot;после inc(7):&quot;, [l for l in raw.decode().splitlines() if l.startswith(&quot;orders_total&quot;)], &quot;| read() вернул&quot;, type(raw).__name__, len(raw), &quot;байт&quot;)</pre>
+registry = <span class="f">CollectorRegistry</span>()
+orders = <span class="f">Counter</span>(<span class="s">&quot;orders&quot;</span>, <span class="s">&quot;Принятые заказы&quot;</span>, registry=registry)
+<span class="k">try</span>:
+    <span class="f">urlopen</span>(<span class="s">&quot;http://localhost:8000/metrics&quot;</span>)
+<span class="k">except</span> OSError <span class="k">as</span> error:
+    <span class="f">print</span>(<span class="s">&quot;до start_http_server:&quot;</span>, <span class="f">type</span>(error).__name__)
+<span class="f">start_http_server</span>(<span class="n">8000</span>, registry=registry)
+line = [l <span class="k">for</span> l <span class="k">in</span> <span class="f">urlopen</span>(<span class="s">&quot;http://localhost:8000/metrics&quot;</span>).<span class="f">read</span>().<span class="f">decode</span>().<span class="f">splitlines</span>() <span class="k">if</span> l.<span class="f">startswith</span>(<span class="s">&quot;orders_total&quot;</span>)]
+<span class="f">print</span>(<span class="s">&quot;после start_http_server, до inc:&quot;</span>, line)
+orders.<span class="f">inc</span>(<span class="n">7</span>)
+raw = <span class="f">urlopen</span>(<span class="s">&quot;http://localhost:8000/metrics&quot;</span>).<span class="f">read</span>()
+<span class="f">print</span>(<span class="s">&quot;после inc(7):&quot;</span>, [l <span class="k">for</span> l <span class="k">in</span> raw.<span class="f">decode</span>().<span class="f">splitlines</span>() <span class="k">if</span> l.<span class="f">startswith</span>(<span class="s">&quot;orders_total&quot;</span>)], <span class="s">&quot;| read() вернул&quot;</span>, <span class="f">type</span>(raw).__name__, <span class="f">len</span>(raw), <span class="s">&quot;байт&quot;</span>)</pre>
     </figure>
     <figure class="code code--out"><figcaption><span>Вывод</span><span>по шагам</span></figcaption><pre>до start_http_server: URLError
 после start_http_server, до inc: [&#x27;orders_total 0.0&#x27;]
@@ -243,8 +243,8 @@ done</pre>
     <p><b>Прогон на живых данных.</b> Чтобы увидеть, что делает каждая строка обработчика, добавим в конец <code>do_GET</code> печать и повторим те же шесть запросов:</p>
     <figure class="code">
       <figcaption><span>Python</span><span>строка, добавленная в конец do_GET</span></figcaption>
-<pre>print(f&quot;self.path={self.path:&lt;13} status={status}  метка path={path:&lt;8} &quot;
-      f&quot;значение ряда → {REQUESTS.labels(path=path, status=str(status))._value.get()}&quot;, flush=True)</pre>
+<pre><span class="f">print</span>(<span class="s">f&quot;self.path={self.path:&lt;13} status={status}  метка path={path:&lt;8} &quot;</span>
+      <span class="s">f&quot;значение ряда → {REQUESTS.labels(path=path, status=str(status))._value.get()}&quot;</span>, flush=<span class="k">True</span>)</pre>
     </figure>
     <figure class="code code--out"><figcaption><span>Вывод</span><span>терминал сервиса и ряды /metrics</span></figcaption><pre>self.path=/orders       status=200  метка path=/orders  значение ряда → 1.0
 self.path=/orders       status=200  метка path=/orders  значение ряда → 2.0

@@ -107,21 +107,21 @@
     <p><b>Прогон на живых данных.</b> Напечатаем, что происходит с каждой строкой и со счётчиком после неё:</p>
     <figure class="code">
       <figcaption><span>Python</span><span>каждая строка и счётчик</span></figcaption>
-<pre>from prometheus_client import CollectorRegistry, Counter
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter
 
-registry = CollectorRegistry()
-failures = Counter(&quot;parse_failures&quot;, &quot;Ошибки разбора заказа&quot;, registry=registry)
+registry = <span class="f">CollectorRegistry</span>()
+failures = <span class="f">Counter</span>(<span class="s">&quot;parse_failures&quot;</span>, <span class="s">&quot;Ошибки разбора заказа&quot;</span>, registry=registry)
 
-@failures.count_exceptions(ValueError)
-def parse_amount(text):
-    return int(text)
+@failures.<span class="f">count_exceptions</span>(ValueError)
+<span class="k">def</span> <span class="f">parse_amount</span>(text):
+    <span class="k">return</span> <span class="f">int</span>(text)
 
-for text in [&quot;120&quot;, &quot;abc&quot;, &quot;75&quot;, &quot;&quot;]:
-    try:
-        result = parse_amount(text)
-        print(f&quot;{text!r:&gt;6} → {result:&lt;4}       счётчик {registry.get_sample_value(&#x27;parse_failures_total&#x27;)}&quot;)
-    except ValueError:
-        print(f&quot;{text!r:&gt;6} → ValueError  счётчик {registry.get_sample_value(&#x27;parse_failures_total&#x27;)}&quot;)</pre>
+<span class="k">for</span> text <span class="k">in</span> [<span class="s">&quot;120&quot;</span>, <span class="s">&quot;abc&quot;</span>, <span class="s">&quot;75&quot;</span>, <span class="s">&quot;&quot;</span>]:
+    <span class="k">try</span>:
+        result = <span class="f">parse_amount</span>(text)
+        <span class="f">print</span>(<span class="s">f&quot;{text!r:&gt;6} → {result:&lt;4}       счётчик {registry.get_sample_value(&#x27;parse_failures_total&#x27;)}&quot;</span>)
+    <span class="k">except</span> ValueError:
+        <span class="f">print</span>(<span class="s">f&quot;{text!r:&gt;6} → ValueError  счётчик {registry.get_sample_value(&#x27;parse_failures_total&#x27;)}&quot;</span>)</pre>
     </figure>
     <figure class="code code--out"><figcaption><span>Вывод</span><span>четыре строки</span></figcaption><pre> &#x27;120&#x27; → 120        счётчик 0.0
  &#x27;abc&#x27; → ValueError  счётчик 1.0
@@ -247,29 +247,29 @@ http_requests_total 20.0</pre></figure>
     <p><b>Прогон на живых данных.</b> Добавим печать: что сделал каждый процесс и какие файлы после него лежат в папке:</p>
     <figure class="code">
       <figcaption><span>Python</span><span>процессы и файлы</span></figcaption>
-<pre>import os
-os.makedirs(&quot;metrics-dir&quot;, exist_ok=True)
-os.environ[&quot;PROMETHEUS_MULTIPROC_DIR&quot;] = &quot;metrics-dir&quot;
+<pre><span class="k">import</span> os
+os.<span class="f">makedirs</span>(<span class="s">&quot;metrics-dir&quot;</span>, exist_ok=<span class="k">True</span>)
+os.environ[<span class="s">&quot;PROMETHEUS_MULTIPROC_DIR&quot;</span>] = <span class="s">&quot;metrics-dir&quot;</span>
 
-from multiprocessing import Process
-from prometheus_client import CollectorRegistry, Counter, generate_latest, multiprocess
+<span class="k">from</span> multiprocessing <span class="k">import</span> Process
+<span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, generate_latest, multiprocess
 
-requests = Counter(&quot;http_requests&quot;, &quot;HTTP-запросы&quot;)
+requests = <span class="f">Counter</span>(<span class="s">&quot;http_requests&quot;</span>, <span class="s">&quot;HTTP-запросы&quot;</span>)
 
-def worker(n):
-    for _ in range(n):
-        requests.inc()
-    print(f&quot;процесс {os.getpid()}: inc() × {n}&quot;, flush=True)
+<span class="k">def</span> <span class="f">worker</span>(n):
+    <span class="k">for</span> _ <span class="k">in</span> <span class="f">range</span>(n):
+        requests.<span class="f">inc</span>()
+    <span class="f">print</span>(<span class="s">f&quot;процесс {os.getpid()}: inc() × {n}&quot;</span>, flush=<span class="k">True</span>)
 
-if __name__ == &quot;__main__&quot;:
-    for n in (6, 14):
-        p = Process(target=worker, args=(n,))
-        p.start()
-        p.join()
-        print(&quot;файлы в папке:&quot;, sorted(os.listdir(&quot;metrics-dir&quot;)))
-    registry = CollectorRegistry()
-    multiprocess.MultiProcessCollector(registry)
-    print(&quot;сумма:&quot;, registry.get_sample_value(&quot;http_requests_total&quot;))</pre>
+<span class="k">if</span> __name__ == <span class="s">&quot;__main__&quot;</span>:
+    <span class="k">for</span> n <span class="k">in</span> (<span class="n">6</span>, <span class="n">14</span>):
+        p = <span class="f">Process</span>(target=worker, args=(n,))
+        p.<span class="f">start</span>()
+        p.<span class="f">join</span>()
+        <span class="f">print</span>(<span class="s">&quot;файлы в папке:&quot;</span>, <span class="f">sorted</span>(os.<span class="f">listdir</span>(<span class="s">&quot;metrics-dir&quot;</span>)))
+    registry = <span class="f">CollectorRegistry</span>()
+    multiprocess.<span class="f">MultiProcessCollector</span>(registry)
+    <span class="f">print</span>(<span class="s">&quot;сумма:&quot;</span>, registry.<span class="f">get_sample_value</span>(<span class="s">&quot;http_requests_total&quot;</span>))</pre>
     </figure>
     <figure class="code code--out"><figcaption><span>Вывод</span><span>после каждого процесса</span></figcaption><pre>процесс 87549: inc() × 6
 файлы в папке: [&#x27;counter_87539.db&#x27;, &#x27;counter_87549.db&#x27;]
