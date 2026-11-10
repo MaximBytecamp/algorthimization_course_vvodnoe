@@ -83,6 +83,32 @@ orders_total 7.0</pre></figure>
       <div><code>start_http_server(8000, registry=registry)</code><span>Открывает порт 8000 и отвечает на запросы текстом из реестра. Сервер работает в отдельном потоке, поэтому программа сразу идёт дальше.</span></div>
       <div><code>urlopen("http://localhost:8000/metrics")</code><span>Делает тот же запрос, что Prometheus при каждом опросе. <code>.read()</code> получает байты ответа.</span></div>
     </div>
+    <p><b>Прогон на живых данных.</b> Запросим <code>/metrics</code> до запуска сервера, после запуска и после <code>inc(7)</code>:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>три момента</span></figcaption>
+<pre>from urllib.request import urlopen
+from prometheus_client import CollectorRegistry, Counter, start_http_server
+
+registry = CollectorRegistry()
+orders = Counter(&quot;orders&quot;, &quot;Принятые заказы&quot;, registry=registry)
+try:
+    urlopen(&quot;http://localhost:8000/metrics&quot;)
+except OSError as error:
+    print(&quot;до start_http_server:&quot;, type(error).__name__)
+start_http_server(8000, registry=registry)
+line = [l for l in urlopen(&quot;http://localhost:8000/metrics&quot;).read().decode().splitlines() if l.startswith(&quot;orders_total&quot;)]
+print(&quot;после start_http_server, до inc:&quot;, line)
+orders.inc(7)
+raw = urlopen(&quot;http://localhost:8000/metrics&quot;).read()
+print(&quot;после inc(7):&quot;, [l for l in raw.decode().splitlines() if l.startswith(&quot;orders_total&quot;)], &quot;| read() вернул&quot;, type(raw).__name__, len(raw), &quot;байт&quot;)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>по шагам</span></figcaption><pre>до start_http_server: URLError
+после start_http_server, до inc: [&#x27;orders_total 0.0&#x27;]
+после inc(7): [&#x27;orders_total 7.0&#x27;] | read() вернул bytes 212 байт</pre></figure>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Строка</th><th>Что получилось на прогоне</th></tr></thead>
+        <tbody><tr><td><code>urlopen(...)</code> до сервера</td><td><code>URLError</code>: на порту 8000 никто не отвечает</td></tr><tr><td><code>start_http_server(8000, …)</code></td><td>порт открыт, счётчик отдаётся со значением 0.0</td></tr><tr><td><code>orders.inc(7)</code></td><td>следующий запрос уже видит 7.0 — сервер читает значение в момент запроса</td></tr><tr><td><code>.read()</code></td><td>212 байт ответа</td></tr></tbody>
+      </table></div>
     <p>На схеме — кто к кому обращается:</p>
     <figure class="scene">
       <svg viewBox="0 0 640 130" role="img" aria-label="Prometheus запрашивает /metrics у программы на порту 8000 и получает orders_total 7.0">
@@ -214,6 +240,26 @@ done</pre>
       <figcaption>Ответ <code>/metrics</code> сервиса после шести запросов.</figcaption>
     </figure>
     <p>В начале ответа — метрики, которые библиотека добавляет в общий реестр сама: <code>python_gc_*</code> о сборке мусора и <code>python_info</code> с версией Python. Ниже — наш счётчик и три его ряда. Три запроса к <code>/orders</code> дали 3.0, один к <code>/health</code> — 1.0. Запросы к <code>/admin</code> и <code>/favicon.ico</code> собраны в один ряд <code>path="other"</code> со значением 2.0. Последние строки — <code>http_requests_created</code> из лекции 2.2, §2.</p>
+    <p><b>Прогон на живых данных.</b> Чтобы увидеть, что делает каждая строка обработчика, добавим в конец <code>do_GET</code> печать и повторим те же шесть запросов:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>строка, добавленная в конец do_GET</span></figcaption>
+<pre>print(f&quot;self.path={self.path:&lt;13} status={status}  метка path={path:&lt;8} &quot;
+      f&quot;значение ряда → {REQUESTS.labels(path=path, status=str(status))._value.get()}&quot;, flush=True)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>терминал сервиса и ряды /metrics</span></figcaption><pre>self.path=/orders       status=200  метка path=/orders  значение ряда → 1.0
+self.path=/orders       status=200  метка path=/orders  значение ряда → 2.0
+self.path=/orders       status=200  метка path=/orders  значение ряда → 3.0
+self.path=/health       status=200  метка path=/health  значение ряда → 1.0
+self.path=/admin        status=404  метка path=other    значение ряда → 1.0
+self.path=/favicon.ico  status=404  метка path=other    значение ряда → 2.0
+http_requests_total{path=&quot;/orders&quot;,status=&quot;200&quot;} 3.0
+http_requests_total{path=&quot;/health&quot;,status=&quot;200&quot;} 1.0
+http_requests_total{path=&quot;other&quot;,status=&quot;404&quot;} 2.0</pre></figure>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Строка</th><th>Что получилось на прогоне</th></tr></thead>
+        <tbody><tr><td><code>status = 200 if … else 404</code></td><td><code>/admin</code> и <code>/favicon.ico</code> → 404</td></tr><tr><td><code>path = … else "other"</code></td><td>оба неизвестных адреса → метка <code>other</code></td></tr><tr><td><code>REQUESTS.labels(...).inc()</code></td><td>ряд <code>other, 404</code>: 1.0 после <code>/admin</code>, 2.0 после <code>/favicon.ico</code></td></tr></tbody>
+      </table></div>
+    <p><code>_value.get()</code> — внутреннее значение ряда; в рабочем коде его не используют, здесь оно нужно только для печати. Шесть запросов дали три ряда, и значения рядов совпали с ответом <code>/metrics</code>.</p>
     <div class="key"><b>Вывод</b><p>В сервисе счётчик создают на уровне модуля, а <code>inc()</code> ставят в обработчик — туда, где уже известен результат запроса.</p></div>
     <p class="next">Prometheus приходит за таким ответом регулярно и сохраняет каждое значение. Разберём, что по этим значениям можно узнать.</p>
   </section>

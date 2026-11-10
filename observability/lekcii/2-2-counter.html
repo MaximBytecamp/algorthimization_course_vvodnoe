@@ -78,6 +78,18 @@ Version: 0.26.0</pre></figure>
       <div><code>pip install prometheus-client==0.26.0</code><span>Ставит библиотеку той версии, на которой проверены примеры.</span></div>
       <div><code>pip show prometheus-client</code><span>Показывает, какая версия установлена.</span></div>
     </div>
+    <p><b>Прогон на живых данных.</b> Проверим, что изменила команда <code>source .venv/bin/activate</code>. Спросим у Python, откуда он запущен, до активации и после:</p>
+    <figure class="code">
+      <figcaption><span>Терминал</span><span>Python до и после активации</span></figcaption>
+<pre>python3 -c &quot;import sys; print(sys.prefix)&quot;
+source .venv/bin/activate
+python -c &quot;import sys; print(sys.prefix)&quot;
+python -c &quot;import prometheus_client as p; print(p.__file__)&quot;</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>пути</span></figcaption><pre>/Users/makarovmn/.pyenv/versions/3.12.12
+/…/.venv
+/…/.venv/lib/python3.12/site-packages/prometheus_client/__init__.py</pre></figure>
+    <p>До активации Python — общий, системный. После — тот, что в папке <code>.venv</code>, и библиотека берётся из неё же. Пути на вашем компьютере будут другими, важно, что второй и третий указывают внутрь <code>.venv</code>.</p>
     <p>Примеры запускают двумя способами. Большинство программ печатают результат и сразу завершаются. Программа-сервис из лекции 2.4 работает, пока её не остановят, и её смотрят в браузере:</p>
     <figure class="scene">
       <svg viewBox="0 0 640 170" role="img" aria-label="Два способа запуска: программа печатает вывод в терминал; сервис работает, браузер открывает localhost:8000/metrics">
@@ -219,6 +231,31 @@ orders_created 1.79397560439292e+09</pre></figure>
       <div><code>orders.inc()</code><span>Прибавляет 1. Три вызова — значение 3.</span></div>
       <div><code>generate_latest(registry)</code><span>Собирает текст ответа из метрик реестра. Возвращает байты, <code>.decode()</code> превращает их в строку.</span></div>
     </div>
+    <p><b>Прогон на живых данных.</b> Посмотрим значение счётчика после создания и после каждого <code>inc()</code>, а также что именно возвращает <code>generate_latest</code>:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>значение после каждой строки</span></figcaption>
+<pre>from prometheus_client import CollectorRegistry, Counter, generate_latest
+
+registry = CollectorRegistry()
+orders = Counter(&quot;orders&quot;, &quot;Принятые заказы&quot;, registry=registry)
+print(&quot;после создания:&quot;, registry.get_sample_value(&quot;orders_total&quot;))
+for n in range(3):
+    orders.inc()
+    print(f&quot;после inc() №{n + 1}:&quot;, registry.get_sample_value(&quot;orders_total&quot;))
+raw = generate_latest(registry)
+print(type(raw).__name__, raw[:20])
+print(type(raw.decode()).__name__, raw.decode()[:20])</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>по шагам</span></figcaption><pre>после создания: 0.0
+после inc() №1: 1.0
+после inc() №2: 2.0
+после inc() №3: 3.0
+bytes b&#x27;# HELP orders_total &#x27;
+str # HELP orders_total </pre></figure>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Строка</th><th>Что получилось на прогоне</th></tr></thead>
+        <tbody><tr><td><code>Counter("orders", …)</code></td><td>значение <code>0.0</code></td></tr><tr><td><code>orders.inc()</code> × 3</td><td>1.0 → 2.0 → 3.0</td></tr><tr><td><code>generate_latest(registry)</code></td><td>тип <code>bytes</code> — байты, начало <code>b'# HELP orders_total '</code></td></tr><tr><td><code>.decode()</code></td><td>тип <code>str</code> — та же строка, уже текстом</td></tr></tbody>
+      </table></div>
 
     <p>В выводе у метрики три строки. <code># HELP</code> — описание, <code># TYPE</code> — тип, последняя строка — имя и значение. Значение записано как <code>3.0</code>, потому что Prometheus хранит все числа дробными.</p>
     <p>Метрика <code>orders_created</code> — момент создания счётчика: 1 793 975 604 секунды с 1 января 1970 года, то есть 6 ноября 2026 года, 14:33 UTC. Она нужна редко. Её отключает переменная окружения <code>PROMETHEUS_DISABLE_CREATED_SERIES=True</code>, и дальше вывод показан без неё.</p>
@@ -306,6 +343,24 @@ ValueError: Counters can only be incremented by non-negative amounts.</pre></fig
       <div><code>registry.get_sample_value("sent_bytes_total")</code><span>Возвращает текущее значение по имени строки из вывода. Им проверяют счётчик в коротких программах и тестах.</span></div>
       <div><code>inc(-100)</code><span>Останавливает программу с <code>ValueError</code>: «счётчик можно увеличивать только на неотрицательное число».</span></div>
     </div>
+    <p><b>Прогон на живых данных.</b> Выполним все три вызова и перехватим исключение, чтобы увидеть значение после каждого:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>значение после каждого inc</span></figcaption>
+<pre>from prometheus_client import CollectorRegistry, Counter
+
+registry = CollectorRegistry()
+sent = Counter(&quot;sent_bytes&quot;, &quot;Отправлено байт&quot;, registry=registry)
+for amount in (512, 1024, -100):
+    try:
+        sent.inc(amount)
+        print(f&quot;inc({amount}) → значение {registry.get_sample_value(&#x27;sent_bytes_total&#x27;)}&quot;)
+    except ValueError as error:
+        print(f&quot;inc({amount}) → {type(error).__name__}, значение осталось {registry.get_sample_value(&#x27;sent_bytes_total&#x27;)}&quot;)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>три вызова</span></figcaption><pre>inc(512) → значение 512.0
+inc(1024) → значение 1536.0
+inc(-100) → ValueError, значение осталось 1536.0</pre></figure>
+    <p>Неудачный <code>inc(-100)</code> ничего не испортил: значение осталось 1536.0. Библиотека проверяет число до того, как прибавить его.</p>
     <div class="key"><b>Вывод</b><p>Счётчик не уменьшается, поэтому по нему всегда можно узнать, сколько событий произошло. Величине, которая уменьшается, нужен gauge.</p></div>
     <p class="next">Все события пока попадали в одно число. Чтобы различать их по признаку, нужны метки.</p>
   </section>

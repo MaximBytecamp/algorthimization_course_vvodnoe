@@ -104,6 +104,30 @@
       <div><code>@failures.count_exceptions(ValueError)</code><span>Оборачивает функцию. Исключение <code>ValueError</code> внутри неё прибавляет к счётчику 1. Без аргумента считаются исключения любого типа.</span></div>
       <div><code>try / except ValueError: pass</code><span>Декоратор не перехватывает исключение, оно доходит до цикла. Здесь его перехватывает цикл, чтобы программа дошла до конца.</span></div>
     </div>
+    <p><b>Прогон на живых данных.</b> Напечатаем, что происходит с каждой строкой и со счётчиком после неё:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>каждая строка и счётчик</span></figcaption>
+<pre>from prometheus_client import CollectorRegistry, Counter
+
+registry = CollectorRegistry()
+failures = Counter(&quot;parse_failures&quot;, &quot;Ошибки разбора заказа&quot;, registry=registry)
+
+@failures.count_exceptions(ValueError)
+def parse_amount(text):
+    return int(text)
+
+for text in [&quot;120&quot;, &quot;abc&quot;, &quot;75&quot;, &quot;&quot;]:
+    try:
+        result = parse_amount(text)
+        print(f&quot;{text!r:&gt;6} → {result:&lt;4}       счётчик {registry.get_sample_value(&#x27;parse_failures_total&#x27;)}&quot;)
+    except ValueError:
+        print(f&quot;{text!r:&gt;6} → ValueError  счётчик {registry.get_sample_value(&#x27;parse_failures_total&#x27;)}&quot;)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>четыре строки</span></figcaption><pre> &#x27;120&#x27; → 120        счётчик 0.0
+ &#x27;abc&#x27; → ValueError  счётчик 1.0
+  &#x27;75&#x27; → 75         счётчик 1.0
+    &#x27;&#x27; → ValueError  счётчик 2.0</pre></figure>
+    <p><code>int("120")</code> и <code>int("75")</code> прошли — счётчик не изменился. <code>int("abc")</code> и <code>int("")</code> вызвали <code>ValueError</code>, и декоратор прибавил по единице до того, как исключение дошло до цикла.</p>
     <p>Чтобы считать исключения в нескольких строках, эти строки помещают в блок <code>with failures.count_exceptions():</code>. Счётчик растёт на каждое исключение, которое вылетело из блока.</p>
     <p class="next">Во всех примерах счётчик создавался один раз в начале программы. У этого правила есть причина.</p>
   </section>
@@ -220,6 +244,39 @@ http_requests_total 20.0</pre></figure>
       <div><code>Process(target=worker, args=(n,))</code><span>Запускает отдельный процесс, который обрабатывает <code>n</code> запросов. В папке появляется его файл с числом.</span></div>
       <div><code>MultiProcessCollector(registry)</code><span>Читает все файлы папки и складывает значения. Так строится ответ <code>/metrics</code>.</span></div>
     </div>
+    <p><b>Прогон на живых данных.</b> Добавим печать: что сделал каждый процесс и какие файлы после него лежат в папке:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>процессы и файлы</span></figcaption>
+<pre>import os
+os.makedirs(&quot;metrics-dir&quot;, exist_ok=True)
+os.environ[&quot;PROMETHEUS_MULTIPROC_DIR&quot;] = &quot;metrics-dir&quot;
+
+from multiprocessing import Process
+from prometheus_client import CollectorRegistry, Counter, generate_latest, multiprocess
+
+requests = Counter(&quot;http_requests&quot;, &quot;HTTP-запросы&quot;)
+
+def worker(n):
+    for _ in range(n):
+        requests.inc()
+    print(f&quot;процесс {os.getpid()}: inc() × {n}&quot;, flush=True)
+
+if __name__ == &quot;__main__&quot;:
+    for n in (6, 14):
+        p = Process(target=worker, args=(n,))
+        p.start()
+        p.join()
+        print(&quot;файлы в папке:&quot;, sorted(os.listdir(&quot;metrics-dir&quot;)))
+    registry = CollectorRegistry()
+    multiprocess.MultiProcessCollector(registry)
+    print(&quot;сумма:&quot;, registry.get_sample_value(&quot;http_requests_total&quot;))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>после каждого процесса</span></figcaption><pre>процесс 87549: inc() × 6
+файлы в папке: [&#x27;counter_87539.db&#x27;, &#x27;counter_87549.db&#x27;]
+процесс 87557: inc() × 14
+файлы в папке: [&#x27;counter_87539.db&#x27;, &#x27;counter_87549.db&#x27;, &#x27;counter_87557.db&#x27;]
+сумма: 20.0</pre></figure>
+    <p>Номер в имени файла — номер процесса. <code>counter_87539.db</code> — главный процесс: в нём создан счётчик, сам он не прибавлял. Каждый рабочий процесс оставил свой файл. <code>MultiProcessCollector</code> сложил все три: 0 + 6 + 14 = 20. Папку перед запуском очищают командой <code>rm -rf metrics-dir</code>: внутри программы её стирать нельзя — на macOS дочерний процесс заново выполняет код модуля и стёр бы файл соседа.</p>
     <p>Второй способ — один процесс на контейнер. Тогда каждый процесс отдаёт свой ответ, Prometheus хранит их отдельными рядами, и числа не смешиваются.</p>
   </section>
 
