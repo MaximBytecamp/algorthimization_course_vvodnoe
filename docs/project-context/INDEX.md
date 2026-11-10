@@ -9,6 +9,7 @@ Obsidian как папка проекта.
 - [DECISIONS](DECISIONS.md) — решения, которые влияют на будущую работу.
 - [CONSTRAINTS](CONSTRAINTS.md) — постоянные границы памяти и изменений.
 - [PREFERENCES](PREFERENCES.md) — постоянные правила пользователя: Git, учебный текст, тесты.
+- [Справочник по ClickHouse](clickhouse-spravochnik.md) — черновой план по образцу MongoDB.
 - [BACKLOG](BACKLOG.md) — только согласованные, но ещё не начатые задачи.
 - [EFFICIENCY](EFFICIENCY.md) — команды и настройки для экономии контекста.
 - [MODEL_EVAL](MODEL_EVAL.md) — проверка Terra, Sol и Astra на типичных задачах.
