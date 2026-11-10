@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>2.4 Метрики по HTTP · Метрики и наблюдаемость</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="book">
+  <div class="book__body">
+    <div class="spine"><span>Часть 2 · Метрики в коде</span></div>
+    <main class="leaf">
+  <div class="running">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Метрики и наблюдаемость</a> · часть 2 · метрики в коде</p>
+    <p class="running__folio">Лекция 2.4</p>
+  </div>
+
+  <header class="chapter-head">
+    <span class="chapter-num">2.4</span>
+    <h1>Метрики по HTTP</h1>
+    <p class="lead">Prometheus забирает метрики по сети. В лекции программа отдаёт счётчик по HTTP, мы проследим путь одного числа от <code>inc()</code> до графика и поставим счётчик в настоящий веб-сервис.</p>
+  </header>
+  <dl class="passport">
+    <div><dt>Тема</dt><dd>Counter</dd></div>
+    <div><dt>Библиотека</dt><dd><code>prometheus-client</code> 0.26.0</dd></div>
+    <div><dt>Опирается на</dt><dd>Лекции 2.2–2.3</dd></div>
+    <div><dt>Результат</dt><dd>Отдавать метрики сервиса по HTTP</dd></div>
+  </dl>
+
+  <div class="reader-start">
+    <div>
+      <b>Режим чтения</b>
+      <p>Лекция откроется по одному разделу: на экране одна мысль, кнопка «Дальше» ведёт к следующей. Стрелки ← → на клавиатуре тоже листают, Esc возвращает всю лекцию.</p>
+    </div>
+    <div class="reader-start__btns">
+      <button type="button" data-reader-start="continue" hidden></button>
+      <button type="button" class="primary" data-reader-start="begin">Читать по шагам</button>
+    </div>
+  </div>
+
+  <nav class="contents">
+    <b>В этой лекции</b>
+    <ol>
+      <li><a href="#s1"><span class="csec">§1</span>Отдать счётчик по HTTP</a></li>
+      <li><a href="#s2"><span class="csec">§2</span>Путь числа по шагам</a></li>
+      <li><a href="#s3"><span class="csec">§3</span>Счётчик в веб-сервисе</a></li>
+      <li><a href="#s4"><span class="csec">§4</span>Частые ошибки</a></li>
+      <li><a href="#s5"><span class="csec">§5</span>Практика</a></li>
+      <li><a href="#s6"><span class="csec">§6</span>Проверьте себя</a></li>
+      <li><a href="#s7"><span class="csec">§7</span>Шпаргалка</a></li>
+      <li><a href="#s8"><span class="csec">§8</span>Глоссарий</a></li>
+    </ol>
+  </nav>
+
+<section class="part" id="s1">
+    <h2><span class="sec">§1</span>Отдать счётчик по HTTP</h2>
+    <p class="about">Как программа отвечает Prometheus на запрос <code>/metrics</code>.</p>
+
+    <p>Prometheus сам приходит к программе по адресу <code>/metrics</code> и забирает текст ответа. Функция <code>start_http_server</code> открывает такой адрес в фоне. Проверим его запросом из той же программы:</p>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>сервер метрик на порту 8000</span></figcaption>
+<pre><span class="k">from</span> urllib.request <span class="k">import</span> urlopen
+<span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, start_http_server
+
+registry = <span class="f">CollectorRegistry</span>()
+orders = <span class="f">Counter</span>(<span class="s">"orders"</span>, <span class="s">"Принятые заказы"</span>, registry=registry)
+<span class="f">start_http_server</span>(<span class="n">8000</span>, registry=registry)
+
+orders.<span class="f">inc</span>(<span class="n">7</span>)
+
+answer = <span class="f">urlopen</span>(<span class="s">"http://localhost:8000/metrics"</span>).<span class="f">read</span>().<span class="f">decode</span>()
+<span class="f">print</span>(answer)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>ответ сервера</span></figcaption><pre># HELP orders_total Принятые заказы
+# TYPE orders_total counter
+orders_total 7.0</pre></figure>
+    <div class="walk">
+      <div><code>start_http_server(8000, registry=registry)</code><span>Открывает порт 8000 и отвечает на запросы текстом из реестра. Сервер работает в отдельном потоке, поэтому программа сразу идёт дальше.</span></div>
+      <div><code>urlopen("http://localhost:8000/metrics")</code><span>Делает тот же запрос, что Prometheus при каждом опросе. <code>.read()</code> получает байты ответа.</span></div>
+    </div>
+    <p>На схеме — кто к кому обращается:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 130" role="img" aria-label="Prometheus запрашивает /metrics у программы на порту 8000 и получает orders_total 7.0">
+        <rect class="sc-box" x="20" y="30" width="200" height="66" rx="10"/>
+        <text class="tb tc" x="120" y="58">программа</text>
+        <text class="tm tc" x="120" y="80">порт 8000, orders = 7</text>
+        <rect class="sc-acc" x="420" y="30" width="200" height="66" rx="10"/>
+        <text class="tb tc" x="520" y="68">Prometheus</text>
+        <path class="sc-arrow" d="M414 48 H228 M236 42 L228 48 L236 54"/>
+        <text class="tm tc ta" x="322" y="38">1. GET /metrics</text>
+        <path class="sc-arrow-w" d="M228 80 H412 M404 74 L412 80 L404 86"/>
+        <text class="tm tc tw" x="322" y="112">2. orders_total 7.0</text>
+      </svg>
+      <figcaption>Программа не отправляет данные сама. Она отвечает, когда Prometheus приходит за ними.</figcaption>
+    </figure>
+    <p>Стрелка 1 идёт от Prometheus к программе: запрос начинает Prometheus. Стрелка 2 возвращает ответ — тот же текст, что напечатала программа. В коде выше роль Prometheus сыграл <code>urlopen</code>. Такой порядок называют pull-моделью: данные забирает тот, кто их хранит.</p>
+    <p>Сервер строит текст заново при каждом запросе, поэтому значение в ответе всегда текущее. В настоящем сервисе <code>start_http_server</code> вызывают один раз при запуске, а <code>inc()</code> — там, где происходит событие.</p>
+
+    <p class="next">Теперь проследим весь путь одного числа: от события в коде до графика.</p>
+  </section>
+
+<section class="part" id="s2">
+    <h2><span class="sec">§2</span>Путь числа по шагам</h2>
+    <p class="about">Что происходит с одним событием от вызова <code>inc()</code> до точки на графике.</p>
+    <p>Разберём, как одно событие в коде доходит до графика. Пусть в сервисе уже было 6 заказов и пришёл седьмой.</p>
+    <div class="story">
+      <figure class="scene">
+        <svg viewBox="0 0 640 150" role="img" aria-label="Обработчик вызывает inc, значение в памяти процесса 6 становится 7"><rect class="sc-box" x="20" y="40" width="190" height="64" rx="10"/><text class="tb tc" x="115" y="66">обработчик заказа</text><text class="tm tc" x="115" y="88" style="font-size:11.5px">пришёл новый заказ</text><path class="sc-arrow" d="M214 72 L318 72"/><path class="sc-arrow" style="stroke-dasharray:none" d="M310 76 L318 72 L310 68"/><text class="tm tc ta" x="266" y="62">orders.inc()</text><rect class="sc-soft" x="324" y="20" width="296" height="108" rx="12"/><text class="t tc" x="472" y="40">память процесса</text><rect class="sc-amb" x="360" y="54" width="224" height="52" rx="8"/><text class="tm tc" x="472" y="86" style="font-size:15px">orders: 6 → <tspan class="ta">7</tspan></text></svg>
+        <figcaption>Событие произошло в коде. <code>inc()</code> меняет число в памяти процесса. По сети пока ничего не уходит.</figcaption>
+      </figure>
+    <p>Число 7 уже лежит в памяти, а в базе Prometheus его ещё нет. Оно попадёт туда при следующем опросе.</p>
+      <figure class="scene">
+        <svg viewBox="0 0 640 150" role="img" aria-label="Prometheus отправляет GET /metrics на порт 8000"><rect class="sc-box" x="20" y="36" width="230" height="80" rx="10"/><text class="tb tc" x="135.0" y="60">программа</text><text class="tm tc" x="135.0" y="80" style="font-size:11.5px">порт 8000 · orders = 7</text><rect class="sc-acc" x="430" y="36" width="190" height="80" rx="10"/><text class="tb tc" x="525.0" y="81.0">Prometheus</text><path class="sc-arrow" d="M424 76 L258 76"/><path class="sc-arrow" style="stroke-dasharray:none" d="M266 72 L258 76 L266 80"/><text class="tm tc ta" x="341" y="66">GET /metrics</text><text class="t tc" x="341" y="104">опрос 2</text></svg>
+        <figcaption>Через интервал опроса Prometheus сам приходит к программе с запросом <code>GET /metrics</code>.</figcaption>
+      </figure>
+    <p>Запрос пришёл на порт 8000, который открыл <code>start_http_server</code>. Программа на него отвечает.</p>
+      <figure class="scene">
+        <svg viewBox="0 0 640 150" role="img" aria-label="Программа строит текст из реестра и отвечает orders_total 7.0"><rect class="sc-box" x="20" y="20" width="250" height="112" rx="10"/><text class="tb tc" x="145" y="42">программа</text><rect class="sc-amb" x="36" y="56" width="90" height="56" rx="6"/><text class="t tc" x="81" y="80">реестр</text><text class="tm tc" x="81" y="98" style="font-size:11px">orders = 7</text><path class="sc-arrow" d="M130 84 L158 84"/><path class="sc-arrow" style="stroke-dasharray:none" d="M150 88 L158 84 L150 80"/><rect class="sc-box" x="162" y="56" width="96" height="56" rx="4"/><text class="tm tc" x="210" y="80" style="font-size:10.5px">orders_total</text><text class="tm tc" x="210" y="98" style="font-size:10.5px">7.0</text><rect class="sc-acc" x="450" y="46" width="170" height="70" rx="10"/><text class="tb tc" x="535.0" y="86.0">Prometheus</text><path class="sc-arrow-w" d="M276 84 L444 84"/><path class="sc-arrow" style="stroke-dasharray:none;stroke:#D7541F" d="M436 88 L444 84 L436 80"/><text class="tm tc tw" x="360" y="74">orders_total 7.0</text><text class="t tc" x="360" y="108">ответ</text></svg>
+        <figcaption><code>start_http_server</code> собирает текст из реестра в момент запроса и отправляет его в ответе.</figcaption>
+      </figure>
+    <p>Prometheus получил текст и достал из строки значение 7.0. Теперь его нужно сохранить.</p>
+      <figure class="scene">
+        <svg viewBox="0 0 640 150" role="img" aria-label="Prometheus записывает отсчёт в свою базу: опрос 1 — 6, опрос 2 — 7"><rect class="sc-acc" x="20" y="40" width="170" height="70" rx="10"/><text class="tb tc" x="105.0" y="80.0">Prometheus</text><path class="sc-arrow" d="M196 75 L300 75"/><path class="sc-arrow" style="stroke-dasharray:none" d="M292 79 L300 75 L292 71"/><text class="t tc" x="248" y="64">запись</text><path class="sc-acc" d="M310 36 V136 A155.0 10 0 0 0 620 136 V36"/><ellipse class="sc-acc" cx="465.0" cy="36" rx="155.0" ry="10"/><text class="t tc" x="465" y="18">база Prometheus · ряд orders_total</text><rect x="340" y="56" width="250" height="28" style="fill:#fff;stroke:#020835"/><text class="tm" x="352" y="75">опрос 1</text><text class="tm tr" x="578" y="75">6.0</text><rect x="340" y="90" width="250" height="28" style="fill:#BFE2F5;stroke:#020835"/><text class="tm" x="352" y="109">опрос 2 · новый отсчёт</text><text class="tm tr ta" x="578" y="109">7.0</text></svg>
+        <figcaption>Полученное значение вместе с моментом опроса становится новым отсчётом ряда. Старые отсчёты остаются в базе.</figcaption>
+      </figure>
+    <p>В базе теперь два отсчёта одного ряда. По ним уже можно посчитать рост.</p>
+      <p>Отсчёты в базе можно увидеть в интерфейсе Prometheus. Запрос с окном <code>[1m]</code> возвращает все отсчёты ряда за последнюю минуту. Кадр снят на стенде сервиса заказов:</p>
+      <figure class="shot-fig">
+        <img src="img/range-samples.png" alt="Интерфейс Prometheus: запрос http_requests_total за одну минуту возвращает четыре отсчёта вида 10 @ 1792769766.827" loading="lazy">
+        <figcaption>Четыре отсчёта ряда <code>http_requests_total</code> за минуту: значение, знак @ и момент опроса.</figcaption>
+      </figure>
+      <p>Каждая строка справа — один отсчёт: <code>10</code> — значение, после знака <code>@</code> — момент опроса в секундах с 1 января 1970 года. Моменты идут примерно через 15 секунд — это интервал опроса стенда. Значение во всех четырёх отсчётах 10: за эту минуту новых запросов не было.</p>
+      <figure class="scene">
+        <svg viewBox="0 0 640 150" role="img" aria-label="Запрос increase читает отсчёты из базы и строит график роста"><path class="sc-acc" d="M20 34 V118 A75.0 10 0 0 0 170 118 V34"/><ellipse class="sc-acc" cx="95.0" cy="34" rx="75.0" ry="10"/><text class="t tc" x="95" y="70">отсчёты</text><text class="tm tc" x="95" y="90" style="font-size:11px">6.0, 7.0, …</text><path class="sc-arrow" d="M176 76 L232 76"/><path class="sc-arrow" style="stroke-dasharray:none" d="M224 80 L232 76 L224 72"/><rect class="sc-amb" x="238" y="50" width="170" height="52" rx="8"/><text class="tm tc" x="323" y="72" style="font-size:11px">increase(</text><text class="tm tc" x="323" y="90" style="font-size:11px">orders_total[5m])</text><path class="sc-arrow" d="M414 76 L452 76"/><path class="sc-arrow" style="stroke-dasharray:none" d="M444 80 L452 76 L444 72"/><rect class="sc-box" x="458" y="16" width="162" height="118" rx="6"/><line class="sc-axis" x1="472" y1="116" x2="608" y2="116"/><polyline class="sc-plot" points="474,108 500,100 526,88 552,92 578,70 604,58"/><text class="t tc" x="539" y="34">график роста</text></svg>
+        <figcaption>График строится по отсчётам из базы Prometheus: по ним видно, на сколько вырос счётчик.</figcaption>
+      </figure>
+    </div>
+    <p>На шаге 5 функция роста берёт отсчёты 6.0 и 7.0 и показывает рост на один заказ. Программа участвует только в первых трёх шагах: держит число в памяти и отдаёт его по запросу. Хранение истории и графики — работа Prometheus.</p>
+    <p class="next">Во всех примерах до сих пор события создавал цикл. Посмотрим на счётчик в настоящем веб-сервисе.</p>
+  </section>
+
+<section class="part" id="s3">
+    <h2><span class="sec">§3</span>Счётчик в веб-сервисе</h2>
+    <p class="about">Где стоит счётчик в настоящем сервисе и как увидеть его в браузере.</p>
+    <p>В настоящем сервисе событие — это запрос пользователя. Ниже небольшой веб-сервис на встроенном модуле <code>http.server</code>, без дополнительных пакетов. Он отвечает на адреса <code>/orders</code> и <code>/health</code>, а на остальные отвечает «не найдено». Счётчик считает запросы по адресу и коду ответа.</p>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>сервис со счётчиком запросов</span></figcaption>
+<pre><span class="k">from</span> http.server <span class="k">import</span> BaseHTTPRequestHandler, HTTPServer
+<span class="k">from</span> prometheus_client <span class="k">import</span> Counter, start_http_server
+
+REQUESTS = <span class="f">Counter</span>(<span class="s">"http_requests"</span>, <span class="s">"HTTP-запросы к сервису"</span>, [<span class="s">"path"</span>, <span class="s">"status"</span>])
+KNOWN_PATHS = {<span class="s">"/orders"</span>, <span class="s">"/health"</span>}
+
+
+<span class="k">class</span> <span class="f">Handler</span>(BaseHTTPRequestHandler):
+    <span class="k">def</span> <span class="f">do_GET</span>(self):
+        status = <span class="n">200</span> <span class="k">if</span> self.path <span class="k">in</span> KNOWN_PATHS <span class="k">else</span> <span class="n">404</span>
+        self.<span class="f">send_response</span>(status)
+        self.<span class="f">end_headers</span>()
+        self.wfile.<span class="f">write</span>(<span class="s">b"ok\n"</span> <span class="k">if</span> status == <span class="n">200</span> <span class="k">else</span> <span class="s">b"not found\n"</span>)
+
+        path = self.path <span class="k">if</span> self.path <span class="k">in</span> KNOWN_PATHS <span class="k">else</span> <span class="s">"other"</span>
+        REQUESTS.<span class="f">labels</span>(path=path, status=<span class="f">str</span>(status)).<span class="f">inc</span>()
+
+    <span class="k">def</span> <span class="f">log_message</span>(self, *args):  <span class="c"># не печатать каждый запрос в терминал</span>
+        <span class="k">pass</span>
+
+
+<span class="f">start_http_server</span>(<span class="n">8000</span>)                          <span class="c"># метрики: http://localhost:8000/metrics</span>
+<span class="f">HTTPServer</span>((<span class="s">""</span>, <span class="n">8080</span>), Handler).<span class="f">serve_forever</span>()  <span class="c"># сервис:  http://localhost:8080</span></pre>
+    </figure>
+    <div class="walk">
+      <div><code>REQUESTS = Counter(..., ["path", "status"])</code><span>Счётчик создан один раз, на уровне модуля: обработчик только прибавляет к нему. Две метки: адрес и код ответа. Реестр здесь общий, библиотечный: так обычно и делают в сервисе.</span></div>
+      <div><code>path = ... else "other"</code><span>Все неизвестные адреса попадают в одно значение <code>other</code>. Если записывать в метку любой адрес из запроса, каждый новый адрес создаст новый ряд (лекция 2.3, §1).</span></div>
+      <div><code>REQUESTS.labels(...).inc()</code><span>Стоит в конце обработчика, когда код ответа уже известен.</span></div>
+      <div><code>start_http_server(8000)</code><span>Открывает порт 8000 для Prometheus. Сам сервис слушает порт 8080.</span></div>
+      <div><code>serve_forever()</code><span>Обрабатывает запросы, пока программу не остановят.</span></div>
+    </div>
+    <p>У программы два порта с разными ролями. На схеме — кто к какому порту обращается:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 190" role="img" aria-label="Пользователи обращаются к порту 8080, обработчик увеличивает счётчик; Prometheus и браузер читают порт 8000">
+        <rect class="sc-box" x="20" y="24" width="130" height="50" rx="8"/><text class="t tc" x="85" y="54">пользователь, curl</text>
+        <path class="sc-arrow" d="M156 49 L226 49"/><path class="sc-arrow" d="M218 53 L226 49 L218 45"/><text class="tm tc ta" x="191" y="40">:8080</text>
+        <rect class="sc-soft" x="232" y="10" width="200" height="170" rx="12"/><text class="t tc" x="332" y="30">программа</text>
+        <rect class="sc-box" x="250" y="40" width="164" height="40" rx="6"/><text class="tm tc" x="332" y="65">Handler.do_GET</text>
+        <path class="sc-arrow" d="M332 84 L332 110"/><path class="sc-arrow" d="M328 102 L332 110 L336 102"/><text class="tm" x="340" y="102" style="font-size:10.5px">inc()</text>
+        <rect class="sc-acc" x="250" y="114" width="164" height="50" rx="6"/><text class="tm tc" x="332" y="136" style="font-size:11px">REQUESTS</text><text class="t tc" x="332" y="154">в памяти</text>
+        <path class="sc-arrow" d="M490 139 L420 139"/><path class="sc-arrow" d="M428 135 L420 139 L428 143"/><text class="tm tc ta" x="455" y="130">:8000</text>
+        <rect class="sc-acc" x="496" y="114" width="130" height="50" rx="8"/><text class="t tc" x="561" y="136">Prometheus,</text><text class="t tc" x="561" y="154">браузер</text>
+      </svg>
+      <figcaption>Порт 8080 — работа сервиса, порт 8000 — его метрики.</figcaption>
+    </figure>
+    <p>Запросы пользователей приходят на порт 8080 и проходят через обработчик. Обработчик прибавляет к счётчику в памяти. Prometheus и браузер читают метрики с другого порта, 8000. Отправим шесть запросов из второго терминала, пока сервис работает в первом:</p>
+    <figure class="code">
+      <figcaption><span>Терминал 2</span><span>шесть запросов к сервису</span></figcaption>
+<pre>for p in /orders /orders /orders /health /admin /favicon.ico; do
+  curl -s -o /dev/null -w "$p %{http_code}\n" localhost:8080$p
+done</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>адрес и код ответа</span></figcaption><pre>/orders 200
+/orders 200
+/orders 200
+/health 200
+/admin 404
+/favicon.ico 404</pre></figure>
+    <p>Откроем <code>http://localhost:8000/metrics</code> в браузере:</p>
+    <figure class="shot-fig">
+      <img src="img/metrics-service-browser.png" alt="Браузер показывает ответ /metrics: служебные метрики python_gc и python_info, затем http_requests_total с тремя рядами: /orders 200 — 3, /health 200 — 1, other 404 — 2" loading="lazy">
+      <figcaption>Ответ <code>/metrics</code> сервиса после шести запросов.</figcaption>
+    </figure>
+    <p>В начале ответа — метрики, которые библиотека добавляет в общий реестр сама: <code>python_gc_*</code> о сборке мусора и <code>python_info</code> с версией Python. Ниже — наш счётчик и три его ряда. Три запроса к <code>/orders</code> дали 3.0, один к <code>/health</code> — 1.0. Запросы к <code>/admin</code> и <code>/favicon.ico</code> собраны в один ряд <code>path="other"</code> со значением 2.0. Последние строки — <code>http_requests_created</code> из лекции 2.2, §2.</p>
+    <div class="key"><b>Вывод</b><p>В сервисе счётчик создают на уровне модуля, а <code>inc()</code> ставят в обработчик — туда, где уже известен результат запроса.</p></div>
+    <p class="next">Prometheus приходит за таким ответом регулярно и сохраняет каждое значение. Разберём, что по этим значениям можно узнать.</p>
+  </section>
+
+  <section class="part" id="s4">
+    <h2><span class="sec">§4</span>Частые ошибки</h2>
+    <p class="about">Что пишут неправильно и как исправить.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Что написано</th><th>Что произойдёт</th><th>Как правильно</th></tr></thead>
+        <tbody>
+          <tr><td><code>start_http_server</code> не вызван</td><td>порт 8000 закрыт, опрос Prometheus завершается ошибкой</td><td>вызвать <code>start_http_server</code> один раз при запуске</td></tr>
+          <tr><td><code>labels(path=self.path)</code></td><td>каждый новый адрес из запроса создаёт новый ряд</td><td>неизвестные адреса записывать в <code>other</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="part" id="s5">
+    <h2><span class="sec">§5</span>Практика</h2>
+    <p class="about">Задача на то, что разобрано в лекции. Решение спрятано под задачей.</p>
+    <h3>Задача 1. Новый адрес в сервисе</h3>
+    <p>Ситуация:</p>
+    <ul>
+      <li>в сервис из §3 добавили адрес <code>/status</code>;</li>
+      <li>к нему отправили два запроса, ещё один запрос ушёл на несуществующий адрес <code>/nope</code>;</li>
+      <li>сервис запущен заново, до этого запросов не было.</li>
+    </ul>
+    <div class="key"><b>Что нужно сделать</b><p>Изменить одну строку сервиса так, чтобы <code>/status</code> отвечал 200 и считался своим рядом. Назвать ряды счётчика в ответе <code>/metrics</code> после трёх запросов.</p></div>
+    <details><summary>Решение</summary>
+    <figure class="code"><figcaption><span>main.py</span><span>изменённая строка</span></figcaption><pre>KNOWN_PATHS = {<span class="s">"/orders"</span>, <span class="s">"/health"</span>, <span class="s">"/status"</span>}</pre></figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>строки счётчика в /metrics</span></figcaption><pre>http_requests_total{path="/status",status="200"} 2.0
+http_requests_total{path="other",status="404"} 1.0</pre></figure>
+    <p>Адрес <code>/status</code> попал в набор известных адресов, поэтому он отвечает 200 и записывается в метку как есть. Запрос к <code>/nope</code> ушёл в ряд <code>other</code>. Рядов для <code>/orders</code> и <code>/health</code> нет: после перезапуска к ним не было запросов.</p>
+    </details>
+  </section>
+
+  <section class="part" id="s6">
+    <h2><span class="sec">§6</span>Проверьте себя</h2>
+    <p class="about">Вопросы по лекции. Ответ раскрывается щелчком.</p>
+    <details><summary>Кто начинает запрос <code>/metrics</code>: программа или Prometheus?</summary><p>Prometheus. Программа только отвечает на запрос — это pull-модель.</p></details>
+    <details><summary>Где хранится история значений счётчика?</summary><p>В базе Prometheus, отсчётами. Программа держит в памяти только текущее значение.</p></details>
+    <details><summary>Почему запросы к <code>/admin</code> и <code>/favicon.ico</code> попали в один ряд?</summary><p>Оба адреса не входят в <code>KNOWN_PATHS</code>, и сервис записывает в метку <code>path</code> значение <code>other</code>.</p></details>
+  </section>
+
+  <section class="part" id="s7">
+    <h2><span class="sec">§7</span>Шпаргалка</h2>
+    <p class="about">Конструкции лекции одним списком.</p>
+    <div class="cheat">
+      <div><b>Отдать по HTTP</b><code>start_http_server(8000)</code></div>
+      <div><b>Проверить ответ</b><code>urlopen("http://localhost:8000/metrics")</code></div>
+      <div><b>Метка без лишних рядов</b><code>path = p if p in KNOWN else "other"</code></div>
+    </div>
+  </section>
+
+  <section class="part" id="s8">
+    <h2><span class="sec">§8</span>Глоссарий</h2>
+    <p class="about">Термины лекции, включая введённые раньше: формулировка, пример и рисунок.</p>
+    <div class="glossary">
+      <article class="gl" id="g-metrika">
+        <div class="gl__text">
+          <h3>Метрика<i>metric</i></h3>
+          <p class="gl__def">Именованное число, которое программа сообщает о себе. Значение меняется со временем, и по его истории видно, как работает программа.</p>
+          <p class="gl__ex"><b>Пример</b><code>orders_total</code> — сколько заказов принято с момента запуска.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.1</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Метрика: имя, значение и линия истории"><rect class="sc-acc" x="14" y="18" width="120" height="54" rx="8"/><text class="tm tc" x="74" y="40" style="font-size:11px">orders_total</text><text class="tb tc" x="74" y="62">3.0</text><polyline class="sc-plot" points="150,96 172,88 194,90 216,66 244,52"/><line class="sc-axis" x1="150" y1="104" x2="248" y2="104"/><text class="t tc" x="130" y="124">имя + число, меняется во времени</text></svg></figure>
+      </article>
+      <article class="gl" id="g-prometheus">
+        <div class="gl__text">
+          <h3>Prometheus</h3>
+          <p class="gl__def">Система мониторинга. Через равные промежутки запрашивает метрики у программ и хранит каждое полученное значение с отметкой времени.</p>
+          <p class="gl__ex"><b>Пример</b>раз в 15 секунд забирает <code>/metrics</code> у сервиса заказов.</p>
+          <p class="gl__where"><b>Где</b>лекции 2.1, 2.4</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Prometheus опрашивает два сервиса"><rect class="sc-acc" x="80" y="8" width="100" height="34" rx="8"/><text class="tb tc" x="130" y="30" style="font-size:12.5px">Prometheus</text><path class="sc-arrow" d="M110 46 L62 82 M65 76 L62 82 L69 81"/><path class="sc-arrow" d="M150 46 L198 82 M191 81 L198 82 L195 76"/><rect class="sc-box" x="12" y="86" width="100" height="30" rx="6"/><text class="t tc" x="62" y="106">сервис A</text><rect class="sc-box" x="148" y="86" width="100" height="30" rx="6"/><text class="t tc" x="198" y="106">сервис B</text></svg></figure>
+      </article>
+      <article class="gl" id="g-otvet">
+        <div class="gl__text">
+          <h3>Ответ /metrics</h3>
+          <p class="gl__def">Текст, который программа отдаёт по адресу <code>/metrics</code>. Для каждой метрики в нём описание (<code># HELP</code>), тип (<code># TYPE</code>) и строки «имя значение».</p>
+          <p class="gl__ex"><b>Пример</b><code>orders_total 3.0</code> — последняя строка ответа из §2.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.2, §2; лекция 2.4, §1</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Текст ответа /metrics"><rect class="sc-box" x="20" y="10" width="220" height="104" rx="4"/><rect class="sc-ink" x="20" y="10" width="220" height="20"/><text class="tm" x="30" y="24" style="fill:#BFE2F5;font-size:10.5px">GET /metrics</text><text class="tm" x="30" y="52" style="font-size:10.5px;fill:#8A93B2"># HELP orders_total Заказы</text><text class="tm" x="30" y="72" style="font-size:10.5px;fill:#8A93B2"># TYPE orders_total counter</text><text class="tm ta" x="30" y="96" style="font-size:12px">orders_total 3.0</text></svg></figure>
+      </article>
+      <article class="gl" id="g-pull">
+        <div class="gl__text">
+          <h3>Pull-модель<i>pull</i></h3>
+          <p class="gl__def">Способ сбора метрик, при котором запрос начинает тот, кто хранит данные. Prometheus сам приходит к программе за ответом <code>/metrics</code>, программа только отвечает.</p>
+          <p class="gl__ex"><b>Пример</b>Prometheus раз в 15 секунд запрашивает <code>localhost:8000/metrics</code>.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.4, §1</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Prometheus отправляет запрос программе, программа возвращает ответ">
+          <rect class="sc-box" x="10" y="40" width="90" height="50" rx="8"/><text class="t tc" x="55" y="70">программа</text>
+          <rect class="sc-acc" x="160" y="40" width="90" height="50" rx="8"/><text class="tb tc" x="205" y="70" style="font-size:12px">Prometheus</text>
+          <path class="sc-arrow" d="M156 54 L104 54"/><path class="sc-arrow" d="M112 50 L104 54 L112 58"/><text class="tm tc ta" x="130" y="44" style="font-size:10px">1. запрос</text>
+          <path class="sc-arrow-w" d="M104 78 L156 78"/><path class="sc-arrow" style="stroke-dasharray:none;stroke:#C4511F" d="M148 82 L156 78 L148 74"/><text class="tm tc tw" x="130" y="102" style="font-size:10px">2. ответ</text>
+        </svg></figure>
+      </article>
+      <article class="gl" id="g-opros">
+        <div class="gl__text">
+          <h3>Опрос<i>scrape</i></h3>
+          <p class="gl__def">Один запрос Prometheus к <code>/metrics</code> программы. Опросы повторяются через равные промежутки — интервал опроса.</p>
+          <p class="gl__ex"><b>Пример</b>интервал 15 секунд: опросы в 15:04:58, 15:05:13, 15:05:28.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.5, §2</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Опросы через каждые 15 секунд"><line class="sc-axis" x1="14" y1="86" x2="248" y2="86"/><path class="sc-arrow" d="M40 30 L40 78 M37 72 L40 78 L43 72"/><circle class="sc-dot" cx="40" cy="86" r="5"/><path class="sc-arrow" d="M110 30 L110 78 M107 72 L110 78 L113 72"/><circle class="sc-dot" cx="110" cy="86" r="5"/><path class="sc-arrow" d="M180 30 L180 78 M177 72 L180 78 L183 72"/><circle class="sc-dot" cx="180" cy="86" r="5"/><text class="tm tc" x="75" y="106">15 с</text><text class="tm tc" x="145" y="106">15 с</text><text class="t tc" x="130" y="22">запрос /metrics</text><text class="t tc" x="130" y="124">каждый запрос — один опрос</text></svg></figure>
+      </article>
+      <article class="gl" id="g-otschet">
+        <div class="gl__text">
+          <h3>Отсчёт<i>sample</i></h3>
+          <p class="gl__def">Одно значение метрики, полученное при опросе, вместе с моментом опроса.</p>
+          <p class="gl__ex"><b>Пример</b>в 15:04:58 счётчик был равен 40.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.4, §2; лекция 2.5, §2</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Один отсчёт: время и значение"><line class="sc-axis" x1="14" y1="90" x2="248" y2="90"/><line class="sc-grid" x1="130" y1="44" x2="130" y2="90"/><circle class="sc-dot" cx="130" cy="44" r="7"/><text class="tb tc" x="130" y="30">40</text><text class="tm tc" x="130" y="108">15:04:58</text><text class="t tc" x="130" y="126">момент опроса + значение</text></svg></figure>
+      </article>
+      <article class="gl" id="g-ryad">
+        <div class="gl__text">
+          <h3>Ряд<i>time series</i></h3>
+          <p class="gl__def">Все отсчёты одной метрики с одним набором значений меток, выстроенные по времени. Одна строка ответа <code>/metrics</code> даёт при каждом опросе один отсчёт своего ряда.</p>
+          <p class="gl__ex"><b>Пример</b><code>orders_total{status="paid"}</code> — один ряд, <code>{status="cancelled"}</code> — другой.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.3, §1</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Ряд: отсчёты одной метрики по времени"><text class="tm tc" x="130" y="20" style="font-size:10.5px">orders_total{status="paid"}</text><line class="sc-axis" x1="14" y1="108" x2="248" y2="108"/><polyline class="sc-plot" points="30,96 80,86 130,72 180,56 230,44"/><circle class="sc-dot" cx="30" cy="96" r="5"/><circle class="sc-dot" cx="80" cy="86" r="5"/><circle class="sc-dot" cx="130" cy="72" r="5"/><circle class="sc-dot" cx="180" cy="56" r="5"/><circle class="sc-dot" cx="230" cy="44" r="5"/><text class="t tc" x="130" y="125">отсчёт за отсчётом</text></svg></figure>
+      </article>
+      <article class="gl" id="g-metka">
+        <div class="gl__text">
+          <h3>Метка<i>label</i></h3>
+          <p class="gl__def">Пара «имя = значение», которая уточняет, к чему относится число. Метрика с разными значениями метки делится на разные ряды.</p>
+          <p class="gl__ex"><b>Пример</b><code>status="paid"</code> и <code>status="cancelled"</code> делят счётчик заказов на два ряда.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.3, §1–§3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Метка делит метрику на два ряда"><rect class="sc-acc" x="8" y="46" width="96" height="36" rx="6"/><text class="tm tc" x="56" y="68" style="font-size:10.5px">orders_total</text><path class="sc-arrow" d="M108 56 L148 32 M144 38 L148 32 L141 32"/><path class="sc-arrow" d="M108 72 L148 96 M141 96 L148 96 L144 90"/><rect class="sc-box" x="152" y="12" width="100" height="40" rx="6"/><text class="tm tc" x="202" y="30" style="font-size:10px">status="paid"</text><text class="tb tc" x="202" y="46">2</text><rect class="sc-box" x="152" y="78" width="100" height="40" rx="6"/><text class="tm tc" x="202" y="96" style="font-size:9.5px">status="cancelled"</text><text class="tb tc" x="202" y="112">1</text></svg></figure>
+      </article>
+      <article class="gl" id="g-reestr">
+        <div class="gl__text">
+          <h3>Реестр<i>CollectorRegistry</i></h3>
+          <p class="gl__def">Список метрик программы. Из него строится текст ответа <code>/metrics</code>: в ответ попадают все метрики реестра.</p>
+          <p class="gl__ex"><b>Пример</b><code>registry = CollectorRegistry()</code>; <code>Counter(..., registry=registry)</code>.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.2, §2; лекция 2.6, §2</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Реестр собирает метрики в ответ"><rect class="sc-soft" x="10" y="10" width="112" height="110" rx="8"/><text class="t tc" x="66" y="28">реестр</text><rect class="sc-acc" x="22" y="40" width="88" height="28" rx="5"/><text class="tm tc" x="66" y="59" style="font-size:11px">orders</text><rect class="sc-acc" x="22" y="78" width="88" height="28" rx="5"/><text class="tm tc" x="66" y="97" style="font-size:11px">errors</text><path class="sc-arrow" d="M128 66 L160 66 M154 69 L160 66 L154 63"/><rect class="sc-box" x="166" y="34" width="84" height="64" rx="4"/><text class="tm tc" x="208" y="62" style="font-size:10.5px">текст</text><text class="tm tc" x="208" y="80" style="font-size:10.5px">/metrics</text></svg></figure>
+      </article>
+      <article class="gl" id="g-schetchik">
+        <div class="gl__text">
+          <h3>Счётчик<i>counter</i></h3>
+          <p class="gl__def">Метрика, значение которой с момента запуска программы только растёт. Каждое событие прибавляет к ней число.</p>
+          <p class="gl__ex"><b>Пример</b>принятые заказы, ошибки оплаты, отправленные байты.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.2, §1–§4</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Счётчик растёт ступеньками"><line class="sc-axis" x1="14" y1="112" x2="248" y2="112"/><polyline class="sc-plot" points="20,104 70,104 70,82 130,82 130,60 190,60 190,38 244,38"/><text class="tm ta" x="78" y="76">+1</text><text class="tm ta" x="138" y="54">+1</text><text class="tm ta" x="198" y="32">+1</text><text class="t" x="20" y="126">только вверх</text></svg></figure>
+      </article>
+    </div>
+  </section>
+
+  <section class="part">
+    <h3>Итог лекции</h3>
+    <p>Prometheus сам приходит к программе за ответом <code>/metrics</code> — это pull-модель. Программа держит в памяти текущее значение и отдаёт его через <code>start_http_server</code>, а историю отсчётов хранит Prometheus. В сервисе счётчик создают на уровне модуля и прибавляют в обработчике запроса, а неизвестные значения меток сводят в одно.</p>
+    <h3>Источники</h3>
+    <ul class="sources">
+      <li>Prometheus. Metric types: Counter — prometheus.io/docs/concepts/metric_types</li>
+      <li>Prometheus. Query functions: increase, rate, resets — prometheus.io/docs/prometheus/latest/querying/functions</li>
+      <li>prometheus-client для Python: Counter, Multiprocess Mode — prometheus.github.io/client_python</li>
+      <li>Примеры лекции запущены на Python 3.12 и prometheus-client 0.26.0 06.11.2026; опыты с перезапуском и двумя процессами — на стенде сервиса заказов 23.10.2026</li>
+    </ul>
+  </section>
+
+  <div class="pager">
+    <a href="2-3-metki.html">← 2.3 Метки и ряды</a>
+    <a href="index.html">К содержанию справочника</a>
+    <a href="2-5-rost-i-sbros.html">2.5 Рост, скорость и сброс →</a>
+  </div>
+  <div class="colophon">
+    <span>Лекция 2.4 · Метрики по HTTP · Метрики и наблюдаемость</span>
+    <span class="author-line">Автор: Макаров Максим Николаевич</span>
+  </div>
+    </main>
+  </div>
+</div>
+<script src="reader.js"></script>
+</body>
+</html>

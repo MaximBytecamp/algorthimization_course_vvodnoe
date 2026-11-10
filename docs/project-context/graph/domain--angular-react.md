@@ -18,6 +18,10 @@ tags:
 ## Модули и разделы
 
 - [[unit--angular-react--01--repozitoriy]]
+- [[unit--angular-react--02--modul-1]]
+- [[unit--angular-react--03--modul-2]]
+- [[unit--angular-react--04--modul-3]]
+- [[unit--angular-react--05--shared]]
 
 ## Точки входа области
 

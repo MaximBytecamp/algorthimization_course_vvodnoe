@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>1.1 Сервис после развёртывания · Метрики и наблюдаемость</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="book">
+  <div class="book__body">
+    <div class="spine"><span>Часть 1 · Основы наблюдаемости</span></div>
+    <main class="leaf">
+  <div class="running">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Метрики и наблюдаемость</a> · часть 1 · основы наблюдаемости</p>
+    <p class="running__folio">Лекция 1.1</p>
+  </div>
+
+  <header class="chapter-head">
+    <span class="chapter-num">1.1</span>
+    <h1>Сервис после развёртывания</h1>
+    <p class="lead">Пока программа запущена на своём компьютере, ошибку видно сразу. После развёртывания разработчика рядом нет, и о сбое можно узнать только из данных, которые сервис сохранил заранее. В лекции — какие это данные и почему код ответа, проверка <code>/health</code> и ручная проверка их не заменяют.</p>
+  </header>
+  <dl class="passport">
+    <div><dt>Тема</dt><dd>Основы наблюдаемости</dd></div>
+    <div><dt>Стенд</dt><dd><code>products-api</code> на FastAPI</dd></div>
+    <div><dt>Опирается на</dt><dd>HTTP-запрос и ответ, основы Python</dd></div>
+    <div><dt>Результат</dt><dd>Понимать, какие данные о сервисе сохранять заранее</dd></div>
+  </dl>
+
+  <div class="reader-start">
+    <div>
+      <b>Режим чтения</b>
+      <p>Лекция откроется по одному разделу: на экране одна мысль, кнопка «Дальше» ведёт к следующей. Стрелки ← → на клавиатуре тоже листают, Esc возвращает всю лекцию.</p>
+    </div>
+    <div class="reader-start__btns">
+      <button type="button" data-reader-start="continue" hidden></button>
+      <button type="button" class="primary" data-reader-start="begin">Читать по шагам</button>
+    </div>
+  </div>
+
+  <nav class="contents">
+    <b>В этой лекции</b>
+    <ol>
+      <li><a href="#s1"><span class="csec">§1</span>Сервис стенда</a></li>
+      <li><a href="#s2"><span class="csec">§2</span>Отладка на своём компьютере</a></li>
+      <li><a href="#s3"><span class="csec">§3</span>Что меняется после развёртывания</a></li>
+      <li><a href="#s4"><span class="csec">§4</span>Сбой ночью</a></li>
+      <li><a href="#s5"><span class="csec">§5</span>Что сервис обещает пользователю</a></li>
+      <li><a href="#s6"><span class="csec">§6</span>Что проверяет /health</a></li>
+      <li><a href="#s7"><span class="csec">§7</span>Два ответа HTTP 200</a></li>
+      <li><a href="#s8"><span class="csec">§8</span>Почему одна проверка ничего не доказывает</a></li>
+      <li><a href="#s9"><span class="csec">§9</span>Симптом, наблюдение, гипотеза и вывод</a></li>
+      <li><a href="#s10"><span class="csec">§10</span>Какие данные сохранять заранее</a></li>
+      <li><a href="#s11"><span class="csec">§11</span>Частые ошибки</a></li>
+      <li><a href="#s12"><span class="csec">§12</span>Практика</a></li>
+      <li><a href="#s13"><span class="csec">§13</span>Проверьте себя</a></li>
+      <li><a href="#s14"><span class="csec">§14</span>Шпаргалка</a></li>
+      <li><a href="#s15"><span class="csec">§15</span>Глоссарий</a></li>
+    </ol>
+  </nav>
+
+  <section class="part" id="s1">
+    <h2><span class="sec">§1</span>Сервис стенда</h2>
+    <p class="about">На каком сервисе построена часть 1 и как он себя ведёт.</p>
+    <p>Все лекции первой части опираются на один небольшой сервис — <code>products-api</code>. Это веб-приложение на FastAPI: на запрос <code>GET /products</code> оно отвечает списком товаров. Настоящего каталога за ним нет, сервис возвращает число товаров и служебные поля.</p>
+    <p>Настоящие сервисы тормозят и падают в случайные моменты, и повторить такой сбой по заказу почти невозможно. Поэтому поведение стенда задаёт параметр запроса <code>scenario</code>. Посмотрим, как он устроен в коде:</p>
+    <figure class="code">
+      <figcaption><span>app.py</span><span>фрагмент обработчика /products</span></figcaption>
+<pre>    <span class="k">await</span> <span class="f">stage</span>(<span class="s">"validate"</span>, <span class="n">0.01</span>)
+    <span class="k">try</span>:
+        <span class="k">await</span> <span class="f">stage</span>(<span class="s">"dependency.wait (simulated)"</span>, <span class="n">3.0</span> <span class="k">if</span> scenario == <span class="s">"slow"</span> <span class="k">else</span> <span class="n">0.06</span>)
+        <span class="k">if</span> scenario == <span class="s">"error"</span>:
+            <span class="k">raise</span> <span class="f">TimeoutError</span>(<span class="s">"Simulated dependency timeout; no database is connected"</span>)
+        <span class="k">await</span> <span class="f">stage</span>(<span class="s">"serialize"</span>, <span class="n">0.01</span>)
+    <span class="k">except</span> TimeoutError:
+        status = <span class="n">500</span></pre>
+    </figure>
+    <div class="walk">
+      <div><code>stage(name, seconds)</code><span>Один этап обработки: обработчик ждёт заданное время и записывает, сколько ожидание заняло на самом деле.</span></div>
+      <div><code>dependency.wait (simulated)</code><span>Ожидание зависимости. При <code>scenario=slow</code> оно длится 3 секунды, в остальных случаях — 0,06 секунды.</span></div>
+      <div><code>raise TimeoutError(...)</code><span>При <code>scenario=error</code> ожидание заканчивается исключением, и клиент получает код 500.</span></div>
+    </div>
+    <div class="def">
+      <div class="def__term">Зависимость<i>dependency</i></div>
+      <dl><dt>Что это</dt><dd>Внешняя система, от которой зависит ответ сервиса: база данных, кэш, другой сервис.</dd><dt>Что даёт</dt><dd>Объясняет, почему сервис бывает медленным, хотя его собственный код не менялся: он ждёт зависимость.</dd><dt>На стенде</dt><dd>Базы данных нет, её заменяет ожидание <code>asyncio.sleep</code>. Поэтому каждый сценарий повторяется одинаково.</dd></dl>
+    </div>
+    <p>Отправим по одному запросу каждого сценария и посмотрим код ответа и время:</p>
+    <figure class="code">
+      <figcaption><span>Терминал</span><span>три сценария</span></figcaption>
+<pre>for sc in fast slow error; do
+  curl -s -o /dev/null -w "$sc %{http_code} %{time_total}s\n" "localhost:8015/products?scenario=$sc"
+done</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>код ответа и время запроса</span></figcaption><pre>fast 200 0.084417s
+slow 200 3.022478s
+error 500 0.074278s</pre></figure>
+    <p>Три сценария на одной шкале времени:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Три сценария: fast отвечает 200 за 0,08 с, slow — 200 за 3 с, error — 500 за 0,07 с"><line class="sc-axis" x1="110" y1="128" x2="620" y2="128"/><text class="tm" x="10" y="34">fast</text><rect class="sc-acc" x="110" y="20" width="14" height="22"/><text class="tm ta" x="132" y="36">200 · 0,08 с</text><text class="tm" x="10" y="72">slow</text><rect class="sc-acc" x="110" y="58" width="500" height="22"/><text class="tm" x="510" y="74">200 · 3,02 с</text><text class="tm" x="10" y="110">error</text><rect class="sc-wrn" x="110" y="96" width="12" height="22"/><text class="tm tw" x="130" y="112">500 · 0,07 с</text><text class="tm tc" x="110" y="145">0</text><text class="tm tc" x="610" y="145">3 с</text></svg>
+      <figcaption>Длина полосы — время ответа. Шкала общая для трёх запросов.</figcaption>
+    </figure>
+    <p>Быстрый запрос почти не виден на шкале: 84 мс против трёх секунд медленного. Запрос с ошибкой тоже короткий, но заканчивается кодом 500. Запомним это сочетание: быстрый 200, медленный 200 и быстрая ошибка — дальше в лекции на нём видно, что сообщает код ответа и чего он не сообщает.</p>
+    <p>Кроме <code>/products</code>, у сервиса есть служебные адреса:</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Адрес</th><th>Что возвращает</th></tr></thead>
+        <tbody>
+          <tr><td><code>/lab</code></td><td>страница стенда: кнопки сценариев, ответ, запись о событии и этапы обработки</td></tr>
+          <tr><td><code>/health</code></td><td>короткий ответ о том, что процесс работает</td></tr>
+          <tr><td><code>/events</code></td><td>последние 2000 записей о запросах, которые процесс хранит в памяти</td></tr>
+          <tr><td><code>/metrics</code></td><td>счётчики и гистограмма в текстовом формате Prometheus</td></tr>
+          <tr><td><code>/docs</code></td><td>документация Swagger, которую FastAPI строит по коду</td></tr>
+        </tbody>
+      </table></div>
+    <p>Код стенда и инструкция по запуску — в архиве <a href="../assets/telemetry-lab.zip">telemetry-lab.zip</a>. Запускать его для чтения лекции не обязательно: весь вывод и кадры в тексте сняты на этом сервисе.</p>
+    <p class="next">Сервис описан. Вспомним, как ошибки в нём ищут, пока он запущен на своём компьютере.</p>
+  </section>
+
+  <section class="part" id="s2">
+    <h2><span class="sec">§2</span>Отладка на своём компьютере</h2>
+    <p class="about">Как ищут ошибку, пока программа запущена рядом.</p>
+    <p>Пока программа запущена локально, разработчик отправляет запрос и сразу видит результат. У него четыре способа найти ошибку:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Четыре способа отладки: терминал, отладчик, повтор запроса, print; все требуют, чтобы разработчик был рядом с процессом"><rect class="sc-box" x="14" y="20" width="140" height="60" rx="8"/><text class="tb tc" x="84" y="46">терминал</text><text class="t tc" x="84" y="64">вывод и traceback</text><rect class="sc-box" x="170" y="20" width="140" height="60" rx="8"/><text class="tb tc" x="240" y="46">отладчик</text><text class="t tc" x="240" y="64">точка останова</text><rect class="sc-box" x="326" y="20" width="140" height="60" rx="8"/><text class="tb tc" x="396" y="46">повтор запроса</text><text class="t tc" x="396" y="64">ещё раз и сравнить</text><rect class="sc-box" x="482" y="20" width="140" height="60" rx="8"/><text class="tb tc" x="552" y="46">print</text><text class="t tc" x="552" y="64">правка и перезапуск</text><rect class="sc-acc" x="14" y="104" width="608" height="34" rx="8"/><text class="t tc" x="318" y="126">условие для всех четырёх: разработчик рядом с процессом в момент ошибки</text><path class="sc-arrow" d="M84 84 L84 100"/><path class="sc-arrow" d="M80 92 L84 100 L88 92"/><path class="sc-arrow" d="M240 84 L240 100"/><path class="sc-arrow" d="M236 92 L240 100 L244 92"/><path class="sc-arrow" d="M396 84 L396 100"/><path class="sc-arrow" d="M392 92 L396 100 L400 92"/><path class="sc-arrow" d="M552 84 L552 100"/><path class="sc-arrow" d="M548 92 L552 100 L556 92"/></svg>
+      <figcaption>Четыре способа локальной отладки и общее для них условие.</figcaption>
+    </figure>
+    <p>Терминал показывает каждый запрос и полный traceback при исключении. Отладчик останавливает выполнение и показывает значения переменных. Запрос можно повторить и сравнить результат. В код можно добавить <code>print</code>, перезапустить сервер и сразу увидеть вывод. Вот что вывел в терминал Uvicorn — сервер, на котором работает FastAPI, — после трёх запросов из §1:</p>
+    <figure class="code">
+      <figcaption><span>Терминал Uvicorn</span><span>три запроса из §1</span></figcaption>
+<pre>INFO:     127.0.0.1:49322 - "GET /products?scenario=fast HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49324 - "GET /products?scenario=slow HTTP/1.1" 200 OK
+dependency_timeout request_id=9f261e9e4559432396dabd1eab6a474c
+Traceback (most recent call last):
+  File ".../lab/app.py", line 55, in products
+    raise TimeoutError("Simulated dependency timeout; no database is connected")
+TimeoutError: Simulated dependency timeout; no database is connected
+INFO:     127.0.0.1:49328 - "GET /products?scenario=error HTTP/1.1" 500 Internal Server Error</pre>
+    </figure>
+    <p>Ошибка видна сразу: traceback называет файл, строку 55 и текст исключения. А первые две строки одинаковые: <code>200 OK</code>. Медленный запрос шёл три секунды, но в строке Uvicorn длительности нет. Локально это не мешает: разработчик сам ждал три секунды и заметил задержку.</p>
+    <div class="key"><b>Вывод</b><p>Все четыре способа работают, пока разработчик находится рядом с процессом в момент ошибки: видит терминал, может остановить программу и повторить действие.</p></div>
+    <p class="next">После развёртывания это условие перестаёт выполняться. Посмотрим, что меняется.</p>
+  </section>
+
+  <section class="part" id="s3">
+    <h2><span class="sec">§3</span>Что меняется после развёртывания</h2>
+    <p class="about">Через что проходит запрос, когда программа работает на сервере.</p>
+    <p>Пока машина стоит в мастерской, мастер слышит двигатель, может заглушить его и завести снова. Когда машина уехала к владельцу, мастеру остаются только записи бортового компьютера. С программой так же: после развёртывания разработчик больше не сидит рядом с процессом.</p>
+    <div class="def">
+      <div class="def__term">Развёртывание<i>deployment</i></div>
+      <dl><dt>Что это</dt><dd>Установка и запуск версии программы там, где с ней работают пользователи. Эту среду называют рабочей, или продакшеном (production).</dd><dt>Что меняет</dt><dd>Программа работает без разработчика рядом, часто в нескольких копиях и на нескольких серверах.</dd></dl>
+    </div>
+    <p>Сравним путь запроса в двух случаях. Сначала — на своём компьютере, затем — на сервере:</p>
+    <div class="story">
+    <figure class="scene">
+      <svg viewBox="0 0 640 140" role="img" aria-label="Локально: разработчик, один процесс FastAPI, хранилище"><rect class="sc-box" x="20" y="50" width="150" height="50" rx="8"/><text class="tb tc" x="95" y="80">разработчик</text><path class="sc-arrow" d="M176 75 L236 75"/><path class="sc-arrow" d="M228 79 L236 75 L228 71"/><rect class="sc-acc" x="242" y="50" width="150" height="50" rx="8"/><text class="tb tc" x="317" y="71">FastAPI</text><text class="t tc" x="317" y="89">один процесс</text><path class="sc-arrow" d="M398 75 L458 75"/><path class="sc-arrow" d="M450 79 L458 75 L450 71"/><rect class="sc-box" x="464" y="50" width="150" height="50" rx="8"/><text class="t tc" x="539" y="80">хранилище</text><text class="t tc" x="318" y="130">терминал и состояние процесса — перед глазами</text></svg>
+      <figcaption><b>Локально.</b> Один процесс, и разработчик сидит рядом с ним.</figcaption>
+    </figure>
+      <p>На сервере тот же код работает иначе:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="На сервере: пользователи, балансировщик, три экземпляра, база и кэш, очередь и пять обработчиков"><g class="sc-person"><circle cx="30" cy="70" r="9"/><rect x="20" y="82" width="20" height="30" rx="8"/></g><g class="sc-person"><circle cx="56" cy="70" r="9"/><rect x="46" y="82" width="20" height="30" rx="8"/></g><g class="sc-person"><circle cx="82" cy="70" r="9"/><rect x="72" y="82" width="20" height="30" rx="8"/></g><text class="t tc" x="56" y="132">пользователи</text><path class="sc-arrow" d="M100 90 L116 90"/><path class="sc-arrow" d="M108 94 L116 90 L108 86"/><rect class="sc-box" x="120" y="62" width="114" height="56" rx="8"/><text class="t tc" x="177" y="95">балансировщик</text><path class="sc-arrow" d="M228 80 L246 35"/><path class="sc-arrow" d="M247 44 L246 35 L239 41"/><path class="sc-arrow" d="M228 90 L246 79"/><path class="sc-arrow" d="M241 87 L246 79 L237 80"/><path class="sc-arrow" d="M228 100 L246 123"/><path class="sc-arrow" d="M238 119 L246 123 L244 114"/><rect class="sc-acc" x="250" y="18" width="110" height="34" rx="8"/><text class="t tc" x="305" y="40">экземпляр 1</text><rect class="sc-acc" x="250" y="62" width="110" height="34" rx="8"/><text class="t tc" x="305" y="84">экземпляр 2</text><rect class="sc-acc" x="250" y="106" width="110" height="34" rx="8"/><text class="t tc" x="305" y="128">экземпляр 3</text><path class="sc-arrow" d="M364 79 L400 79"/><path class="sc-arrow" d="M392 83 L400 79 L392 75"/><rect class="sc-box" x="404" y="40" width="96" height="34" rx="8"/><text class="t tc" x="452" y="62">база</text><rect class="sc-box" x="404" y="86" width="96" height="34" rx="8"/><text class="t tc" x="452" y="108">кэш</text><rect class="sc-amb" x="520" y="18" width="106" height="34" rx="8"/><text class="t tc" x="573" y="40">очередь</text><rect class="sc-box" x="524" y="70" width="16" height="16" rx="3"/><rect class="sc-box" x="544" y="70" width="16" height="16" rx="3"/><rect class="sc-box" x="564" y="70" width="16" height="16" rx="3"/><rect class="sc-box" x="584" y="70" width="16" height="16" rx="3"/><rect class="sc-box" x="604" y="70" width="16" height="16" rx="3"/><text class="t tc" x="573" y="104">5 обработчиков</text><text class="t tc" x="573" y="120">фоновых задач</text><path class="sc-line" d="M573 52 V66"/></svg>
+      <figcaption><b>После развёртывания.</b> Запросы от многих пользователей расходятся по экземплярам, часть работы идёт в фоне.</figcaption>
+    </figure>
+    </div>
+    <p>На сервере приложение запущено в нескольких <span class="term">экземплярах</span> — отдельных процессах одной программы. Их делают несколько, чтобы выдерживать нагрузку и не останавливать сервис, если упадёт один процесс. Запросы между экземплярами распределяет <span class="term">балансировщик нагрузки</span>. Часть работы идёт вне HTTP-запроса: обработчики очереди формируют отчёты и отправляют письма уже после того, как пользователь получил ответ.</p>
+    <p>В таком окружении каждый из четырёх способов отладки перестаёт работать:</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Способ</th><th>Локально</th><th>На сервере</th></tr></thead>
+        <tbody>
+          <tr><td>Терминал</td><td>виден сразу</td><td>вывод десятков процессов на разных серверах; после перезапуска контейнера может исчезнуть</td></tr>
+          <tr><td>Отладчик</td><td>программу можно остановить</td><td>остановка процесса остановит обслуживание пользователей</td></tr>
+          <tr><td>Повтор запроса</td><td>отправили ещё раз</td><td>неизвестно, какой запрос, от кого и на какой экземпляр пришёл</td></tr>
+          <tr><td><code>print</code></td><td>добавили и перезапустили</td><td>нужен выпуск новой версии, а сбой к тому времени может пройти</td></tr>
+        </tbody>
+      </table></div>
+    <p class="next">Самое неприятное начинается, когда сбой случается без свидетелей. Разберём один такой случай по шагам.</p>
+  </section>
+
+  <section class="part" id="s4">
+    <h2><span class="sec">§4</span>Сбой ночью</h2>
+    <p class="about">Почему после сбоя разбирать его уже не по чему.</p>
+    <p>Разберём типичный случай. Ночью на одном экземпляре кончилась память, процесс упал, а система оркестрации — программа, которая следит за процессами и перезапускает упавшие, — запустила его заново. Утром приходит жалоба. Проследим, где в это время были сведения о сбое:</p>
+    <div class="story">
+    <figure class="scene">
+      <svg viewBox="0 0 640 140" role="img" aria-label="В 03:10 экземпляр 2 упал, сведения о сбое были в его памяти"><text class="tb" x="20" y="30">03:10</text><rect class="sc-box" x="110" y="40" width="200" height="80" rx="8"/><text class="tb tc" x="210" y="76">экземпляр 2</text><text class="t tw tc" x="210" y="94">память: сведения о сбое</text><text class="t tw" x="330" y="76">память кончилась</text><text class="t tw" x="330" y="96">процесс упал</text></svg>
+      <figcaption>Сведения о сбое существуют только в памяти упавшего процесса.</figcaption>
+    </figure>
+      <p>Процесс упал, и его память освободилась вместе со всем, что в ней было.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 140" role="img" aria-label="В 03:11 запущен новый экземпляр с пустой памятью"><text class="tb" x="20" y="30">03:11</text><rect class="sc-soft" x="110" y="40" width="200" height="80" rx="8"/><text class="t tc" x="210" y="76">экземпляр 2 (старый)</text><text class="t tw tc" x="210" y="94">процесса больше нет</text><path class="sc-arrow" d="M316 80 L380 80"/><path class="sc-arrow" d="M372 84 L380 80 L372 76"/><rect class="sc-acc" x="386" y="40" width="220" height="80" rx="8"/><text class="tb tc" x="496" y="76">экземпляр 2 (новый)</text><text class="t tc" x="496" y="94">память пустая</text><text class="t tc" x="348" y="134">оркестратор перезапустил</text></svg>
+      <figcaption>Новый процесс начинает с чистой памяти.</figcaption>
+    </figure>
+      <p>Сервис снова работает, и до утра никто ничего не замечает.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 140" role="img" aria-label="В 09:00 разработчик разбирает жалобу, но новый процесс в 03:10 не существовал"><text class="tb" x="20" y="30">09:00</text><g class="sc-person"><circle cx="140" cy="50" r="9"/><rect x="130" y="62" width="20" height="30" rx="8"/></g><text class="t tc" x="140" y="120">жалоба пользователя</text><path class="sc-arrow" d="M170 80 L380 80"/><path class="sc-arrow" d="M372 84 L380 80 L372 76"/><rect class="sc-acc" x="386" y="40" width="220" height="80" rx="8"/><text class="tb tc" x="496" y="76">экземпляр 2 (новый)</text><text class="t tc" x="496" y="94">в 03:10 ещё не существовал</text></svg>
+      <figcaption>Разбирать сбой не по чему: процесса, который его видел, уже нет.</figcaption>
+    </figure>
+    </div>
+    <p>На первом рисунке сведения о сбое ещё есть — в памяти экземпляра 2. На втором этот процесс исчез, и в памяти нового процесса сведений о сбое нет. На третьем разработчик смотрит на работающий сервис, но спрашивать не у кого. Вопрос «что случилось в 03:10» превращается в вопрос «какие данные о 03:10 сервис куда-то сохранил». Если не сохранил ничего, сбой не разобрать.</p>
+    <div class="key key--warn"><b>Вывод</b><p>Данные для разбора сбоя собирают заранее, пока сервис работает, и хранят вне процесса, который может упасть.</p></div>
+    <p class="next">Чтобы решить, какие данные собирать, нужно сначала определить, что значит «сервис работает хорошо».</p>
+  </section>
+
+  <section class="part" id="s5">
+    <h2><span class="sec">§5</span>Что сервис обещает пользователю</h2>
+    <p class="about">Четыре свойства хорошей работы сервиса.</p>
+    <p>Для пользователя хорошая работа сервиса складывается из четырёх свойств. Они пересекаются, но проверяются по-разному:</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Свойство</th><th>Вопрос</th><th>Пример нарушения</th></tr></thead>
+        <tbody>
+          <tr><td>Доступность</td><td>можно ли получить ответ</td><td>сервис не отвечает или возвращает 503 Service Unavailable</td></tr>
+          <tr><td>Производительность</td><td>сколько времени занимает работа</td><td>каталог открывается за 3 секунды вместо 100 мс</td></tr>
+          <tr><td>Надёжность</td><td>сохраняется ли поведение во времени</td><td>раз в несколько часов теряются фоновые задания</td></tr>
+          <tr><td>Корректность</td><td>правилен ли результат</td><td>пришёл HTTP 200, но заказ не записан в базу</td></tr>
+        </tbody>
+      </table></div>
+    <p>Доступность и производительность связаны. Браузер и мобильное приложение ждут ответа не бесконечно: у клиента есть предел, <span class="term">тайм-аут</span>. Если ответ не пришёл за это время, клиент прерывает запрос с ошибкой. На рисунке — два запроса и тайм-аут клиента 30 секунд:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 140" role="img" aria-label="Запрос за 3 секунды укладывается в тайм-аут 30 секунд; запрос за 40 секунд прерывается клиентом"><line class="sc-axis" x1="120" y1="118" x2="620" y2="118"/><line class="sc-arrow-w" x1="485" y1="14" x2="485" y2="118"/><text class="t tw" x="490" y="28">тайм-аут клиента: 30 с</text><text class="t" x="10" y="52">3 секунды</text><rect class="sc-acc" x="120" y="38" width="36" height="22"/><text class="t ta" x="164" y="54">ответ получен</text><text class="t" x="10" y="94">40 секунд</text><rect class="sc-acc" x="120" y="80" width="365" height="22"/><rect class="sc-wrn" x="485" y="80" width="122" height="22"/><text class="t tw" x="490" y="96">клиент уже ушёл</text><text class="tm tc" x="120" y="134">0</text><text class="tm tc" x="485" y="134">30 с</text><text class="tm tc" x="607" y="134">40 с</text></svg>
+      <figcaption>Длина полосы — время обработки запроса на сервере.</figcaption>
+    </figure>
+    <p>Первый запрос уложился в предел, пользователь получил ответ. Второй сервер обрабатывал 40 секунд, но клиент прервал ожидание на 30-й секунде. Сервер продолжал работать, а пользователь увидел ошибку. Для него медленный сервис стал недоступным.</p>
+    <p>Корректность проверяют отдельно. Код HTTP сообщает результат на уровне протокола: запрос принят и обработан без исключения. Смысла операции в нём нет. Обработчик оформления заказа может вернуть 200 и не записать заказ, и ни один показатель HTTP этого не заметит. Поэтому для операций с заказами и деньгами успех проверяют отдельно: заказ появился в базе, письмо ушло, платёж подтверждён.</p>
+    <p class="next">Первое свойство, доступность, обычно проверяют отдельным адресом. Посмотрим, что эта проверка сообщает.</p>
+  </section>
+
+  <section class="part" id="s6">
+    <h2><span class="sec">§6</span>Что проверяет /health</h2>
+    <p class="about">Что сообщает проверка состояния и что она не проверяет.</p>
+    <p>Почти у каждого веб-сервиса есть адрес проверки состояния. Балансировщик и система оркестрации регулярно обращаются к нему и по ответу решают, отправлять ли на экземпляр запросы и не пора ли его перезапустить. У стенда это <code>/health</code>. Откроем его в браузере:</p>
+    <figure class="shot-fig">
+      <img src="img/api-health.png" alt="Браузер показывает ответ /health одной строкой: status ok, scope process only; dependencies not checked" loading="lazy">
+      <figcaption>Ответ <code>/health</code> в браузере Chrome.</figcaption>
+    </figure>
+    <p>Браузер показал JSON одной строкой. Флажок Pretty-print добавил сам браузер, к ответу он не относится. Значение <code>"status": "ok"</code> означает, что обработчик выполнился. Поле <code>scope</code> сервис заполнил сам и назвал в нём границу проверки: проверен процесс, зависимости не проверялись. Код обработчика это подтверждает:</p>
+    <figure class="code">
+      <figcaption><span>app.py</span><span>обработчик /health</span></figcaption>
+<pre>@app.<span class="f">get</span>(<span class="s">"/health"</span>, tags=[<span class="s">"Проверка процесса"</span>])
+<span class="k">async</span> <span class="k">def</span> <span class="f">health</span>():
+    <span class="k">return</span> {<span class="s">"status"</span>: <span class="s">"ok"</span>, <span class="s">"scope"</span>: <span class="s">"process only; dependencies not checked"</span>}</pre>
+    </figure>
+    <p>Обработчик не обращается к зависимостям и не выполняет код <code>/products</code>. На схеме — какую часть сервиса проходит каждый из двух запросов:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 160" role="img" aria-label="/health проходит только процесс; /products проходит процесс и зависимость"><rect class="sc-box" x="20" y="20" width="130" height="40" rx="8"/><text class="tm tc" x="85" y="45">GET /health</text><path class="sc-arrow" d="M154 40 L236 40"/><path class="sc-arrow" d="M228 44 L236 40 L228 36"/><rect class="sc-box" x="20" y="96" width="130" height="40" rx="8"/><text class="tm tc" x="85" y="121">GET /products</text><path class="sc-arrow" d="M154 116 L236 116"/><path class="sc-arrow" d="M228 120 L236 116 L228 112"/><rect class="sc-soft" x="240" y="10" width="190" height="140" rx="12"/><text class="t tc" x="335" y="30">процесс сервиса</text><rect class="sc-acc" x="256" y="40" width="158" height="30" rx="8"/><text class="tm tc" x="335" y="60">health()</text><rect class="sc-acc" x="256" y="100" width="158" height="30" rx="8"/><text class="tm tc" x="335" y="120">products()</text><path class="sc-arrow" d="M418 115 L478 115"/><path class="sc-arrow" d="M470 119 L478 115 L470 111"/><rect class="sc-box" x="484" y="96" width="136" height="40" rx="8"/><text class="t tc" x="552" y="121">зависимость</text><text class="t ta" x="440" y="50">ok сразу</text></svg>
+      <figcaption><code>/health</code> заканчивается внутри процесса, <code>/products</code> доходит до зависимости.</figcaption>
+    </figure>
+    <p>Верхний запрос заканчивается внутри процесса: обработчик сразу возвращает <code>ok</code>. Нижний доходит до зависимости — там <code>/products</code> медлит или падает. Поэтому <code>/health</code> ответит <code>ok</code>, даже если <code>/products</code> в этот момент падает в каждом запросе.</p>
+    <div class="key"><b>Вывод</b><p>Проверка состояния отвечает на вопрос «жив ли процесс» — этого достаточно, чтобы перезапустить зависший экземпляр. На вопрос «получают ли пользователи товары» она не отвечает: для него нужны данные о настоящих запросах.</p></div>
+    <p class="next">Код ответа самого маршрута <code>/products</code> тоже сообщает не всё. Это видно на двух запросах с одинаковым кодом.</p>
+  </section>
+
+  <section class="part" id="s7">
+    <h2><span class="sec">§7</span>Два ответа HTTP 200</h2>
+    <p class="about">Почему успешный код ответа ничего не говорит о скорости.</p>
+    <p>Страница стенда <code>/lab</code> отправляет настоящий запрос к <code>/products</code> и показывает всё, что сервис сохранил о нём. Сначала нажмём «Быстрый 200»:</p>
+    <figure class="shot-fig">
+      <img src="img/api-fast.png" alt="Страница стенда: HTTP 200, клиент 84 мс, обработчик 81,8 мс; блоки HTTP, LOG и TRACE с тремя этапами" loading="lazy">
+      <figcaption>Сценарий <code>fast</code> на странице стенда.</figcaption>
+    </figure>
+    <p>Кадр читается сверху вниз. Строка итога: <code>HTTP 200 · клиент: 84.0 ms · обработчик: 81.8 ms</code>. Время клиента измерил браузер — от отправки запроса до ответа. Время обработчика измерил сам сервис — от начала до конца функции. Ниже три блока:</p>
+    <div class="walk">
+      <div><code>HTTP</code><span>тело ответа, которое получил клиент: <code>status</code>, <code>items</code>, <code>request_id</code> — уникальный номер запроса, <code>duration_ms</code> — время обработчика.</span></div>
+      <div><code>LOG</code><span>запись о событии, которую сервис сохранил у себя: время, уровень <code>INFO</code>, маршрут, код, сценарий. <code>request_id</code> совпадает с блоком HTTP.</span></div>
+      <div><code>TRACE</code><span>три этапа обработчика на общей шкале: <code>validate</code> 11,1 мс, <code>dependency.wait</code> 60,3 мс, <code>serialize</code> 10,5 мс.</span></div>
+    </div>
+    <p>Теперь нажмём «Медленный 200»:</p>
+    <figure class="shot-fig">
+      <img src="img/api-slow.png" alt="Страница стенда: HTTP 200, клиент 3026,6 мс; этап dependency.wait занимает почти всю шкалу" loading="lazy">
+      <figcaption>Сценарий <code>slow</code>: тот же код ответа и то же тело.</figcaption>
+    </figure>
+    <p>В строке итога снова <code>HTTP 200</code>, но клиент ждал 3026,6 мс. В блоке HTTP те же <code>status: "ok"</code> и <code>items: 10</code>. В блоке LOG уровень <code>INFO</code>, как у быстрого запроса. Разница только в числах. На схеме — оба запроса на одной шкале:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Два запроса с кодом 200: 84 мс и 3026,6 мс; в медленном почти всё время занимает ожидание зависимости"><line class="sc-axis" x1="110" y1="126" x2="620" y2="126"/><text class="tm" x="10" y="40">fast</text><rect class="sc-acc" x="110" y="26" width="14" height="22"/><text class="tm" x="132" y="42">200 · 84 мс</text><text class="tm" x="10" y="92">slow</text><rect class="sc-acc" x="110" y="78" width="2" height="22"/><rect class="sc-wrn" x="112" y="78" width="496" height="22"/><rect class="sc-acc" x="608" y="78" width="2" height="22"/><text class="t tc tw" x="360" y="94">dependency.wait · 3000,6 мс</text><text class="tm tc" x="110" y="144">0</text><text class="tm tc" x="610" y="144">3026,6 мс</text></svg>
+      <figcaption>Оба ответа — 200 с одинаковым телом. Отличается только время.</figcaption>
+    </figure>
+    <p>Быстрый запрос — тонкая полоска у левого края. Медленный занимает всю шкалу, и почти всё его время — оранжевый этап ожидания зависимости. Этапы <code>validate</code> и <code>serialize</code> остались по 11 мс и превратились в тонкие черты по краям. Пользователь во втором случае ждал в 36 раз дольше, а код ответа и уровень записи у запросов одинаковые.</p>
+    <div class="key"><b>Вывод</b><p>Если сервис сохраняет только код ответа, медленный запрос не отличить от быстрого. Чтобы заметить медленную работу, сохраняют длительность, а чтобы найти её место — длительность этапов.</p></div>
+    <p class="next">На стенде медленный запрос вызван намеренно. В работе такие запросы редки. Посчитаем, как часто их находит ручная проверка.</p>
+  </section>
+
+  <section class="part" id="s8">
+    <h2><span class="sec">§8</span>Почему одна проверка ничего не доказывает</h2>
+    <p class="about">Сколько ручных проверок нужно, чтобы заметить редкую проблему.</p>
+    <p>Пользователь пожаловался на медленный каталог. Разработчик открыл страницу, она загрузилась за 90 мс, и жалобу закрыли как неподтверждённую. Посчитаем, насколько надёжна такая проверка. Пусть медленным оказывается каждый двадцатый запрос, то есть 5%. Тогда одна проверка будет быстрой с вероятностью 0,95, а n проверок подряд — с вероятностью 0,95 в степени n:</p>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>вероятность не заметить медленный запрос</span></figcaption>
+<pre>fast_share = <span class="n">0.95</span>          <span class="c"># быстрых запросов 95%, медленный — каждый двадцатый</span>
+
+<span class="k">for</span> checks <span class="k">in</span> (<span class="n">1</span>, <span class="n">3</span>, <span class="n">10</span>, <span class="n">30</span>):
+    all_fast = fast_share ** checks
+    <span class="f">print</span>(<span class="s">f"проверок: {checks:>2}  все быстрые с вероятностью {all_fast:.0%}"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>чем больше проверок, тем меньше вероятность</span></figcaption><pre>проверок:  1  все быстрые с вероятностью 95%
+проверок:  3  все быстрые с вероятностью 86%
+проверок: 10  все быстрые с вероятностью 60%
+проверок: 30  все быстрые с вероятностью 21%</pre></figure>
+    <p>Те же числа полосами:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 160" role="img" aria-label="Вероятность, что все проверки окажутся быстрыми: 1 проверка 95%, 3 — 86%, 10 — 60%, 30 — 21%"><text class="tm" x="10" y="34">1 пров.</text><rect class="sc-acc" x="100" y="18" width="475" height="22"/><text class="tm" x="583" y="34">95%</text><text class="tm" x="10" y="68">3 пров.</text><rect class="sc-acc" x="100" y="52" width="430" height="22"/><text class="tm" x="538" y="68">86%</text><text class="tm" x="10" y="102">10 пров.</text><rect class="sc-acc" x="100" y="86" width="300" height="22"/><text class="tm" x="408" y="102">60%</text><text class="tm" x="10" y="136">30 пров.</text><rect class="sc-acc" x="100" y="120" width="105" height="22"/><text class="tm" x="213" y="136">21%</text></svg>
+      <figcaption>Длина полосы — вероятность, что ни одна проверка не покажет медленный запрос.</figcaption>
+    </figure>
+    <p>Даже десять проверок подряд с вероятностью 60% не покажут ни одного медленного запроса. Тридцать проверок пропустят проблему в каждом пятом случае. Проблему, которая касается каждого двадцатого пользователя, ручными проверками почти не найти.</p>
+    <div class="key"><b>Вывод</b><p>Одна быстрая проверка доказывает только то, что конкретный запрос в конкретный момент выполнился быстро. Для ответа на жалобу нужны данные за интервал: сколько было запросов, какая их часть шла медленно и как это менялось.</p></div>
+    <p class="next">Прежде чем перечислять такие данные, различим, какие утверждения о сбое доказаны, а какие нет.</p>
+  </section>
+
+  <section class="part" id="s9">
+    <h2><span class="sec">§9</span>Симптом, наблюдение, гипотеза и вывод</h2>
+    <p class="about">Четыре вида утверждений о проблеме и чем они отличаются.</p>
+    <p>При разборе проблем различают четыре вида утверждений. Звучат они похоже, но доказано в них разное. Если их путать, получаются ложные выводы. На схеме они выстроены лестницей — от того, что заметили, к тому, что доказали:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 160" role="img" aria-label="Лестница: симптом, наблюдение, гипотеза, вывод"><rect class="sc-box" x="14" y="100" width="140" height="50" rx="8"/><text class="tb tc" x="84" y="121">симптом</text><text class="t tc" x="84" y="139">жалоба</text><path class="sc-arrow" d="M158 120 L166 98"/><path class="sc-arrow" d="M167 107 L166 98 L160 104"/><rect class="sc-acc" x="170" y="74" width="140" height="50" rx="8"/><text class="tb tc" x="240" y="95">наблюдение</text><text class="t tc" x="240" y="113">факт из измерения</text><path class="sc-arrow" d="M314 94 L322 72"/><path class="sc-arrow" d="M323 81 L322 72 L316 78"/><rect class="sc-box" x="326" y="48" width="140" height="50" rx="8"/><text class="tb tc" x="396" y="69">гипотеза</text><text class="t tc" x="396" y="87">предположение</text><path class="sc-arrow" d="M470 68 L478 46"/><path class="sc-arrow" d="M479 55 L478 46 L472 52"/><rect class="sc-acc" x="482" y="22" width="140" height="50" rx="8"/><text class="tb tc" x="552" y="43">вывод</text><text class="t tc" x="552" y="61">гипотеза + проверка</text></svg>
+      <figcaption>Голубым — утверждения, которые опираются на измерения.</figcaption>
+    </figure>
+    <p>Голубые ступени — те, что опираются на измерения: наблюдение и вывод. Белые — то, что заметили или предположили. Подниматься можно только по порядку: вывод получается из гипотезы, которую проверили на наблюдениях. Примеры для жалобы на каталог:</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Вид</th><th>Пример</th></tr></thead>
+        <tbody>
+          <tr><td>Симптом</td><td>«Каталог иногда долго открывается»</td></tr>
+          <tr><td>Наблюдение</td><td>с 14:00 два из двадцати запросов <code>/products</code> длятся больше 3 секунд, код ответа 200</td></tr>
+          <tr><td>Гипотеза</td><td>запросы долго ждут ответа зависимости</td></tr>
+          <tr><td>Вывод</td><td>задержка приходится на этап <code>dependency.wait</code>, остальные этапы не изменились</td></tr>
+        </tbody>
+      </table></div>
+    <p>Чаще всего гипотезу записывают как вывод. На графике загрузка процессора 95%, и в отчёт сразу пишут «сервис тормозит из-за процессора». Но высокая загрузка бывает и причиной задержек, и следствием наплыва запросов, и обычным состоянием вычислительной задачи. Чтобы различить эти случаи, нужен контекст: такой ли была загрузка вчера, когда жалоб не было, совпадает ли её рост с ростом длительности, выросло ли число запросов. Пока это не проверено, «CPU 95%» остаётся наблюдением, и утверждение «причина в процессоре» остаётся гипотезой.</p>
+    <p class="next">Вывод опирается на измерения. Осталось перечислить, какие измерения сервис сохраняет для этого заранее.</p>
+  </section>
+
+  <section class="part" id="s10">
+    <h2><span class="sec">§10</span>Какие данные сохранять заранее</h2>
+    <p class="about">Четыре вида сведений о работе сервиса и требования к ним.</p>
+    <p>Выводы лекции сводятся к одной таблице. Чтобы после развёртывания можно было разобрать жалобу, сервис во время работы сохраняет четыре вида сведений:</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Что сохранять</th><th>На какой вопрос отвечает</th><th>Пример со стенда</th></tr></thead>
+        <tbody>
+          <tr><td>количество операций и их результаты за интервал</td><td>каков масштаб проблемы</td><td>сколько запросов <code>/products</code> завершилось кодом 200 и сколько кодом 500</td></tr>
+          <tr><td>распределение длительностей</td><td>какая часть запросов медленная</td><td>сколько запросов уложилось в 100 мс, сколько шло дольше секунды</td></tr>
+          <tr><td>записи о событиях с контекстом</td><td>что случилось с конкретным запросом</td><td>запись с <code>request_id</code>, кодом ответа и текстом исключения</td></tr>
+          <tr><td>этапы операции</td><td>где операция потратила время</td><td><code>validate</code>, <code>dependency.wait</code>, <code>serialize</code></td></tr>
+        </tbody>
+      </table></div>
+    <p>Ко всем этим сведениям одни и те же требования. Каждое значение хранится с отметкой времени, иначе его не поставить в историю. Каждое привязано к компоненту: сервису, экземпляру, версии. И всё хранится вне процесса, который может упасть. На схеме — куда уходят сведения из работающего сервиса:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Экземпляры сервиса отправляют сведения во внешнее хранилище; при падении экземпляра сведения сохраняются"><rect class="sc-acc" x="20" y="14" width="150" height="40" rx="8"/><text class="t tc" x="95" y="39">экземпляр 1</text><rect class="sc-acc" x="20" y="64" width="150" height="40" rx="8"/><text class="t tc" x="95" y="89">экземпляр 2</text><rect class="sc-acc" x="20" y="114" width="150" height="40" rx="8"/><text class="t tc" x="95" y="139">экземпляр 3</text><path class="sc-arrow" d="M174 34 L396 84"/><path class="sc-arrow" d="M387 86 L396 84 L389 78"/><path class="sc-arrow" d="M174 84 L396 84"/><path class="sc-arrow" d="M388 88 L396 84 L388 80"/><path class="sc-arrow" d="M174 134 L396 84"/><path class="sc-arrow" d="M389 90 L396 84 L387 82"/><text class="t tc ta" x="512" y="30">время + компонент + значение</text><rect class="sc-box" x="402" y="44" width="220" height="80" rx="8"/><text class="tb tc" x="512" y="80">хранилище телеметрии</text><text class="t tc" x="512" y="98">вне процессов сервиса</text><text class="t tw" x="20" y="164">экземпляр упал — его сведения уже в хранилище</text></svg>
+      <figcaption>Сведения уходят из процессов во внешнее хранилище по мере работы.</figcaption>
+    </figure>
+    <p>Стрелки идут от каждого экземпляра во внешнее хранилище постоянно, по ходу работы. Каждое сведение несёт время, компонент и значение. Если экземпляр упадёт, всё, что он успел отправить, уже лежит в хранилище, и ночной сбой из §4 можно будет разобрать.</p>
+    <div class="def">
+      <div class="def__term">Телеметрия и мониторинг<i>telemetry, monitoring</i></div>
+      <dl><dt>Телеметрия</dt><dd>Сведения о работе программы, которые она передаёт во внешнее хранилище: числа, записи о событиях, этапы операций.</dd><dt>Мониторинг</dt><dd>Регулярный сбор телеметрии и наблюдение за ней.</dd><dt>Виды</dt><dd>Первые две строки таблицы — метрики, третья — логи, четвёртая — трассы.</dd></dl>
+    </div>
+    <p class="next">Регулярный сбор этих сведений и есть мониторинг. С него начинается следующая лекция.</p>
+  </section>
+
+  <section class="part" id="s11">
+    <h2><span class="sec">§11</span>Частые ошибки</h2>
+    <p class="about">Что делают неправильно и как исправить.</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Что делают</th><th>Что произойдёт</th><th>Как правильно</th></tr></thead>
+        <tbody>
+          <tr><td>закрыть жалобу после одной быстрой проверки</td><td>редкий медленный запрос почти никогда не попадается вручную</td><td>смотреть данные за интервал жалобы</td></tr>
+          <tr><td>считать <code>/health: ok</code> признаком работы сервиса</td><td><code>/health</code> не проверяет зависимости и рабочие маршруты</td><td>смотреть данные настоящих запросов</td></tr>
+          <tr><td>сохранять только код ответа</td><td>медленный ответ 200 не отличить от быстрого</td><td>сохранять длительность и этапы</td></tr>
+          <tr><td>записать «CPU 95%» как причину</td><td>гипотеза выдаётся за вывод</td><td>проверить по контексту: вчерашней загрузке, числу запросов, длительности</td></tr>
+          <tr><td>хранить сведения только в памяти процесса</td><td>при падении процесса они исчезают</td><td>отправлять их во внешнее хранилище</td></tr>
+        </tbody>
+      </table></div>
+  </section>
+
+  <section class="part" id="s12">
+    <h2><span class="sec">§12</span>Практика</h2>
+    <p class="about">Две задачи на то, что разобрано в лекции. Решение спрятано под задачей.</p>
+    <h3>Задача 1. Разложите утверждения</h3>
+    <p>Ситуация: разработчики разбирают жалобу на оформление заказа. В отчёте четыре фразы:</p>
+    <ul>
+      <li>«Заказы иногда не оформляются»;</li>
+      <li>«Наверное, не отвечает сервис оплаты»;</li>
+      <li>«С 10:00 до 10:30 из 400 запросов <code>/checkout</code> 37 вернули код 502»;</li>
+      <li>«Все 37 ошибок приходятся на этап обращения к оплате, у остальных этапов ошибок нет».</li>
+    </ul>
+    <div class="key"><b>Что нужно сделать</b><p>Определить для каждой фразы, симптом это, наблюдение, гипотеза или вывод.</p></div>
+    <details><summary>Решение</summary>
+    <p>«Заказы иногда не оформляются» — симптом: это заметил пользователь. «Наверное, не отвечает сервис оплаты» — гипотеза: предположение без проверки. «37 из 400 вернули 502» — наблюдение: факт из измерения. «Все 37 ошибок на этапе оплаты» — вывод: гипотеза проверена на данных об этапах.</p>
+    </details>
+
+    <h3>Задача 2. Редкая проблема</h3>
+    <p>Ситуация:</p>
+    <ul>
+      <li>медленным оказывается один запрос из ста;</li>
+      <li>разработчик проверяет страницу 10 раз подряд.</li>
+    </ul>
+    <div class="key"><b>Что нужно сделать</b><p>Посчитать программой из §8, с какой вероятностью все 10 проверок окажутся быстрыми.</p></div>
+    <details><summary>Решение</summary>
+    <figure class="code"><figcaption><span>main.py</span><span>доля быстрых 0,99</span></figcaption><pre>fast_share = <span class="n">0.99</span>
+<span class="f">print</span>(<span class="s">f"{fast_share ** 10:.0%}"</span>)</pre></figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>вероятность</span></figcaption><pre>90%</pre></figure>
+    <p>В девяти случаях из десяти разработчик не увидит ни одного медленного запроса. Чем реже проблема, тем бесполезнее ручные проверки.</p>
+    </details>
+  </section>
+
+  <section class="part" id="s13">
+    <h2><span class="sec">§13</span>Проверьте себя</h2>
+    <p class="about">Вопросы по лекции. Ответ раскрывается щелчком.</p>
+    <details><summary>Почему после развёртывания ошибку не найти по терминалу?</summary><p>Процессов много и они на разных серверах; вывод перезапущенного процесса может исчезнуть, а нужного запроса среди тысяч не найти.</p></details>
+    <details><summary>Что сообщает ответ <code>/health</code> стенда?</summary><p>Что процесс принимает HTTP-запросы и выполнил простую функцию. Зависимости и маршрут <code>/products</code> не проверяются — это сказано в поле <code>scope</code>.</p></details>
+    <details><summary>Два запроса вернули 200 с одинаковым телом. Чем они могут отличаться?</summary><p>Длительностью. На стенде быстрый занял 84 мс, медленный — 3026,6 мс.</p></details>
+    <details><summary>Как медленный сервис становится недоступным?</summary><p>Клиент ждёт не дольше своего тайм-аута. Если ответ дольше, клиент прерывает запрос с ошибкой, хотя сервер продолжает работать.</p></details>
+    <details><summary>«Загрузка процессора 95%» — это наблюдение или вывод?</summary><p>Наблюдение. Выводом станет утверждение о причине, только когда его проверят по контексту.</p></details>
+  </section>
+
+  <section class="part" id="s14">
+    <h2><span class="sec">§14</span>Шпаргалка</h2>
+    <p class="about">Опорные понятия лекции одним списком.</p>
+    <div class="cheat">
+      <div><b>Четыре свойства</b><code>доступность</code><code>производительность</code><code>надёжность</code><code>корректность</code></div>
+      <div><b>Лестница утверждений</b><code>симптом → наблюдение</code><code>гипотеза → вывод</code></div>
+      <div><b>/health</b><code>жив ли процесс</code><code>зависимости не проверяет</code></div>
+      <div><b>Что сохранять</b><code>количество и результаты</code><code>длительности</code><code>события с контекстом</code><code>этапы</code></div>
+      <div><b>Требования</b><code>время</code><code>компонент</code><code>вне процесса</code></div>
+    </div>
+  </section>
+
+  <section class="part" id="s15">
+    <h2><span class="sec">§15</span>Глоссарий</h2>
+    <p class="about">Термины лекции: формулировка, пример и рисунок.</p>
+    <div class="glossary">
+      <article class="gl" id="g-deploy">
+        <div class="gl__text">
+          <h3>Развёртывание<i>deployment</i></h3>
+          <p class="gl__def">Установка и запуск версии программы там, где с ней работают пользователи — в рабочей среде.</p>
+          <p class="gl__ex"><b>Пример</b>выпуск новой версии <code>products-api</code> на серверы.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.1, §3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Развёртывание"><rect class="sc-box" x="10" y="45" width="90" height="40" rx="8"/><text class="t tc" x="55" y="70">ноутбук</text><path class="sc-arrow" d="M104 65 L150 65"/><path class="sc-arrow" d="M142 69 L150 65 L142 61"/><rect class="sc-acc" x="156" y="30" width="94" height="70" rx="8"/><text class="t tc" x="203" y="61">рабочая</text><text class="t tc" x="203" y="79">среда</text></svg></figure>
+      </article>
+      <article class="gl" id="g-instance">
+        <div class="gl__text">
+          <h3>Экземпляр<i>instance</i></h3>
+          <p class="gl__def">Отдельный запущенный процесс одной программы. Экземпляров делают несколько ради нагрузки и устойчивости.</p>
+          <p class="gl__ex"><b>Пример</b>три процесса <code>products-api</code> за балансировщиком.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.1, §3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Экземпляр"><rect class="sc-acc" x="20" y="40" width="66" height="50" rx="8"/><text class="tb tc" x="53" y="70">№1</text><rect class="sc-acc" x="100" y="40" width="66" height="50" rx="8"/><text class="tb tc" x="133" y="70">№2</text><rect class="sc-acc" x="180" y="40" width="66" height="50" rx="8"/><text class="tb tc" x="213" y="70">№3</text><text class="t tc" x="130" y="118">одна программа — три процесса</text></svg></figure>
+      </article>
+      <article class="gl" id="g-balancer">
+        <div class="gl__text">
+          <h3>Балансировщик нагрузки<i>load balancer</i></h3>
+          <p class="gl__def">Компонент, который распределяет входящие запросы между экземплярами сервиса.</p>
+          <p class="gl__ex"><b>Пример</b>запросы пользователей расходятся по трём экземплярам.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.1, §3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Балансировщик нагрузки"><rect class="sc-box" x="10" y="45" width="80" height="40" rx="8"/><text class="t tc" x="50" y="70">балансир.</text><path class="sc-arrow" d="M94 55 L160 25"/><path class="sc-arrow" d="M154 32 L160 25 L151 25"/><path class="sc-arrow" d="M94 65 L160 65"/><path class="sc-arrow" d="M152 69 L160 65 L152 61"/><path class="sc-arrow" d="M94 75 L160 105"/><path class="sc-arrow" d="M151 105 L160 105 L154 98"/><rect class="sc-acc" x="166" y="10" width="80" height="30" rx="8"/><text class="t tc" x="206" y="30">экз. 1</text><rect class="sc-acc" x="166" y="50" width="80" height="30" rx="8"/><text class="t tc" x="206" y="70">экз. 2</text><rect class="sc-acc" x="166" y="90" width="80" height="30" rx="8"/><text class="t tc" x="206" y="110">экз. 3</text></svg></figure>
+      </article>
+      <article class="gl" id="g-dependency">
+        <div class="gl__text">
+          <h3>Зависимость<i>dependency</i></h3>
+          <p class="gl__def">Внешняя система, от которой зависит ответ сервиса: база данных, кэш, другой сервис.</p>
+          <p class="gl__ex"><b>Пример</b>на стенде её заменяет ожидание <code>dependency.wait</code>.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.1, §1</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Зависимость"><rect class="sc-acc" x="10" y="45" width="100" height="40" rx="8"/><text class="t tc" x="60" y="70">сервис</text><path class="sc-arrow" d="M114 65 L150 65"/><path class="sc-arrow" d="M142 69 L150 65 L142 61"/><rect class="sc-box" x="156" y="45" width="94" height="40" rx="8"/><text class="t tc" x="203" y="70">база</text><text class="t tc" x="130" y="112">ответ ждёт базу</text></svg></figure>
+      </article>
+      <article class="gl" id="g-timeout">
+        <div class="gl__text">
+          <h3>Тайм-аут<i>timeout</i></h3>
+          <p class="gl__def">Предельное время ожидания ответа. Если ответ не пришёл, клиент прерывает запрос с ошибкой.</p>
+          <p class="gl__ex"><b>Пример</b>клиент ждёт 30 секунд, сервер отвечает за 40 — пользователь видит ошибку.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.1, §5</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Тайм-аут"><line class="sc-axis" x1="10" y1="100" x2="250" y2="100"/><rect class="sc-acc" x="10" y="60" width="160" height="22"/><rect class="sc-wrn" x="170" y="60" width="70" height="22"/><line class="sc-arrow-w" x1="170" y1="30" x2="170" y2="100"/><text class="t tw" x="174" y="40">предел</text></svg></figure>
+      </article>
+      <article class="gl" id="g-health">
+        <div class="gl__text">
+          <h3>Проверка состояния<i>health check</i></h3>
+          <p class="gl__def">Служебный адрес, по которому балансировщик и оркестратор узнают, жив ли процесс. Зависимости обычно не проверяет.</p>
+          <p class="gl__ex"><b>Пример</b><code>/health</code> отвечает <code>{"status": "ok"}</code>.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.1, §6</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Проверка состояния"><rect class="sc-box" x="10" y="45" width="100" height="40" rx="8"/><text class="tm tc" x="60" y="70">GET /health</text><path class="sc-arrow" d="M114 65 L150 65"/><path class="sc-arrow" d="M142 69 L150 65 L142 61"/><rect class="sc-acc" x="156" y="45" width="94" height="40" rx="8"/><text class="tb tc" x="203" y="70">ok</text><text class="t tc" x="130" y="112">процесс жив</text></svg></figure>
+      </article>
+      <article class="gl" id="g-duration">
+        <div class="gl__text">
+          <h3>Длительность<i>latency</i></h3>
+          <p class="gl__def">Время от начала до конца операции. Код ответа о ней ничего не сообщает.</p>
+          <p class="gl__ex"><b>Пример</b>два ответа 200: 84 мс и 3026,6 мс.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.1, §7</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Длительность"><rect class="sc-acc" x="10" y="35" width="16" height="22"/><text class="tm" x="32" y="51">84 мс</text><rect class="sc-wrn" x="10" y="75" width="240" height="22"/><text class="tm" x="16" y="91">3026,6 мс</text></svg></figure>
+      </article>
+      <article class="gl" id="g-ladder">
+        <div class="gl__text">
+          <h3>Симптом, наблюдение, гипотеза, вывод</h3>
+          <p class="gl__def">Четыре вида утверждений о проблеме: что заметили, что измерили, что предположили и что доказали проверкой.</p>
+          <p class="gl__ex"><b>Пример</b>«каталог тормозит» → «2 из 20 запросов дольше 3 с» → «ждут зависимость» → «задержка в dependency.wait».</p>
+          <p class="gl__where"><b>Где</b>лекция 1.1, §9</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Симптом, наблюдение, гипотеза, вывод"><rect class="sc-box" x="8" y="90" width="56" height="30" rx="8"/><text class="t tc" x="36" y="110">симпт.</text><rect class="sc-acc" x="70" y="68" width="56" height="30" rx="8"/><text class="t tc" x="98" y="88">набл.</text><rect class="sc-box" x="132" y="46" width="56" height="30" rx="8"/><text class="t tc" x="160" y="66">гип.</text><rect class="sc-acc" x="194" y="24" width="56" height="30" rx="8"/><text class="t tc" x="222" y="44">вывод</text></svg></figure>
+      </article>
+      <article class="gl" id="g-telemetry">
+        <div class="gl__text">
+          <h3>Телеметрия<i>telemetry</i></h3>
+          <p class="gl__def">Сведения о работе программы, которые она передаёт во внешнее хранилище: метрики, логи, трассы.</p>
+          <p class="gl__ex"><b>Пример</b>число запросов с кодом 500, запись с <code>request_id</code>, этапы запроса.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.1, §10</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Телеметрия"><rect class="sc-acc" x="10" y="45" width="90" height="40" rx="8"/><text class="t tc" x="55" y="70">сервис</text><path class="sc-arrow" d="M104 65 L150 65"/><path class="sc-arrow" d="M142 69 L150 65 L142 61"/><rect class="sc-box" x="156" y="30" width="94" height="70" rx="8"/><text class="t tc" x="203" y="61">хранилище</text><text class="t tc" x="203" y="79">вне процесса</text></svg></figure>
+      </article>
+      <article class="gl" id="g-monitoring">
+        <div class="gl__text">
+          <h3>Мониторинг<i>monitoring</i></h3>
+          <p class="gl__def">Регулярный сбор телеметрии и наблюдение за ней.</p>
+          <p class="gl__ex"><b>Пример</b>сбор числа запросов и их длительностей каждые 15 секунд.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.1, §10</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Мониторинг"><line class="sc-axis" x1="10" y1="100" x2="250" y2="100"/><circle class="sc-dot" cx="30" cy="80" r="5"/><circle class="sc-dot" cx="70" cy="68" r="5"/><circle class="sc-dot" cx="110" cy="56" r="5"/><circle class="sc-dot" cx="150" cy="80" r="5"/><circle class="sc-dot" cx="190" cy="68" r="5"/><circle class="sc-dot" cx="230" cy="56" r="5"/><text class="t tc" x="130" y="124">измерения по расписанию</text></svg></figure>
+      </article>
+    </div>
+  </section>
+
+  <section class="part">
+    <h3>Итог лекции</h3>
+    <p>Пока программа запущена рядом, ошибку находят терминалом, отладчиком, повтором запроса и <code>print</code>. После развёртывания разработчика рядом нет, экземпляров много, а сведения о сбое исчезают вместе с упавшим процессом. Код ответа и проверка <code>/health</code> не говорят о скорости и о работе зависимостей, а ручная проверка почти не находит редкие проблемы. Поэтому сервис заранее сохраняет во внешнее хранилище количество операций, их длительности, записи о событиях и этапы — с временем и компонентом.</p>
+    <h3>Источники</h3>
+    <ul class="sources">
+      <li>Google SRE Book. Monitoring Distributed Systems — sre.google/sre-book/monitoring-distributed-systems</li>
+      <li>FastAPI — fastapi.tiangolo.com; Uvicorn — uvicorn.org</li>
+      <li>Вывод и кадры сняты на стенде products-api (FastAPI 0.115.6, Uvicorn 0.34.0): кадры страницы стенда — 22.09.2026, вывод терминала — 06.11.2026</li>
+    </ul>
+  </section>
+
+  <div class="pager">
+    <a href="index.html">← К содержанию справочника</a>
+    <a href="1-2-monitoring.html">1.2 Мониторинг →</a>
+  </div>
+  <div class="colophon">
+    <span>Лекция 1.1 · Сервис после развёртывания · Метрики и наблюдаемость</span>
+    <span class="author-line">Автор: Макаров Максим Николаевич</span>
+  </div>
+    </main>
+  </div>
+</div>
+<script src="reader.js"></script>
+</body>
+</html>

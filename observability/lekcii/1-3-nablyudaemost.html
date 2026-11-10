@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>1.3 Наблюдаемость · Метрики и наблюдаемость</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="book">
+  <div class="book__body">
+    <div class="spine"><span>Часть 1 · Основы наблюдаемости</span></div>
+    <main class="leaf">
+  <div class="running">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Метрики и наблюдаемость</a> · часть 1 · основы наблюдаемости</p>
+    <p class="running__folio">Лекция 1.3</p>
+  </div>
+
+  <header class="chapter-head">
+    <span class="chapter-num">1.3</span>
+    <h1>Наблюдаемость: вопросы, которые нельзя предусмотреть</h1>
+    <p class="lead">Мониторинг из лекции 1.2 отвечает на вопросы, которые задали заранее. Но новая проблема часто приходит с вопросом, для которого панели нет. В лекции — что такое наблюдаемость, как на стенде ответить на новый вопрос по уже сохранённым событиям, почему на некоторые вопросы ответа нет и какие данные сервис должен записывать, чтобы такие вопросы можно было задавать.</p>
+  </header>
+  <dl class="passport">
+    <div><dt>Тема</dt><dd>Основы наблюдаемости</dd></div>
+    <div><dt>Стенд</dt><dd><code>products-api</code> на FastAPI, адреса <code>/metrics</code> и <code>/events</code></dd></div>
+    <div><dt>Опирается на</dt><dd>лекции 1.1 и 1.2: телеметрия, мониторинг, временной ряд</dd></div>
+    <div><dt>Результат</dt><dd>Понимать, какие поля записывать в события, чтобы потом разобрать незнакомую проблему</dd></div>
+  </dl>
+
+  <div class="reader-start">
+    <div>
+      <b>Режим чтения</b>
+      <p>Лекция откроется по одному разделу: на экране одна мысль, кнопка «Дальше» ведёт к следующей. Стрелки ← → на клавиатуре тоже листают, Esc возвращает всю лекцию.</p>
+    </div>
+    <div class="reader-start__btns">
+      <button type="button" data-reader-start="continue" hidden></button>
+      <button type="button" class="primary" data-reader-start="begin">Читать по шагам</button>
+    </div>
+  </div>
+
+  <nav class="contents">
+    <b>В этой лекции</b>
+    <ol>
+      <li><a href="#s1"><span class="csec">§1</span>Вопрос, для которого нет панели</a></li>
+      <li><a href="#s2"><span class="csec">§2</span>Наблюдаемость</a></li>
+      <li><a href="#s3"><span class="csec">§3</span>Ответ из сохранённых событий</a></li>
+      <li><a href="#s4"><span class="csec">§4</span>Вопрос, для которого нет данных</a></li>
+      <li><a href="#s5"><span class="csec">§5</span>Мониторинг и наблюдаемость при разборе сбоя</a></li>
+      <li><a href="#s6"><span class="csec">§6</span>Инструментация</a></li>
+      <li><a href="#s7"><span class="csec">§7</span>Время в UTC</a></li>
+      <li><a href="#s8"><span class="csec">§8</span>Идентификатор запроса</a></li>
+      <li><a href="#s9"><span class="csec">§9</span>Сколько значений у поля</a></li>
+      <li><a href="#s10"><span class="csec">§10</span>Где телеметрия теряется</a></li>
+      <li><a href="#s11"><span class="csec">§11</span>Частые ошибки</a></li>
+      <li><a href="#s12"><span class="csec">§12</span>Практика</a></li>
+      <li><a href="#s13"><span class="csec">§13</span>Проверьте себя</a></li>
+      <li><a href="#s14"><span class="csec">§14</span>Шпаргалка</a></li>
+      <li><a href="#s15"><span class="csec">§15</span>Глоссарий</a></li>
+    </ol>
+  </nav>
+
+  <section class="part" id="s1">
+    <h2><span class="sec">§1</span>Вопрос, для которого нет панели</h2>
+    <p class="about">Что мониторинг сообщает о медленных запросах стенда и чего не сообщает.</p>
+    <p>Мониторинг из лекции 1.2 работает с вопросами, которые команда задала заранее: какая доля ошибок, сколько запросов, как долго они идут. Под эти вопросы настроены измерения и панели. Проверим, что они сообщают на стенде. Программа <code>experiment.py</code> снова отправила 20 запросов: 17 быстрых, 2 медленных и 1 с ошибкой. Посмотрим, что после этого отдаёт <code>/metrics</code>:</p>
+    <figure class="code">
+      <figcaption><span>Терминал</span><span>ответ /metrics после 20 запросов</span></figcaption>
+<pre>curl -s localhost:8015/metrics</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>фрагмент</span></figcaption><pre>lab_http_requests_total{route="/products",status="200"} 19
+lab_http_requests_total{route="/products",status="500"} 1
+lab_http_request_duration_seconds_bucket{le="2.5"} 18
+lab_http_request_duration_seconds_bucket{le="5.0"} 20</pre></figure>
+    <p>Первые две строки знакомы по лекции 1.2: 19 ответов 200 и один ответ 500. Две следующие считают запросы по длительности. <code>le</code> означает «не дольше»: 18 запросов уложились в 2,5 секунды, а 20 — в 5 секунд. Значит, два запроса шли от 2,5 до 5 секунд. На схеме — что эти числа сообщают и о чём молчат:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Слева панель отвечает на заданные вопросы: 1 ошибка из 20, 2 запроса дольше 2,5 секунды. Справа новый вопрос: какие это запросы и где у них ушло время — на панели ответа нет"><rect class="sc-acc" x="20" y="20" width="270" height="130" rx="8"/><text class="tb tc" x="155" y="44">что есть на /metrics</text><text class="t" x="40" y="74">ошибок: 1 из 20</text><text class="t" x="40" y="100">дольше 2,5 с: 2 запроса</text><text class="t" x="40" y="126">быстрее 2,5 с: 18 запросов</text><path class="sc-arrow" d="M296 85 L344 85"/><path class="sc-arrow" d="M336 89 L344 85 L336 81"/><rect class="sc-soft" x="350" y="20" width="270" height="130" rx="8"/><text class="tb tc" x="485" y="44">новый вопрос</text><text class="t" x="370" y="74">какие это два запроса?</text><text class="t" x="370" y="100">где у них ушло время?</text><text class="t tw" x="370" y="126">на /metrics ответа нет</text></svg>
+      <figcaption>Слева — ответы на заранее заданные вопросы, справа — вопрос, которого заранее не задали.</figcaption>
+    </figure>
+    <p>Левый блок отвечает на вопрос «сколько»: одна ошибка, два медленных запроса. Правый блок пунктирный: такой панели нет. Числа на <code>/metrics</code> — суммы по всем запросам, отдельные запросы в них не различить. Узнать, какие запросы были медленными и на каком этапе они потратили время, по этим строкам нельзя.</p>
+    <p>На стенде причина известна заранее: медленные запросы вызваны сценарием <code>slow</code>. В настоящем сервисе она неизвестна. Пользователи пишут, что каталог иногда открывается три секунды, а панели показывают только «два медленных из двадцати». Чтобы найти причину, нужны ответы на вопросы, которых при настройке панелей никто не задавал.</p>
+    <div class="key"><b>Вывод</b><p>Мониторинг сообщает, что проблема есть и насколько она велика. На вопрос «у каких запросов и почему» заранее посчитанные числа не отвечают.</p></div>
+    <p class="next">Способность системы отвечать на такие новые вопросы называют наблюдаемостью.</p>
+  </section>
+
+  <section class="part" id="s2">
+    <h2><span class="sec">§2</span>Наблюдаемость</h2>
+    <p class="about">Определение и почему наблюдаемость — свойство системы.</p>
+    <p>Самолёт во время полёта записывает сотни параметров: скорость, высоту, положение рулей, команды пилотов. Когда после рейса возникает вопрос, которого никто не ждал, ответ ищут в уже сделанных записях. Сделать новые записи о прошедшем полёте нельзя. С сервисом так же: когда появляется новый вопрос о вчерашней работе, ответ можно найти только в том, что сервис уже сохранил.</p>
+    <div class="def">
+      <div class="def__term">Наблюдаемость<i>observability</i></div>
+      <dl><dt>Что это</dt><dd>Свойство системы: насколько по данным, которые она отправляет наружу, можно понять, что происходит у неё внутри.</dd><dt>Что даёт</dt><dd>Инженер задаёт новый вопрос о поведении сервиса и получает ответ из уже собранных данных, не меняя код и не дожидаясь повторения проблемы.</dd><dt>Пример</dt><dd>По событиям стенда найти два медленных запроса и этап, на котором они потратили время.</dd></dl>
+    </div>
+    <p>Термин пришёл из теории управления. В 1960 году инженер Рудольф Калман назвал систему наблюдаемой, если её внутреннее состояние можно восстановить по измерениям её выходов. В программах смысл тот же. Доступа к памяти работающего процесса у разработчика нет — это показала лекция 1.1. Есть только данные, которые процесс отправил наружу. На схеме — граница, через которую инженер смотрит на сервис:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 160" role="img" aria-label="Внутри процесса — состояние, недоступное инженеру; наружу выходят события, числа и этапы; инженер задаёт вопросы только к ним"><rect class="sc-soft" x="20" y="20" width="230" height="120" rx="12"/><text class="tb tc" x="135" y="46">процесс сервиса</text><text class="t tc" x="135" y="74">переменные, память,</text><text class="t tc" x="135" y="92">ход выполнения</text><text class="t tc tw" x="135" y="122">инженеру недоступно</text><path class="sc-arrow" d="M256 80 L300 80"/><path class="sc-arrow" d="M292 84 L300 80 L292 76"/><rect class="sc-acc" x="306" y="30" width="150" height="100" rx="8"/><text class="tb tc" x="381" y="56">данные наружу</text><text class="t tc" x="381" y="80">числа</text><text class="t tc" x="381" y="98">события</text><text class="t tc" x="381" y="116">этапы</text><path class="sc-arrow" d="M540 80 L462 80"/><path class="sc-arrow" d="M470 84 L462 80 L470 76"/><g class="sc-person"><circle cx="575" cy="58" r="10"/><rect x="564" y="72" width="22" height="32" rx="8"/></g><text class="t tc" x="575" y="126">инженер</text><text class="t tc" x="501" y="70">вопрос</text></svg>
+      <figcaption>Инженер задаёт вопросы только к данным, которые сервис отправил наружу.</figcaption>
+    </figure>
+    <p>Слева пунктиром — процесс. Его переменные и память для инженера закрыты. Посередине голубым — всё, что процесс отправил наружу: числа, записи о событиях, этапы операций. Стрелка вопроса идёт от инженера только к этому блоку. Чем подробнее средний блок, тем больше вопросов о левом можно задать.</p>
+    <p>Из этого следует: наблюдаемость нельзя установить как программу. Сервис может отправлять данные в любое хранилище и оставаться плохо наблюдаемым, если в данных нет нужных подробностей. Небольшой сервис с продуманными записями о событиях может быть хорошо наблюдаемым, даже если хранит их в простом файле.</p>
+    <div class="key"><b>Вывод</b><p>Наблюдаемость оценивают по конкретному вопросу: можно ли ответить на него по данным, которые сервис уже сохранил.</p></div>
+    <p class="next">Проверим это на стенде: зададим ему вопрос из §1.</p>
+  </section>
+
+  <section class="part" id="s3">
+    <h2><span class="sec">§3</span>Ответ из сохранённых событий</h2>
+    <p class="about">Как на стенде найти медленные запросы без изменения кода сервиса.</p>
+    <p>Кроме чисел на <code>/metrics</code>, стенд сохраняет запись о каждом запросе. Последние 2000 записей отдаёт адрес <code>/events</code> — о нём шла речь в лекции 1.1. Одна такая запись — <span class="term">событие</span>: что произошло, когда и с какими подробностями. Так выглядит событие медленного запроса:</p>
+    <figure class="code code--out"><figcaption><span>/events</span><span>одно событие, сокращено</span></figcaption><pre>{
+  "timestamp": "2026-11-10T11:15:26.818725+00:00",
+  "level": "INFO",
+  "service": "products-api",
+  "route": "/products",
+  "status": 200,
+  "duration_ms": 3022.308,
+  "request_id": "…",
+  "scenario": "slow",
+  "spans": [
+    {"name": "validate", "offset_ms": 0.692, "duration_ms": 10.15},
+    {"name": "dependency.wait (simulated)", "offset_ms": 10.851, "duration_ms": 3000.15},
+    {"name": "serialize", "offset_ms": 3011.411, "duration_ms": 10.889}
+  ]
+}</pre></figure>
+    <p>В одном событии собраны время, код ответа, длительность, сценарий и этапы обработки — те самые этапы, которые показывала страница стенда в лекции 1.1. Вопрос из §1 теперь можно задать программой: выбрать события длиннее секунды и для каждого найти самый долгий этап.</p>
+    <figure class="code">
+      <figcaption><span>slow.py</span><span>новый вопрос к сохранённым событиям</span></figcaption>
+<pre><span class="k">import</span> json
+<span class="k">from</span> urllib.request <span class="k">import</span> urlopen
+
+events = json.<span class="f">load</span>(<span class="f">urlopen</span>(<span class="s">"http://127.0.0.1:8015/events"</span>))[<span class="s">"events"</span>]
+
+<span class="k">for</span> event <span class="k">in</span> events:
+    <span class="k">if</span> event[<span class="s">"duration_ms"</span>] &gt; <span class="n">1000</span>:
+        longest = <span class="f">max</span>(event[<span class="s">"spans"</span>], key=<span class="k">lambda</span> span: span[<span class="s">"duration_ms"</span>])
+        <span class="f">print</span>(event[<span class="s">"request_id"</span>][:<span class="n">8</span>], event[<span class="s">"status"</span>], event[<span class="s">"scenario"</span>],
+              <span class="s">f'{event["duration_ms"]:.0f} мс'</span>, longest[<span class="s">"name"</span>], <span class="s">f'{longest["duration_ms"]:.0f} мс'</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>события после 20 запросов</span></figcaption><pre>1ca68f55 200 slow 3022 мс dependency.wait (simulated) 3000 мс
+5da463e2 200 slow 3022 мс dependency.wait (simulated) 3001 мс</pre></figure>
+    <div class="walk">
+      <div><code>json.load(urlopen(...))["events"]</code><span>Получаем ответ <code>/events</code> и превращаем JSON в список словарей Python — по одному на запрос.</span></div>
+      <div><code>event["duration_ms"] &gt; 1000</code><span>Условие нового вопроса: запрос длился дольше секунды. Из 20 событий проходят 2.</span></div>
+      <div><code>max(event["spans"], key=...)</code><span>Из трёх этапов выбираем этап с наибольшей длительностью. Параметр <code>key</code> задаёт, по какому полю сравнивать словари.</span></div>
+      <div><code>event["request_id"][:8]</code><span>Первые 8 символов идентификатора запроса — достаточно, чтобы различать строки вывода.</span></div>
+    </div>
+    <p>На схеме — как программа прошла по событиям:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Двадцать событий в ряд; седьмое и семнадцатое проходят фильтр дольше 1000 мс; у обоих самый долгий этап — dependency.wait, около 3000 мс"><text class="t" x="20" y="22">20 событий в /events</text><rect class="sc-box" x="20" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="50" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="80" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="110" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="140" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="170" y="34" width="24" height="28" rx="4"/><rect class="sc-wrn" x="200" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="230" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="260" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="290" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="320" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="350" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="380" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="410" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="440" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="470" y="34" width="24" height="28" rx="4"/><rect class="sc-wrn" x="500" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="530" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="560" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="590" y="34" width="24" height="28" rx="4"/><text class="tm tw tc" x="212" y="78">№7</text><text class="tm tw tc" x="512" y="78">№17</text><path class="sc-arrow" d="M212 84 L212 104"/><path class="sc-arrow" d="M208 96 L212 104 L216 96"/><path class="sc-arrow" d="M512 84 L512 104"/><path class="sc-arrow" d="M508 96 L512 104 L516 96"/><rect class="sc-acc" x="87" y="108" width="250" height="50" rx="8"/><text class="tm tc" x="212" y="128">1ca68f55 · 3022 мс</text><text class="tm tc" x="212" y="148">dependency.wait · 3000 мс</text><rect class="sc-acc" x="387" y="108" width="250" height="50" rx="8"/><text class="tm tc" x="512" y="128">5da463e2 · 3022 мс</text><text class="tm tc" x="512" y="148">dependency.wait · 3001 мс</text></svg>
+      <figcaption>Оранжевым — события, которые прошли условие «дольше 1000 мс». Внизу — что о них напечатала программа.</figcaption>
+    </figure>
+    <p>Из ряда в 20 событий условие прошли два — седьмое и семнадцатое, как раз те, что <code>experiment.py</code> отправил со сценарием <code>slow</code>. Для каждого программа нашла самый долгий этап: ожидание зависимости, около 3000 мс из 3022. Код сервиса не менялся, и проблему не пришлось повторять: ответ нашёлся в уже сохранённых данных.</p>
+    <div class="key"><b>Вывод</b><p>На вопрос, которого не было при настройке панелей, стенд ответил, потому что сохранял о каждом запросе событие с подробностями: длительностью, сценарием, этапами.</p></div>
+    <p class="next">Ответ нашёлся, потому что нужные поля были записаны. Посмотрим, что будет, если поля нет.</p>
+  </section>
+
+  <section class="part" id="s4">
+    <h2><span class="sec">§4</span>Вопрос, для которого нет данных</h2>
+    <p class="about">Почему наблюдаемость оценивают по конкретному вопросу.</p>
+    <p>Пусть команда хочет знать, с каких клиентов пришли медленные запросы: из браузера или из мобильного приложения. Если медленно работает только приложение, искать нужно в нём. Зададим и этот вопрос сохранённым событиям:</p>
+    <figure class="code">
+      <figcaption><span>client.py</span><span>ещё один новый вопрос</span></figcaption>
+<pre><span class="k">import</span> json
+<span class="k">from</span> urllib.request <span class="k">import</span> urlopen
+
+events = json.<span class="f">load</span>(<span class="f">urlopen</span>(<span class="s">"http://127.0.0.1:8015/events"</span>))[<span class="s">"events"</span>]
+slow = [event <span class="k">for</span> event <span class="k">in</span> events <span class="k">if</span> event[<span class="s">"duration_ms"</span>] &gt; <span class="n">1000</span>]
+<span class="f">print</span>(<span class="f">sorted</span>(slow[<span class="n">0</span>].<span class="f">keys</span>()))
+<span class="f">print</span>(slow[<span class="n">0</span>][<span class="s">"client"</span>])</pre>
+    </figure>
+    <figure class="code code--out code--err"><figcaption><span>Вывод</span><span>поля события и исключение</span></figcaption><pre>['duration_ms', 'event', 'exception', 'level', 'request_id', 'route', 'scenario', 'service', 'spans', 'status', 'timestamp']
+Traceback (most recent call last):
+  ...
+KeyError: 'client'</pre></figure>
+    <p>Первая строка вывода — все поля события, по алфавиту. Поля о клиенте среди них нет, поэтому обращение <code>slow[0]["client"]</code> заканчивается исключением <code>KeyError</code>: такого ключа в словаре нет. На схеме — те же поля события и место, где должен был быть ответ:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Событие со списком полей; вопросы о длительности, сценарии и этапе находят поля; вопрос о клиенте поля не находит"><rect class="sc-acc" x="20" y="14" width="230" height="146" rx="8"/><text class="tb tc" x="135" y="36">событие</text><text class="tm" x="40" y="60">duration_ms</text><text class="tm" x="40" y="80">scenario</text><text class="tm" x="40" y="100">spans</text><text class="tm" x="40" y="120">status, route, …</text><rect class="sc-soft" x="36" y="128" width="198" height="24" rx="4"/><text class="tm tw" x="44" y="145">client — нет</text><text class="t" x="320" y="60">медленные запросы?</text><text class="t ta" x="510" y="60">есть ответ</text><text class="t" x="320" y="88">какой этап?</text><text class="t ta" x="510" y="88">есть ответ</text><text class="t" x="320" y="145">с какого клиента?</text><text class="t tw" x="510" y="145">нет ответа</text><path class="sc-line" d="M140 56 H312"/><path class="sc-line" d="M100 96 L312 84"/><path class="sc-line" d="M240 141 H312"/></svg>
+      <figcaption>Слева — поля события стенда. Справа — три вопроса и есть ли для них поле.</figcaption>
+    </figure>
+    <p>Слева — карточка события, внизу пунктиром место для поля <code>client</code>, которого нет. Справа три вопроса. Первые два линии соединяют с полями <code>duration_ms</code> и <code>spans</code>, и ответ есть. Третий упирается в пустое место. Для вопроса о длительности стенд наблюдаем, а для вопроса о клиенте — нет.</p>
+    <p>Исправить это можно только кодом: добавить в событие поле, например заголовок <code>User-Agent</code>, в котором браузер и приложение называют себя, и выпустить новую версию. Новое поле появится только у будущих запросов. О тех, что уже прошли, ответа не будет никогда.</p>
+    <div class="key key--warn"><b>Вывод</b><p>Ответить по сохранённым данным можно только на вопрос, для которого нужные поля записывались до проблемы. Поэтому в события пишут подробности с запасом: всё, что может понадобиться при разборе.</p></div>
+    <p class="next">Наблюдаемость не заменяет мониторинг. Посмотрим, как они работают вместе при разборе одного сбоя.</p>
+  </section>
+
+  <section class="part" id="s5">
+    <h2><span class="sec">§5</span>Мониторинг и наблюдаемость при разборе сбоя</h2>
+    <p class="about">На каком шаге разбора опираются на заранее заданные вопросы, а на каком — на новые.</p>
+    <p>Мониторинг и наблюдаемость часто различают одной фразой: мониторинг отвечает на вопрос «что сломалось», наблюдаемость — «почему». Для первого знакомства это подходит, но точнее описать их через работу инженера. Мониторинг следит за признаками проблем, которые описали заранее, и сообщает, когда они появились. Наблюдаемость позволяет разобрать проблему, признаков которой заранее никто не описывал. Разбор сбоя проходит пять шагов:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Пять шагов разбора: уведомление, область, отдельные запросы, этапы, новое поле; первый шаг опирается на мониторинг, следующие три на наблюдаемость, последний возвращает недостающее поле в код"><rect class="sc-acc" x="10" y="30" width="112" height="70" rx="8"/><text class="tb tc" x="66" y="56">уведомление</text><text class="t tc" x="66" y="76">доля ошибок</text><text class="t tc" x="66" y="92">выросла</text><path class="sc-arrow" d="M124 65 L136 65"/><path class="sc-arrow" d="M128 69 L136 65 L128 61"/><rect class="sc-box" x="138" y="30" width="112" height="70" rx="8"/><text class="tb tc" x="194" y="56">область</text><text class="t tc" x="194" y="76">маршрут,</text><text class="t tc" x="194" y="92">экземпляр</text><path class="sc-arrow" d="M252 65 L264 65"/><path class="sc-arrow" d="M256 69 L264 65 L256 61"/><rect class="sc-box" x="266" y="30" width="112" height="70" rx="8"/><text class="tb tc" x="322" y="56">запросы</text><text class="t tc" x="322" y="76">какие</text><text class="t tc" x="322" y="92">и с чем</text><path class="sc-arrow" d="M380 65 L392 65"/><path class="sc-arrow" d="M384 69 L392 65 L384 61"/><rect class="sc-box" x="394" y="30" width="112" height="70" rx="8"/><text class="tb tc" x="450" y="56">этапы</text><text class="t tc" x="450" y="76">где ушло</text><text class="t tc" x="450" y="92">время</text><path class="sc-arrow" d="M508 65 L520 65"/><path class="sc-arrow" d="M512 69 L520 65 L512 61"/><rect class="sc-amb" x="522" y="30" width="112" height="70" rx="8"/><text class="tb tc" x="578" y="56">новое поле</text><text class="t tc" x="578" y="76">чего</text><text class="t tc" x="578" y="92">не хватило</text><text class="t tc" x="66" y="128">мониторинг</text><path class="sc-line" d="M148 112 H496"/><text class="t tc" x="322" y="128">наблюдаемость: новые вопросы к событиям</text><path class="sc-line" d="M578 104 C578 160, 66 160, 66 136"/><text class="t tc" x="322" y="164">следующий похожий сбой разбирается быстрее</text></svg>
+      <figcaption>Пять шагов разбора сбоя и на что опирается каждый.</figcaption>
+    </figure>
+    <p>Первый шаг, голубой, — заранее настроенное правило из лекции 1.2: доля ошибок выросла, пришло уведомление. Следующие три шага — новые вопросы к сохранённым данным: на каком маршруте и экземпляре, какие запросы и с какими подробностями, на каком этапе ушло время. Так на стенде мы шли в §3. Последний шаг закрашен иначе: если какого-то поля не хватило, как поля <code>client</code> в §4, его добавляют в код. Нижняя дуга возвращается к началу: следующий похожий сбой разберут быстрее, потому что поле уже будет записано. Так наблюдаемость сервиса растёт от одного разбора к другому.</p>
+    <div class="key"><b>Вывод</b><p>Мониторинг сообщает, что заранее известный признак проблемы появился. Наблюдаемость позволяет после этого задать новые вопросы и найти причину.</p></div>
+    <p class="next">И мониторинг, и события берут данные из кода сервиса. Разберём, откуда они там берутся.</p>
+  </section>
+
+  <section class="part" id="s6">
+    <h2><span class="sec">§6</span>Инструментация</h2>
+    <p class="about">Какой код создаёт этапы в событии стенда.</p>
+    <p>Прибор на приборной панели автомобиля показывает температуру двигателя только потому, что в двигатель поставили датчик. Без датчика стрелка стоит на месте, как бы ни грелся мотор. С программой так же: если в коде обработчика никто не измерил длительность, ни одна система мониторинга её не покажет.</p>
+    <div class="def">
+      <div class="def__term">Инструментация<i>instrumentation</i></div>
+      <dl><dt>Что это</dt><dd>Код, который добавляют в программу, чтобы она создавала телеметрию: измеряла длительности, считала события, записывала подробности.</dd><dt>Что даёт</dt><dd>Данные, к которым потом задают вопросы. Без инструментации у сервиса нет чисел и событий.</dd><dt>Пример</dt><dd>Функция <code>stage</code> в обработчике <code>/products</code> записывает, когда начался этап и сколько он длился.</dd></dl>
+    </div>
+    <p>Этапы в событии из §3 создала функция <code>stage</code>. Обработчик <code>/products</code> выполняет через неё каждый из трёх этапов:</p>
+    <figure class="code">
+      <figcaption><span>app.py</span><span>фрагмент обработчика /products</span></figcaption>
+<pre>started = time.<span class="f">perf_counter</span>()
+spans = []
+
+<span class="k">async</span> <span class="k">def</span> <span class="f">stage</span>(name, seconds):
+    offset = time.<span class="f">perf_counter</span>() - started
+    begin = time.<span class="f">perf_counter</span>()
+    <span class="k">await</span> asyncio.<span class="f">sleep</span>(seconds)
+    spans.<span class="f">append</span>({<span class="s">"name"</span>: name, <span class="s">"offset_ms"</span>: <span class="f">round</span>(offset * <span class="n">1000</span>, <span class="n">3</span>),
+                  <span class="s">"duration_ms"</span>: <span class="f">round</span>((time.<span class="f">perf_counter</span>() - begin) * <span class="n">1000</span>, <span class="n">3</span>)})</pre>
+    </figure>
+    <div class="walk">
+      <div><code>time.perf_counter()</code><span>Показания точного таймера в секундах. С часами на стене это число не связано, но разность двух показаний даёт длительность промежутка.</span></div>
+      <div><code>started</code><span>Момент начала всего запроса. Запоминается один раз, до первого этапа.</span></div>
+      <div><code>offset = ... - started</code><span>Сколько прошло от начала запроса до начала этапа. По этому числу этап ставится на общую шкалу: у <code>serialize</code> — 3011,4 мс.</span></div>
+      <div><code>await asyncio.sleep(seconds)</code><span>Работа этапа. На стенде это ожидание, в настоящем сервисе на этом месте был бы, например, запрос к базе данных.</span></div>
+      <div><code>spans.append({...})</code><span>Запись результата: имя этапа, смещение и длительность в миллисекундах. Из этого списка и получилось поле <code>spans</code> события.</span></div>
+    </div>
+    <p>Три записи из события §3 на общей шкале — по полям <code>offset_ms</code> и <code>duration_ms</code>:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Шкала 0–3022 мс: validate 10 мс в начале, dependency.wait 3000 мс, serialize 11 мс в конце"><line class="sc-axis" x1="150" y1="122" x2="610" y2="122"/><text class="tm" x="10" y="32">validate</text><rect class="sc-acc" x="150" y="18" width="3" height="20"/><text class="tm" x="160" y="33">10,2 мс</text><text class="tm" x="10" y="66">dependency</text><rect class="sc-wrn" x="152" y="52" width="456" height="20"/><text class="tm tc tw" x="380" y="88">3000,2 мс</text><text class="tm" x="10" y="108">serialize</text><rect class="sc-acc" x="608" y="94" width="2" height="20"/><text class="tm tr" x="600" y="109">10,9 мс</text><text class="tm tc" x="150" y="140">0</text><text class="tm tc" x="610" y="140">3022 мс</text></svg>
+      <figcaption>Каждая полоса начинается в <code>offset_ms</code> и длится <code>duration_ms</code>.</figcaption>
+    </figure>
+    <p>Полоса <code>validate</code> — черта у левого края, <code>serialize</code> — черта у правого. Всё остальное занимает оранжевая полоса ожидания зависимости. Без функции <code>stage</code> обработчик работал бы так же, но в событии была бы только общая длительность, 3022 мс. Тогда вопрос «на каком этапе» из §3 остался бы без ответа.</p>
+    <p>Инструментацию пишут двумя способами. Автоматическая — готовые библиотеки для фреймворков и драйверов баз данных: они сами измеряют HTTP-запросы, SQL-запросы, вызовы внешних API и быстро дают общую картину. Ручная — код, который пишет разработчик: он добавляет признаки, важные для задачи программы, — размер отчёта, тариф пользователя, тип операции. Какие признаки важны для задачи, определяет разработчик: в готовую библиотеку они не заложены.</p>
+    <div class="key"><b>Вывод</b><p>Телеметрию создаёт код самой программы. Чтобы потом задать вопрос о поле, его должна записать инструментация.</p></div>
+    <p class="next">В каждом событии два поля нужны всегда: время и идентификатор. Начнём со времени.</p>
+  </section>
+
+  <section class="part" id="s7">
+    <h2><span class="sec">§7</span>Время в UTC</h2>
+    <p class="about">Как поставить события разных серверов на одну шкалу.</p>
+    <p>Если один человек записывает время звонка по московскому времени, а второй — по владивостокскому, сравнить их записи без пересчёта нельзя: разница семь часов. С серверами так же. Сервис стенда пишет время каждого события так:</p>
+    <figure class="code">
+      <figcaption><span>app.py</span><span>отметка времени события</span></figcaption>
+<pre>started_at = datetime.<span class="f">now</span>(timezone.utc).<span class="f">isoformat</span>()</pre>
+    </figure>
+    <p><code>datetime.now(timezone.utc)</code> берёт текущее время в <span class="term">UTC</span> — всемирном координированном времени, от которого отсчитывают все часовые пояса. <code>isoformat()</code> записывает его строкой стандартного вида. Запрос с ошибкой на стенде был отправлен в 13:53 по московскому времени. В событии стоит:</p>
+    <figure class="code code--out"><figcaption><span>/events</span><span>поле timestamp</span></figcaption><pre>"timestamp": "2026-11-10T10:53:06.104535+00:00"</pre></figure>
+    <p>В записи стоит 10:53. Окончание <code>+00:00</code> означает смещение от UTC — ноль часов. Москва живёт по UTC+3, поэтому 13:53 по Москве — это 10:53 UTC. Разберём, зачем это нужно, на двух серверах в разных городах:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Два сервера: в местном времени запрос 13:53 в Москве и ответ 17:53 в Новосибирске выглядят разнесёнными на 4 часа; в UTC оба события в 10:53"><text class="tb" x="20" y="24">местное время</text><rect class="sc-box" x="20" y="34" width="280" height="40" rx="8"/><text class="tm" x="34" y="59">Москва   13:53:06 запрос</text><rect class="sc-box" x="20" y="82" width="280" height="40" rx="8"/><text class="tm" x="34" y="107">Новосиб. 17:53:07 ответ</text><text class="t tw" x="20" y="146">между событиями будто 4 часа</text><text class="tb" x="340" y="24">UTC</text><rect class="sc-acc" x="340" y="34" width="280" height="40" rx="8"/><text class="tm" x="354" y="59">10:53:06+00:00 запрос</text><rect class="sc-acc" x="340" y="82" width="280" height="40" rx="8"/><text class="tm" x="354" y="107">10:53:07+00:00 ответ</text><text class="t ta" x="340" y="146">между событиями 1 секунда</text></svg>
+      <figcaption>Одни и те же два события, записанные в местном времени и в UTC.</figcaption>
+    </figure>
+    <p>Слева каждый сервер пишет время своего города. Запрос и ответ, между которыми прошла секунда, выглядят разнесёнными на четыре часа, и при сортировке записей по времени они разойдутся. Справа оба сервера пишут UTC, и события встают рядом в правильном порядке. Пересчитывать в местное время удобнее при показе человеку, а хранить — в UTC.</p>
+    <div class="key"><b>Вывод</b><p>Все компоненты пишут время событий в UTC. Тогда записи с разных серверов сравнивают и сортируют без пересчёта.</p></div>
+    <p class="next">Время ставит события на одну шкалу. Чтобы собрать события одного запроса, нужно второе поле — идентификатор.</p>
+  </section>
+
+  <section class="part" id="s8">
+    <h2><span class="sec">§8</span>Идентификатор запроса</h2>
+    <p class="about">Как по номеру из жалобы найти все записи о запросе.</p>
+    <p>Посылку в службе доставки ищут по трек-номеру: он напечатан на чеке у отправителя и записан во всех пунктах, через которые прошла посылка. С запросами так же. Сервис одновременно обрабатывает много запросов, и записи разных пользователей перемешиваются. Две записи с одинаковой секундой могут относиться к разным людям. Поэтому каждому запросу дают уникальный номер — <span class="term">идентификатор запроса</span> — и пишут его во все записи о нём.</p>
+    <p>Стенд создаёт номер функцией <code>uuid.uuid4().hex</code> — 32 случайных шестнадцатеричных символа. Вероятность, что у двух запросов номера совпадут, настолько мала, что её не учитывают. Номер сервис возвращает и клиенту, в заголовке ответа <code>X-Request-ID</code>. Отправим запрос с ошибкой и посмотрим на заголовок:</p>
+    <figure class="code">
+      <figcaption><span>Терминал</span><span>запрос и заголовок с номером</span></figcaption>
+<pre>curl -si "localhost:8015/products?scenario=error" | grep -i "HTTP/\|x-request-id"</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>строка статуса и заголовок</span></figcaption><pre>HTTP/1.1 500 Internal Server Error
+x-request-id: 5a324a9b22b249f2a09cab9beda2e0aa</pre></figure>
+    <p>Клиент получил ошибку 500 и номер запроса. Приложение может показать этот номер пользователю, а пользователь — переслать его в поддержку. По номеру разработчик находит событие:</p>
+    <figure class="code">
+      <figcaption><span>find.py</span><span>поиск события по номеру запроса</span></figcaption>
+<pre><span class="k">import</span> json
+<span class="k">import</span> sys
+<span class="k">from</span> urllib.request <span class="k">import</span> urlopen
+
+request_id = sys.argv[<span class="n">1</span>]
+events = json.<span class="f">load</span>(<span class="f">urlopen</span>(<span class="s">"http://127.0.0.1:8015/events"</span>))[<span class="s">"events"</span>]
+
+<span class="k">for</span> event <span class="k">in</span> events:
+    <span class="k">if</span> event[<span class="s">"request_id"</span>] == request_id:
+        <span class="f">print</span>(event[<span class="s">"timestamp"</span>], event[<span class="s">"level"</span>], event[<span class="s">"status"</span>], <span class="s">f'{event["duration_ms"]:.0f} мс'</span>)
+        <span class="f">print</span>(event[<span class="s">"exception"</span>].<span class="f">splitlines</span>()[-<span class="n">1</span>])</pre>
+    </figure>
+    <figure class="code"><figcaption><span>Терминал</span><span>запуск с номером из заголовка</span></figcaption><pre>python find.py 5a324a9b22b249f2a09cab9beda2e0aa</pre></figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>событие этого запроса</span></figcaption><pre>2026-11-10T10:53:06.104535+00:00 ERROR 500 72 мс
+TimeoutError: Simulated dependency timeout; no database is connected</pre></figure>
+    <div class="walk">
+      <div><code>sys.argv[1]</code><span>Первый аргумент командной строки — номер, который передали после имени программы.</span></div>
+      <div><code>event["request_id"] == request_id</code><span>Из всех событий оставляем одно — с тем же номером.</span></div>
+      <div><code>event["exception"].splitlines()[-1]</code><span>Поле <code>exception</code> хранит traceback целиком. Последняя его строка — тип и текст исключения.</span></div>
+    </div>
+    <p>Из многих событий номер выбрал одно: время в UTC, уровень <code>ERROR</code>, код 500, 72 мс и текст исключения. Сервис стенда — один процесс. В настоящей системе запрос проходит через несколько сервисов, и номер нужно передать каждому:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Запрос с номером 5a32 проходит каталог, склад и цены; номер передаётся в заголовке; каждый сервис пишет событие с этим номером в общее хранилище"><rect class="sc-box" x="20" y="30" width="120" height="44" rx="8"/><text class="t tc" x="80" y="57">клиент</text><path class="sc-arrow" d="M144 52 L184 52"/><path class="sc-arrow" d="M176 56 L184 52 L176 48"/><rect class="sc-acc" x="190" y="30" width="120" height="44" rx="8"/><text class="t tc" x="250" y="57">каталог</text><path class="sc-arrow" d="M314 52 L354 52"/><path class="sc-arrow" d="M346 56 L354 52 L346 48"/><rect class="sc-acc" x="360" y="30" width="120" height="44" rx="8"/><text class="t tc" x="420" y="57">склад</text><path class="sc-arrow" d="M484 52 L514 52"/><path class="sc-arrow" d="M506 56 L514 52 L506 48"/><rect class="sc-acc" x="520" y="30" width="100" height="44" rx="8"/><text class="t tc" x="570" y="57">цены</text><text class="tm tc" x="164" y="22">5a32…</text><text class="tm tc" x="334" y="22">5a32…</text><text class="tm tc" x="499" y="22">5a32…</text><path class="sc-line" d="M250 78 L320 118"/><path class="sc-line" d="M420 78 L320 118"/><path class="sc-line" d="M570 78 L330 118"/><rect class="sc-box" x="190" y="120" width="260" height="40" rx="8"/><text class="t tc" x="320" y="145">события: 5a32… ×3 сервиса</text></svg>
+      <figcaption>Номер запроса передаётся в заголовке каждого вызова и попадает в события всех сервисов.</figcaption>
+    </figure>
+    <p>Над каждой стрелкой — тот же номер <code>5a32…</code>: каталог получил его с запросом и передал складу в заголовке своего вызова, склад — сервису цен. Каждый сервис записал своё событие с этим номером, и в хранилище по одному номеру находятся все три записи. Если какой-то сервис не передаст номер дальше, цепочка оборвётся на нём. Передачу номера и других сведений о запросе от сервиса к сервису называют <span class="term">распространением контекста</span> (context propagation).</p>
+    <div class="key"><b>Вывод</b><p>Идентификатор запроса связывает все записи об одном запросе. Его возвращают клиенту и передают каждому сервису, через который проходит запрос.</p></div>
+    <p class="next">Идентификатор — поле с огромным числом значений. Разберём, куда такие поля можно записывать, а куда нельзя.</p>
+  </section>
+
+  <section class="part" id="s9">
+    <h2><span class="sec">§9</span>Сколько значений у поля</h2>
+    <p class="about">Куда записывать поля с огромным числом значений.</p>
+    <p>В лекции 1.2 у ряда на <code>/metrics</code> было описание: <code>route="/products"</code> и <code>status="500"</code>. Каждое новое сочетание таких признаков создаёт отдельный ряд, и хранилище держит каждый ряд в памяти. Отдельный ряд для каждого кода ответа хранилищу по силам: кодов немного. Посчитаем, что будет, если добавлять признаки с большим числом значений:</p>
+    <figure class="code">
+      <figcaption><span>series.py</span><span>число рядов при добавлении признаков</span></figcaption>
+<pre>labels = [(<span class="s">"route"</span>, <span class="n">5</span>), (<span class="s">"status"</span>, <span class="n">4</span>), (<span class="s">"instance"</span>, <span class="n">3</span>), (<span class="s">"user_id"</span>, <span class="n">100_000</span>)]
+
+series = <span class="n">1</span>
+<span class="k">for</span> name, values <span class="k">in</span> labels:
+    series *= values
+    <span class="f">print</span>(<span class="s">f"+ {name:&lt;8} значений: {values:&gt;6}  рядов: {series:&gt;7}"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>рост числа рядов</span></figcaption><pre>+ route    значений:      5  рядов:       5
++ status   значений:      4  рядов:      20
++ instance значений:      3  рядов:      60
++ user_id  значений: 100000  рядов: 6000000</pre></figure>
+    <p>Число рядов — произведение чисел значений: 5 маршрутов × 4 кода × 3 экземпляра = 60. Номер пользователя умножает 60 на 100 000, и рядов становится шесть миллионов. Число разных значений признака называют <span class="term">кардинальностью</span>. У номера запроса она ещё хуже, чем у номера пользователя: каждый запрос приносит новое значение. На схеме — те же четыре шага в масштабе:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Число рядов: 5, 20, 60 — короткие полосы; с user_id — 6 000 000, полоса уходит за край"><text class="tm" x="10" y="32">route</text><rect class="sc-acc" x="110" y="18" width="2" height="20"/><text class="tm" x="120" y="33">5</text><text class="tm" x="10" y="66">+ status</text><rect class="sc-acc" x="110" y="52" width="4" height="20"/><text class="tm" x="122" y="67">20</text><text class="tm" x="10" y="100">+ instance</text><rect class="sc-acc" x="110" y="86" width="12" height="20"/><text class="tm" x="130" y="101">60</text><text class="tm" x="10" y="134">+ user_id</text><rect class="sc-wrn" x="110" y="120" width="510" height="20"/><text class="tm tw" x="120" y="160">6 000 000 — в 100 000 раз больше, полоса не помещается</text></svg>
+      <figcaption>Длина полосы — число рядов. Шкала общая для первых трёх строк: 1 пиксель — 5 рядов.</figcaption>
+    </figure>
+    <p>Первые три полосы — 5, 20 и 60 рядов — едва отличаются. Четвёртая в той же шкале заняла бы 1,2 миллиона пикселей, поэтому нарисована обрезанной. Хранилище, рассчитанное на тысячи рядов, получает миллионы: расходует память и медленнее отвечает. Пользы от этого нет: у ряда одного запроса будет одна точка, а по истории из одной точки не увидеть изменений и масштаба.</p>
+    <p>В событии такой проблемы нет. Каждое событие и так хранится отдельно, и поле <code>request_id</code> в нём — ещё одна строка записи. Поэтому поля распределяют так:</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Куда</th><th>Какие поля</th><th>Пример со стенда</th></tr></thead>
+        <tbody>
+          <tr><td>описание ряда</td><td>небольшой известный набор значений</td><td><code>route</code>, <code>status</code></td></tr>
+          <tr><td>событие</td><td>любые подробности, включая номера</td><td><code>request_id</code>, <code>scenario</code>, <code>spans</code>, <code>exception</code></td></tr>
+        </tbody>
+      </table></div>
+    <div class="key"><b>Вывод</b><p>Каждое сочетание признаков ряда — отдельный ряд в памяти хранилища. Признаки с огромным числом значений — номера запросов, пользователей, заказов — пишут в события.</p></div>
+    <p class="next">Данные записаны в нужные места. Осталось проверить, всё ли из записанного доживает до разбора.</p>
+  </section>
+
+  <section class="part" id="s10">
+    <h2><span class="sec">§10</span>Где телеметрия теряется</h2>
+    <p class="about">Почему отсутствие записи не доказывает, что события не было.</p>
+    <p>Телеметрия описывает только то, что измерили и сохранили. На стенде это легко проверить. Адрес <code>/events</code> хранит события в памяти процесса. Посчитаем события, затем перезапустим сервис и посчитаем снова:</p>
+    <figure class="code">
+      <figcaption><span>Терминал</span><span>число событий до и после перезапуска</span></figcaption>
+<pre>curl -s localhost:8015/events | python3 -c "import json,sys; print('событий:', len(json.load(sys.stdin)['events']))"
+<span class="c"># Ctrl+C в терминале сервиса, затем снова python -m uvicorn app:app --port 8015</span>
+curl -s localhost:8015/events | python3 -c "import json,sys; d = json.load(sys.stdin); print('событий:', len(d['events'])); print(d['note'])"</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>до и после</span></figcaption><pre>событий: 21
+событий: 0
+Last 2000 events in this single process; cleared on restart</pre></figure>
+    <p>До перезапуска было 21 событие: 20 запросов <code>experiment.py</code> и запрос из §8. После — ноль. Сервис сам предупреждает об этом в поле <code>note</code>: последние 2000 событий одного процесса, очищаются при перезапуске. Если теперь запустить <code>find.py</code> с номером из §8, программа ничего не напечатает. Это не значит, что запроса не было: его запись пропала вместе с процессом, как в ночном сбое из лекции 1.1.</p>
+    <p>Потеря при перезапуске — один из нескольких участков, где телеметрия искажается или теряется по пути от события до хранилища:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Путь данных: событие в коде, память процесса, сбор, хранилище; на каждом участке своя потеря: нет инструментации, перезапуск, интервал и недоступность, разные часы"><rect class="sc-acc" x="10" y="30" width="130" height="44" rx="8"/><text class="t tc" x="75" y="57">событие в коде</text><path class="sc-arrow" d="M144 52 L170 52"/><path class="sc-arrow" d="M162 56 L170 52 L162 48"/><rect class="sc-acc" x="176" y="30" width="130" height="44" rx="8"/><text class="t tc" x="241" y="57">память процесса</text><path class="sc-arrow" d="M310 52 L336 52"/><path class="sc-arrow" d="M328 56 L336 52 L328 48"/><rect class="sc-acc" x="342" y="30" width="130" height="44" rx="8"/><text class="t tc" x="407" y="57">сбор</text><path class="sc-arrow" d="M476 52 L502 52"/><path class="sc-arrow" d="M494 56 L502 52 L494 48"/><rect class="sc-box" x="508" y="30" width="122" height="44" rx="8"/><text class="t tc" x="569" y="57">хранилище</text><text class="t tc tw" x="75" y="100">не измерили</text><text class="t tc tw" x="241" y="100">перезапуск,</text><text class="t tc tw" x="241" y="118">авария</text><text class="t tc tw" x="407" y="100">интервал,</text><text class="t tc tw" x="407" y="118">сбор не дошёл</text><text class="t tc tw" x="569" y="100">разные часы</text><text class="t tc tw" x="569" y="118">серверов</text></svg>
+      <figcaption>Путь записи от кода до хранилища и что может случиться на каждом участке.</figcaption>
+    </figure>
+    <p>Слева направо — путь записи. Под каждым участком оранжевым — как запись на нём пропадает или искажается. Подробнее:</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Участок</th><th>Что происходит</th><th>Как это выглядит при разборе</th></tr></thead>
+        <tbody>
+          <tr><td>код</td><td>значение не измеряли</td><td>поля нет, как <code>client</code> в §4</td></tr>
+          <tr><td>память процесса</td><td>процесс перезапустился или упал раньше, чем отправил записи</td><td>последних событий перед сбоем нет</td></tr>
+          <tr><td>сбор</td><td>значение снимают раз в несколько секунд (лекция 1.2, §6)</td><td>короткий всплеск не виден на графике</td></tr>
+          <tr><td>сбор</td><td>система сбора не смогла достучаться до сервиса</td><td>разрыв линии на графике</td></tr>
+          <tr><td>хранилище</td><td>часы серверов расходятся на секунды</td><td>ответ записан раньше запроса</td></tr>
+        </tbody>
+      </table></div>
+    <div class="key key--warn"><b>Вывод</b><p>Отсутствие записи не доказывает отсутствие события. Сначала проверяют, собирались ли данные за этот период и откуда они могли пропасть.</p></div>
+  </section>
+
+  <section class="part" id="s11">
+    <h2><span class="sec">§11</span>Частые ошибки</h2>
+    <p class="about">Что делают неправильно и как исправить.</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Что делают</th><th>Что произойдёт</th><th>Как правильно</th></tr></thead>
+        <tbody>
+          <tr><td>считают, что наблюдаемость можно установить программой</td><td>данные в хранилище есть, но в них нет подробностей для нужного вопроса</td><td>определить вопросы разбора и записывать поля, которые на них отвечают</td></tr>
+          <tr><td>пишут в событие только код ответа и время</td><td>на вопрос «какие запросы и почему» ответа нет</td><td>записывать длительность, этапы, параметры запроса, текст исключения</td></tr>
+          <tr><td>полагаются только на автоматическую инструментацию</td><td>видны HTTP и SQL, не видны размер отчёта или тип операции</td><td>добавлять вручную признаки, важные для задачи</td></tr>
+          <tr><td>пишут время в местном часовом поясе сервера</td><td>события разных серверов не сравнить без пересчёта</td><td>записывать время в UTC</td></tr>
+          <tr><td>не передают номер запроса при вызове другого сервиса</td><td>цепочка запроса обрывается на границе сервиса</td><td>передавать номер в заголовке каждого вызова</td></tr>
+          <tr><td>добавляют номер запроса или пользователя в описание ряда</td><td>число рядов растёт до миллионов, хранилище перегружено</td><td>номера писать в события</td></tr>
+          <tr><td>считают отсутствие записи доказательством</td><td>потерянные события принимают за «ничего не случилось»</td><td>сначала проверить, собирались ли данные за этот период</td></tr>
+        </tbody>
+      </table></div>
+  </section>
+
+  <section class="part" id="s12">
+    <h2><span class="sec">§12</span>Практика</h2>
+    <p class="about">Три задачи на то, что разобрано в лекции. Решение спрятано под задачей.</p>
+    <h3>Задача 1. Ещё один вопрос к событиям</h3>
+    <p>Ситуация: стенд запущен, <code>experiment.py</code> отправил 20 запросов.</p>
+    <div class="key"><b>Что нужно сделать</b><p>Изменить <code>slow.py</code> так, чтобы программа печатала номер и текст исключения у всех запросов с кодом 500.</p></div>
+    <details><summary>Решение</summary>
+    <figure class="code"><figcaption><span>errors.py</span><span>запросы с кодом 500</span></figcaption><pre><span class="k">for</span> event <span class="k">in</span> events:
+    <span class="k">if</span> event[<span class="s">"status"</span>] == <span class="n">500</span>:
+        <span class="f">print</span>(event[<span class="s">"request_id"</span>][:<span class="n">8</span>], event[<span class="s">"exception"</span>].<span class="f">splitlines</span>()[-<span class="n">1</span>])</pre></figure>
+    <p>Программа напечатает одну строку — тринадцатый запрос со сценарием <code>error</code> — с текстом <code>TimeoutError: Simulated dependency timeout; no database is connected</code>. Код сервиса не менялся: поля <code>status</code> и <code>exception</code> уже были в событиях.</p>
+    </details>
+
+    <h3>Задача 2. Наблюдаем ли сервис</h3>
+    <p>Ситуация: сервис отчётов записывает в событие поля <code>timestamp</code>, <code>request_id</code>, <code>status</code> и <code>duration_ms</code>. Пользователи жалуются, что большие отчёты иногда строятся минуту.</p>
+    <div class="key"><b>Что нужно сделать</b><p>Определить, можно ли по этим полям проверить жалобу, и если нет — какое поле добавить.</p></div>
+    <details><summary>Решение</summary>
+    <p>Нельзя. По полям видно, какие запросы были медленными, но не видно размер отчёта, поэтому связь «большой отчёт — долго» не проверить. Нужно добавить поле с числом строк отчёта, например <code>rows</code>. Ответ появится только для отчётов, построенных после выпуска новой версии.</p>
+    </details>
+
+    <h3>Задача 3. Куда записать признак</h3>
+    <p>Ситуация: для каждого признака нужно решить, записывать его в описание ряда или только в события:</p>
+    <ul>
+      <li>код ответа;</li>
+      <li>номер заказа;</li>
+      <li>тариф пользователя: «базовый», «стандарт», «премиум»;</li>
+      <li>адрес электронной почты пользователя.</li>
+    </ul>
+    <div class="key"><b>Что нужно сделать</b><p>Распределить признаки и объяснить по числу значений.</p></div>
+    <details><summary>Решение</summary>
+    <p>В описание ряда — код ответа (несколько значений) и тариф (три значения). Только в события — номер заказа и почта: у каждого заказа и пользователя своё значение, и в описании ряда они создали бы миллионы рядов.</p>
+    </details>
+  </section>
+
+  <section class="part" id="s13">
+    <h2><span class="sec">§13</span>Проверьте себя</h2>
+    <p class="about">Вопросы по лекции. Ответ раскрывается щелчком.</p>
+    <details><summary>Сервис отправляет данные в Prometheus и Grafana. Можно ли сказать, что он наблюдаем?</summary><p>Заранее нельзя. Наблюдаемость оценивают по вопросу: можно ли по сохранённым данным ответить на него. Если нужных полей в данных нет, хранилище не поможет.</p></details>
+    <details><summary>Почему по строкам <code>/metrics</code> стенда нельзя узнать, какие запросы были медленными?</summary><p>Числа на <code>/metrics</code> — суммы по всем запросам: сколько уложилось в 2,5 и в 5 секунд. Отдельные запросы в них не различить.</p></details>
+    <details><summary>Почему <code>client.py</code> закончился исключением <code>KeyError</code>?</summary><p>В событиях стенда нет поля <code>client</code>. Для этого вопроса сервис ненаблюдаем, пока поле не добавят в код.</p></details>
+    <details><summary>Что делает строка <code>offset = time.perf_counter() - started</code>?</summary><p>Считает, сколько прошло от начала запроса до начала этапа. По этому смещению этап ставится на общую шкалу запроса.</p></details>
+    <details><summary>Зачем писать время событий в UTC?</summary><p>Чтобы записи серверов из разных часовых поясов сравнивать и сортировать без пересчёта.</p></details>
+    <details><summary>Почему номер пользователя не добавляют в описание ряда?</summary><p>Каждое сочетание признаков создаёт отдельный ряд. При 100 000 пользователей 60 рядов превращаются в 6 000 000.</p></details>
+    <details><summary>По номеру запроса событие не нашлось. Значит ли это, что запроса не было?</summary><p>Нет. Запись могла пропасть, например при перезапуске процесса, как на стенде: 21 событие до перезапуска и 0 после.</p></details>
+  </section>
+
+  <section class="part" id="s14">
+    <h2><span class="sec">§14</span>Шпаргалка</h2>
+    <p class="about">Опорные понятия лекции одним списком.</p>
+    <div class="cheat">
+      <div><b>Наблюдаемость</b><code>свойство системы</code><code>оценивают по вопросу</code><code>не устанавливается</code></div>
+      <div><b>Мониторинг и наблюдаемость</b><code>известный признак → уведомление</code><code>новый вопрос → причина</code></div>
+      <div><b>Инструментация</b><code>код создаёт телеметрию</code><code>автоматическая</code><code>ручная</code></div>
+      <div><b>Поля каждого события</b><code>время в UTC</code><code>идентификатор запроса</code></div>
+      <div><b>Распространение контекста</b><code>номер в заголовке</code><code>каждого вызова</code></div>
+      <div><b>Куда писать признак</b><code>мало значений → ряд</code><code>номера → событие</code></div>
+      <div><b>Потери</b><code>не измерили</code><code>перезапуск</code><code>интервал</code><code>часы</code></div>
+    </div>
+  </section>
+
+  <section class="part" id="s15">
+    <h2><span class="sec">§15</span>Глоссарий</h2>
+    <p class="about">Термины лекции, включая понятия из лекций 1.1 и 1.2: формулировка, пример и рисунок.</p>
+    <div class="glossary">
+      <article class="gl" id="g-telemetry">
+        <div class="gl__text">
+          <h3>Телеметрия<i>telemetry</i></h3>
+          <p class="gl__def">Сведения о работе программы, которые она передаёт во внешнее хранилище: числа, события, этапы операций.</p>
+          <p class="gl__ex"><b>Пример</b>строки <code>/metrics</code> и события <code>/events</code> стенда.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.1, §10</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Телеметрия"><rect class="sc-acc" x="10" y="45" width="90" height="40" rx="8"/><text class="t tc" x="55" y="70">сервис</text><path class="sc-arrow" d="M104 65 L150 65"/><path class="sc-arrow" d="M142 69 L150 65 L142 61"/><rect class="sc-box" x="156" y="30" width="94" height="70" rx="8"/><text class="t tc" x="203" y="61">хранилище</text><text class="t tc" x="203" y="79">вне процесса</text></svg></figure>
+      </article>
+      <article class="gl" id="g-monitoring">
+        <div class="gl__text">
+          <h3>Мониторинг<i>monitoring</i></h3>
+          <p class="gl__def">Регулярный сбор, хранение и анализ измерений работы системы по заранее заданным вопросам.</p>
+          <p class="gl__ex"><b>Пример</b>правило «доля ошибок выше 2% пять минут подряд».</p>
+          <p class="gl__where"><b>Где</b>лекция 1.2, §1</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Мониторинг"><rect class="sc-acc" x="6" y="45" width="44" height="34" rx="6"/><rect class="sc-acc" x="57" y="45" width="44" height="34" rx="6"/><rect class="sc-box" x="108" y="45" width="44" height="34" rx="6"/><rect class="sc-box" x="159" y="45" width="44" height="34" rx="6"/><rect class="sc-box" x="210" y="45" width="44" height="34" rx="6"/><text class="t tc" x="130" y="112">пять шагов по порядку</text></svg></figure>
+      </article>
+      <article class="gl" id="g-series">
+        <div class="gl__text">
+          <h3>Временной ряд<i>time series</i></h3>
+          <p class="gl__def">Значения одной величины у одного объекта, упорядоченные по времени. Каждое сочетание признаков в описании — отдельный ряд.</p>
+          <p class="gl__ex"><b>Пример</b>ответы 500 у <code>/products</code>: 0, 0, 0, 0, 5, 11, 11, 11.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.2, §3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Временной ряд"><line class="sc-axis" x1="10" y1="110" x2="250" y2="110"/><polyline class="sc-plot" points="20,100 50,100 80,100 110,100 140,75 170,45 200,45 230,45"/><circle class="sc-dot" cx="20" cy="100" r="4"/><circle class="sc-dot" cx="80" cy="100" r="4"/><circle class="sc-dot" cx="140" cy="75" r="4"/><circle class="sc-dot" cx="200" cy="45" r="4"/></svg></figure>
+      </article>
+      <article class="gl" id="g-observability">
+        <div class="gl__text">
+          <h3>Наблюдаемость<i>observability</i></h3>
+          <p class="gl__def">Свойство системы: насколько по данным, которые она отправляет наружу, можно понять, что происходит внутри. Оценивают по конкретному вопросу.</p>
+          <p class="gl__ex"><b>Пример</b>по событиям стенда нашлись два медленных запроса и их этап; на вопрос о клиенте ответа нет.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.3, §2</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Наблюдаемость"><rect class="sc-soft" x="10" y="30" width="90" height="70" rx="8"/><text class="t tc" x="55" y="70">процесс</text><path class="sc-arrow" d="M104 65 L130 65"/><path class="sc-arrow" d="M122 69 L130 65 L122 61"/><rect class="sc-acc" x="136" y="30" width="80" height="70" rx="8"/><text class="t tc" x="176" y="70">данные</text><text class="tb" x="226" y="72">?</text></svg></figure>
+      </article>
+      <article class="gl" id="g-event">
+        <div class="gl__text">
+          <h3>Событие<i>event</i></h3>
+          <p class="gl__def">Запись о том, что произошло, когда и с какими подробностями. Хранится отдельно от других событий.</p>
+          <p class="gl__ex"><b>Пример</b>запись о запросе <code>/products</code>: время, код 200, 3022 мс, сценарий <code>slow</code>, этапы.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.3, §3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Событие"><rect class="sc-acc" x="40" y="14" width="180" height="104" rx="8"/><text class="tm" x="56" y="40">timestamp</text><text class="tm" x="56" y="62">status: 200</text><text class="tm" x="56" y="84">duration_ms</text><text class="tm" x="56" y="106">spans</text></svg></figure>
+      </article>
+      <article class="gl" id="g-instrumentation">
+        <div class="gl__text">
+          <h3>Инструментация<i>instrumentation</i></h3>
+          <p class="gl__def">Код, который добавляют в программу, чтобы она создавала телеметрию. Бывает автоматической (готовые библиотеки) и ручной.</p>
+          <p class="gl__ex"><b>Пример</b>функция <code>stage</code> записывает смещение и длительность каждого этапа.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.3, §6</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Инструментация"><line class="sc-axis" x1="10" y1="110" x2="250" y2="110"/><rect class="sc-acc" x="10" y="30" width="6" height="20"/><rect class="sc-wrn" x="16" y="58" width="226" height="20"/><rect class="sc-acc" x="242" y="86" width="6" height="20"/><text class="tm tc" x="129" y="72">dependency.wait</text></svg></figure>
+      </article>
+      <article class="gl" id="g-utc">
+        <div class="gl__text">
+          <h3>UTC<i>Coordinated Universal Time</i></h3>
+          <p class="gl__def">Всемирное координированное время, от которого отсчитывают часовые пояса. В нём пишут время событий всех серверов.</p>
+          <p class="gl__ex"><b>Пример</b>13:53 по Москве записано как <code>10:53:06+00:00</code>.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.3, §7</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="UTC"><rect class="sc-box" x="10" y="20" width="110" height="36" rx="8"/><text class="tm tc" x="65" y="43">МСК 13:53</text><rect class="sc-box" x="10" y="74" width="110" height="36" rx="8"/><text class="tm tc" x="65" y="97">НСК 17:53</text><path class="sc-arrow" d="M124 38 L150 58"/><path class="sc-arrow" d="M124 92 L150 72"/><rect class="sc-acc" x="156" y="46" width="94" height="38" rx="8"/><text class="tm tc" x="203" y="70">UTC 10:53</text></svg></figure>
+      </article>
+      <article class="gl" id="g-request-id">
+        <div class="gl__text">
+          <h3>Идентификатор запроса<i>request ID</i></h3>
+          <p class="gl__def">Уникальный номер запроса, который пишут во все записи о нём и возвращают клиенту.</p>
+          <p class="gl__ex"><b>Пример</b>заголовок <code>x-request-id: 5a324a9b…</code>; по нему <code>find.py</code> нашёл событие.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.3, §8</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Идентификатор запроса"><rect class="sc-box" x="10" y="20" width="70" height="30" rx="6"/><rect class="sc-acc" x="10" y="56" width="70" height="30" rx="6"/><rect class="sc-box" x="10" y="92" width="70" height="30" rx="6"/><text class="tm tc" x="45" y="76">5a32…</text><path class="sc-arrow" d="M86 71 L150 71"/><path class="sc-arrow" d="M142 75 L150 71 L142 67"/><rect class="sc-acc" x="156" y="52" width="94" height="38" rx="8"/><text class="t tc" x="203" y="76">найдено</text></svg></figure>
+      </article>
+      <article class="gl" id="g-propagation">
+        <div class="gl__text">
+          <h3>Распространение контекста<i>context propagation</i></h3>
+          <p class="gl__def">Передача номера запроса и других сведений о нём от сервиса к сервису в заголовках вызовов.</p>
+          <p class="gl__ex"><b>Пример</b>каталог передаёт <code>5a32…</code> складу, склад — сервису цен.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.3, §8</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Распространение контекста"><rect class="sc-acc" x="10" y="50" width="62" height="34" rx="6"/><rect class="sc-acc" x="98" y="50" width="62" height="34" rx="6"/><rect class="sc-acc" x="186" y="50" width="62" height="34" rx="6"/><path class="sc-arrow" d="M74 67 L96 67"/><path class="sc-arrow" d="M162 67 L184 67"/><text class="tm tc" x="85" y="40">5a32</text><text class="tm tc" x="173" y="40">5a32</text></svg></figure>
+      </article>
+      <article class="gl" id="g-cardinality">
+        <div class="gl__text">
+          <h3>Кардинальность<i>cardinality</i></h3>
+          <p class="gl__def">Число разных значений признака. Число рядов — произведение кардинальностей признаков в описании ряда.</p>
+          <p class="gl__ex"><b>Пример</b>5 × 4 × 3 = 60 рядов; с номером пользователя — 6 000 000.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.3, §9</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Кардинальность"><rect class="sc-acc" x="10" y="30" width="12" height="22"/><text class="tm" x="30" y="46">60</text><rect class="sc-wrn" x="10" y="74" width="240" height="22"/><text class="tm" x="16" y="90">6 000 000</text></svg></figure>
+      </article>
+    </div>
+  </section>
+
+  <section class="part">
+    <h3>Итог лекции</h3>
+    <p>Мониторинг отвечает на вопросы, заданные заранее: на стенде он сообщил, что из 20 запросов два шли дольше 2,5 секунды. Какие это запросы и где у них ушло время, по его числам не узнать. Наблюдаемость — свойство системы отвечать на такие новые вопросы по уже сохранённым данным. Стенд ответил на вопрос о медленных запросах, потому что записывал в события длительность, сценарий и этапы. На вопрос о клиенте ответа нет: такого поля в событиях нет. Поля создаёт инструментация — код самой программы. Время в UTC ставит события разных серверов на одну шкалу, идентификатор запроса связывает все записи одного запроса. Номера и другие поля с огромным числом значений пишут в события, а в описание рядов — признаки с небольшим набором значений. И помнят, что записи теряются: после перезапуска стенда событий стало ноль.</p>
+    <h3>Источники</h3>
+    <ul class="sources">
+      <li>OpenTelemetry. Observability primer — opentelemetry.io/docs/concepts/observability-primer</li>
+      <li>OpenTelemetry. Context propagation — opentelemetry.io/docs/concepts/context-propagation</li>
+      <li>R. E. Kalman. On the General Theory of Control Systems, 1960</li>
+      <li>Python. datetime, uuid — docs.python.org/3/library</li>
+      <li>Вывод <code>/metrics</code>, <code>slow.py</code>, <code>client.py</code>, <code>find.py</code>, <code>curl</code> и перезапуска снят на стенде products-api (FastAPI 0.115.6) 10.11.2026; <code>series.py</code> — расчёт на придуманных числах, вывод получен запуском в Python 3</li>
+    </ul>
+  </section>
+
+  <div class="pager">
+    <a href="1-2-monitoring.html">← 1.2 Мониторинг</a>
+    <a href="index.html">К содержанию справочника</a>
+    <span class="pager__soon">1.4 Сигналы · готовится →</span>
+  </div>
+  <div class="colophon">
+    <span>Лекция 1.3 · Наблюдаемость · Метрики и наблюдаемость</span>
+    <span class="author-line">Автор: Макаров Максим Николаевич</span>
+  </div>
+    </main>
+  </div>
+</div>
+<script src="reader.js"></script>
+</body>
+</html>

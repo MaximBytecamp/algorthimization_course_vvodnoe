@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>2.2 Counter: создать и прибавить · Метрики и наблюдаемость</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="book">
+  <div class="book__body">
+    <div class="spine"><span>Часть 2 · Метрики в коде</span></div>
+    <main class="leaf">
+  <div class="running">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Метрики и наблюдаемость</a> · часть 2 · метрики в коде</p>
+    <p class="running__folio">Лекция 2.2</p>
+  </div>
+
+  <header class="chapter-head">
+    <span class="chapter-num">2.2</span>
+    <h1>Counter: создать и прибавить</h1>
+    <p class="lead">Счётчик — тип метрики, который только прибавляет. В лекции установим библиотеку, создадим счётчик, разберём его строки в ответе <code>/metrics</code>, окончание <code>_total</code> и прибавление произвольного числа.</p>
+  </header>
+  <dl class="passport">
+    <div><dt>Тема</dt><dd>Counter</dd></div>
+    <div><dt>Библиотека</dt><dd><code>prometheus-client</code> 0.26.0</dd></div>
+    <div><dt>Опирается на</dt><dd>Лекция 2.1: ответ <code>/metrics</code></dd></div>
+    <div><dt>Результат</dt><dd>Создать счётчик и прибавлять к нему</dd></div>
+  </dl>
+
+  <div class="reader-start">
+    <div>
+      <b>Режим чтения</b>
+      <p>Лекция откроется по одному разделу: на экране одна мысль, кнопка «Дальше» ведёт к следующей. Стрелки ← → на клавиатуре тоже листают, Esc возвращает всю лекцию.</p>
+    </div>
+    <div class="reader-start__btns">
+      <button type="button" data-reader-start="continue" hidden></button>
+      <button type="button" class="primary" data-reader-start="begin">Читать по шагам</button>
+    </div>
+  </div>
+
+  <nav class="contents">
+    <b>В этой лекции</b>
+    <ol>
+      <li><a href="#s0"><span class="csec">§0</span>Как запускать примеры</a></li>
+      <li><a href="#s1"><span class="csec">§1</span>Что считает счётчик</a></li>
+      <li><a href="#s2"><span class="csec">§2</span>Первый счётчик</a></li>
+      <li><a href="#s3"><span class="csec">§3</span>Окончание _total</a></li>
+      <li><a href="#s4"><span class="csec">§4</span>Прибавить больше единицы</a></li>
+      <li><a href="#s5"><span class="csec">§5</span>Частые ошибки</a></li>
+      <li><a href="#s6"><span class="csec">§6</span>Практика</a></li>
+      <li><a href="#s7"><span class="csec">§7</span>Проверьте себя</a></li>
+      <li><a href="#s8"><span class="csec">§8</span>Шпаргалка</a></li>
+      <li><a href="#s9"><span class="csec">§9</span>Глоссарий</a></li>
+    </ol>
+  </nav>
+
+<section class="part" id="s0">
+    <h2><span class="sec">§0</span>Как запускать примеры</h2>
+    <p class="about">Что установить и как запустить код лекции у себя.</p>
+    <p>Примеры лекции — короткие программы на Python. Они проверены на Python 3.12 и библиотеке prometheus-client 0.26.0. Библиотеку ставят в <span class="term">виртуальное окружение</span> — отдельную папку с пакетами проекта. Так пакеты проекта не смешиваются с пакетами системы.</p>
+    <figure class="code">
+      <figcaption><span>Терминал</span><span>окружение и библиотека</span></figcaption>
+<pre>python3 -m venv .venv
+source .venv/bin/activate
+pip install prometheus-client==0.26.0
+pip show prometheus-client</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>первые две строки</span></figcaption><pre>Name: prometheus_client
+Version: 0.26.0</pre></figure>
+    <div class="walk">
+      <div><code>python3 -m venv .venv</code><span>Создаёт окружение в папке <code>.venv</code>.</span></div>
+      <div><code>source .venv/bin/activate</code><span>Включает окружение в этом терминале. В Windows команда другая: <code>.venv\Scripts\activate</code>.</span></div>
+      <div><code>pip install prometheus-client==0.26.0</code><span>Ставит библиотеку той версии, на которой проверены примеры.</span></div>
+      <div><code>pip show prometheus-client</code><span>Показывает, какая версия установлена.</span></div>
+    </div>
+    <p>Примеры запускают двумя способами. Большинство программ печатают результат и сразу завершаются. Программа-сервис из лекции 2.4 работает, пока её не остановят, и её смотрят в браузере:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Два способа запуска: программа печатает вывод в терминал; сервис работает, браузер открывает localhost:8000/metrics">
+        <rect class="sc-box" x="20" y="20" width="150" height="44" rx="8"/><text class="tm tc" x="95" y="47">main.py</text>
+        <path class="sc-arrow" d="M176 42 L250 42"/><path class="sc-arrow" d="M242 46 L250 42 L242 38"/><text class="tm tc ta" x="213" y="32">python main.py</text>
+        <rect class="sc-acc" x="256" y="20" width="200" height="44" rx="8"/><text class="t tc" x="356" y="47">вывод в терминале</text>
+        <text class="t" x="470" y="47">и программа завершилась</text>
+        <rect class="sc-box" x="20" y="100" width="150" height="44" rx="8"/><text class="tm tc" x="95" y="127">main.py (сервис)</text>
+        <path class="sc-arrow" d="M176 122 L250 122"/><path class="sc-arrow" d="M242 126 L250 122 L242 118"/><text class="tm tc ta" x="213" y="112">работает</text>
+        <rect class="sc-acc" x="256" y="100" width="200" height="44" rx="8"/><text class="t tc" x="356" y="127">порт 8000 открыт</text>
+        <path class="sc-arrow" d="M560 122 L462 122"/><path class="sc-arrow" d="M470 118 L462 122 L470 126"/><rect class="sc-box" x="520" y="96" width="110" height="52" rx="8"/><text class="t tc" x="575" y="118">браузер</text><text class="tm tc" x="575" y="136" style="font-size:10px">:8000/metrics</text>
+      </svg>
+      <figcaption>Верхняя строка — обычный пример, нижняя — пример-сервис.</figcaption>
+    </figure>
+    <p>Верхний путь подходит для большинства примеров части 2: код сохраняют в файл <code>main.py</code> рядом с папкой <code>.venv</code> и запускают командой <code>python main.py</code>. Нижний — для сервиса из лекции 2.4: пока он работает, адрес <code>http://localhost:8000/metrics</code> открывается в браузере. Останавливают сервис клавишами Ctrl+C.</p>
+    <p class="next">Окружение готово. Начнём с того, что вообще считают счётчиком.</p>
+  </section>
+
+<section class="part" id="s1">
+    <h2><span class="sec">§1</span>Что считает счётчик</h2>
+    <p class="about">Какие величины считают счётчиком и как отличить их от остальных.</p>
+
+    <p>Турникет в метро прибавляет единицу на каждого пассажира. Пассажиры, которые выходят из метро, число на турникете не уменьшают. К концу дня по нему видно, сколько людей прошло с утра.</p>
+    <p>На рисунке слева — турникет с табло, справа — счётчик заказов в программе. Сравним, откуда у каждого берётся новое число.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 190" role="img" aria-label="Пассажиры проходят турникет, на табло 3; рядом счётчик orders_total 3.0">
+        <line class="sc-axis" x1="10" y1="150" x2="350" y2="150"/>
+        <g class="sc-person"><circle cx="50" cy="88" r="11"/><rect x="38" y="102" width="24" height="46" rx="10"/></g>
+        <g class="sc-person"><circle cx="105" cy="88" r="11"/><rect x="93" y="102" width="24" height="46" rx="10"/></g>
+        <path class="sc-arrow" d="M135 125 H185 M177 119 L185 125 L177 131"/>
+        <text class="t tc ta" x="160" y="114">+1</text>
+        <rect class="sc-box" x="195" y="66" width="70" height="84" rx="6"/>
+        <rect class="sc-ink" x="205" y="76" width="50" height="30" rx="4"/>
+        <text class="tm tc" x="230" y="97" style="fill:#fff;font-size:18px;font-weight:700">3</text>
+        <line class="sc-line" x1="265" y1="126" x2="300" y2="126"/>
+        <g class="sc-person"><circle cx="320" cy="88" r="11"/><rect x="308" y="102" width="24" height="46" rx="10"/></g>
+        <text class="t tc" x="230" y="176">каждый проход: +1</text>
+        <path class="sc-arrow" d="M362 108 H408 M400 102 L408 108 L400 114"/>
+        <rect class="sc-acc" x="418" y="58" width="200" height="96" rx="10"/>
+        <text class="tm tc" x="518" y="88">orders_total</text>
+        <text class="tbig tc" x="518" y="128">3.0</text>
+        <text class="t tc" x="518" y="176">каждый заказ: inc() → +1</text>
+      </svg>
+      <figcaption>Турникет и счётчик заказов устроены одинаково: событие прибавляет единицу, назад число не идёт.</figcaption>
+    </figure>
+    <p>Табло показывает 3, потому что турникет прошли три человека за всё время. Люди перед турникетом ещё ничего не прибавили. В программе роль пассажира играет событие — принятый заказ. Вызов <code>inc()</code> прибавляет 1, и счётчик тоже показывает 3. У турникета и у счётчика нет действия «вычесть»: число копится, пока устройство или программа работают.</p>
+
+    <div class="def">
+      <div class="def__term">Счётчик<i>counter</i></div>
+      <dl>
+        <dt>Что это</dt><dd>Метрика, значение которой с момента запуска программы только растёт.</dd>
+        <dt>Что даёт</dt><dd>По росту счётчика узнают, сколько событий произошло за любой промежуток: за минуту, за час, за сутки.</dd>
+        <dt>Пример</dt><dd>Принятые заказы, ошибки оплаты, отправленные байты, секунды работы процессора.</dd>
+      </dl>
+    </div>
+
+    <p>Проверить выбор помогает вопрос «сколько всего с момента запуска?». Если он звучит естественно, величину считают счётчиком.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Величина</th><th>Счётчик?</th><th>Почему</th></tr></thead>
+        <tbody>
+          <tr><td>Принятые заказы</td><td class="yes">да</td><td>каждый заказ прибавляет 1</td></tr>
+          <tr><td>Отправленные байты</td><td class="yes">да</td><td>каждый ответ прибавляет свой размер</td></tr>
+          <tr><td>Заказы в очереди сейчас</td><td class="no">нет</td><td>заказ уходит из очереди, и число уменьшается</td></tr>
+          <tr><td>Температура процессора</td><td class="no">нет</td><td>меняется в обе стороны</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Для величин, которые растут и падают, есть другой тип метрики — gauge. Разницу видно на графике. Слева — принятые заказы за час, справа — заказы в очереди за тот же час:</p>
+    <div class="scene-pair">
+      <figure class="scene">
+        <svg viewBox="0 0 300 160" role="img" aria-label="Счётчик заказов растёт ступеньками"><line class="sc-axis" x1="20" y1="130" x2="290" y2="130"/><polyline class="sc-plot" points="24,122 70,122 70,104 120,104 120,86 160,86 160,60 210,60 210,44 286,44"/><text class="tm" x="24" y="24">orders_total</text></svg>
+        <figcaption><b>Счётчик.</b> Только ступеньки вверх.</figcaption>
+      </figure>
+      <figure class="scene">
+        <svg viewBox="0 0 300 160" role="img" aria-label="Очередь заказов растёт и уменьшается"><line class="sc-axis" x1="20" y1="130" x2="290" y2="130"/><polyline class="sc-plot" points="24,110 60,80 96,96 132,52 168,100 204,70 240,112 286,90"/><text class="tm" x="24" y="24">orders_in_queue</text></svg>
+        <figcaption><b>Gauge.</b> Вверх и вниз.</figcaption>
+      </figure>
+    </div>
+    <p>Счётчик заказов только поднимается: каждый новый заказ — ступенька вверх. Очередь растёт, когда заказы приходят, и уменьшается, когда их обрабатывают. Если линия на графике иногда идёт вниз без перезапуска программы, перед нами gauge. В этой лекции речь только о счётчике.</p>
+    <p class="next">Создадим первый счётчик и посмотрим, какой текст программа отдаёт Prometheus.</p>
+  </section>
+
+<section class="part" id="s2">
+    <h2><span class="sec">§2</span>Первый счётчик</h2>
+    <p class="about">Как создать счётчик, прибавить к нему и получить текст ответа <code>/metrics</code>.</p>
+
+    <div class="def">
+      <div class="def__term">Реестр<i>CollectorRegistry</i></div>
+      <dl>
+        <dt>Что это</dt><dd>Список метрик программы. Каждая созданная метрика записывается в реестр.</dd>
+        <dt>Что даёт</dt><dd>Из реестра строится текст ответа <code>/metrics</code>: в ответ попадают все метрики реестра и только они.</dd>
+        <dt>Пример</dt><dd><code>registry = CollectorRegistry()</code></dd>
+      </dl>
+    </div>
+
+    <p>Создадим счётчик принятых заказов, трижды прибавим к нему единицу и напечатаем ответ:</p>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>счётчик и три события</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, generate_latest
+
+registry = <span class="f">CollectorRegistry</span>()
+orders = <span class="f">Counter</span>(<span class="s">"orders"</span>, <span class="s">"Принятые заказы"</span>, registry=registry)
+
+orders.<span class="f">inc</span>()
+orders.<span class="f">inc</span>()
+orders.<span class="f">inc</span>()
+
+<span class="f">print</span>(<span class="f">generate_latest</span>(registry).<span class="f">decode</span>())</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>текст ответа /metrics</span></figcaption><pre># HELP orders_total Принятые заказы
+# TYPE orders_total counter
+<span class="hl">orders_total 3.0</span>
+# HELP orders_created Принятые заказы
+# TYPE orders_created gauge
+orders_created 1.79397560439292e+09</pre></figure>
+
+    <p>На схеме — что происходит со значением счётчика по ходу программы:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 120" role="img" aria-label="Значение 0, после трёх inc() — 3, затем текст orders_total 3.0">
+        <rect class="sc-soft" x="10" y="34" width="76" height="52" rx="8"/><text class="tbig tc" x="48" y="70">0</text>
+        <rect class="sc-box" x="130" y="34" width="76" height="52" rx="8"/><text class="tbig tc" x="168" y="70">1</text>
+        <rect class="sc-box" x="250" y="34" width="76" height="52" rx="8"/><text class="tbig tc" x="288" y="70">2</text>
+        <rect class="sc-box" x="370" y="34" width="76" height="52" rx="8"/><text class="tbig tc" x="408" y="70">3</text>
+        <path class="sc-arrow" d="M90 60 H124 M117 54 L124 60 L117 66"/><text class="tm tc ta" x="108" y="26">inc()</text>
+        <path class="sc-arrow" d="M210 60 H244 M237 54 L244 60 L237 66"/><text class="tm tc ta" x="228" y="26">inc()</text>
+        <path class="sc-arrow" d="M330 60 H364 M357 54 L364 60 L357 66"/><text class="tm tc ta" x="348" y="26">inc()</text>
+        <path class="sc-arrow" d="M450 60 H484 M477 54 L484 60 L477 66"/>
+        <rect class="sc-acc" x="490" y="34" width="140" height="52" rx="8"/><text class="tm tc" x="560" y="65">orders_total 3.0</text>
+        <text class="t tc" x="48" y="108">при создании</text>
+        <text class="t tc" x="560" y="108">generate_latest</text>
+      </svg>
+    </figure>
+    <p>Пунктирная рамка слева — значение при создании счётчика, 0. Каждая стрелка <code>inc()</code> — один вызов в коде, и число в следующей рамке на единицу больше. Последняя стрелка — <code>generate_latest</code>: он записывает текущее значение 3 в строку <code>orders_total 3.0</code>, само значение остаётся прежним. Прибавляют в момент события, читают — когда нужен ответ. Ниже каждая строка программы разобрана отдельно.</p>
+
+    <div class="walk">
+      <div><code>CollectorRegistry()</code><span>Создаёт свой реестр. Без него библиотека добавила бы в ответ десяток служебных метрик о самом Python, и наш счётчик потерялся бы среди них.</span></div>
+      <div><code>Counter("orders", "Принятые заказы", registry=registry)</code><span>Создаёт счётчик со значением 0. Аргументы: имя, описание для человека, реестр.</span></div>
+      <div><code>orders.inc()</code><span>Прибавляет 1. Три вызова — значение 3.</span></div>
+      <div><code>generate_latest(registry)</code><span>Собирает текст ответа из метрик реестра. Возвращает байты, <code>.decode()</code> превращает их в строку.</span></div>
+    </div>
+
+    <p>В выводе у метрики три строки. <code># HELP</code> — описание, <code># TYPE</code> — тип, последняя строка — имя и значение. Значение записано как <code>3.0</code>, потому что Prometheus хранит все числа дробными.</p>
+    <p>Метрика <code>orders_created</code> — момент создания счётчика: 1 793 975 604 секунды с 1 января 1970 года, то есть 6 ноября 2026 года, 14:33 UTC. Она нужна редко. Её отключает переменная окружения <code>PROMETHEUS_DISABLE_CREATED_SERIES=True</code>, и дальше вывод показан без неё.</p>
+    <p class="next">Счётчик создан с именем <code>orders</code>, а в выводе стоит <code>orders_total</code>. Разберём, откуда взялось окончание.</p>
+  </section>
+
+<section class="part" id="s3">
+    <h2><span class="sec">§3</span>Окончание _total</h2>
+    <p class="about">Почему имя счётчика в ответе отличается от имени в коде.</p>
+
+    <p>По соглашению Prometheus имя счётчика оканчивается на <code>_total</code> — «всего с момента запуска». По окончанию человек и программы понимают, что перед ними счётчик. Библиотека добавляет окончание сама, если его нет в имени:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 130" role="img" aria-label="orders превращается в orders_total, orders_total остаётся без изменений">
+        <rect class="sc-box" x="20" y="14" width="170" height="40" rx="8"/><text class="tm tc" x="105" y="39">"orders"</text>
+        <path class="sc-arrow" d="M196 34 H300 M292 28 L300 34 L292 40"/><text class="t tc ta" x="248" y="24">+ _total</text>
+        <rect class="sc-acc" x="306" y="14" width="200" height="40" rx="8"/><text class="tm tc" x="406" y="39">orders_total</text>
+        <rect class="sc-box" x="20" y="76" width="170" height="40" rx="8"/><text class="tm tc" x="105" y="101">"orders_total"</text>
+        <path class="sc-arrow" d="M196 96 H300 M292 90 L300 96 L292 102"/><text class="t tc" x="248" y="86">уже есть</text>
+        <rect class="sc-acc" x="306" y="76" width="200" height="40" rx="8"/><text class="tm tc" x="406" y="101">orders_total</text>
+        <text class="t" x="520" y="39">в коде → в ответе</text>
+      </svg>
+      <figcaption>Слева — имя в <code>Counter(...)</code>, справа — имя в ответе <code>/metrics</code>.</figcaption>
+    </figure>
+    <p>Верхняя строка — короткое имя в коде: библиотека дописала окончание. Нижняя — имя, в котором окончание уже есть: библиотека его узнала и оставила как есть. Проверим нижний случай кодом:</p>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>имя уже с окончанием</span></figcaption>
+<pre>orders = <span class="f">Counter</span>(<span class="s">"orders_total"</span>, <span class="s">"Принятые заказы"</span>, registry=registry)
+orders.<span class="f">inc</span>()</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>окончание одно</span></figcaption><pre># TYPE orders_total counter
+orders_total 1.0</pre></figure>
+    <p>Оба способа дают одно и то же имя. В коде удобнее писать короткое имя <code>orders</code>, а в запросах к Prometheus — полное <code>orders_total</code>.</p>
+    <h3>Как назвать счётчик</h3>
+    <p>По имени метрики должно быть понятно, что считают и в каких единицах. Prometheus советует три правила. Имя пишут строчными латинскими буквами через подчёркивание. Единица измерения входит в имя и берётся основная: секунды, байты. Окончание <code>_total</code> стоит последним, после единицы.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Имя с ошибкой</th><th>Что не так</th><th>Как назвать</th></tr></thead>
+        <tbody>
+          <tr><td><code>OrdersCount</code></td><td>заглавные буквы; окончание Count на месте <code>_total</code></td><td><code>orders_total</code></td></tr>
+          <tr><td><code>sent_kb</code></td><td>килобайты вместо байтов, нет <code>_total</code></td><td><code>sent_bytes_total</code></td></tr>
+          <tr><td><code>processing_ms_total</code></td><td>миллисекунды вместо секунд</td><td><code>processing_seconds_total</code></td></tr>
+          <tr><td><code>errors_total_payment</code></td><td><code>_total</code> не в конце</td><td><code>payment_errors_total</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>В коде окончание <code>_total</code> можно не писать: библиотека добавит его сама. Поэтому счётчик байтов создают как <code>Counter("sent_bytes", ...)</code>, а в ответе он называется <code>sent_bytes_total</code>.</p>
+    <p class="next">Пока счётчик прибавлял по единице. Некоторые события весят больше единицы.</p>
+  </section>
+
+<section class="part" id="s4">
+    <h2><span class="sec">§4</span>Прибавить больше единицы</h2>
+    <p class="about">Как прибавить к счётчику произвольное число и почему вычесть нельзя.</p>
+
+    <p>Отправленные байты считают по размеру ответа: ответ на 512 байт прибавляет 512. Для этого число передают в <code>inc()</code>:</p>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>два ответа и попытка вычесть</span></figcaption>
+<pre>sent = <span class="f">Counter</span>(<span class="s">"sent_bytes"</span>, <span class="s">"Отправлено байт"</span>, registry=registry)
+
+sent.<span class="f">inc</span>(<span class="n">512</span>)
+sent.<span class="f">inc</span>(<span class="n">1024</span>)
+<span class="f">print</span>(registry.<span class="f">get_sample_value</span>(<span class="s">"sent_bytes_total"</span>))
+
+sent.<span class="f">inc</span>(<span class="n">-100</span>)</pre>
+    </figure>
+    <figure class="code code--out code--err"><figcaption><span>Вывод и ошибка</span><span>вычесть нельзя</span></figcaption><pre>1536.0
+ValueError: Counters can only be incremented by non-negative amounts.</pre></figure>
+    <p>Изобразим значение счётчика полосой: каждый вызов <code>inc()</code> удлиняет её на переданное число.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 140" role="img" aria-label="Полоса 512 плюс 1024 равно 1536; попытка вычесть 100 — ошибка">
+        <rect class="sc-acc" x="60" y="30" width="160" height="36" rx="4"/>
+        <rect class="sc-acc" x="220" y="30" width="320" height="36" rx="4" style="fill:#2D7FC1"/>
+        <text class="tm tc" x="140" y="22">inc(512)</text>
+        <text class="tm tc" x="380" y="22">inc(1024)</text>
+        <text class="tm tc" x="60" y="86">0</text>
+        <text class="tm tc" x="220" y="86">512</text>
+        <text class="tm tc" x="540" y="86">1536</text>
+        <path class="sc-arrow-w" d="M540 108 H512 M519 102 L512 108 L519 114"/>
+        <text class="t tr tw" x="502" y="113">inc(−100): ValueError, значение остаётся 1536</text>
+      </svg>
+      <figcaption>Каждый вызов удлиняет полосу на своё число. Укоротить полосу нельзя.</figcaption>
+    </figure>
+    <p>Голубой отрезок — первый вызов <code>inc(512)</code>, синий — второй, <code>inc(1024)</code>. Конец полосы стоит на 1536 — это напечатанное значение. Оранжевая стрелка назад — попытка <code>inc(-100)</code>. Библиотека её отклоняет, и полоса остаётся длиной 1536. Разберём строки программы:</p>
+    <div class="walk">
+      <div><code>inc(512)</code><span>Прибавляет 512. Можно передать любое неотрицательное число, в том числе дробное и ноль.</span></div>
+      <div><code>registry.get_sample_value("sent_bytes_total")</code><span>Возвращает текущее значение по имени строки из вывода. Им проверяют счётчик в коротких программах и тестах.</span></div>
+      <div><code>inc(-100)</code><span>Останавливает программу с <code>ValueError</code>: «счётчик можно увеличивать только на неотрицательное число».</span></div>
+    </div>
+    <div class="key"><b>Вывод</b><p>Счётчик не уменьшается, поэтому по нему всегда можно узнать, сколько событий произошло. Величине, которая уменьшается, нужен gauge.</p></div>
+    <p class="next">Все события пока попадали в одно число. Чтобы различать их по признаку, нужны метки.</p>
+  </section>
+
+  <section class="part" id="s5">
+    <h2><span class="sec">§5</span>Частые ошибки</h2>
+    <p class="about">Что пишут неправильно и как исправить.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Что написано</th><th>Что произойдёт</th><th>Как правильно</th></tr></thead>
+        <tbody>
+          <tr><td><code>queue.inc(-1)</code> для очереди</td><td><code>ValueError</code>: счётчик не уменьшается</td><td>для величин, которые падают, — gauge</td></tr>
+          <tr><td><code>Counter("OrdersCount", ...)</code></td><td>имя не по правилам Prometheus: заглавные буквы, нет <code>_total</code></td><td><code>Counter("orders", ...)</code> → <code>orders_total</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="part" id="s6">
+    <h2><span class="sec">§6</span>Практика</h2>
+    <p class="about">Задача на то, что разобрано в лекции. Решение спрятано под задачей.</p>
+    <h3>Задача 1. Отправленные байты</h3>
+    <p>Ситуация:</p>
+    <ul>
+      <li>сервис отправил три ответа размером 512, 2048 и 100 байт;</li>
+      <li>нужно знать, сколько байт отправлено всего.</li>
+    </ul>
+    <div class="key"><b>Что нужно сделать</b><p>Создать счётчик <code>sent_bytes</code> в своём реестре, прибавить к нему размеры ответов в цикле и напечатать значение ряда.</p></div>
+    <details><summary>Решение</summary>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>сумма размеров</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter
+
+registry = <span class="f">CollectorRegistry</span>()
+sent = <span class="f">Counter</span>(<span class="s">"sent_bytes"</span>, <span class="s">"Отправлено байт"</span>, registry=registry)
+
+<span class="k">for</span> size <span class="k">in</span> [<span class="n">512</span>, <span class="n">2048</span>, <span class="n">100</span>]:
+    sent.<span class="f">inc</span>(size)
+
+<span class="f">print</span>(registry.<span class="f">get_sample_value</span>(<span class="s">"sent_bytes_total"</span>))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>512 + 2048 + 100</span></figcaption><pre>2660.0</pre></figure>
+    <p>Каждый вызов <code>inc(size)</code> прибавляет размер одного ответа. Значение читают по имени с окончанием <code>_total</code>: библиотека добавила его к имени <code>sent_bytes</code>.</p>
+    </details>
+  </section>
+
+  <section class="part" id="s7">
+    <h2><span class="sec">§7</span>Проверьте себя</h2>
+    <p class="about">Вопросы по лекции. Ответ раскрывается щелчком.</p>
+    <details><summary>Подходит ли счётчик для числа пользователей на сайте прямо сейчас?</summary><p>Нет. Пользователи уходят, и число уменьшается. Счётчик подходит для «сколько пользователей вошло с момента запуска».</p></details>
+    <details><summary>Счётчик создан как <code>Counter("logins", ...)</code>. Под каким именем он будет в ответе <code>/metrics</code>?</summary><p><code>logins_total</code>. Библиотека добавляет окончание сама.</p></details>
+    <details><summary>Какой тип метрики, скорее всего, у этого ряда, если сервис не перезапускался?
+      <figure class="scene"><svg viewBox="0 0 640 175" role="img" aria-label="Отсчёты 5, 8, 3, 9, 4"><line class="sc-axis" x1="40" y1="150" x2="620" y2="150"/><polyline class="sc-plot" points="60,90 190,54 320,114 450,42 580,102"/><circle class="sc-dot" cx="60" cy="90" r="5"/><text class="tm tc" x="60" y="79">5</text><circle class="sc-dot" cx="190" cy="54" r="5"/><text class="tm tc" x="190" y="43">8</text><circle class="sc-dot" cx="320" cy="114" r="5"/><text class="tm tc" x="320" y="103">3</text><circle class="sc-dot" cx="450" cy="42" r="5"/><text class="tm tc" x="450" y="31">9</text><circle class="sc-dot" cx="580" cy="102" r="5"/><text class="tm tc" x="580" y="91">4</text></svg></figure></summary>
+      <p>Gauge. Значение несколько раз уменьшается, а перезапусков не было. Счётчик без перезапуска уменьшаться не может.</p></details>
+  </section>
+
+  <section class="part" id="s8">
+    <h2><span class="sec">§8</span>Шпаргалка</h2>
+    <p class="about">Конструкции лекции одним списком.</p>
+    <div class="cheat">
+      <div><b>Создать</b><code>c = Counter("orders", "Заказы")</code></div>
+      <div><b>Прибавить 1</b><code>c.inc()</code></div>
+      <div><b>Прибавить число</b><code>c.inc(512)</code></div>
+      <div><b>Прочитать в тесте</b><code>registry.get_sample_value("orders_total")</code></div>
+    </div>
+  </section>
+
+  <section class="part" id="s9">
+    <h2><span class="sec">§9</span>Глоссарий</h2>
+    <p class="about">Термины лекции, включая введённые раньше: формулировка, пример и рисунок.</p>
+    <div class="glossary">
+      <article class="gl" id="g-metrika">
+        <div class="gl__text">
+          <h3>Метрика<i>metric</i></h3>
+          <p class="gl__def">Именованное число, которое программа сообщает о себе. Значение меняется со временем, и по его истории видно, как работает программа.</p>
+          <p class="gl__ex"><b>Пример</b><code>orders_total</code> — сколько заказов принято с момента запуска.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.1</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Метрика: имя, значение и линия истории"><rect class="sc-acc" x="14" y="18" width="120" height="54" rx="8"/><text class="tm tc" x="74" y="40" style="font-size:11px">orders_total</text><text class="tb tc" x="74" y="62">3.0</text><polyline class="sc-plot" points="150,96 172,88 194,90 216,66 244,52"/><line class="sc-axis" x1="150" y1="104" x2="248" y2="104"/><text class="t tc" x="130" y="124">имя + число, меняется во времени</text></svg></figure>
+      </article>
+      <article class="gl" id="g-prometheus">
+        <div class="gl__text">
+          <h3>Prometheus</h3>
+          <p class="gl__def">Система мониторинга. Через равные промежутки запрашивает метрики у программ и хранит каждое полученное значение с отметкой времени.</p>
+          <p class="gl__ex"><b>Пример</b>раз в 15 секунд забирает <code>/metrics</code> у сервиса заказов.</p>
+          <p class="gl__where"><b>Где</b>лекции 2.1, 2.4</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Prometheus опрашивает два сервиса"><rect class="sc-acc" x="80" y="8" width="100" height="34" rx="8"/><text class="tb tc" x="130" y="30" style="font-size:12.5px">Prometheus</text><path class="sc-arrow" d="M110 46 L62 82 M65 76 L62 82 L69 81"/><path class="sc-arrow" d="M150 46 L198 82 M191 81 L198 82 L195 76"/><rect class="sc-box" x="12" y="86" width="100" height="30" rx="6"/><text class="t tc" x="62" y="106">сервис A</text><rect class="sc-box" x="148" y="86" width="100" height="30" rx="6"/><text class="t tc" x="198" y="106">сервис B</text></svg></figure>
+      </article>
+      <article class="gl" id="g-otvet">
+        <div class="gl__text">
+          <h3>Ответ /metrics</h3>
+          <p class="gl__def">Текст, который программа отдаёт по адресу <code>/metrics</code>. Для каждой метрики в нём описание (<code># HELP</code>), тип (<code># TYPE</code>) и строки «имя значение».</p>
+          <p class="gl__ex"><b>Пример</b><code>orders_total 3.0</code> — последняя строка ответа из §2.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.2, §2; лекция 2.4, §1</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Текст ответа /metrics"><rect class="sc-box" x="20" y="10" width="220" height="104" rx="4"/><rect class="sc-ink" x="20" y="10" width="220" height="20"/><text class="tm" x="30" y="24" style="fill:#BFE2F5;font-size:10.5px">GET /metrics</text><text class="tm" x="30" y="52" style="font-size:10.5px;fill:#8A93B2"># HELP orders_total Заказы</text><text class="tm" x="30" y="72" style="font-size:10.5px;fill:#8A93B2"># TYPE orders_total counter</text><text class="tm ta" x="30" y="96" style="font-size:12px">orders_total 3.0</text></svg></figure>
+      </article>
+      <article class="gl" id="g-schetchik">
+        <div class="gl__text">
+          <h3>Счётчик<i>counter</i></h3>
+          <p class="gl__def">Метрика, значение которой с момента запуска программы только растёт. Каждое событие прибавляет к ней число.</p>
+          <p class="gl__ex"><b>Пример</b>принятые заказы, ошибки оплаты, отправленные байты.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.2, §1–§4</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Счётчик растёт ступеньками"><line class="sc-axis" x1="14" y1="112" x2="248" y2="112"/><polyline class="sc-plot" points="20,104 70,104 70,82 130,82 130,60 190,60 190,38 244,38"/><text class="tm ta" x="78" y="76">+1</text><text class="tm ta" x="138" y="54">+1</text><text class="tm ta" x="198" y="32">+1</text><text class="t" x="20" y="126">только вверх</text></svg></figure>
+      </article>
+      <article class="gl" id="g-total">
+        <div class="gl__text">
+          <h3>Окончание _total</h3>
+          <p class="gl__def">Окончание имени счётчика по соглашению Prometheus: «всего с момента запуска». Библиотека prometheus-client добавляет его сама.</p>
+          <p class="gl__ex"><b>Пример</b><code>Counter("orders", …)</code> в ответе называется <code>orders_total</code>.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.2, §3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="orders превращается в orders_total"><rect class="sc-box" x="14" y="44" width="80" height="40" rx="6"/><text class="tm tc" x="54" y="69">orders</text><path class="sc-arrow" d="M100 64 L150 64 M144 67 L150 64 L144 61"/><text class="t tc ta" x="125" y="54">+_total</text><rect class="sc-acc" x="156" y="44" width="94" height="40" rx="6"/><text class="tm tc" x="203" y="69" style="font-size:11px">orders_total</text></svg></figure>
+      </article>
+      <article class="gl" id="g-gauge">
+        <div class="gl__text">
+          <h3>Gauge<i>gauge</i></h3>
+          <p class="gl__def">Метрика, значение которой растёт и падает. Показывает состояние в момент опроса.</p>
+          <p class="gl__ex"><b>Пример</b>заказы в очереди сейчас, занятая память, температура процессора.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.2, §1</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Gauge растёт и падает"><line class="sc-axis" x1="14" y1="112" x2="248" y2="112"/><polyline class="sc-plot" points="20,86 60,52 100,94 140,40 180,72 220,56 244,88"/><text class="t" x="20" y="126">вверх и вниз</text></svg></figure>
+      </article>
+      <article class="gl" id="g-reestr">
+        <div class="gl__text">
+          <h3>Реестр<i>CollectorRegistry</i></h3>
+          <p class="gl__def">Список метрик программы. Из него строится текст ответа <code>/metrics</code>: в ответ попадают все метрики реестра.</p>
+          <p class="gl__ex"><b>Пример</b><code>registry = CollectorRegistry()</code>; <code>Counter(..., registry=registry)</code>.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.2, §2; лекция 2.6, §2</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Реестр собирает метрики в ответ"><rect class="sc-soft" x="10" y="10" width="112" height="110" rx="8"/><text class="t tc" x="66" y="28">реестр</text><rect class="sc-acc" x="22" y="40" width="88" height="28" rx="5"/><text class="tm tc" x="66" y="59" style="font-size:11px">orders</text><rect class="sc-acc" x="22" y="78" width="88" height="28" rx="5"/><text class="tm tc" x="66" y="97" style="font-size:11px">errors</text><path class="sc-arrow" d="M128 66 L160 66 M154 69 L160 66 L154 63"/><rect class="sc-box" x="166" y="34" width="84" height="64" rx="4"/><text class="tm tc" x="208" y="62" style="font-size:10.5px">текст</text><text class="tm tc" x="208" y="80" style="font-size:10.5px">/metrics</text></svg></figure>
+      </article>
+    </div>
+  </section>
+
+  <section class="part">
+    <h3>Итог лекции</h3>
+    <p>Счётчик считает события и только растёт. Его создают вызовом <code>Counter(имя, описание)</code>, а прибавляют методом <code>inc()</code>: без аргумента — единицу, с аргументом — любое неотрицательное число. В ответе <code>/metrics</code> у счётчика строки <code># HELP</code>, <code># TYPE</code> и значение, а имя получает окончание <code>_total</code>.</p>
+    <h3>Источники</h3>
+    <ul class="sources">
+      <li>Prometheus. Metric types: Counter — prometheus.io/docs/concepts/metric_types</li>
+      <li>Prometheus. Query functions: increase, rate, resets — prometheus.io/docs/prometheus/latest/querying/functions</li>
+      <li>prometheus-client для Python: Counter, Multiprocess Mode — prometheus.github.io/client_python</li>
+      <li>Примеры лекции запущены на Python 3.12 и prometheus-client 0.26.0 06.11.2026; опыты с перезапуском и двумя процессами — на стенде сервиса заказов 23.10.2026</li>
+    </ul>
+  </section>
+
+  <div class="pager">
+    <span class="pager__soon">← 2.1 Ответ /metrics · готовится</span>
+    <a href="index.html">К содержанию справочника</a>
+    <a href="2-3-metki.html">2.3 Метки и ряды →</a>
+  </div>
+  <div class="colophon">
+    <span>Лекция 2.2 · Counter: создать и прибавить · Метрики и наблюдаемость</span>
+    <span class="author-line">Автор: Макаров Максим Николаевич</span>
+  </div>
+    </main>
+  </div>
+</div>
+<script src="reader.js"></script>
+</body>
+</html>

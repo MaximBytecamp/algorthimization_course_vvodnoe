@@ -19,10 +19,11 @@ tags:
 
 - [[unit--observability--01--lab]]
 - [[unit--observability--02--lab-orders]]
-- [[unit--observability--03--modul-02-prometheus]]
-- [[unit--observability--04--modul-03-metrika]]
-- [[unit--observability--05--modul-04-sbor]]
-- [[unit--observability--06--modul-2]]
+- [[unit--observability--03--lekcii]]
+- [[unit--observability--04--modul-02-prometheus]]
+- [[unit--observability--05--modul-03-metrika]]
+- [[unit--observability--06--modul-04-sbor]]
+- [[unit--observability--07--modul-2]]
 
 ## Точки входа области
 

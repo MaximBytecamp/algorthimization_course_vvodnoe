@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>2.3 Метки и ряды · Метрики и наблюдаемость</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="book">
+  <div class="book__body">
+    <div class="spine"><span>Часть 2 · Метрики в коде</span></div>
+    <main class="leaf">
+  <div class="running">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Метрики и наблюдаемость</a> · часть 2 · метрики в коде</p>
+    <p class="running__folio">Лекция 2.3</p>
+  </div>
+
+  <header class="chapter-head">
+    <span class="chapter-num">2.3</span>
+    <h1>Метки и ряды</h1>
+    <p class="lead">Метки делят один счётчик на ряды по признаку события. В лекции — как объявить метки, какие вызовы библиотека отклоняет и зачем заводить ряды с нулём при запуске.</p>
+  </header>
+  <dl class="passport">
+    <div><dt>Тема</dt><dd>Counter</dd></div>
+    <div><dt>Библиотека</dt><dd><code>prometheus-client</code> 0.26.0</dd></div>
+    <div><dt>Опирается на</dt><dd>Лекция 2.2: счётчик</dd></div>
+    <div><dt>Результат</dt><dd>Делить счётчик метками и избегать лишних рядов</dd></div>
+  </dl>
+
+  <div class="reader-start">
+    <div>
+      <b>Режим чтения</b>
+      <p>Лекция откроется по одному разделу: на экране одна мысль, кнопка «Дальше» ведёт к следующей. Стрелки ← → на клавиатуре тоже листают, Esc возвращает всю лекцию.</p>
+    </div>
+    <div class="reader-start__btns">
+      <button type="button" data-reader-start="continue" hidden></button>
+      <button type="button" class="primary" data-reader-start="begin">Читать по шагам</button>
+    </div>
+  </div>
+
+  <nav class="contents">
+    <b>В этой лекции</b>
+    <ol>
+      <li><a href="#s1"><span class="csec">§1</span>Метки и ряды</a></li>
+      <li><a href="#s2"><span class="csec">§2</span>Ошибки при работе с метками</a></li>
+      <li><a href="#s3"><span class="csec">§3</span>Ряд с нулём</a></li>
+      <li><a href="#s4"><span class="csec">§4</span>Частые ошибки</a></li>
+      <li><a href="#s5"><span class="csec">§5</span>Практика</a></li>
+      <li><a href="#s6"><span class="csec">§6</span>Проверьте себя</a></li>
+      <li><a href="#s7"><span class="csec">§7</span>Шпаргалка</a></li>
+      <li><a href="#s8"><span class="csec">§8</span>Глоссарий</a></li>
+    </ol>
+  </nav>
+
+<section class="part" id="s1">
+    <h2><span class="sec">§1</span>Метки и ряды</h2>
+    <p class="about">Как один счётчик делится на части по признаку события.</p>
+
+    <p>Заказы бывают оплаченные и отменённые. Если считать их одним числом, рост отмен затеряется среди оплат. На почте письма раскладывают по ящикам по адресу. Счётчик раскладывает события по <span class="term">меткам</span>.</p>
+    <div class="def">
+      <div class="def__term">Метка<i>label</i></div>
+      <dl>
+        <dt>Что это</dt><dd>Имя и значение признака события: <code>status="paid"</code>.</dd>
+        <dt>Что даёт</dt><dd>Один счётчик делится на части, и их можно сравнивать: сколько заказов оплачено, сколько отменено.</dd>
+        <dt>Пример</dt><dd><code>status</code>, <code>method</code>, <code>reason</code> — признаки с несколькими повторяющимися значениями.</dd>
+      </dl>
+    </div>
+    <div class="def">
+      <div class="def__term">Ряд<i>series</i></div>
+      <dl>
+        <dt>Что это</dt><dd>Метрика с конкретными значениями меток и её число. Одна строка вывода — один ряд.</dd>
+        <dt>Что даёт</dt><dd>Prometheus хранит историю каждого ряда отдельно, поэтому оплаты и отмены видны на графике разными линиями.</dd>
+        <dt>Пример</dt><dd><code>orders_total{status="paid"} 2.0</code></dd>
+      </dl>
+    </div>
+
+    <p>Имена меток перечисляют третьим аргументом. Значение выбирают методом <code>labels()</code>:</p>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>метка status</span></figcaption>
+<pre>orders = <span class="f">Counter</span>(<span class="s">"orders"</span>, <span class="s">"Принятые заказы"</span>, [<span class="s">"status"</span>], registry=registry)
+
+orders.<span class="f">labels</span>(status=<span class="s">"paid"</span>).<span class="f">inc</span>()
+orders.<span class="f">labels</span>(status=<span class="s">"paid"</span>).<span class="f">inc</span>()
+orders.<span class="f">labels</span>(status=<span class="s">"cancelled"</span>).<span class="f">inc</span>()</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>два ряда одной метрики</span></figcaption><pre># HELP orders_total Принятые заказы
+# TYPE orders_total counter
+orders_total{status="paid"} 2.0
+orders_total{status="cancelled"} 1.0</pre></figure>
+    <p>На рисунке — путь трёх заказов из кода выше. Слева заказы с их статусом, в центре вызов <code>labels()</code>, справа ряды счётчика.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 200" role="img" aria-label="Три заказа раскладываются по меткам: paid — 2, cancelled — 1">
+        <rect class="sc-box" x="20" y="30" width="110" height="34" rx="6"/><text class="tm tc" x="75" y="52">paid</text>
+        <rect class="sc-box" x="20" y="80" width="110" height="34" rx="6"/><text class="tm tc" x="75" y="102">paid</text>
+        <rect class="sc-box" x="20" y="130" width="110" height="34" rx="6"/><text class="tm tc" x="75" y="152">cancelled</text>
+        <text class="t tc" x="75" y="190">три заказа</text>
+        <path class="sc-line" d="M134 47 C 200 47, 210 70, 250 70"/>
+        <path class="sc-line" d="M134 97 C 200 97, 210 76, 250 76"/>
+        <path class="sc-line" d="M134 147 C 200 147, 210 126, 250 126"/>
+        <rect class="sc-amb" x="250" y="56" width="150" height="86" rx="10"/>
+        <text class="tm tc" x="325" y="94">labels(</text><text class="tm tc" x="325" y="114">status=…)</text>
+        <path class="sc-arrow" d="M404 80 H452 M444 74 L452 80 L444 86"/>
+        <path class="sc-arrow" d="M404 126 H452 M444 120 L452 126 L444 132"/>
+        <text class="tm tc" x="540" y="22">orders_total</text>
+        <rect class="sc-acc" x="456" y="34" width="176" height="70" rx="10"/>
+        <text class="tm tc" x="544" y="62">status="paid"</text><text class="tbig tc" x="540" y="94" style="font-size:22px">2.0</text>
+        <rect class="sc-acc" x="456" y="112" width="176" height="70" rx="10"/>
+        <text class="tm tc" x="544" y="140" style="font-size:11.5px">status="cancelled"</text><text class="tbig tc" x="540" y="172" style="font-size:22px">1.0</text>
+      </svg>
+      <figcaption><b>Как раскладываются заказы.</b> <code>labels()</code> выбирает ряд по значению метки, <code>inc()</code> прибавляет только к нему.</figcaption>
+    </figure>
+    <p>Два заказа со статусом <code>paid</code> идут по верхней стрелке в один ряд, поэтому у него 2.0. Отменённый заказ попадает в нижний ряд со значением 1.0. Над рядами стоит общее имя <code>orders_total</code>: метрика одна, рядов два. Эти две строки и напечатал вывод выше.</p>
+    <p>Если ряда с таким значением ещё нет, <code>labels()</code> создаёт его. Значения меток должны повторяться. Метка <code>status</code> с тремя значениями даёт три ряда. Если записать в метку номер заказа, рядов станет столько же, сколько заказов. Prometheus будет тратить память на миллионы рядов, каждый из которых вырос один раз.</p>
+    <p class="next">С метками появляются ошибки вызова, которых у счётчика без меток не было.</p>
+  </section>
+
+<section class="part" id="s2">
+    <h2><span class="sec">§2</span>Ошибки при работе с метками</h2>
+    <p class="about">Какие вызовы библиотека отклоняет, если у счётчика объявлены метки.</p>
+
+    <p>Набор меток задаётся один раз, при создании счётчика. Каждый вызов обязан назвать эти метки — иначе неизвестно, к какому ряду прибавлять.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Вызов у счётчика с меткой <code>status</code></th><th>Результат</th></tr></thead>
+        <tbody>
+          <tr><td><code>orders.labels(status="paid").inc()</code></td><td class="yes">ряд status="paid" растёт на 1</td></tr>
+          <tr><td><code>orders.inc()</code></td><td class="no">ValueError: не указано значение метки</td></tr>
+          <tr><td><code>orders.labels(state="paid").inc()</code></td><td class="no">ValueError: такой метки нет</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>На схеме — как библиотека проверяет вызов. Объявленные метки — это набор ячеек, и каждый вызов должен заполнить их все:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 190" role="img" aria-label="Счётчик с ячейкой status; первый вызов заполняет её, второй не заполняет, третий заполняет несуществующую ячейку state">
+        <rect class="sc-acc" x="20" y="60" width="170" height="70" rx="10"/><text class="tm tc" x="105" y="86">orders</text>
+        <rect class="sc-soft" x="45" y="96" width="120" height="24" rx="4"/><text class="tm tc" x="105" y="113" style="font-size:11px">status = ?</text>
+        <text class="t tc" x="105" y="150">объявлена метка status</text>
+<path class="sc-arrow" d="M196 80 L262 30"/><path class="sc-arrow" style="stroke-dasharray:none" d="M258 38 L262 30 L253 32"/><path class="sc-arrow" d="M196 95 L262 95"/><path class="sc-arrow" style="stroke-dasharray:none" d="M254 99 L262 95 L254 91"/><path class="sc-arrow" d="M196 110 L262 160"/><path class="sc-arrow" style="stroke-dasharray:none" d="M253 158 L262 160 L258 152"/>
+        <rect class="sc-box" x="268" y="14" width="230" height="32" rx="6"/><text class="tm" x="280" y="35" style="font-size:11.5px">labels(status="paid")</text>
+        <rect class="sc-box" x="268" y="79" width="230" height="32" rx="6"/><text class="tm" x="280" y="100" style="font-size:11.5px">inc() без labels</text>
+        <rect class="sc-box" x="268" y="144" width="230" height="32" rx="6"/><text class="tm" x="280" y="165" style="font-size:11.5px">labels(state="paid")</text>
+        <text class="tb ta" x="512" y="36">✓ ряд найден</text>
+        <text class="tb tw" x="512" y="101">✗ ячейка пуста</text>
+        <text class="tb tw" x="512" y="166">✗ нет ячейки</text>
+      </svg>
+      <figcaption>Ряд выбирается, только когда названы все объявленные метки и ни одной лишней.</figcaption>
+    </figure>
+    <p>Первый вызов называет метку <code>status</code>: ячейка заполнена, ряд найден. Второй вызов обращается к счётчику без <code>labels()</code>: ячейка осталась пустой, и непонятно, к какому ряду прибавлять. Третий вызов называет <code>state</code>, а такой ячейки у счётчика нет. Второй и третий случаи дают ошибки — вот они в коде:</p>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>метка объявлена, но не выбрана</span></figcaption>
+<pre>orders = <span class="f">Counter</span>(<span class="s">"orders"</span>, <span class="s">"Принятые заказы"</span>, [<span class="s">"status"</span>], registry=registry)
+orders.<span class="f">inc</span>()</pre>
+    </figure>
+    <figure class="code code--out code--err"><figcaption><span>Ошибка</span><span>не хватает значения метки</span></figcaption><pre>ValueError: counter metric is missing label values</pre></figure>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>state вместо status</span></figcaption>
+<pre>orders.<span class="f">labels</span>(state=<span class="s">"paid"</span>).<span class="f">inc</span>()</pre>
+    </figure>
+    <figure class="code code--out code--err"><figcaption><span>Ошибка</span><span>неверное имя метки</span></figcaption><pre>ValueError: Incorrect label names</pre></figure>
+    <p>Обе ошибки возникают в момент вызова. Их ловит первый же запуск кода, который прибавляет к счётчику.</p>
+    <p class="next">Есть и особенность меток без ошибки: ряд создаётся только при вызове <code>labels()</code>.</p>
+  </section>
+
+<section class="part" id="s3">
+    <h2><span class="sec">§3</span>Ряд с нулём</h2>
+    <p class="about">Почему ряды для известных значений меток заводят при запуске программы.</p>
+
+    <p>Пока ошибок оплаты не было, в ответе есть только описание метрики, без единого ряда:</p>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>ошибок ещё не было</span></figcaption>
+<pre>errors = <span class="f">Counter</span>(<span class="s">"payment_errors"</span>, <span class="s">"Ошибки оплаты"</span>, [<span class="s">"reason"</span>], registry=registry)
+<span class="f">print</span>(<span class="f">generate_latest</span>(registry).<span class="f">decode</span>())</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>рядов нет</span></figcaption><pre># HELP payment_errors_total Ошибки оплаты
+# TYPE payment_errors_total counter</pre></figure>
+    <p>Вызов <code>labels()</code> без <code>inc()</code> создаёт ряд со значением 0:</p>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>ряды заведены при запуске</span></figcaption>
+<pre>errors.<span class="f">labels</span>(reason=<span class="s">"timeout"</span>)
+errors.<span class="f">labels</span>(reason=<span class="s">"declined"</span>)
+<span class="f">print</span>(<span class="f">generate_latest</span>(registry).<span class="f">decode</span>())</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>два ряда с нулём</span></figcaption><pre># HELP payment_errors_total Ошибки оплаты
+# TYPE payment_errors_total counter
+payment_errors_total{reason="timeout"} 0.0
+payment_errors_total{reason="declined"} 0.0</pre></figure>
+    <p>На рисунке — как выглядит график ошибок в обоих случаях:</p>
+    <div class="scene-pair">
+      <figure class="scene">
+        <svg viewBox="0 0 300 160" role="img" aria-label="Пустой график без данных">
+          <line class="sc-axis" x1="30" y1="120" x2="290" y2="120"/><line class="sc-axis" x1="30" y1="20" x2="30" y2="120"/>
+          <text class="tb tc" x="160" y="68" style="fill:#8A93B2">нет данных</text>
+          <text class="tm" x="22" y="124" text-anchor="end">0</text>
+          <text class="t tc" x="160" y="148">ошибок нет или метрика сломана?</text>
+        </svg>
+        <figcaption><b>Без начального нуля.</b> По пустому графику причину не определить.</figcaption>
+      </figure>
+      <figure class="scene">
+        <svg viewBox="0 0 300 160" role="img" aria-label="График с линией на нуле">
+          <line class="sc-axis" x1="30" y1="120" x2="290" y2="120"/><line class="sc-axis" x1="30" y1="20" x2="30" y2="120"/>
+          <line class="sc-plot" x1="30" y1="118" x2="290" y2="118"/>
+          <text class="tm" x="22" y="124" text-anchor="end">0</text>
+          <text class="t tc ta" x="160" y="100">timeout = 0, declined = 0</text>
+          <text class="t tc" x="160" y="148">метрика работает, ошибок нет</text>
+        </svg>
+        <figcaption><b>С начальным нулём.</b> Линия на нуле значит «ошибок нет». Обрыв линии значит «сервис перестал отдавать метрики».</figcaption>
+      </figure>
+    </div>
+    <p>Слева — график по первому выводу: рядов нет, рисовать нечего, на графике пусто. Справа — график после вызовов <code>labels()</code>: оба ряда есть и равны нулю, поэтому видна линия на нуле. Пустой график оставляет вопрос: ошибок нет или метрика не работает. Линия на нуле отвечает на него: метрика работает, ошибок не было.</p>
+    <div class="key"><b>Вывод</b><p>Известные значения меток заводят при запуске вызовом <code>labels()</code>. Тогда отсутствие событий отличается от неработающей метрики.</p></div>
+    <p class="next">Все примеры до сих пор печатали ответ в терминал. Prometheus забирает его по сети.</p>
+  </section>
+
+  <section class="part" id="s4">
+    <h2><span class="sec">§4</span>Частые ошибки</h2>
+    <p class="about">Что пишут неправильно и как исправить.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Что написано</th><th>Что произойдёт</th><th>Как правильно</th></tr></thead>
+        <tbody>
+          <tr><td><code>orders.inc()</code> у счётчика с метками</td><td><code>ValueError: missing label values</code></td><td><code>orders.labels(status="paid").inc()</code></td></tr>
+          <tr><td><code>labels(order_id=...)</code></td><td>по ряду на каждый заказ, Prometheus расходует память</td><td>в метку — только повторяющиеся значения</td></tr>
+          <tr><td>ряды ошибок без начального нуля</td><td>пустой график: непонятно, ошибок нет или метрика сломана</td><td>вызвать <code>labels()</code> для известных значений при запуске</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="part" id="s5">
+    <h2><span class="sec">§5</span>Практика</h2>
+    <p class="about">Задача на то, что разобрано в лекции. Решение спрятано под задачей.</p>
+    <h3>Задача 1. Неудачные входы</h3>
+    <p>Ситуация:</p>
+    <ul>
+      <li>в сервисе есть функция <code>login(password, locked=False)</code>;</li>
+      <li>вход не удаётся по двум причинам: неверный пароль или заблокированная учётная запись;</li>
+      <li>на графике должна быть линия на нуле для каждой причины, даже если таких ошибок ещё не было.</li>
+    </ul>
+    <div class="key"><b>Что нужно сделать</b><p>Создать счётчик <code>login_failures</code> с меткой <code>reason</code> и значениями <code>wrong_password</code> и <code>locked</code>. Завести оба ряда при запуске. Прибавлять к нужному ряду в <code>login</code>. Вызвать <code>login("123")</code>, <code>login("qwerty")</code>, <code>login("secret")</code> и напечатать ответ.</p></div>
+    <details><summary>Решение</summary>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>два ряда с нулём при запуске</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, generate_latest
+
+registry = <span class="f">CollectorRegistry</span>()
+login_failures = <span class="f">Counter</span>(<span class="s">"login_failures"</span>, <span class="s">"Неудачные входы"</span>, [<span class="s">"reason"</span>], registry=registry)
+
+<span class="k">for</span> reason <span class="k">in</span> (<span class="s">"wrong_password"</span>, <span class="s">"locked"</span>):
+    login_failures.<span class="f">labels</span>(reason=reason)
+
+
+<span class="k">def</span> <span class="f">login</span>(password, locked=<span class="k">False</span>):
+    <span class="k">if</span> locked:
+        login_failures.<span class="f">labels</span>(reason=<span class="s">"locked"</span>).<span class="f">inc</span>()
+        <span class="k">return</span> <span class="k">False</span>
+    <span class="k">if</span> password != <span class="s">"secret"</span>:
+        login_failures.<span class="f">labels</span>(reason=<span class="s">"wrong_password"</span>).<span class="f">inc</span>()
+        <span class="k">return</span> <span class="k">False</span>
+    <span class="k">return</span> <span class="k">True</span>
+
+
+<span class="f">login</span>(<span class="s">"123"</span>)
+<span class="f">login</span>(<span class="s">"qwerty"</span>)
+<span class="f">login</span>(<span class="s">"secret"</span>)
+<span class="f">print</span>(<span class="f">generate_latest</span>(registry).<span class="f">decode</span>())</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>без строк _created</span></figcaption><pre># HELP login_failures_total Неудачные входы
+# TYPE login_failures_total counter
+login_failures_total{reason="wrong_password"} 2.0
+login_failures_total{reason="locked"} 0.0</pre></figure>
+    <p>Два неверных пароля дали 2.0. Ряд <code>locked</code> заведён циклом при запуске и стоит на нуле. Вход с паролем <code>secret</code> счётчик не трогает.</p>
+    </details>
+
+  </section>
+
+  <section class="part" id="s6">
+    <h2><span class="sec">§6</span>Проверьте себя</h2>
+    <p class="about">Вопросы по лекции. Ответ раскрывается щелчком.</p>
+    <details><summary>Зачем вызывать <code>labels(reason="timeout")</code> без <code>inc()</code>?</summary><p>Вызов создаёт ряд со значением 0. График показывает линию на нуле, и отсутствие ошибок отличается от неработающей метрики.</p></details>
+    <details><summary>У счётчика две метки: <code>status</code> с тремя значениями и <code>method</code> с двумя. Сколько рядов может быть?</summary><p>До шести: ряд — это одно сочетание значений меток. Рядов столько, сколько сочетаний встретилось в вызовах <code>labels()</code>.</p></details>
+    <details><summary>Что произойдёт при <code>orders.labels(state="paid").inc()</code>, если объявлена метка <code>status</code>?</summary><p><code>ValueError: Incorrect label names</code>. Новая метка не создаётся: набор меток задан при создании счётчика.</p></details>
+  </section>
+
+  <section class="part" id="s7">
+    <h2><span class="sec">§7</span>Шпаргалка</h2>
+    <p class="about">Конструкции лекции одним списком.</p>
+    <div class="cheat">
+      <div><b>С меткой</b><code>Counter("orders", "Заказы", ["status"])</code><code>c.labels(status="paid").inc()</code></div>
+      <div><b>Завести ряд с нулём</b><code>c.labels(status="paid")</code></div>
+    </div>
+  </section>
+
+  <section class="part" id="s8">
+    <h2><span class="sec">§8</span>Глоссарий</h2>
+    <p class="about">Термины лекции, включая введённые раньше: формулировка, пример и рисунок.</p>
+    <div class="glossary">
+      <article class="gl" id="g-metrika">
+        <div class="gl__text">
+          <h3>Метрика<i>metric</i></h3>
+          <p class="gl__def">Именованное число, которое программа сообщает о себе. Значение меняется со временем, и по его истории видно, как работает программа.</p>
+          <p class="gl__ex"><b>Пример</b><code>orders_total</code> — сколько заказов принято с момента запуска.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.1</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Метрика: имя, значение и линия истории"><rect class="sc-acc" x="14" y="18" width="120" height="54" rx="8"/><text class="tm tc" x="74" y="40" style="font-size:11px">orders_total</text><text class="tb tc" x="74" y="62">3.0</text><polyline class="sc-plot" points="150,96 172,88 194,90 216,66 244,52"/><line class="sc-axis" x1="150" y1="104" x2="248" y2="104"/><text class="t tc" x="130" y="124">имя + число, меняется во времени</text></svg></figure>
+      </article>
+      <article class="gl" id="g-otvet">
+        <div class="gl__text">
+          <h3>Ответ /metrics</h3>
+          <p class="gl__def">Текст, который программа отдаёт по адресу <code>/metrics</code>. Для каждой метрики в нём описание (<code># HELP</code>), тип (<code># TYPE</code>) и строки «имя значение».</p>
+          <p class="gl__ex"><b>Пример</b><code>orders_total 3.0</code> — последняя строка ответа из §2.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.2, §2; лекция 2.4, §1</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Текст ответа /metrics"><rect class="sc-box" x="20" y="10" width="220" height="104" rx="4"/><rect class="sc-ink" x="20" y="10" width="220" height="20"/><text class="tm" x="30" y="24" style="fill:#BFE2F5;font-size:10.5px">GET /metrics</text><text class="tm" x="30" y="52" style="font-size:10.5px;fill:#8A93B2"># HELP orders_total Заказы</text><text class="tm" x="30" y="72" style="font-size:10.5px;fill:#8A93B2"># TYPE orders_total counter</text><text class="tm ta" x="30" y="96" style="font-size:12px">orders_total 3.0</text></svg></figure>
+      </article>
+      <article class="gl" id="g-schetchik">
+        <div class="gl__text">
+          <h3>Счётчик<i>counter</i></h3>
+          <p class="gl__def">Метрика, значение которой с момента запуска программы только растёт. Каждое событие прибавляет к ней число.</p>
+          <p class="gl__ex"><b>Пример</b>принятые заказы, ошибки оплаты, отправленные байты.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.2, §1–§4</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Счётчик растёт ступеньками"><line class="sc-axis" x1="14" y1="112" x2="248" y2="112"/><polyline class="sc-plot" points="20,104 70,104 70,82 130,82 130,60 190,60 190,38 244,38"/><text class="tm ta" x="78" y="76">+1</text><text class="tm ta" x="138" y="54">+1</text><text class="tm ta" x="198" y="32">+1</text><text class="t" x="20" y="126">только вверх</text></svg></figure>
+      </article>
+      <article class="gl" id="g-metka">
+        <div class="gl__text">
+          <h3>Метка<i>label</i></h3>
+          <p class="gl__def">Пара «имя = значение», которая уточняет, к чему относится число. Метрика с разными значениями метки делится на разные ряды.</p>
+          <p class="gl__ex"><b>Пример</b><code>status="paid"</code> и <code>status="cancelled"</code> делят счётчик заказов на два ряда.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.3, §1–§3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Метка делит метрику на два ряда"><rect class="sc-acc" x="8" y="46" width="96" height="36" rx="6"/><text class="tm tc" x="56" y="68" style="font-size:10.5px">orders_total</text><path class="sc-arrow" d="M108 56 L148 32 M144 38 L148 32 L141 32"/><path class="sc-arrow" d="M108 72 L148 96 M141 96 L148 96 L144 90"/><rect class="sc-box" x="152" y="12" width="100" height="40" rx="6"/><text class="tm tc" x="202" y="30" style="font-size:10px">status="paid"</text><text class="tb tc" x="202" y="46">2</text><rect class="sc-box" x="152" y="78" width="100" height="40" rx="6"/><text class="tm tc" x="202" y="96" style="font-size:9.5px">status="cancelled"</text><text class="tb tc" x="202" y="112">1</text></svg></figure>
+      </article>
+      <article class="gl" id="g-ryad">
+        <div class="gl__text">
+          <h3>Ряд<i>time series</i></h3>
+          <p class="gl__def">Все отсчёты одной метрики с одним набором значений меток, выстроенные по времени. Одна строка ответа <code>/metrics</code> даёт при каждом опросе один отсчёт своего ряда.</p>
+          <p class="gl__ex"><b>Пример</b><code>orders_total{status="paid"}</code> — один ряд, <code>{status="cancelled"}</code> — другой.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.3, §1</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Ряд: отсчёты одной метрики по времени"><text class="tm tc" x="130" y="20" style="font-size:10.5px">orders_total{status="paid"}</text><line class="sc-axis" x1="14" y1="108" x2="248" y2="108"/><polyline class="sc-plot" points="30,96 80,86 130,72 180,56 230,44"/><circle class="sc-dot" cx="30" cy="96" r="5"/><circle class="sc-dot" cx="80" cy="86" r="5"/><circle class="sc-dot" cx="130" cy="72" r="5"/><circle class="sc-dot" cx="180" cy="56" r="5"/><circle class="sc-dot" cx="230" cy="44" r="5"/><text class="t tc" x="130" y="125">отсчёт за отсчётом</text></svg></figure>
+      </article>
+      <article class="gl" id="g-reestr">
+        <div class="gl__text">
+          <h3>Реестр<i>CollectorRegistry</i></h3>
+          <p class="gl__def">Список метрик программы. Из него строится текст ответа <code>/metrics</code>: в ответ попадают все метрики реестра.</p>
+          <p class="gl__ex"><b>Пример</b><code>registry = CollectorRegistry()</code>; <code>Counter(..., registry=registry)</code>.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.2, §2; лекция 2.6, §2</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Реестр собирает метрики в ответ"><rect class="sc-soft" x="10" y="10" width="112" height="110" rx="8"/><text class="t tc" x="66" y="28">реестр</text><rect class="sc-acc" x="22" y="40" width="88" height="28" rx="5"/><text class="tm tc" x="66" y="59" style="font-size:11px">orders</text><rect class="sc-acc" x="22" y="78" width="88" height="28" rx="5"/><text class="tm tc" x="66" y="97" style="font-size:11px">errors</text><path class="sc-arrow" d="M128 66 L160 66 M154 69 L160 66 L154 63"/><rect class="sc-box" x="166" y="34" width="84" height="64" rx="4"/><text class="tm tc" x="208" y="62" style="font-size:10.5px">текст</text><text class="tm tc" x="208" y="80" style="font-size:10.5px">/metrics</text></svg></figure>
+      </article>
+    </div>
+  </section>
+
+  <section class="part">
+    <h3>Итог лекции</h3>
+    <p>Метки делят счётчик на ряды: каждый набор значений меток — отдельный ряд со своим числом. Набор меток задаётся при создании счётчика, и каждый вызов <code>labels()</code> называет ровно эти метки. Значения меток должны повторяться, а ряды для известных значений заводят при запуске, чтобы на графике была линия на нуле.</p>
+    <h3>Источники</h3>
+    <ul class="sources">
+      <li>Prometheus. Metric types: Counter — prometheus.io/docs/concepts/metric_types</li>
+      <li>Prometheus. Query functions: increase, rate, resets — prometheus.io/docs/prometheus/latest/querying/functions</li>
+      <li>prometheus-client для Python: Counter, Multiprocess Mode — prometheus.github.io/client_python</li>
+      <li>Примеры лекции запущены на Python 3.12 и prometheus-client 0.26.0 06.11.2026; опыты с перезапуском и двумя процессами — на стенде сервиса заказов 23.10.2026</li>
+    </ul>
+  </section>
+
+  <div class="pager">
+    <a href="2-2-counter.html">← 2.2 Counter: создать и прибавить</a>
+    <a href="index.html">К содержанию справочника</a>
+    <a href="2-4-http.html">2.4 Метрики по HTTP →</a>
+  </div>
+  <div class="colophon">
+    <span>Лекция 2.3 · Метки и ряды · Метрики и наблюдаемость</span>
+    <span class="author-line">Автор: Макаров Максим Николаевич</span>
+  </div>
+    </main>
+  </div>
+</div>
+<script src="reader.js"></script>
+</body>
+</html>

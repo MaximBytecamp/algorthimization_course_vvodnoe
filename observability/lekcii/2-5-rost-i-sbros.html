@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>2.5 Рост, скорость и сброс · Метрики и наблюдаемость</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="book">
+  <div class="book__body">
+    <div class="spine"><span>Часть 2 · Метрики в коде</span></div>
+    <main class="leaf">
+  <div class="running">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Метрики и наблюдаемость</a> · часть 2 · метрики в коде</p>
+    <p class="running__folio">Лекция 2.5</p>
+  </div>
+
+  <header class="chapter-head">
+    <span class="chapter-num">2.5</span>
+    <h1>Рост, скорость и сброс</h1>
+    <p class="lead">Значение счётчика говорит о времени работы программы, а нагрузку показывают рост и скорость. В лекции — как их считают, что происходит со счётчиком при перезапуске и когда сброс остаётся незамеченным.</p>
+  </header>
+  <dl class="passport">
+    <div><dt>Тема</dt><dd>Counter</dd></div>
+    <div><dt>Библиотека</dt><dd><code>prometheus-client</code> 0.26.0</dd></div>
+    <div><dt>Опирается на</dt><dd>Лекции 2.2–2.4</dd></div>
+    <div><dt>Результат</dt><dd>Читать рост счётчика со сбросами</dd></div>
+  </dl>
+
+  <div class="reader-start">
+    <div>
+      <b>Режим чтения</b>
+      <p>Лекция откроется по одному разделу: на экране одна мысль, кнопка «Дальше» ведёт к следующей. Стрелки ← → на клавиатуре тоже листают, Esc возвращает всю лекцию.</p>
+    </div>
+    <div class="reader-start__btns">
+      <button type="button" data-reader-start="continue" hidden></button>
+      <button type="button" class="primary" data-reader-start="begin">Читать по шагам</button>
+    </div>
+  </div>
+
+  <nav class="contents">
+    <b>В этой лекции</b>
+    <ol>
+      <li><a href="#s1"><span class="csec">§1</span>Рост и скорость</a></li>
+      <li><a href="#s2"><span class="csec">§2</span>Сброс при перезапуске</a></li>
+      <li><a href="#s3"><span class="csec">§3</span>Рост с учётом сброса</a></li>
+      <li><a href="#s4"><span class="csec">§4</span>Скрытый сброс</a></li>
+      <li><a href="#s5"><span class="csec">§5</span>Модель счётчика</a></li>
+      <li><a href="#s6"><span class="csec">§6</span>Частые ошибки</a></li>
+      <li><a href="#s7"><span class="csec">§7</span>Практика</a></li>
+      <li><a href="#s8"><span class="csec">§8</span>Проверьте себя</a></li>
+      <li><a href="#s9"><span class="csec">§9</span>Шпаргалка</a></li>
+      <li><a href="#s10"><span class="csec">§10</span>Глоссарий</a></li>
+    </ol>
+  </nav>
+
+<section class="part" id="s1">
+    <h2><span class="sec">§1</span>Рост и скорость</h2>
+    <p class="about">Почему у счётчика смотрят, насколько значение выросло за промежуток.</p>
+
+    <p>Пробег машины «84 000 км» говорит о её возрасте. Сколько машина ездит сейчас, показывает «700 км за неделю». Со счётчиком так же: сервис, работающий неделю, накопил миллион запросов, запущенный вчера — тысячу. Нагрузка у них может быть одинаковой.</p>
+    <p>Нарисуем оба сервиса полосами: длина — накопленное значение счётчика, синий хвост — запросы за последние 15 секунд.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 140" role="img" aria-label="Два сервиса: накоплено 1 000 000 и 1 000, но рост за 15 секунд одинаковый: +30">
+        <text class="t" x="20" y="36">запущен неделю назад</text>
+        <rect class="sc-acc" x="190" y="18" width="380" height="30" rx="4"/>
+        <rect class="sc-acc" x="570" y="18" width="40" height="30" rx="4" style="fill:#2D7FC1"/>
+        <text class="tm" x="200" y="38">1 000 000</text>
+        <text class="t" x="20" y="96">запущен вчера</text>
+        <rect class="sc-acc" x="190" y="78" width="40" height="30" rx="4"/>
+        <rect class="sc-acc" x="230" y="78" width="40" height="30" rx="4" style="fill:#2D7FC1"/>
+        <text class="tm" x="280" y="98">1 000</text>
+        <text class="t tc ta" x="590" y="70">+30</text>
+        <text class="t tc ta" x="250" y="130">+30</text>
+      </svg>
+      <figcaption>Голубым — накоплено за время работы, синим — рост за последние 15 секунд (не в масштабе). Значения отличаются в тысячу раз, а синие части одинаковые: нагрузка одна и та же.</figcaption>
+    </figure>
+    <p>Верхняя полоса длинная: сервис работает неделю и накопил миллион запросов. Нижняя короткая: тысяча за день. Синие хвосты одинаковые — оба сервиса за последние 15 секунд получили по 30 запросов. По длине полос нагрузку не сравнить, по хвостам — можно. Длину такого хвоста называют ростом.</p>
+    <div class="def">
+      <div class="def__term">Рост и скорость<i>increase, rate</i></div>
+      <dl>
+        <dt>Рост</dt><dd>На сколько счётчик увеличился за промежуток: значение в конце минус значение в начале.</dd>
+        <dt>Скорость</dt><dd>Рост, делённый на длину промежутка в секундах: сколько событий в секунду.</dd>
+        <dt>Что даёт</dt><dd>Показывает нагрузку сейчас, независимо от того, как давно запущена программа.</dd>
+      </dl>
+    </div>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>два замера с разницей 15 секунд</span></figcaption>
+<pre>requests = <span class="f">Counter</span>(<span class="s">"http_requests"</span>, <span class="s">"HTTP-запросы"</span>, registry=registry)
+
+<span class="k">def</span> <span class="f">handle_request</span>():
+    requests.<span class="f">inc</span>()
+
+<span class="k">for</span> _ <span class="k">in</span> <span class="f">range</span>(<span class="n">500</span>):          <span class="c"># сервис работает давно</span>
+    <span class="f">handle_request</span>()
+
+before = registry.<span class="f">get_sample_value</span>(<span class="s">"http_requests_total"</span>)
+<span class="k">for</span> _ <span class="k">in</span> <span class="f">range</span>(<span class="n">30</span>):           <span class="c"># за следующие 15 секунд пришло 30 запросов</span>
+    <span class="f">handle_request</span>()
+after = registry.<span class="f">get_sample_value</span>(<span class="s">"http_requests_total"</span>)
+
+<span class="f">print</span>(<span class="s">"значение:"</span>, after)
+<span class="f">print</span>(<span class="s">"рост:"</span>, after - before)
+<span class="f">print</span>(<span class="s">"скорость:"</span>, (after - before) / <span class="n">15</span>, <span class="s">"запроса в секунду"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>значение, рост и скорость</span></figcaption><pre>значение: 530.0
+рост: 30.0
+скорость: 2.0 запроса в секунду</pre></figure>
+    <p>Число 530 складывается из давней истории и последних 15 секунд. Prometheus считает рост так же — по отсчётам на краях промежутка. Для этого в его языке запросов есть функции <code>increase</code> (рост) и <code>rate</code> (скорость).</p>
+    <div class="key"><b>Вывод</b><p>Значение счётчика говорит о времени работы программы. О нагрузке говорят рост и скорость.</p></div>
+    <p class="next">Рост считается вычитанием, пока программа работает без остановок. При перезапуске счётчик ведёт себя иначе.</p>
+  </section>
+
+<section class="part" id="s2">
+    <h2><span class="sec">§2</span>Сброс при перезапуске</h2>
+    <p class="about">Что происходит со счётчиком, когда программа перезапускается.</p>
+
+    <p>Шагомер в телефоне днём показал 8 000 шагов. Телефон перезагрузился, и счёт начался с нуля. Счётчик ведёт себя так же: он хранится в памяти процесса, а новый процесс начинает с чистой памяти.</p>
+    <div class="def">
+      <div class="def__term">Сброс<i>counter reset</i></div>
+      <dl>
+        <dt>Что это</dt><dd>Возврат счётчика к нулю при перезапуске процесса.</dd>
+        <dt>Когда бывает</dt><dd>Обновили код, процесс упал и поднялся, перезагрузили сервер.</dd>
+        <dt>Что значит</dt><dd>Значение после перезапуска нельзя напрямую вычитать из значения до него.</dd>
+      </dl>
+    </div>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>три заказа за запуск</span></figcaption>
+<pre>orders = <span class="f">Counter</span>(<span class="s">"orders"</span>, <span class="s">"Принятые заказы"</span>, registry=registry)
+orders.<span class="f">inc</span>(<span class="n">3</span>)
+<span class="f">print</span>(registry.<span class="f">get_sample_value</span>(<span class="s">"orders_total"</span>))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Терминал</span><span>два запуска подряд</span></figcaption><pre>$ python main.py
+3.0
+$ python main.py
+3.0</pre></figure>
+    <p>Второй запуск начал с нуля и снова дошёл до трёх. В сервисе это выглядит так. В опыте с сервисом заказов счётчик дошёл до 40, в 15:05:26 сервис перезапустили, затем пришло 10 запросов. Prometheus опрашивал сервис раз в 15 секунд.</p>
+    <div class="story">
+      <figure class="scene">
+        <svg viewBox="0 0 640 140" role="img" aria-label="Процесс 1 держит в памяти 40, Prometheus записал 40"><rect class="sc-box" x="20" y="22" width="220" height="96" rx="10"/><text class="tb tc" x="130" y="46">процесс 1</text><rect class="sc-amb" x="50" y="60" width="160" height="40" rx="6"/><text class="tm tc" x="130" y="86" style="font-size:14px">orders: 40</text><path class="sc-arrow" d="M246 70 L394 70"/><path class="sc-arrow" d="M386 74 L394 70 L386 66"/><text class="tm tc ta" x="320" y="60">опрос 15:05:13</text><rect class="sc-acc" x="400" y="34" width="220" height="72" rx="10"/><text class="tb tc" x="510" y="62">в базе</text><text class="tm tc" x="510" y="86">…, 40, 40</text></svg>
+        <figcaption>До перезапуска: счётчик в памяти первого процесса равен 40, в базе последний отсчёт — 40.</figcaption>
+      </figure>
+    <p>Следом сервис перезапускают.</p>
+      <figure class="scene">
+        <svg viewBox="0 0 640 140" role="img" aria-label="Перезапуск: процесс 1 завершён, его память освобождена; опрос не получил ответа"><rect class="sc-soft" x="20" y="22" width="220" height="96" rx="10"/><text class="tb tc" x="130" y="46" style="fill:#8A93B2">процесс 1</text><text class="tm tc tw" x="130" y="86">завершён, память пуста</text><path class="sc-arrow-w" d="M394 70 L246 70"/><path class="sc-arrow" style="stroke-dasharray:none;stroke:#D7541F" d="M254 66 L246 70 L254 74"/><text class="tm tc tw" x="320" y="60">опрос 15:05:28</text><text class="t tc tw" x="320" y="94">нет ответа</text><rect class="sc-acc" x="400" y="34" width="220" height="72" rx="10"/><text class="tb tc" x="510" y="62">в базе</text><text class="tm tc" x="510" y="86">…, 40, 40, —</text></svg>
+        <figcaption>В 15:05:26 сервис перезапустили. Число 40 исчезло вместе с памятью процесса. Опрос в 15:05:28 не застал работающую программу.</figcaption>
+      </figure>
+    <p>Через несколько секунд работает уже новый процесс.</p>
+      <figure class="scene">
+        <svg viewBox="0 0 640 140" role="img" aria-label="Процесс 2 начал с нуля, насчитал 10, Prometheus записал 10"><rect class="sc-box" x="20" y="22" width="220" height="96" rx="10"/><text class="tb tc" x="130" y="46">процесс 2</text><rect class="sc-amb" x="50" y="60" width="160" height="40" rx="6"/><text class="tm tc" x="130" y="86" style="font-size:14px">orders: 0 → 10</text><path class="sc-arrow" d="M246 70 L394 70"/><path class="sc-arrow" d="M386 74 L394 70 L386 66"/><text class="tm tc ta" x="320" y="60">опрос 15:05:43</text><rect class="sc-amb" x="400" y="34" width="220" height="72" rx="10"/><text class="tb tc" x="510" y="62">в базе</text><text class="tm tc" x="510" y="86">…, 40, —, <tspan class="tw">10</tspan></text></svg>
+        <figcaption>Новый процесс начал с нуля и насчитал 10 запросов. В базе после 40 стоит 10 — значение уменьшилось.</figcaption>
+      </figure>
+    </div>
+    <p>Те же события в таблице отсчётов, по времени опросов:</p>
+    <div class="table-scroll">
+      <table class="series">
+        <thead><tr><th>Время, UTC</th><th>15:04:58</th><th>15:05:13</th><th>15:05:28</th><th>15:05:43</th><th>15:05:58</th><th>15:06:13</th></tr></thead>
+        <tbody><tr><td>Значение</td><td>40</td><td>40</td><td>нет ответа</td><td class="mark">10</td><td>10</td><td>10</td></tr></tbody>
+      </table>
+    </div>
+    <p class="caption">Отсчёты в базе Prometheus. Опрос 15:05:28 пришёлся на перезапуск. Выделен первый отсчёт после сброса.</p>
+    <p>Значение упало с 40 до 10. Счётчик уменьшаться не может, поэтому любое уменьшение Prometheus считает сбросом. Вычитание дало бы 10 − 40 = −30 — отрицательное число запросов.</p>
+    <p>Так сброс выглядит в интерфейсе Prometheus. Кадр снят на стенде сервиса 29.09.2026: запрос <code>http_requests_total{status="200"}</code>, вкладка Graph, последние 8 минут.</p>
+    <figure class="shot-fig">
+      <img src="img/graph-reset.png" alt="График Prometheus: линия на уровне 125 до 13:22:41, разрыв, затем с 13:24 значения 30, 60, 90" loading="lazy">
+      <figcaption>Ряд счётчика запросов: остановка приложения и счёт с нуля после запуска.</figcaption>
+    </figure>
+    <p>До 13:22:41 линия стоит на 125: запросов не было, счётчик не менялся. В 13:22:41 приложение остановили, и опросы перестали получать ответ — на графике разрыв. После запуска новый процесс начал с нуля, и линия продолжилась уже снизу: 30, затем 60 и 90. Падение со 125 до 30 и есть сброс, который Prometheus находит по уменьшению значения.</p>
+    <p class="next">Значит, рост через сброс нужно считать по особому правилу.</p>
+  </section>
+
+<section class="part" id="s3">
+    <h2><span class="sec">§3</span>Рост с учётом сброса</h2>
+    <p class="about">По какому правилу Prometheus считает рост, если в отсчётах был сброс.</p>
+
+    <p>Шаги за день после перезагрузки телефона считают так: 8 000 шагов до неё плюс всё, что набралось после. Prometheus считает рост счётчика по тому же правилу. Запишем его функцией на Python. Она сравнивает каждые два соседних отсчёта:</p>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>рост и число сбросов</span></figcaption>
+<pre><span class="k">def</span> <span class="f">growth</span>(samples):
+    <span class="s">"""Рост счётчика по отсчётам: уменьшение считается сбросом."""</span>
+    total = <span class="n">0</span>
+    resets = <span class="n">0</span>
+    <span class="k">for</span> prev, cur <span class="k">in</span> <span class="f">zip</span>(samples, samples[<span class="n">1</span>:]):
+        <span class="k">if</span> cur >= prev:
+            total += cur - prev
+        <span class="k">else</span>:              <span class="c"># сброс: после него рост — всё новое значение</span>
+            total += cur
+            resets += <span class="n">1</span>
+    <span class="k">return</span> total, resets
+
+<span class="f">print</span>(<span class="f">growth</span>([<span class="n">10</span>, <span class="n">10</span>, <span class="n">40</span>, <span class="n">40</span>, <span class="n">10</span>, <span class="n">10</span>, <span class="n">10</span>]))
+<span class="f">print</span>(<span class="f">growth</span>([<span class="n">100</span>, <span class="n">130</span>, <span class="n">15</span>, <span class="n">45</span>]))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>(рост, сбросы)</span></figcaption><pre>(40, 1)
+(75, 1)</pre></figure>
+    <div class="walk">
+      <div><code>zip(samples, samples[1:])</code><span>Составляет пары соседних отсчётов. Для <code>[100, 130, 15, 45]</code> пары такие: (100, 130), (130, 15), (15, 45).</span></div>
+      <div><code>if cur >= prev</code><span>Значение не уменьшилось — обычный рост, прибавляем разность.</span></div>
+      <div><code>else: total += cur</code><span>Значение уменьшилось — был сброс. Новый процесс начал с нуля, значит, всё его значение и есть рост после сброса.</span></div>
+    </div>
+    <p>Первый список — отсчёты опыта из §2 вместе с двумя более ранними, когда счётчик стоял на 10. Отсчёта «нет ответа» в списке нет: в базу он не попал. Рост 40 — это 30 запросов до перезапуска и 10 после. Второй список разобран на схеме:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 250" role="img" aria-label="Ряд счётчика 100, 130, затем сброс к нулю, 15 и 45">
+        <line class="sc-grid" x1="60" y1="32" x2="620" y2="32"/>
+        <line class="sc-grid" x1="60" y1="116" x2="620" y2="116"/>
+        <line class="sc-axis" x1="60" y1="200" x2="620" y2="200"/>
+        <text class="tm tr" x="50" y="204">0</text>
+        <text class="tm tr" x="50" y="120">70</text>
+        <text class="tm tr" x="50" y="36">140</text>
+        <polyline class="sc-plot" points="100,71 260,33"/>
+        <line class="sc-arrow-w" x1="260" y1="33" x2="320" y2="200"/>
+        <polyline class="sc-plot" points="320,200 420,181 580,142"/>
+        <circle class="sc-dot" cx="100" cy="71" r="6"/>
+        <circle class="sc-dot" cx="260" cy="33" r="6"/>
+        <circle class="sc-dot-w" cx="420" cy="181" r="6"/>
+        <circle class="sc-dot" cx="580" cy="142" r="6"/>
+        <text class="tm tc" x="100" y="56">100</text>
+        <text class="tm tc" x="260" y="20">130</text>
+        <text class="tm tc" x="420" y="166">15</text>
+        <text class="tm tc" x="580" y="127">45</text>
+        <text class="tm tc ta" x="180" y="44">+30</text>
+        <text class="t tw" x="300" y="110">перезапуск</text>
+        <text class="t tc tw" x="420" y="226">+15 после сброса</text>
+        <text class="tm tc ta" x="500" y="150">+30</text>
+        <text class="t tc" x="100" y="226">отсчёт 1</text>
+        <text class="t tc" x="260" y="226">отсчёт 2</text>
+        <text class="t tc" x="580" y="226">отсчёт 4</text>
+      </svg>
+      <figcaption><b>Рост через сброс.</b> Между вторым и третьим отсчётом процесс перезапустился и начал с нуля. Рост: 30 до сброса, 15 при сбросе, 30 после — всего 75.</figcaption>
+    </figure>
+    <p>Синие линии — обычный рост, его считают разностью соседних отсчётов. Оранжевый пунктир — перезапуск: значение упало до нуля, разность здесь не считают. Оранжевая точка 15 — первый отсчёт после сброса, функция берёт её значение целиком (ветка <code>else</code>). Сумма подписей +30, +15 и +30 даёт 75 из вывода.</p>
+    <p class="next">Правило опирается на уменьшение значения. Если уменьшения в отсчётах нет, сброс останется незамеченным.</p>
+  </section>
+
+<section class="part" id="s4">
+    <h2><span class="sec">§4</span>Скрытый сброс</h2>
+    <p class="about">Какой перезапуск не виден в отсчётах и сколько событий из-за него теряется.</p>
+
+    <div class="def">
+      <div class="def__term">Скрытый сброс</div>
+      <dl>
+        <dt>Что это</dt><dd>Сброс между двумя опросами, после которого значение выросло выше прежнего.</dd>
+        <dt>Чем опасен</dt><dd>В отсчётах нет уменьшения, и события старого процесса пропадают из роста.</dd>
+        <dt>Как найти</dt><dd>По изменению метрики <code>process_start_time_seconds</code> — момента запуска процесса.</dd>
+      </dl>
+    </div>
+    <p>Опыт: счётчик стоял на 40, сервис перезапустили сразу после опроса, и до следующего опроса пришло 60 запросов. На схеме — что было в памяти сервиса и что попало в базу:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 240" role="img" aria-label="В памяти 40, сброс до 0, рост до 60; в базе отсчёты 40, 40, 40, 60, 60">
+        <line class="sc-grid" x1="60" y1="36" x2="620" y2="36"/>
+        <line class="sc-grid" x1="60" y1="84" x2="620" y2="84"/>
+        <line class="sc-axis" x1="60" y1="180" x2="620" y2="180"/>
+        <text class="tm tr" x="50" y="184">0</text><text class="tm tr" x="50" y="88">40</text><text class="tm tr" x="50" y="40">60</text>
+        <polyline class="sc-arrow-w" points="80,84 340,84 340,180 356,36 580,36"/>
+        <polyline class="sc-plot" points="80,84 200,84 320,84 440,36 560,36"/>
+        <circle class="sc-dot" cx="80" cy="84" r="6"/><circle class="sc-dot" cx="200" cy="84" r="6"/><circle class="sc-dot" cx="320" cy="84" r="6"/>
+        <circle class="sc-dot" cx="440" cy="36" r="6"/><circle class="sc-dot" cx="560" cy="36" r="6"/>
+        <text class="t tw" x="348" y="170">перезапуск</text>
+        <text class="tm tc" x="80" y="204">15:09:28</text><text class="tm tc" x="200" y="204">15:09:43</text><text class="tm tc" x="320" y="204">15:09:58</text>
+        <text class="tm tc" x="440" y="204">15:10:13</text><text class="tm tc" x="560" y="204">15:10:28</text>
+        <line class="sc-plot" x1="70" y1="228" x2="100" y2="228"/><text class="t" x="108" y="232">в базе: отсчёты опросов</text>
+        <line class="sc-arrow-w" x1="300" y1="228" x2="330" y2="228"/><text class="t" x="338" y="232">в памяти сервиса</text>
+      </svg>
+      <figcaption><b>Сброс между опросами.</b> Перезапуск и 60 запросов уложились между 15:09:58 и 15:10:13. В базе значение только выросло: 40 → 60.</figcaption>
+    </figure>
+    <p>Оранжевый пунктир — что происходило в памяти сервиса: 40, падение до нуля, быстрый рост до 60. Синяя линия — что записала база. Опросы пришлись на моменты до и после перезапуска, поэтому в базе только рост 40 → 60. Падение уложилось между двумя точками и в базу не попало. Проверим, что посчитает функция <code>growth</code> из §3 по таким отсчётам:</p>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>та же функция growth</span></figcaption>
+<pre><span class="f">print</span>(<span class="f">growth</span>([<span class="n">40</span>, <span class="n">40</span>, <span class="n">40</span>, <span class="n">60</span>, <span class="n">60</span>]))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>сброс не найден</span></figcaption><pre>(20, 0)</pre></figure>
+    <p>Пришло 60 запросов, а рост посчитан как 20. У функции, как и у Prometheus, есть только отсчёты, а переход 40 → 60 похож на обычный рост. Prometheus в этом опыте насчитал тот же рост 20 и ни одного сброса.</p>
+    <div class="key key--warn"><b>Вывод</b><p>Чем реже опрос, тем больше событий успевает накопиться между отсчётами и тем вероятнее такая потеря. О перезапуске говорит изменение <code>process_start_time_seconds</code>. На Linux библиотека добавляет эту метрику сама.</p></div>
+    <p class="next">Проверим это на модели: сбросы можно устроить самим и посмотреть, когда рост считается неверно.</p>
+  </section>
+
+<section class="part" id="s5">
+    <h2><span class="sec">§5</span>Модель счётчика</h2>
+    <p class="about">Как сбросы влияют на рост — на модели, которой управляете вы.</p>
+    <p>Ниже модель сервиса и Prometheus. Кнопка «Событие» прибавляет к счётчику в памяти процесса, «Опрос» записывает текущее значение в базу, «Перезапуск» начинает новый процесс с нуля. Справа модель считает рост по отсчётам тем же правилом, что функция <code>growth</code> из §3, и сравнивает его с настоящим числом событий.</p>
+    <div class="model" id="counter-model"></div>
+    <p>Слева вверху — номер процесса и число в его памяти. На графике — отсчёты в базе. Синие отрезки — обычный рост, оранжевый пунктир и оранжевая точка — первый отсчёт после перезапуска. В таблице строки после перезапуска выделены. Внизу справа модель сравнивает рост по отсчётам с числом событий после первого опроса.</p>
+    <p>Сценарий «Видимый сброс» повторяет опыт из §2: 40 событий, опрос, перезапуск, 10 событий, опрос. Значение в базе падает с 40 до 10, модель находит сброс, и рост 10 совпадает с числом событий. Сценарий «Скрытый сброс» повторяет опыт из §4: после перезапуска приходит 60 событий. Значение в базе растёт с 40 до 60, сброса не видно, и модель показывает потерю 40 событий.</p>
+    <div class="key"><b>Вывод</b><p>Сброс теряется, если между двумя опросами процесс перезапустился и успел насчитать больше, чем было до перезапуска. Чем чаще опрос, тем меньше событий успевает накопиться между отсчётами.</p></div>
+    <p class="next">Дальше — частая задача для счётчика: подсчёт ошибок в коде.</p>
+  </section>
+
+  <section class="part" id="s6">
+    <h2><span class="sec">§6</span>Частые ошибки</h2>
+    <p class="about">Что пишут неправильно и как исправить.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Что написано</th><th>Что произойдёт</th><th>Как правильно</th></tr></thead>
+        <tbody>
+          <tr><td>смотреть на значение счётчика</td><td>число растёт вместе со временем работы программы</td><td>смотреть рост или скорость</td></tr>
+          <tr><td>рост как «последнее минус первое»</td><td>после перезапуска рост отрицательный или заниженный</td><td>учитывать сброс, как <code>growth</code> в §3</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="part" id="s7">
+    <h2><span class="sec">§7</span>Практика</h2>
+    <p class="about">Задача на то, что разобрано в лекции. Решение спрятано под задачей.</p>
+    <h3>Задача 1. Рост по отсчётам</h3>
+    <p>Ситуация:</p>
+    <ul>
+      <li>Prometheus записал отсчёты счётчика: 5, 12, 12, 3, 9, 20;</li>
+      <li>между опросами сервис мог перезапускаться.</li>
+    </ul>
+    <div class="key"><b>Что нужно сделать</b><p>Найти, сколько событий произошло между первым и последним отсчётом и сколько было сбросов. Проверить ответ функцией <code>growth</code> из §3.</p></div>
+    <details><summary>Решение</summary>
+    <p>Пары соседних отсчётов: 5 → 12 даёт +7, 12 → 12 даёт 0, 12 → 3 — уменьшение, значит сброс, и прибавляется всё новое значение 3. Затем 3 → 9 даёт +6, 9 → 20 даёт +11. Всего 7 + 0 + 3 + 6 + 11 = 27 событий и один сброс.</p>
+    <figure class="code"><figcaption><span>main.py</span><span>проверка</span></figcaption><pre><span class="f">print</span>(<span class="f">growth</span>([<span class="n">5</span>, <span class="n">12</span>, <span class="n">12</span>, <span class="n">3</span>, <span class="n">9</span>, <span class="n">20</span>]))</pre></figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>(рост, сбросы)</span></figcaption><pre>(27, 1)</pre></figure>
+    </details>
+
+  </section>
+
+  <section class="part" id="s8">
+    <h2><span class="sec">§8</span>Проверьте себя</h2>
+    <p class="about">Вопросы по лекции. Ответ раскрывается щелчком.</p>
+    <details><summary>Отсчёты счётчика: 100, 130, 15, 45. Сколько событий произошло?</summary><p>75: 30 до сброса, 15 при сбросе и 30 после. Разность «последнее минус первое» дала бы −55.</p></details>
+    <details><summary>До перезапуска счётчик был 500, к следующему опросу — 700. Что посчитает Prometheus?</summary><p>Рост 200 и ни одного сброса. Уменьшения в ряду нет, поэтому сброс не замечен, хотя после перезапуска пришло 700 событий.</p></details>
+    <details><summary>Как узнать, что сервис перезапускался, если в ряду счётчика нет уменьшения?</summary><p>По метрике <code>process_start_time_seconds</code>: её значение — момент запуска процесса, и при перезапуске оно меняется.</p></details>
+    <details><summary>На графике отсчёты счётчика. Где здесь сброс и какой рост между первым и последним отсчётом?
+      <figure class="scene"><svg viewBox="0 0 640 175" role="img" aria-label="Отсчёты 20, 50, 80, 30, 70"><line class="sc-axis" x1="40" y1="150" x2="620" y2="150"/><polyline class="sc-plot" points="60,123 190,83 320,43 450,110 580,57"/><circle class="sc-dot" cx="60" cy="123" r="5"/><text class="tm tc" x="60" y="112">20</text><circle class="sc-dot" cx="190" cy="83" r="5"/><text class="tm tc" x="190" y="72">50</text><circle class="sc-dot" cx="320" cy="43" r="5"/><text class="tm tc" x="320" y="32">80</text><circle class="sc-dot" cx="450" cy="110" r="5"/><text class="tm tc" x="450" y="99">30</text><circle class="sc-dot" cx="580" cy="57" r="5"/><text class="tm tc" x="580" y="46">70</text></svg></figure></summary>
+      <p>Сброс между отсчётами 80 и 30: значение уменьшилось. Рост: +30, +30, затем 30 при сбросе и +40 — всего 130.</p></details>
+  </section>
+
+  <section class="part" id="s9">
+    <h2><span class="sec">§9</span>Шпаргалка</h2>
+    <p class="about">Конструкции лекции одним списком.</p>
+    <div class="cheat">
+      <div><b>Рост без сброса</b><code>конец − начало</code></div>
+      <div><b>Сброс</b><code>значение уменьшилось</code></div>
+      <div><b>Рост через сброс</b><code>+ всё новое значение</code></div>
+      <div><b>Был ли перезапуск</b><code>process_start_time_seconds</code></div>
+      <div><b>Рост и скорость в PromQL</b><code>increase(...)</code><code>rate(...)</code></div>
+    </div>
+  </section>
+
+  <section class="part" id="s10">
+    <h2><span class="sec">§10</span>Глоссарий</h2>
+    <p class="about">Термины лекции, включая введённые раньше: формулировка, пример и рисунок.</p>
+    <div class="glossary">
+      <article class="gl" id="g-schetchik">
+        <div class="gl__text">
+          <h3>Счётчик<i>counter</i></h3>
+          <p class="gl__def">Метрика, значение которой с момента запуска программы только растёт. Каждое событие прибавляет к ней число.</p>
+          <p class="gl__ex"><b>Пример</b>принятые заказы, ошибки оплаты, отправленные байты.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.2, §1–§4</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Счётчик растёт ступеньками"><line class="sc-axis" x1="14" y1="112" x2="248" y2="112"/><polyline class="sc-plot" points="20,104 70,104 70,82 130,82 130,60 190,60 190,38 244,38"/><text class="tm ta" x="78" y="76">+1</text><text class="tm ta" x="138" y="54">+1</text><text class="tm ta" x="198" y="32">+1</text><text class="t" x="20" y="126">только вверх</text></svg></figure>
+      </article>
+      <article class="gl" id="g-opros">
+        <div class="gl__text">
+          <h3>Опрос<i>scrape</i></h3>
+          <p class="gl__def">Один запрос Prometheus к <code>/metrics</code> программы. Опросы повторяются через равные промежутки — интервал опроса.</p>
+          <p class="gl__ex"><b>Пример</b>интервал 15 секунд: опросы в 15:04:58, 15:05:13, 15:05:28.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.5, §2</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Опросы через каждые 15 секунд"><line class="sc-axis" x1="14" y1="86" x2="248" y2="86"/><path class="sc-arrow" d="M40 30 L40 78 M37 72 L40 78 L43 72"/><circle class="sc-dot" cx="40" cy="86" r="5"/><path class="sc-arrow" d="M110 30 L110 78 M107 72 L110 78 L113 72"/><circle class="sc-dot" cx="110" cy="86" r="5"/><path class="sc-arrow" d="M180 30 L180 78 M177 72 L180 78 L183 72"/><circle class="sc-dot" cx="180" cy="86" r="5"/><text class="tm tc" x="75" y="106">15 с</text><text class="tm tc" x="145" y="106">15 с</text><text class="t tc" x="130" y="22">запрос /metrics</text><text class="t tc" x="130" y="124">каждый запрос — один опрос</text></svg></figure>
+      </article>
+      <article class="gl" id="g-otschet">
+        <div class="gl__text">
+          <h3>Отсчёт<i>sample</i></h3>
+          <p class="gl__def">Одно значение метрики, полученное при опросе, вместе с моментом опроса.</p>
+          <p class="gl__ex"><b>Пример</b>в 15:04:58 счётчик был равен 40.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.4, §2; лекция 2.5, §2</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Один отсчёт: время и значение"><line class="sc-axis" x1="14" y1="90" x2="248" y2="90"/><line class="sc-grid" x1="130" y1="44" x2="130" y2="90"/><circle class="sc-dot" cx="130" cy="44" r="7"/><text class="tb tc" x="130" y="30">40</text><text class="tm tc" x="130" y="108">15:04:58</text><text class="t tc" x="130" y="126">момент опроса + значение</text></svg></figure>
+      </article>
+      <article class="gl" id="g-ryad">
+        <div class="gl__text">
+          <h3>Ряд<i>time series</i></h3>
+          <p class="gl__def">Все отсчёты одной метрики с одним набором значений меток, выстроенные по времени. Одна строка ответа <code>/metrics</code> даёт при каждом опросе один отсчёт своего ряда.</p>
+          <p class="gl__ex"><b>Пример</b><code>orders_total{status="paid"}</code> — один ряд, <code>{status="cancelled"}</code> — другой.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.3, §1</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Ряд: отсчёты одной метрики по времени"><text class="tm tc" x="130" y="20" style="font-size:10.5px">orders_total{status="paid"}</text><line class="sc-axis" x1="14" y1="108" x2="248" y2="108"/><polyline class="sc-plot" points="30,96 80,86 130,72 180,56 230,44"/><circle class="sc-dot" cx="30" cy="96" r="5"/><circle class="sc-dot" cx="80" cy="86" r="5"/><circle class="sc-dot" cx="130" cy="72" r="5"/><circle class="sc-dot" cx="180" cy="56" r="5"/><circle class="sc-dot" cx="230" cy="44" r="5"/><text class="t tc" x="130" y="125">отсчёт за отсчётом</text></svg></figure>
+      </article>
+      <article class="gl" id="g-rost">
+        <div class="gl__text">
+          <h3>Рост<i>increase</i></h3>
+          <p class="gl__def">На сколько счётчик увеличился за промежуток времени. Без сбросов — значение в конце минус значение в начале.</p>
+          <p class="gl__ex"><b>Пример</b>было 500, через 15 секунд 530: рост 30.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.5, §1</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Рост между двумя отсчётами"><line class="sc-axis" x1="14" y1="112" x2="248" y2="112"/><line class="sc-grid" x1="40" y1="84" x2="214" y2="84"/><polyline class="sc-plot" points="40,84 200,36"/><circle class="sc-dot" cx="40" cy="84" r="6"/><circle class="sc-dot" cx="200" cy="36" r="6"/><text class="tm tc" x="40" y="104">500</text><text class="tm tc" x="200" y="24">530</text><path class="sc-arrow-w" d="M226 84 V40"/><text class="tb tw" x="230" y="68" style="font-size:13px">+30</text></svg></figure>
+      </article>
+      <article class="gl" id="g-skorost">
+        <div class="gl__text">
+          <h3>Скорость<i>rate</i></h3>
+          <p class="gl__def">Рост, делённый на длину промежутка в секундах. Показывает, сколько событий происходит в секунду.</p>
+          <p class="gl__ex"><b>Пример</b>рост 30 за 15 секунд — 2 события в секунду.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.5, §1</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Скорость: рост делённый на время"><text class="tb tc" x="130" y="42" style="font-size:18px">30 ÷ 15 с = 2/с</text><line class="sc-axis" x1="20" y1="80" x2="240" y2="80"/><line class="sc-axis" x1="20" y1="74" x2="20" y2="86"/><line class="sc-axis" x1="35" y1="74" x2="35" y2="86"/><line class="sc-axis" x1="49" y1="74" x2="49" y2="86"/><line class="sc-axis" x1="64" y1="74" x2="64" y2="86"/><line class="sc-axis" x1="78" y1="74" x2="78" y2="86"/><line class="sc-axis" x1="93" y1="74" x2="93" y2="86"/><line class="sc-axis" x1="108" y1="74" x2="108" y2="86"/><line class="sc-axis" x1="122" y1="74" x2="122" y2="86"/><line class="sc-axis" x1="137" y1="74" x2="137" y2="86"/><line class="sc-axis" x1="151" y1="74" x2="151" y2="86"/><line class="sc-axis" x1="166" y1="74" x2="166" y2="86"/><line class="sc-axis" x1="181" y1="74" x2="181" y2="86"/><line class="sc-axis" x1="195" y1="74" x2="195" y2="86"/><line class="sc-axis" x1="210" y1="74" x2="210" y2="86"/><line class="sc-axis" x1="224" y1="74" x2="224" y2="86"/><line class="sc-axis" x1="239" y1="74" x2="239" y2="86"/><text class="t tc" x="130" y="108">15 секунд, по 2 события в каждую</text></svg></figure>
+      </article>
+      <article class="gl" id="g-process">
+        <div class="gl__text">
+          <h3>Процесс<i>process</i></h3>
+          <p class="gl__def">Запущенная программа со своей памятью. Метрики хранятся в памяти процесса. Когда процесс завершается, память освобождается.</p>
+          <p class="gl__ex"><b>Пример</b><code>python main.py</code> — каждый запуск создаёт новый процесс.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.5, §2; лекция 2.6, §3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Процесс и его память"><rect class="sc-box" x="10" y="26" width="100" height="72" rx="8"/><text class="t tc" x="60" y="46">процесс 1</text><rect class="sc-amb" x="22" y="56" width="76" height="28" rx="4"/><text class="tm tc" x="60" y="75" style="font-size:11px">orders=40</text><path class="sc-arrow-w" d="M114 62 H144"/><text class="t tc tw" x="130" y="118">перезапуск</text><rect class="sc-box" x="150" y="26" width="100" height="72" rx="8"/><text class="t tc" x="200" y="46">процесс 2</text><rect class="sc-amb" x="162" y="56" width="76" height="28" rx="4"/><text class="tm tc" x="200" y="75" style="font-size:11px">orders=0</text></svg></figure>
+      </article>
+      <article class="gl" id="g-sbros">
+        <div class="gl__text">
+          <h3>Сброс<i>counter reset</i></h3>
+          <p class="gl__def">Возврат счётчика к нулю при перезапуске процесса. Prometheus находит сброс по уменьшению значения и прибавляет к росту значение после сброса.</p>
+          <p class="gl__ex"><b>Пример</b>100, 130, затем 15, 45: рост 30 + 15 + 30 = 75.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.5, §2–§3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Сброс счётчика"><line class="sc-axis" x1="14" y1="112" x2="248" y2="112"/><polyline class="sc-plot" points="20,70 100,30"/><line class="sc-arrow-w" x1="100" y1="30" x2="124" y2="112"/><polyline class="sc-plot" points="124,112 170,98 240,72"/><text class="t tw" x="128" y="60">сброс</text><text class="tm" x="16" y="90">100</text><text class="tm" x="88" y="22">130</text><text class="tm" x="168" y="90">15</text><text class="tm" x="226" y="64">45</text></svg></figure>
+      </article>
+      <article class="gl" id="g-skrytyj">
+        <div class="gl__text">
+          <h3>Скрытый сброс</h3>
+          <p class="gl__def">Сброс между двумя опросами, после которого значение выросло выше прежнего. В отсчётах нет уменьшения, и события до перезапуска пропадают из роста.</p>
+          <p class="gl__ex"><b>Пример</b>в базе 40 → 60, а пришло 60 запросов: посчитан рост 20.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.5, §4</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Скрытый сброс между опросами"><line class="sc-axis" x1="14" y1="112" x2="248" y2="112"/><polyline class="sc-arrow-w" points="30,64 150,64 150,112 160,30 240,30"/><polyline class="sc-plot" points="30,64 90,64 150,64 210,30 240,30"/><circle class="sc-dot" cx="30" cy="64" r="5"/><circle class="sc-dot" cx="90" cy="64" r="5"/><circle class="sc-dot" cx="150" cy="64" r="5"/><circle class="sc-dot" cx="210" cy="30" r="5"/><text class="tm" x="30" y="56">40</text><text class="tm" x="200" y="22">60</text><text class="t tw" x="158" y="100">перезапуск</text></svg></figure>
+      </article>
+      <article class="gl" id="g-starttime">
+        <div class="gl__text">
+          <h3>process_start_time_seconds</h3>
+          <p class="gl__def">Метрика с моментом запуска процесса в секундах с 1 января 1970 года. Меняется при каждом перезапуске, поэтому выдаёт и скрытый сброс. На Linux prometheus-client добавляет её сама.</p>
+          <p class="gl__ex"><b>Пример</b>значение изменилось между двумя опросами — процесс перезапускался.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.5, §4</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Момент запуска меняется при перезапуске"><rect class="sc-box" x="10" y="30" width="104" height="46" rx="6"/><text class="t tc" x="62" y="48">запуск</text><text class="tm tc" x="62" y="66" style="font-size:11px">15:00:00</text><path class="sc-arrow-w" d="M118 53 H142"/><rect class="sc-wrn" x="146" y="30" width="104" height="46" rx="6"/><text class="t tc" x="198" y="48">запуск</text><text class="tm tc" x="198" y="66" style="font-size:11px">15:05:26</text><text class="t tc tw" x="130" y="104">изменилось → перезапуск</text></svg></figure>
+      </article>
+    </div>
+  </section>
+
+  <section class="part">
+    <h3>Итог лекции</h3>
+    <p>Значение счётчика говорит о времени работы программы, нагрузку показывают рост за промежуток и скорость. При перезапуске счётчик сбрасывается в ноль. Prometheus находит сброс по уменьшению значения и прибавляет к росту значение после сброса. Сброс между опросами, после которого значение выросло выше прежнего, в отсчётах не виден.</p>
+    <h3>Источники</h3>
+    <ul class="sources">
+      <li>Prometheus. Metric types: Counter — prometheus.io/docs/concepts/metric_types</li>
+      <li>Prometheus. Query functions: increase, rate, resets — prometheus.io/docs/prometheus/latest/querying/functions</li>
+      <li>prometheus-client для Python: Counter, Multiprocess Mode — prometheus.github.io/client_python</li>
+      <li>Примеры лекции запущены на Python 3.12 и prometheus-client 0.26.0 06.11.2026; опыты с перезапуском и двумя процессами — на стенде сервиса заказов 23.10.2026</li>
+    </ul>
+  </section>
+
+  <div class="pager">
+    <a href="2-4-http.html">← 2.4 Метрики по HTTP</a>
+    <a href="index.html">К содержанию справочника</a>
+    <a href="2-6-counter-v-kode.html">2.6 Counter в реальном коде →</a>
+  </div>
+  <div class="colophon">
+    <span>Лекция 2.5 · Рост, скорость и сброс · Метрики и наблюдаемость</span>
+    <span class="author-line">Автор: Макаров Максим Николаевич</span>
+  </div>
+    </main>
+  </div>
+</div>
+<script src="counter-model.js"></script>
+<script src="reader.js"></script>
+</body>
+</html>

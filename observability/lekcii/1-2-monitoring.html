@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>1.2 Мониторинг · Метрики и наблюдаемость</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="book">
+  <div class="book__body">
+    <div class="spine"><span>Часть 1 · Основы наблюдаемости</span></div>
+    <main class="leaf">
+  <div class="running">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Метрики и наблюдаемость</a> · часть 1 · основы наблюдаемости</p>
+    <p class="running__folio">Лекция 1.2</p>
+  </div>
+
+  <header class="chapter-head">
+    <span class="chapter-num">1.2</span>
+    <h1>Мониторинг: измерение, история, базовый уровень</h1>
+    <p class="lead">Лекция 1.1 закончилась выводом: сведения о работе сервиса собирают заранее и хранят вне процесса. Здесь разберём, как такой сбор устроен: измерения по расписанию складываются в историю, а число из истории получает смысл, только когда известно, что измерено, за какое окно времени и с чем его сравнивать.</p>
+  </header>
+  <dl class="passport">
+    <div><dt>Тема</dt><dd>Основы наблюдаемости</dd></div>
+    <div><dt>Стенд</dt><dd><code>products-api</code> на FastAPI, адрес <code>/metrics</code></dd></div>
+    <div><dt>Опирается на</dt><dd>лекция 1.1: телеметрия, длительность, экземпляр</dd></div>
+    <div><dt>Результат</dt><dd>Правильно читать и сравнивать число на графике</dd></div>
+  </dl>
+
+  <div class="reader-start">
+    <div>
+      <b>Режим чтения</b>
+      <p>Лекция откроется по одному разделу: на экране одна мысль, кнопка «Дальше» ведёт к следующей. Стрелки ← → на клавиатуре тоже листают, Esc возвращает всю лекцию.</p>
+    </div>
+    <div class="reader-start__btns">
+      <button type="button" data-reader-start="continue" hidden></button>
+      <button type="button" class="primary" data-reader-start="begin">Читать по шагам</button>
+    </div>
+  </div>
+
+  <nav class="contents">
+    <b>В этой лекции</b>
+    <ol>
+      <li><a href="#s1"><span class="csec">§1</span>Что такое мониторинг</a></li>
+      <li><a href="#s2"><span class="csec">§2</span>Измерения по расписанию на стенде</a></li>
+      <li><a href="#s3"><span class="csec">§3</span>Временной ряд</a></li>
+      <li><a href="#s4"><span class="csec">§4</span>Из чего состоит показатель</a></li>
+      <li><a href="#s5"><span class="csec">§5</span>Одно название, два числа</a></li>
+      <li><a href="#s6"><span class="csec">§6</span>Интервал измерения</a></li>
+      <li><a href="#s7"><span class="csec">§7</span>Окно времени и доля</a></li>
+      <li><a href="#s8"><span class="csec">§8</span>Когда запросов нет</a></li>
+      <li><a href="#s9"><span class="csec">§9</span>Доля по нескольким экземплярам</a></li>
+      <li><a href="#s10"><span class="csec">§10</span>Базовый уровень</a></li>
+      <li><a href="#s11"><span class="csec">§11</span>От истории к реакции</a></li>
+      <li><a href="#s12"><span class="csec">§12</span>Частые ошибки</a></li>
+      <li><a href="#s13"><span class="csec">§13</span>Практика</a></li>
+      <li><a href="#s14"><span class="csec">§14</span>Проверьте себя</a></li>
+      <li><a href="#s15"><span class="csec">§15</span>Шпаргалка</a></li>
+      <li><a href="#s16"><span class="csec">§16</span>Глоссарий</a></li>
+    </ol>
+  </nav>
+
+  <section class="part" id="s1">
+    <h2><span class="sec">§1</span>Что такое мониторинг</h2>
+    <p class="about">Чем мониторинг отличается от ручной проверки и из каких шагов он состоит.</p>
+    <p>Человек один раз измерил давление и получил число 140. Много это или мало, по одному числу сказать трудно. Если он меряет давление каждое утро и записывает в тетрадь, по записям врач определяет, с какого дня оно начало расти. С сервисом так же. Разработчик открыл сайт и увидел, что страница загрузилась, — это одно наблюдение в один момент. Если программа каждые несколько секунд измеряет работу сервиса и сохраняет результаты, по ним видно, с какого момента он стал работать хуже.</p>
+    <div class="def">
+      <div class="def__term">Мониторинг<i>monitoring</i></div>
+      <dl><dt>Что это</dt><dd>Регулярный сбор, хранение и анализ измерений работы системы.</dd><dt>Что даёт</dt><dd>Изменение в поведении сервиса видно по истории, часто раньше, чем придёт жалоба.</dd><dt>Пример</dt><dd>Программа каждые 5 секунд читает у <code>products-api</code> число ответов с ошибкой и записывает его с отметкой времени.</dd></dl>
+    </div>
+    <p>Ручная проверка становится мониторингом при трёх условиях: измерения идут по расписанию, без участия человека, а результаты складываются в историю, к которой можно вернуться. Сама работа мониторинга — цепочка из пяти шагов. На схеме они стоят в порядке выполнения:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Пять шагов мониторинга: измерить, сохранить, сопоставить, показать, отреагировать"><rect class="sc-acc" x="10" y="30" width="110" height="60" rx="8"/><text class="tb tc" x="65" y="56">измерить</text><text class="t tc" x="65" y="74">значение</text><path class="sc-arrow" d="M122 60 L136 60"/><path class="sc-arrow" d="M128 64 L136 60 L128 56"/><rect class="sc-acc" x="138" y="30" width="110" height="60" rx="8"/><text class="tb tc" x="193" y="56">сохранить</text><text class="t tc" x="193" y="74">со временем</text><path class="sc-arrow" d="M250 60 L264 60"/><path class="sc-arrow" d="M256 64 L264 60 L256 56"/><rect class="sc-box" x="266" y="30" width="110" height="60" rx="8"/><text class="tb tc" x="321" y="56">сопоставить</text><text class="t tc" x="321" y="74">сравнить</text><path class="sc-arrow" d="M378 60 L392 60"/><path class="sc-arrow" d="M384 64 L392 60 L384 56"/><rect class="sc-box" x="394" y="30" width="110" height="60" rx="8"/><text class="tb tc" x="449" y="56">показать</text><text class="t tc" x="449" y="74">график, число</text><path class="sc-arrow" d="M506 60 L520 60"/><path class="sc-arrow" d="M512 64 L520 60 L512 56"/><rect class="sc-box" x="522" y="30" width="110" height="60" rx="8"/><text class="tb tc" x="577" y="56" textLength="98" lengthAdjust="spacingAndGlyphs">отреагировать</text><text class="t tc" x="577" y="74">уведомление</text><text class="t tc" x="129" y="118">история появляется здесь</text><path class="sc-line" d="M20 100 H238"/><text class="t tc" x="449" y="118">здесь человек узнаёт о проблеме</text><path class="sc-line" d="M276 100 H622"/></svg>
+      <figcaption>Пять шагов мониторинга. Каждый следующий шаг работает на результатах предыдущего.</figcaption>
+    </figure>
+    <p>Первые два шага, голубые, создают историю: значение измерено и сохранено вместе с моментом измерения. Остальные три превращают историю в знание: значения складывают и сравнивают, выводят на график и по условию отправляют человеку уведомление. Если выпадает любой шаг, цепочка перестаёт работать. Данные измеряются, но не сохраняются — вчерашний сбой не восстановить. Данные сохраняются, но условие не настроено — проблему заметят, только если случайно взглянут на график. Уведомление приходит в чат, который никто не читает, — пятый шаг формально есть, а реакции нет.</p>
+    <div class="key"><b>Вывод</b><p>Мониторинг — цепочка из пяти шагов. Программа с графиками выполняет только один из них — «показать». Сначала решают, что измерять и как сравнивать, а потом выбирают инструменты для каждого шага.</p></div>
+    <p class="next">Пройдём первые два шага руками на стенде: измерим и сохраним.</p>
+  </section>
+
+  <section class="part" id="s2">
+    <h2><span class="sec">§2</span>Измерения по расписанию на стенде</h2>
+    <p class="about">Как из одного числа на <code>/metrics</code> получается история.</p>
+    <p>В лекции 1.1 у стенда был адрес <code>/metrics</code>. Он отдаёт текущие значения счётчиков. Нас интересует одна строка — сколько запросов <code>/products</code> завершилось каждым кодом с момента запуска процесса:</p>
+    <figure class="code">
+      <figcaption><span>Терминал</span><span>строки счётчика запросов</span></figcaption>
+<pre>curl -s localhost:8015/metrics | grep requests_total</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>сразу после запуска сервиса</span></figcaption><pre># HELP lab_http_requests_total Completed products requests.
+# TYPE lab_http_requests_total counter
+lab_http_requests_total{route="/products",status="200"} 0
+lab_http_requests_total{route="/products",status="500"} 0</pre></figure>
+    <p>Каждая строка — одно число: маршрут, код ответа и сколько таких ответов было. Строки с <code>#</code> — пояснения для программ, которые читают этот текст. Пока запросов не было, оба числа нулевые. Одно такое чтение — ручная проверка. Сделаем из неё мониторинг: напишем программу, которая читает эти числа каждые 5 секунд и дописывает их в файл вместе со временем.</p>
+    <figure class="code">
+      <figcaption><span>collect.py</span><span>измерить и сохранить</span></figcaption>
+<pre><span class="k">import</span> time
+<span class="k">from</span> datetime <span class="k">import</span> datetime
+<span class="k">from</span> urllib.request <span class="k">import</span> urlopen
+
+URL = <span class="s">"http://127.0.0.1:8015/metrics"</span>
+INTERVAL = <span class="n">5</span>                                   <span class="c"># секунд между измерениями</span>
+
+<span class="k">def</span> <span class="f">read_counts</span>():
+    counts = {}
+    <span class="k">for</span> line <span class="k">in</span> <span class="f">urlopen</span>(URL).<span class="f">read</span>().<span class="f">decode</span>().<span class="f">splitlines</span>():
+        <span class="k">if</span> line.<span class="f">startswith</span>(<span class="s">"lab_http_requests_total{"</span>):
+            status = line.<span class="f">split</span>(<span class="s">'status="'</span>)[<span class="n">1</span>][:<span class="n">3</span>]
+            counts[status] = <span class="f">int</span>(<span class="f">float</span>(line.<span class="f">split</span>()[-<span class="n">1</span>]))
+    <span class="k">return</span> counts
+
+<span class="k">with</span> <span class="f">open</span>(<span class="s">"requests.csv"</span>, <span class="s">"w"</span>) <span class="k">as</span> file:
+    <span class="k">for</span> _ <span class="k">in</span> <span class="f">range</span>(<span class="n">8</span>):
+        moment = datetime.<span class="f">now</span>().<span class="f">strftime</span>(<span class="s">"%H:%M:%S"</span>)
+        counts = <span class="f">read_counts</span>()
+        file.<span class="f">write</span>(<span class="s">f'{moment},{counts["200"]},{counts["500"]}\n'</span>)
+        <span class="f">print</span>(moment, counts, flush=<span class="k">True</span>)
+        time.<span class="f">sleep</span>(INTERVAL)</pre>
+    </figure>
+    <div class="walk">
+      <div><code>urlopen(URL).read().decode()</code><span>Тот же запрос, что <code>curl</code>: программа получает весь текст <code>/metrics</code> и превращает байты в строку.</span></div>
+      <div><code>line.startswith("lab_http_requests_total{")</code><span>Из всех строк оставляем только строки счётчика запросов. Строки <code>#</code> начинаются иначе и пропускаются.</span></div>
+      <div><code>line.split('status="')[1][:3]</code><span>Достаём код ответа. Из строки <code>…status="500"} 11</code> после разбиения остаётся <code>500"} 11</code>, первые три символа — <code>500</code>.</span></div>
+      <div><code>int(float(line.split()[-1]))</code><span>Последнее слово строки — значение. Его переводим в число: <code>"11"</code> → <code>11</code>.</span></div>
+      <div><code>moment = datetime.now()...</code><span>Отметка времени измерения. Без неё число в файле нельзя поставить в историю.</span></div>
+      <div><code>file.write(...)</code><span>Шаг «сохранить»: строка <code>12:45:14,41,11</code> — время, ответов 200, ответов 500.</span></div>
+      <div><code>time.sleep(INTERVAL)</code><span>Расписание: следующее измерение через 5 секунд. Восемь измерений покрывают 35 секунд.</span></div>
+    </div>
+    <p>Пока программа работала, во втором терминале шла нагрузка: запрос к <code>/products</code> каждые 0,4 секунды. С 15-й по 25-ю секунду каждый второй запрос шёл со сценарием <code>error</code>. Вывод программы:</p>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>восемь измерений через 5 секунд</span></figcaption><pre>12:44:49 {'200': 0, '500': 0}
+12:44:54 {'200': 11, '500': 0}
+12:44:59 {'200': 21, '500': 0}
+12:45:04 {'200': 31, '500': 0}
+12:45:09 {'200': 36, '500': 5}
+12:45:14 {'200': 41, '500': 11}
+12:45:19 {'200': 51, '500': 11}
+12:45:24 {'200': 61, '500': 11}</pre></figure>
+    <p>Каждая строка — одно измерение: момент и два числа. Нанесём оба ряда на общую шкалу времени:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 210" role="img" aria-label="Число ответов 200 растёт от 0 до 61 ровно; число ответов 500 стоит на нуле, с 12:45:04 по 12:45:14 растёт до 11 и дальше не меняется"><line class="sc-grid" x1="70" y1="30" x2="610" y2="30"/><line class="sc-grid" x1="70" y1="100" x2="610" y2="100"/><line class="sc-axis" x1="70" y1="170" x2="610" y2="170"/><text class="tm tr" x="62" y="34">61</text><text class="tm tr" x="62" y="104">30</text><text class="tm tr" x="62" y="174">0</text><polyline class="sc-plot" points="70,170 147,145 224,122 301,99 379,87 456,76 533,53 610,30"/><polyline class="sc-plot" style="stroke:var(--warn)" points="70,170 147,170 224,170 301,170 379,159 456,145 533,145 610,145"/><circle class="sc-dot" cx="70" cy="170" r="4"/><circle class="sc-dot" cx="147" cy="145" r="4"/><circle class="sc-dot" cx="224" cy="122" r="4"/><circle class="sc-dot" cx="301" cy="99" r="4"/><circle class="sc-dot" cx="379" cy="87" r="4"/><circle class="sc-dot" cx="456" cy="76" r="4"/><circle class="sc-dot" cx="533" cy="53" r="4"/><circle class="sc-dot" cx="610" cy="30" r="4"/><circle class="sc-dot-w" cx="379" cy="159" r="4"/><circle class="sc-dot-w" cx="456" cy="145" r="4"/><circle class="sc-dot-w" cx="533" cy="145" r="4"/><circle class="sc-dot-w" cx="610" cy="145" r="4"/><text class="t" x="470" y="40">ответы 200</text><text class="t tw" x="470" y="138">ответы 500</text><text class="tm tc" x="70" y="190">44:49</text><text class="tm tc" x="224" y="190">44:59</text><text class="tm tc" x="379" y="190">45:09</text><text class="tm tc" x="533" y="190">45:19</text><text class="tm tc" x="610" y="190">45:24</text></svg>
+      <figcaption>Восемь измерений <code>collect.py</code> на стенде. Точка — одно измерение, линия соединяет соседние.</figcaption>
+    </figure>
+    <p>Синяя линия ответов 200 поднимается почти ровно: каждые 5 секунд прибавляется около десяти успешных запросов. На отрезке с 45:04 по 45:14 она идёт положе — часть запросов в это время завершилась ошибкой. Оранжевая линия ответов 500 первые четыре измерения лежит на нуле, затем за два интервала поднимается до 11 и дальше не меняется. По одной последней строке <code>11</code> было бы видно только, что ошибки когда-то случались. По истории видно, когда они начались и когда кончились.</p>
+    <div class="key"><b>Вывод</b><p>Значение плюс момент измерения — одна точка истории. Программа, которая регулярно снимает значения и сохраняет их со временем, уже выполняет первые два шага мониторинга.</p></div>
+    <p class="next">Такая последовательность точек называется временным рядом. Разберём, чем ряд полезнее одного числа.</p>
+  </section>
+
+  <section class="part" id="s3">
+    <h2><span class="sec">§3</span>Временной ряд</h2>
+    <p class="about">Почему последнее значение не заменяет историю.</p>
+    <div class="def">
+      <div class="def__term">Временной ряд<i>time series</i></div>
+      <dl><dt>Что это</dt><dd>Последовательность значений одной величины у одного объекта, упорядоченная по времени. Каждая точка — пара «момент измерения, значение».</dd><dt>Что даёт</dt><dd>Видно, как значение менялось и когда начались изменения.</dd><dt>Пример</dt><dd>Восемь значений «ответов 500 у <code>/products</code>» из §2: от <code>(12:44:49, 0)</code> до <code>(12:45:24, 11)</code>.</dd></dl>
+    </div>
+    <p>Зачем нужна история, видно на двух рядах, у которых совпадает последнее значение. Возьмём загрузку процессора двух серверов: шесть измерений с 09:00 до 09:05. Значения придуманы для сравнения формы, это не измерения стенда:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 190" role="img" aria-label="Слева загрузка держится около 80 процентов все шесть минут; справа растёт с 25 до 80 процентов; последнее значение у обоих 80 процентов"><text class="tb" x="20" y="20">сервер А</text><line class="sc-grid" x1="30" y1="44" x2="300" y2="44"/><line class="sc-axis" x1="30" y1="140" x2="300" y2="140"/><text class="tm tr" x="26" y="48">80%</text><text class="tm tr" x="26" y="144">0</text><polyline class="sc-plot" points="40,46 90,44 140,42 190,45 240,43 290,44"/><circle class="sc-dot" cx="40" cy="46" r="4"/><circle class="sc-dot" cx="90" cy="44" r="4"/><circle class="sc-dot" cx="140" cy="42" r="4"/><circle class="sc-dot" cx="190" cy="45" r="4"/><circle class="sc-dot" cx="240" cy="43" r="4"/><circle class="sc-dot" cx="290" cy="44" r="4"/><text class="tm tc" x="40" y="160">09:00</text><text class="tm tc" x="290" y="160">09:05</text><text class="t tc" x="165" y="182">78 → 80 → 82 → 79 → 81 → 80</text><text class="tb" x="340" y="20">сервер Б</text><line class="sc-grid" x1="350" y1="44" x2="620" y2="44"/><line class="sc-axis" x1="350" y1="140" x2="620" y2="140"/><polyline class="sc-plot" points="360,110 410,108 460,104 510,74 560,54 610,44"/><circle class="sc-dot" cx="360" cy="110" r="4"/><circle class="sc-dot" cx="410" cy="108" r="4"/><circle class="sc-dot" cx="460" cy="104" r="4"/><circle class="sc-dot" cx="510" cy="74" r="4"/><circle class="sc-dot" cx="560" cy="54" r="4"/><circle class="sc-dot" cx="610" cy="44" r="4"/><text class="tm tc" x="360" y="160">09:00</text><text class="tm tc" x="610" y="160">09:05</text><text class="t tc" x="485" y="182">25 → 27 → 30 → 55 → 72 → 80</text></svg>
+      <figcaption>Два ряда загрузки CPU. Последняя точка у обоих — 80%.</figcaption>
+    </figure>
+    <p>Слева загрузка все пять минут держится у 80%: для сервера, который занят расчётами, это может быть обычная работа. Справа за три минуты она выросла с 30% до 80%: пришла новая нагрузка или запустилась тяжёлая задача. Если смотреть только на последнее число, оба сервера выглядят одинаково. По форме линии ситуации различаются сразу.</p>
+    <p>Ряд имеет смысл, только если все его точки относятся к одному объекту и посчитаны одинаково. Допустим, сервер заменили новым, а измерения продолжили записывать под старым именем. Линия на графике останется непрерывной, но слева от замены будет один сервер, а справа другой. Поэтому в системах мониторинга объект записывают в описание самого ряда. В строке <code>/metrics</code> из §2 так и сделано: <code>route="/products"</code> и <code>status="500"</code> стоят рядом с числом и входят в описание ряда.</p>
+    <div class="key"><b>Вывод</b><p>Последнее значение отвечает на вопрос «сколько сейчас». Ряд отвечает на вопросы «как менялось» и «с какого момента» — они нужны при разборе жалобы.</p></div>
+    <p class="next">Ряд складывается из значений одного показателя. Разберём, что нужно знать о показателе, чтобы правильно прочитать его значение.</p>
+  </section>
+
+  <section class="part" id="s4">
+    <h2><span class="sec">§4</span>Из чего состоит показатель</h2>
+    <p class="about">Четыре части, без которых число на панели нельзя понять.</p>
+    <p>На панели написано «CPU 80%». Принять по этой строке решение нельзя: непонятно, чей это процессор, как посчитан процент и за какой промежуток времени. У каждого показателя в мониторинге четыре части. На схеме они разобраны на примере длительности запросов стенда:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Показатель 85 мс и его четыре части: объект, величина, единица, способ расчёта"><rect class="sc-acc" x="250" y="56" width="140" height="56" rx="8"/><text class="tb tc" x="320" y="90">85 мс</text><rect class="sc-box" x="10" y="14" width="200" height="56" rx="8"/><text class="tb tc" x="110" y="38">объект</text><text class="t tc" x="110" y="58">products-api, экземпляр 1</text><rect class="sc-box" x="430" y="14" width="200" height="56" rx="8"/><text class="tb tc" x="530" y="38">величина</text><text class="t tc" x="530" y="58">длительность /products</text><rect class="sc-box" x="10" y="100" width="200" height="56" rx="8"/><text class="tb tc" x="110" y="124">единица</text><text class="t tc" x="110" y="144">миллисекунды</text><rect class="sc-box" x="430" y="100" width="200" height="56" rx="8"/><text class="tb tc" x="530" y="124">способ расчёта</text><text class="t tc" x="530" y="144">медиана за минуту</text><path class="sc-line" d="M210 50 L250 70"/><path class="sc-line" d="M430 50 L390 70"/><path class="sc-line" d="M210 120 L250 100"/><path class="sc-line" d="M430 120 L390 100"/></svg>
+      <figcaption>Число в центре и четыре подписи, которые делают его понятным.</figcaption>
+    </figure>
+    <p>Объект отвечает на вопрос «чей»: процесс, сервер, маршрут, очередь. Величина — «что измеряем»: длительность, число запросов, занятую память. Единица — «в чём»: миллисекунды, штуки, байты. Способ расчёта — «как из многих измерений получилось одно число»: последнее значение, сумма, среднее, медиана, и за какой промежуток. Если какой-то части не хватает, возможна своя ошибка:</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Чего не хватает</th><th>Что может пойти не так</th></tr></thead>
+        <tbody>
+          <tr><td>объекта</td><td>нагрузку двух серверов сравнивают так, будто это один сервер</td></tr>
+          <tr><td>единицы</td><td>число 80 читают как миллисекунды, а это секунды</td></tr>
+          <tr><td>способа расчёта</td><td>две панели с одинаковым названием показывают разные числа, и непонятно, какой верить</td></tr>
+        </tbody>
+      </table></div>
+    <p>Способ расчёта легко показать на процессоре. Утилита <code>top</code> в Linux по умолчанию считает загрузку процесса относительно одного ядра. Процесс, который полностью занял четыре ядра, получит в ней 400%. Другая программа делит ту же нагрузку на число ядер и покажет 100%:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 130" role="img" aria-label="Четыре ядра заняты полностью; top показывает 400 процентов, другая программа — 100 процентов"><rect class="sc-acc" x="20" y="30" width="60" height="50" rx="6"/><rect class="sc-acc" x="90" y="30" width="60" height="50" rx="6"/><rect class="sc-acc" x="160" y="30" width="60" height="50" rx="6"/><rect class="sc-acc" x="230" y="30" width="60" height="50" rx="6"/><text class="t tc" x="155" y="104">4 ядра, каждое занято на 100%</text><path class="sc-arrow" d="M300 45 L380 30"/><path class="sc-arrow" d="M371 29 L380 30 L373 37"/><path class="sc-arrow" d="M300 65 L380 82"/><path class="sc-arrow" d="M373 75 L380 82 L371 84"/><rect class="sc-box" x="386" y="10" width="236" height="40" rx="8"/><text class="tm tc" x="504" y="35">top: 400% (на одно ядро)</text><rect class="sc-box" x="386" y="64" width="236" height="40" rx="8"/><text class="tm tc" x="504" y="89">100% (на все ядра)</text></svg>
+      <figcaption>Одна и та же нагрузка, два способа расчёта.</figcaption>
+    </figure>
+    <p>Слева — четыре полностью занятых ядра, справа — два числа, которые из этого получаются. Оба числа верны. Сравнивать их можно, только когда известно, как каждое посчитано: 400% в <code>top</code> и 100% в другой программе означают одно и то же.</p>
+    <p class="next">Способ расчёта меняет число не только у процессора. На стенде он даёт разницу в четыре с половиной раза.</p>
+  </section>
+
+  <section class="part" id="s5">
+    <h2><span class="sec">§5</span>Одно название, два числа</h2>
+    <p class="about">Как медиана и среднее одних и тех же запросов расходятся в разы.</p>
+    <p>На стенде есть программа <code>experiment.py</code>. Она отправляет 20 запросов подряд: 17 быстрых, 2 медленных (седьмой и семнадцатый) и 1 с ошибкой (тринадцатый). Для каждого она записывает время, которое ждал клиент. Результат прогона:</p>
+    <figure class="code code--out"><figcaption><span>Вывод experiment.py</span><span>фрагмент</span></figcaption><pre>06 fast  HTTP 200 82.8 ms
+07 slow  HTTP 200 3025.5 ms
+08 fast  HTTP 200 85.0 ms
+...
+13 error HTTP 500 106.3 ms
+...
+17 slow  HTTP 200 3024.8 ms
+18 fast  HTTP 200 84.4 ms</pre></figure>
+    <p>Посчитаем по этим 20 длительностям два числа, которые часто подписывают одинаково — «длительность запросов». Первое — <span class="term">среднее арифметическое</span>: сумма, делённая на количество. Второе — <span class="term">медиана</span>: значение посередине, если выстроить все длительности по возрастанию. Половина запросов быстрее медианы, половина медленнее.</p>
+    <figure class="code">
+      <figcaption><span>stats.py</span><span>среднее и медиана одного прогона</span></figcaption>
+<pre><span class="k">import</span> csv
+<span class="k">import</span> statistics
+
+rows = <span class="f">list</span>(csv.<span class="f">DictReader</span>(<span class="f">open</span>(<span class="s">"results/requests.csv"</span>)))
+durations = [<span class="f">float</span>(row[<span class="s">"client_ms"</span>]) <span class="k">for</span> row <span class="k">in</span> rows]
+
+<span class="f">print</span>(<span class="s">f"запросов: {len(durations)}"</span>)
+<span class="f">print</span>(<span class="s">f"среднее: {statistics.mean(durations):.0f} мс"</span>)
+<span class="f">print</span>(<span class="s">f"медиана: {statistics.median(durations):.0f} мс"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>те же 20 запросов</span></figcaption><pre>запросов: 20
+среднее: 380 мс
+медиана: 84 мс</pre></figure>
+    <div class="walk">
+      <div><code>csv.DictReader(...)</code><span>Читает файл, который записал <code>experiment.py</code>. Каждая строка становится словарём: <code>row["client_ms"]</code> → <code>"3025.5"</code>.</span></div>
+      <div><code>statistics.mean</code><span>Среднее: 7603,8 мс в сумме делятся на 20 → 380 мс.</span></div>
+      <div><code>statistics.median</code><span>Медиана: при чётном числе значений — среднее двух средних после сортировки, 83,8 и 84,1 → 84 мс.</span></div>
+    </div>
+    <p>Все 20 запросов на одной шкале, вместе с обоими числами:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 200" role="img" aria-label="Двадцать столбиков: восемнадцать низких около 84 мс и два высоких около 3025 мс; линия среднего 380 мс выше почти всех столбиков, линия медианы 84 мс на уровне низких"><line class="sc-axis" x1="30" y1="170" x2="500" y2="170"/><rect class="sc-acc" x="34" y="165" width="18" height="5"/><rect class="sc-acc" x="57" y="166" width="18" height="4"/><rect class="sc-acc" x="80" y="166" width="18" height="4"/><rect class="sc-acc" x="103" y="166" width="18" height="4"/><rect class="sc-acc" x="126" y="166" width="18" height="4"/><rect class="sc-acc" x="149" y="166" width="18" height="4"/><rect class="sc-wrn" x="172" y="30" width="18" height="140"/><rect class="sc-acc" x="195" y="166" width="18" height="4"/><rect class="sc-acc" x="218" y="166" width="18" height="4"/><rect class="sc-acc" x="241" y="166" width="18" height="4"/><rect class="sc-acc" x="264" y="166" width="18" height="4"/><rect class="sc-acc" x="287" y="166" width="18" height="4"/><rect class="sc-acc" x="310" y="165" width="18" height="5"/><rect class="sc-acc" x="333" y="166" width="18" height="4"/><rect class="sc-acc" x="356" y="166" width="18" height="4"/><rect class="sc-acc" x="379" y="166" width="18" height="4"/><rect class="sc-wrn" x="402" y="30" width="18" height="140"/><rect class="sc-acc" x="425" y="166" width="18" height="4"/><rect class="sc-acc" x="448" y="166" width="18" height="4"/><rect class="sc-acc" x="471" y="166" width="18" height="4"/><line class="sc-arrow" x1="30" y1="152" x2="500" y2="152" stroke-dasharray="6 4"/><text class="tm" x="508" y="150">среднее 380 мс</text><text class="tm" x="508" y="172">медиана 84 мс</text><text class="tm tc" x="181" y="22">3025</text><text class="tm tc" x="411" y="22">3025</text><text class="tm tc" x="43" y="190">1</text><text class="tm tc" x="250" y="190">10</text><text class="tm tc" x="480" y="190">20</text></svg>
+      <figcaption>Высота столбика — время ответа запроса. Пунктир — среднее; медиана совпадает с уровнем низких столбиков.</figcaption>
+    </figure>
+    <p>Восемнадцать столбиков едва видны у оси: около 84 мс. Два оранжевых поднимаются до трёх секунд. Пунктир среднего проходит выше всех низких столбиков: 380 мс не похоже ни на один настоящий запрос прогона. Его подняли два медленных запроса. Медиана лежит на уровне низких столбиков: два медленных запроса из двадцати её почти не сдвигают.</p>
+    <p>Обе цифры верны, но отвечают на разные вопросы. Медиана показывает, сколько ждал обычный пользователь. Среднее заметно растёт даже от двух медленных запросов из двадцати, но сколько их было, по нему не определить. Если на двух панелях с подписью «Длительность запросов» стоят 84 мс и 380 мс, оба числа могут быть верными. В подписях не хватает способа расчёта: медиана или среднее.</p>
+    <div class="key"><b>Вывод</b><p>Название показателя без способа расчёта не говорит, что за число перед глазами. На стенде одни и те же 20 запросов дали 84 мс и 380 мс.</p></div>
+    <p class="next">Способ расчёта отвечает за то, как сводить измерения. Не меньше влияет, как часто их снимают.</p>
+  </section>
+
+  <section class="part" id="s6">
+    <h2><span class="sec">§6</span>Интервал измерения</h2>
+    <p class="about">Что происходит с событием, которое случилось между двумя измерениями.</p>
+    <p>Камера наблюдения, которая делает снимок раз в минуту, не запишет человека, прошедшего мимо за двадцать секунд между кадрами. С измерениями так же. В §2 программа снимала значения раз в 5 секунд. Этот промежуток называют <span class="term">интервалом измерения</span>. От него зависит, какие события попадут в историю. Проверим на модели. Пусть программа измеряет длину очереди заданий. Обычно в очереди 2 задания, но с 12:00:10 по 12:00:29 их 40. Сравним два интервала — 60 и 5 секунд:</p>
+    <figure class="code">
+      <figcaption><span>interval.py</span><span>модель: всплеск короче минуты</span></figcaption>
+<pre><span class="c"># Длина очереди каждую секунду с 12:00:00 до 12:02:00.</span>
+<span class="c"># С 12:00:10 по 12:00:29 в очереди 40 заданий, в остальное время — 2.</span>
+queue = [<span class="n">40</span> <span class="k">if</span> <span class="n">10</span> &lt;= second &lt; <span class="n">30</span> <span class="k">else</span> <span class="n">2</span> <span class="k">for</span> second <span class="k">in</span> <span class="f">range</span>(<span class="n">121</span>)]
+
+<span class="k">for</span> interval <span class="k">in</span> (<span class="n">60</span>, <span class="n">5</span>):
+    samples = queue[::interval]
+    <span class="f">print</span>(<span class="s">f"раз в {interval:>2} с: точек {len(samples):>2}, максимум {max(samples)}"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>два интервала</span></figcaption><pre>раз в 60 с: точек  3, максимум 2
+раз в  5 с: точек 25, максимум 40</pre></figure>
+    <div class="walk">
+      <div><code>queue = [...]</code><span>Список из 121 значения — длина очереди в каждую секунду двух минут. Это то, что происходило на самом деле.</span></div>
+      <div><code>queue[::interval]</code><span>Срез с шагом: берём каждое шестидесятое или каждое пятое значение. Так работает измерение по расписанию: в историю попадают только значения в моменты измерений.</span></div>
+      <div><code>max(samples)</code><span>Самое большое значение, которое попало в историю.</span></div>
+    </div>
+    <p>При минутном интервале в историю попали три точки — 12:00:00, 12:01:00 и 12:02:00, — и во всех очередь равна 2. Всплеск до 40 исчез. Посмотрим, как это выглядит на графике. Сначала минутный интервал:</p>
+    <div class="story">
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Настоящая очередь поднималась до 40 на 20 секунд; три минутные точки все на уровне 2"><line class="sc-axis" x1="60" y1="120" x2="600" y2="120"/><polyline class="sc-line" stroke-dasharray="5 4" points="60,112 105,112 105,30 195,30 195,112 600,112"/><circle class="sc-dot-w" cx="60" cy="112" r="6"/><circle class="sc-dot-w" cx="330" cy="112" r="6"/><circle class="sc-dot-w" cx="600" cy="112" r="6"/><text class="t" x="205" y="44">на самом деле: 40</text><text class="t tw" x="340" y="100">в истории: 2, 2, 2</text><text class="tm tc" x="60" y="140">12:00</text><text class="tm tc" x="330" y="140">12:01</text><text class="tm tc" x="600" y="140">12:02</text></svg>
+      <figcaption><b>Раз в 60 секунд.</b> Пунктир — что было, точки — что сохранилось.</figcaption>
+    </figure>
+      <p>Всплеск поместился между первой и второй точкой. Теперь тот же отрезок при интервале 5 секунд:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="При интервале 5 секунд четыре точки попадают на всплеск до 40"><line class="sc-axis" x1="60" y1="120" x2="600" y2="120"/><polyline class="sc-line" stroke-dasharray="5 4" points="60,112 105,112 105,30 195,30 195,112 600,112"/><circle class="sc-dot" cx="60" cy="112" r="4"/><circle class="sc-dot" cx="82.5" cy="112" r="4"/><circle class="sc-dot" cx="105" cy="30" r="4"/><circle class="sc-dot" cx="127.5" cy="30" r="4"/><circle class="sc-dot" cx="150" cy="30" r="4"/><circle class="sc-dot" cx="172.5" cy="30" r="4"/><circle class="sc-dot" cx="195" cy="112" r="4"/><circle class="sc-dot" cx="217.5" cy="112" r="4"/><circle class="sc-dot" cx="240" cy="112" r="4"/><circle class="sc-dot" cx="262.5" cy="112" r="4"/><circle class="sc-dot" cx="285" cy="112" r="4"/><circle class="sc-dot" cx="307.5" cy="112" r="4"/><circle class="sc-dot" cx="330" cy="112" r="4"/><circle class="sc-dot" cx="352.5" cy="112" r="4"/><circle class="sc-dot" cx="375" cy="112" r="4"/><circle class="sc-dot" cx="397.5" cy="112" r="4"/><circle class="sc-dot" cx="420" cy="112" r="4"/><circle class="sc-dot" cx="442.5" cy="112" r="4"/><circle class="sc-dot" cx="465" cy="112" r="4"/><circle class="sc-dot" cx="487.5" cy="112" r="4"/><circle class="sc-dot" cx="510" cy="112" r="4"/><circle class="sc-dot" cx="532.5" cy="112" r="4"/><circle class="sc-dot" cx="555" cy="112" r="4"/><circle class="sc-dot" cx="577.5" cy="112" r="4"/><circle class="sc-dot" cx="600" cy="112" r="4"/><text class="t" x="205" y="44">4 точки на всплеске</text><text class="tm tc" x="60" y="140">12:00</text><text class="tm tc" x="330" y="140">12:01</text><text class="tm tc" x="600" y="140">12:02</text></svg>
+      <figcaption><b>Раз в 5 секунд.</b> Те же две минуты, 25 точек.</figcaption>
+    </figure>
+    </div>
+    <p>На первом рисунке пунктир поднимается до 40, но все три оранжевые точки лежат внизу: график из них — ровная линия на уровне 2. На втором рисунке четыре точки из 25 попали на всплеск — в 12:00:10, :15, :20 и :25, — и он виден. Частые измерения стоят дороже: при интервале 5 секунд точек в 12 раз больше, чем при минутном, и всё это нужно хранить.</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Интервал</th><th>Что видно</th><th>Ограничение</th></tr></thead>
+        <tbody>
+          <tr><td>5 секунд</td><td>короткие всплески, быстрые изменения</td><td>в 12 раз больше точек, чем при минутном: больше места и нагрузки на хранилище</td></tr>
+          <tr><td>1 минута</td><td>устойчивые изменения</td><td>всплески короче минуты могут пропасть между измерениями</td></tr>
+          <tr><td>1 час</td><td>суточные и недельные закономерности</td><td>для разбора конкретного сбоя почти бесполезен</td></tr>
+        </tbody>
+      </table></div>
+    <p>Есть величины, которые не теряют событий между измерениями. Число ответов 500 из §2 только растёт: каждая ошибка прибавляет единицу. Если ошибки случились между двумя измерениями, следующее измерение всё равно покажет число больше прежнего: 11 вместо 0 при любом интервале. Длина очереди так не работает: она растёт и падает, и в историю попадает только её значение в момент измерения.</p>
+    <div class="key key--warn"><b>Вывод</b><p>Мгновенное значение, которое растёт и падает, сохраняется только в моменты измерений: всё, что случилось между ними, теряется. Интервал выбирают по двум вопросам: насколько короткие изменения нужно замечать и сколько данных готовы хранить.</p></div>
+    <p class="next">Интервал определяет, как часто снимают значение. Второй промежуток — тот, за который значения складывают.</p>
+  </section>
+
+  <section class="part" id="s7">
+    <h2><span class="sec">§7</span>Окно времени и доля</h2>
+    <p class="about">Почему «11 ошибок» ничего не значит без окна и общего числа запросов.</p>
+    <p>Пять опозданий за неделю и пять опозданий за год — разные истории, хотя число одно. Так же фраза «пять ошибок» ничего не говорит о состоянии сервиса. Пять ошибок за секунду при десяти запросах — сбой у половины пользователей. Пять ошибок за сутки при миллионе запросов — редкий случай. Поэтому количество пересчитывают в <span class="term">долю</span>, а промежуток, за который берут оба количества, называют <span class="term">окном</span>:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 120" role="img" aria-label="Доля ошибок равна неуспешным запросам за окно, делённым на все запросы за то же окно"><text class="tb" x="20" y="64">доля ошибок =</text><rect class="sc-wrn" x="170" y="14" width="300" height="38" rx="8"/><text class="t tc" x="320" y="38">неуспешные запросы за окно</text><line class="sc-axis" x1="170" y1="60" x2="470" y2="60"/><rect class="sc-acc" x="170" y="68" width="300" height="38" rx="8"/><text class="t tc" x="320" y="92">все запросы за то же окно</text><text class="t" x="486" y="38">числитель</text><text class="t" x="486" y="92">знаменатель</text></svg>
+      <figcaption>Оба количества берутся за одно и то же окно и по одним и тем же маршрутам.</figcaption>
+    </figure>
+    <p>Сверху — ошибки, снизу — все запросы, и оба посчитаны за одинаковый промежуток. Если взять ошибки за 5 минут, а все запросы за час, доля выйдет в 12 раз меньше настоящей. Теперь посчитаем долю по истории из §2. Ряды там растут с момента запуска, поэтому количество за окно — это разница двух измерений: значение в конце окна минус значение в начале.</p>
+    <figure class="code">
+      <figcaption><span>window.py</span><span>доля ошибок за два окна</span></figcaption>
+<pre><span class="k">import</span> csv
+
+rows = <span class="f">list</span>(csv.<span class="f">reader</span>(<span class="f">open</span>(<span class="s">"requests.csv"</span>)))       <span class="c"># время, ответов 200, ответов 500</span>
+
+<span class="k">def</span> <span class="f">share</span>(start, end):
+    ok = <span class="f">int</span>(rows[end][<span class="n">1</span>]) - <span class="f">int</span>(rows[start][<span class="n">1</span>])
+    failed = <span class="f">int</span>(rows[end][<span class="n">2</span>]) - <span class="f">int</span>(rows[start][<span class="n">2</span>])
+    <span class="k">return</span> failed, ok + failed
+
+<span class="k">for</span> start, end <span class="k">in</span> ((<span class="n">4</span>, <span class="n">5</span>), (<span class="n">1</span>, <span class="n">7</span>)):
+    failed, total = <span class="f">share</span>(start, end)
+    <span class="f">print</span>(<span class="s">f"{rows[start][0]}–{rows[end][0]}: {failed} из {total} = {failed / total:.0%}"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>окна 5 и 30 секунд</span></figcaption><pre>12:45:09–12:45:14: 6 из 11 = 55%
+12:44:54–12:45:24: 11 из 61 = 18%</pre></figure>
+    <div class="walk">
+      <div><code>rows[end][2] - rows[start][2]</code><span>Ошибки за окно: в 12:45:14 было 11, в 12:45:09 — 5, за окно прибавилось 6.</span></div>
+      <div><code>ok + failed</code><span>Все запросы за то же окно: 5 успешных и 6 ошибок — 11.</span></div>
+      <div><code>(4, 5), (1, 7)</code><span>Номера строк файла: первое окно — между соседними измерениями (5 секунд), второе — между второй и последней строкой (30 секунд).</span></div>
+    </div>
+    <p>Те же данные по пятисекундным окнам — сколько запросов пришло и сколько из них завершилось ошибкой:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 190" role="img" aria-label="Семь пятисекундных окон: в каждом 10 или 11 запросов; ошибки только в четвёртом (5) и пятом (6)"><line class="sc-axis" x1="40" y1="150" x2="620" y2="150"/><rect class="sc-acc" x="50" y="62" width="60" height="88"/><rect class="sc-acc" x="130" y="70" width="60" height="80"/><rect class="sc-acc" x="210" y="70" width="60" height="80"/><rect class="sc-acc" x="290" y="70" width="60" height="40"/><rect class="sc-wrn" x="290" y="110" width="60" height="40"/><rect class="sc-acc" x="370" y="62" width="60" height="40"/><rect class="sc-wrn" x="370" y="102" width="60" height="48"/><rect class="sc-acc" x="450" y="70" width="60" height="80"/><rect class="sc-acc" x="530" y="70" width="60" height="80"/><text class="tm tc" x="80" y="54">11</text><text class="tm tc" x="160" y="62">10</text><text class="tm tc" x="240" y="62">10</text><text class="tm tc tw" x="320" y="62">5 из 10</text><text class="tm tc tw" x="400" y="54">6 из 11</text><text class="tm tc" x="480" y="62">10</text><text class="tm tc" x="560" y="62">10</text><text class="tm tc" x="80" y="168">:49–:54</text><text class="tm tc" x="240" y="168">:59–:04</text><text class="tm tc" x="400" y="168">:09–:14</text><text class="tm tc" x="560" y="168">:19–:24</text></svg>
+      <figcaption>Столбик — запросы за 5 секунд. Оранжевая часть — ошибки.</figcaption>
+    </figure>
+    <p>В каждом окне 10 или 11 запросов — нагрузка ровная. Ошибки есть только в двух окнах подряд, в четвёртом и пятом, и там они составляют половину запросов. Окно 5 секунд показывает этот сбой как есть: 55%. Окно 30 секунд накрывает и сбой, и спокойные окна вокруг него, поэтому доля выходит 18%. Оба числа верны, но говорят о разном: короткое окно — каково было пользователям в момент сбоя, длинное — какая доля запросов за полминуты пострадала.</p>
+    <div class="key"><b>Вывод</b><p>Количество без окна и без общего числа запросов не читается. Доля — это количество за окно, делённое на количество за то же окно, а длина окна меняет ответ: здесь 55% против 18%.</p></div>
+    <p class="next">В знаменателе доли стоит число запросов. Разберём, что делать, когда оно равно нулю.</p>
+  </section>
+
+  <section class="part" id="s8">
+    <h2><span class="sec">§8</span>Когда запросов нет</h2>
+    <p class="about">Почему 0% ошибок и «нет данных» — разные ответы.</p>
+    <p>Ночью с 3:00 до 4:00 сервис не получил ни одного запроса. В окне ноль ошибок и ноль запросов. Попробуем посчитать долю:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>доля при нуле запросов</span></figcaption>
+<pre>failed, total = <span class="n">0</span>, <span class="n">0</span>
+<span class="f">print</span>(failed / total)</pre>
+    </figure>
+    <figure class="code code--out code--err"><figcaption><span>Вывод</span><span>исключение</span></figcaption><pre>ZeroDivisionError: division by zero</pre></figure>
+    <p>Деление на ноль в Python вызывает исключение. Ошибку легко «исправить» неправильно — вернуть 0. Тогда панель покажет «0% ошибок». Но ноль запросов означает, что наблюдений нет и о доле ошибок сказать нечего. А 0% ошибок — утверждение, что запросы были и все прошли успешно. Правильная функция возвращает отдельное значение «нет данных»:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>доля или «нет данных»</span></figcaption>
+<pre><span class="k">def</span> <span class="f">error_share</span>(failed, total):
+    <span class="k">if</span> total == <span class="n">0</span>:
+        <span class="k">return</span> <span class="k">None</span>                  <span class="c"># наблюдений нет</span>
+    <span class="k">return</span> failed / total
+
+<span class="f">print</span>(<span class="f">error_share</span>(<span class="n">0</span>, <span class="n">0</span>))
+<span class="f">print</span>(<span class="f">error_share</span>(<span class="n">0</span>, <span class="n">500</span>))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>два разных ответа</span></figcaption><pre>None
+0.0</pre></figure>
+    <p>Первый вызов: запросов не было, функция вернула <code>None</code> — «нет данных». Второй: 500 запросов и ни одной ошибки, функция вернула <code>0.0</code>. Различать эти ответы нужно на случай, когда сервис остановился. На схеме — два часа на панели:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 140" role="img" aria-label="Слева панель показывает 0 процентов и выглядит как исправный сервис; справа — нет данных, и видно, что запросов не было"><rect class="sc-box" x="20" y="20" width="280" height="80" rx="8"/><text class="t tc" x="160" y="44">03:00–04:00, запросов: 0</text><text class="tb tc tw" x="160" y="76">0% ошибок</text><text class="t tc tw" x="160" y="124">так же выглядит исправный сервис</text><rect class="sc-acc" x="340" y="20" width="280" height="80" rx="8"/><text class="t tc" x="480" y="44">03:00–04:00, запросов: 0</text><text class="tb tc" x="480" y="76">нет данных</text><text class="t tc" x="480" y="124">видно, что наблюдений не было</text></svg>
+      <figcaption>Один и тот же час, две подписи на панели.</figcaption>
+    </figure>
+    <p>Левая панель показывает «0% ошибок», и остановленный сервис выглядит исправным: никто не станет разбираться. Правая показывает «нет данных», и это повод спросить, почему за час не пришло ни одного запроса — ночь или отказ балансировщика.</p>
+    <div class="key key--warn"><b>Вывод</b><p>Когда знаменатель равен нулю, доли нет. На панели пишут «нет данных»: 0% означал бы, что запросы были и все прошли успешно.</p></div>
+    <p class="next">До сих пор доля считалась по одному экземпляру. Когда экземпляров несколько, в арифметике часто ошибаются.</p>
+  </section>
+
+  <section class="part" id="s9">
+    <h2><span class="sec">§9</span>Доля по нескольким экземплярам</h2>
+    <p class="about">Как объединить доли нескольких экземпляров.</p>
+    <p>После развёртывания сервис работает в нескольких экземплярах, и каждый считает свои запросы. Возьмём два экземпляра за одни и те же 5 минут. Первый обработал 10 запросов, из них 5 с ошибкой, — 50%. Второй обработал 990 запросов без ошибок — 0%. Какая общая доля? Посчитаем двумя способами:</p>
+    <figure class="code">
+      <figcaption><span>share.py</span><span>два способа объединить доли</span></figcaption>
+<pre>replicas = {<span class="s">"api-1"</span>: (<span class="n">5</span>, <span class="n">10</span>), <span class="s">"api-2"</span>: (<span class="n">0</span>, <span class="n">990</span>)}   <span class="c"># (ошибки, все запросы) за 5 минут</span>
+
+shares = [failed / total <span class="k">for</span> failed, total <span class="k">in</span> replicas.<span class="f">values</span>()]
+<span class="f">print</span>(<span class="s">f"среднее долей: {sum(shares) / len(shares):.1%}"</span>)
+
+failed = <span class="f">sum</span>(f <span class="k">for</span> f, _ <span class="k">in</span> replicas.<span class="f">values</span>())
+total = <span class="f">sum</span>(t <span class="k">for</span> _, t <span class="k">in</span> replicas.<span class="f">values</span>())
+<span class="f">print</span>(<span class="s">f"сумма на сумму: {failed / total:.1%}"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>два ответа на один вопрос</span></figcaption><pre>среднее долей: 25.0%
+сумма на сумму: 0.5%</pre></figure>
+    <div class="walk">
+      <div><code>shares = [...]</code><span>Доли каждого экземпляра: <code>[0.5, 0.0]</code>. Их среднее — 0,25.</span></div>
+      <div><code>failed</code>, <code>total</code><span>Сначала складываем количества: 5 + 0 = 5 ошибок, 10 + 990 = 1000 запросов. Потом делим: 5 / 1000 = 0,005.</span></div>
+    </div>
+    <p>Ответ отличается в 50 раз. Почему верен второй, видно, если нарисовать запросы обоих экземпляров на одной полосе:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 140" role="img" aria-label="Полоса из 1000 запросов: api-1 занимает 10, из них 5 ошибок; api-2 занимает 990 без ошибок"><rect class="sc-wrn" x="40" y="40" width="5" height="40"/><rect class="sc-acc" x="45" y="40" width="5" height="40"/><rect class="sc-acc" x="50" y="40" width="550" height="40"/><path class="sc-line" d="M45 36 V20 H120"/><text class="t" x="126" y="24">api-1: 10 запросов, 5 ошибок</text><text class="t tc" x="325" y="65">api-2: 990 запросов без ошибок</text><text class="tm" x="40" y="104">0</text><text class="tm tr" x="600" y="104">1000 запросов</text><text class="t tc tw" x="320" y="128">ошибок: 5 из 1000 = 0,5%</text></svg>
+      <figcaption>Ширина участка — число запросов экземпляра. Оранжевое — ошибки.</figcaption>
+    </figure>
+    <p>Экземпляр <code>api-1</code> занимает узкую полоску у левого края: его 10 запросов — один процент всех. Пользователи пострадали в 5 запросах из 1000. Среднее долей даёт обоим экземплярам одинаковый вес, как будто каждый обработал половину запросов, и получает 25%. Так же объединяют любые доли: медленных запросов, успешных платежей. Поэтому системы мониторинга хранят сами количества, а доли вычисляют при запросе. Из сохранённых процентов верную общую долю уже не получить: размер групп потерян.</p>
+    <p>У этого примера есть и обратная сторона. Общая доля 0,5% выглядит спокойно, а на <code>api-1</code> сбоит каждый второй запрос. В общем показателе проблема одного экземпляра не видна, поэтому на панели держат и общую долю, и разбивку по экземплярам.</p>
+    <div class="key"><b>Вывод</b><p>Общая доля = сумма количеств / сумма количеств. Среднее процентов неверно: в нём у каждого экземпляра одинаковый вес, сколько бы запросов он ни обработал.</p></div>
+    <p class="next">Доля посчитана верно. Остаётся понять, много это или мало.</p>
+  </section>
+
+  <section class="part" id="s10">
+    <h2><span class="sec">§10</span>Базовый уровень</h2>
+    <p class="about">С чем сравнивать текущее значение.</p>
+    <p>Плюс 25 градусов в июле — обычная погода, а в январе — повод для новостей. Одно и то же число оценивают по тому, что обычно бывает в это время. В 14:00 каталог получил 300 запросов в минуту. Много это или мало, по одному числу не понять. Нужен <span class="term">базовый уровень</span> — значение, которое считается обычным для этого сервиса в это время. Нагрузка на пользовательские сервисы повторяется по суткам и дням недели: днём запросов больше, чем ночью, а утро понедельника не похоже на вечер воскресенья. Поэтому текущее значение сравнивают с тем же часом вчера. На рисунке — запросы в минуту за вчера и за сегодня до 14:00, значения придуманы для примера:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 200" role="img" aria-label="Вчерашняя кривая: ночью около 50, днём до 700 запросов в минуту; сегодня до 13:00 совпадает со вчерашней, к 14:00 падает до 300 при вчерашних 620"><line class="sc-grid" x1="40" y1="20" x2="600" y2="20"/><line class="sc-grid" x1="40" y1="95" x2="600" y2="95"/><line class="sc-axis" x1="40" y1="170" x2="600" y2="170"/><text class="tm tr" x="36" y="24">800</text><text class="tm tr" x="36" y="99">400</text><text class="tm tr" x="36" y="174">0</text><polyline class="sc-line" stroke-dasharray="6 4" points="40,155 133,162 227,114 320,57 367,54 460,39 553,114 600,151"/><polyline class="sc-plot" points="40,155 133,162 227,114 320,57 343,56 367,114"/><circle class="sc-dot-w" cx="367" cy="114" r="5"/><circle class="sc-dot" cx="367" cy="54" r="4"/><text class="tm" x="376" y="76">вчера: 620</text><text class="tm tw" x="376" y="132">сегодня: 300</text><text class="t" x="480" y="28">вчера, весь день</text><text class="tm tc" x="40" y="190">0:00</text><text class="tm tc" x="227" y="190">8:00</text><text class="tm tc" x="367" y="190">14:00</text><text class="tm tc" x="600" y="190">24:00</text></svg>
+      <figcaption>Пунктир — вчерашний день, синяя линия — сегодня. Значения придуманы для примера.</figcaption>
+    </figure>
+    <p>Пунктир показывает обычный ритм: ночью около 50 запросов в минуту, с утра рост, днём до 700. Сегодня синяя линия до 13:00 идёт вместе с пунктиром, а к 14:00 падает до 300, тогда как вчера в это время было 620. Без пунктира 300 запросов в минуту выглядели бы нормальной дневной нагрузкой. С ним видно, что сервис недополучил половину запросов — возможно, часть пользователей не может до него достучаться. Пересчитаем отклонение в проценты:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>сравнение с базовым уровнем</span></figcaption>
+<pre>now, yesterday, week_ago = <span class="n">300</span>, <span class="n">620</span>, <span class="n">600</span>       <span class="c"># запросов в минуту в 14:00</span>
+<span class="k">for</span> name, base <span class="k">in</span> ((<span class="s">"вчера"</span>, yesterday), (<span class="s">"неделю назад"</span>, week_ago)):
+    <span class="f">print</span>(<span class="s">f"{name}: {base}, сейчас {now / base - 1:+.0%}"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>отклонение от двух базовых уровней</span></figcaption><pre>вчера: 620, сейчас -52%
+неделю назад: 600, сейчас -50%</pre></figure>
+    <p><code>now / base - 1</code> — на какую долю текущее значение отличается от базового: 300 / 620 − 1 = −0,52. Формат <code>:+.0%</code> выводит знак и проценты без дробной части. Оба сравнения показывают падение вдвое. Когда два разных базовых уровня согласны, вывод надёжнее. Каждое сравнение может подвести по-своему:</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Сравнение</th><th>Что показывает</th><th>Когда сбивает с толку</th></tr></thead>
+        <tbody>
+          <tr><td>с предыдущей минутой</td><td>резкий скачок или провал</td><td>обычный утренний рост выглядит как отклонение</td></tr>
+          <tr><td>с тем же часом вчера</td><td>отклонение от суточного ритма</td><td>вчера был праздник или распродажа</td></tr>
+          <tr><td>с тем же днём неделю назад</td><td>отклонение с учётом дня недели</td><td>за неделю вышла новая версия, и обычное поведение изменилось</td></tr>
+        </tbody>
+      </table></div>
+    <div class="key"><b>Вывод</b><p>Число становится наблюдением о сервисе, только когда его сравнили с обычным для этого времени. Базовый уровень берут из той же истории, которую собирает мониторинг.</p></div>
+    <p class="next">Базовый уровень нужен и последнему шагу мониторинга — реакции.</p>
+  </section>
+
+  <section class="part" id="s11">
+    <h2><span class="sec">§11</span>От истории к реакции</h2>
+    <p class="about">Как условие на ряд превращается в уведомление.</p>
+    <p>Человек не может постоянно смотреть на графики. Поэтому условие проверяет программа и при его выполнении отправляет уведомление. Условие вместе с порогом, длительностью и получателем называют <span class="term">правилом оповещения</span>. Его составляют по проблеме пользователя. «Доля ошибок <code>/products</code> выше 2% пять минут подряд» означает, что пользователи получают сбои. «CPU выше 90%» говорит только о загрузке процессора, которая для расчётной задачи бывает обычной, — это мы уже видели на сервере А в §3.</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Часть правила</th><th>Пример</th></tr></thead>
+        <tbody>
+          <tr><td>показатель</td><td>доля ответов 500 у <code>/products</code> за минуту</td></tr>
+          <tr><td>порог</td><td>больше 2%</td></tr>
+          <tr><td>длительность</td><td>условие выполняется 5 минут подряд</td></tr>
+          <tr><td>получатель</td><td>дежурный инженер сервиса каталога</td></tr>
+        </tbody>
+      </table></div>
+    <p>Зачем нужна длительность, видно на ряду доли ошибок за 12 минут. Значения придуманы для примера:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 190" role="img" aria-label="Доля ошибок: на второй минуте одиночный всплеск до 4 процентов без уведомления; с пятой минуты доля держится выше 2 процентов, на десятой минуте приходит уведомление"><line class="sc-axis" x1="40" y1="160" x2="600" y2="160"/><line class="sc-arrow-w" x1="40" y1="120" x2="600" y2="120" stroke-dasharray="6 4"/><text class="tm tw" x="604" y="124">2%</text><rect class="sc-soft" style="fill:none" x="273" y="30" width="233" height="128" rx="4"/><text class="t tc" x="390" y="46">5 минут выше порога</text><polyline class="sc-plot" points="40,150 87,152 133,80 180,150 227,148 273,100 320,90 367,80 413,84 460,76 507,80 553,82 600,78"/><circle class="sc-dot" cx="133" cy="80" r="4"/><circle class="sc-dot-w" cx="507" cy="80" r="6"/><text class="t" x="60" y="62">одна минута — тишина</text><text class="t tw" x="470" y="104">уведомление</text><text class="tm tc" x="40" y="180">0</text><text class="tm tc" x="273" y="180">5</text><text class="tm tc" x="507" y="180">10</text><text class="tm tc" x="600" y="180">12 мин</text></svg>
+      <figcaption>Пунктир — порог 2%. Рамка — пять минут, в течение которых условие выполнялось подряд.</figcaption>
+    </figure>
+    <p>На второй минуте доля подскочила до 4% и сразу вернулась: условие выполнилось одну минуту, уведомления нет. С пятой минуты доля держится выше порога. Когда условие выполняется пять минут подряд, на десятой минуте приходит уведомление — оранжевая точка. Без длительности первый всплеск тоже поднял бы тревогу, а через минуту всё восстановилось бы. На уведомления, которые чаще всего оказываются ложными, люди быстро перестают реагировать. Слишком большая длительность, наоборот, задерживает реакцию на настоящий сбой. Её выбирают по тому, сколько минут ошибок сервис может допустить. Порог подбирают по базовому уровню из §10: зная обычное поведение сервиса, точнее описывают необычное.</p>
+    <div class="key"><b>Вывод</b><p>Правило оповещения состоит из показателя, порога, длительности и получателя. Длительность отсекает одиночные всплески, порог опирается на базовый уровень.</p></div>
+  </section>
+
+  <section class="part" id="s12">
+    <h2><span class="sec">§12</span>Частые ошибки</h2>
+    <p class="about">Что делают неправильно и как исправить.</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Что делают</th><th>Что произойдёт</th><th>Как правильно</th></tr></thead>
+        <tbody>
+          <tr><td>смотрят только на последнее значение</td><td>устойчивая нагрузка и резкий рост выглядят одинаково</td><td>смотреть историю ряда</td></tr>
+          <tr><td>подписывают панель без способа расчёта</td><td>84 мс и 380 мс под одним названием сбивают с толку</td><td>писать в подписи: медиана, среднее, за какое окно</td></tr>
+          <tr><td>измеряют мгновенное значение редко</td><td>короткий всплеск пропадает между измерениями</td><td>выбирать интервал по длине изменений, которые нужно замечать</td></tr>
+          <tr><td>берут числитель и знаменатель из разных окон</td><td>доля ошибок выходит в разы меньше или больше настоящей</td><td>считать оба количества за одно окно</td></tr>
+          <tr><td>показывают отсутствие запросов как 0% ошибок</td><td>остановленный сервис выглядит исправным</td><td>писать «нет данных», когда знаменатель равен нулю</td></tr>
+          <tr><td>усредняют проценты экземпляров</td><td>экземпляр с 10 запросами весит как экземпляр с 990</td><td>складывать количества и делить сумму на сумму</td></tr>
+          <tr><td>ставят уведомление на один всплеск</td><td>много ложных тревог, на уведомления перестают реагировать</td><td>добавлять в правило длительность</td></tr>
+        </tbody>
+      </table></div>
+  </section>
+
+  <section class="part" id="s13">
+    <h2><span class="sec">§13</span>Практика</h2>
+    <p class="about">Три задачи на то, что разобрано в лекции. Решение спрятано под задачей.</p>
+    <h3>Задача 1. Общая доля ошибок</h3>
+    <p>Ситуация:</p>
+    <ul>
+      <li>первый экземпляр за 5 минут обработал 200 запросов, из них 20 с ошибкой;</li>
+      <li>второй за те же 5 минут — 800 запросов, из них 20 с ошибкой.</li>
+    </ul>
+    <div class="key"><b>Что нужно сделать</b><p>Посчитать общую долю ошибок программой <code>share.py</code> из §9 и объяснить, почему среднее долей дало бы другое число.</p></div>
+    <details><summary>Решение</summary>
+    <figure class="code"><figcaption><span>share.py</span><span>новые количества</span></figcaption><pre>replicas = {<span class="s">"api-1"</span>: (<span class="n">20</span>, <span class="n">200</span>), <span class="s">"api-2"</span>: (<span class="n">20</span>, <span class="n">800</span>)}</pre></figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>два способа</span></figcaption><pre>среднее долей: 6.2%
+сумма на сумму: 4.0%</pre></figure>
+    <p>Верно 4%: 40 ошибок из 1000 запросов. Доли экземпляров — 10% и 2,5%, их среднее 6,25% (формат <code>:.1%</code> вывел его как 6.2%). Оно завышено, потому что даёт экземпляру с 200 запросами тот же вес, что экземпляру с 800.</p>
+    </details>
+
+    <h3>Задача 2. Окно в одну минуту</h3>
+    <p>Ситуация: программа <code>collect.py</code> из §2 записала в <code>requests.csv</code> такие строки:</p>
+    <figure class="code"><figcaption><span>requests.csv</span><span>время, ответов 200, ответов 500</span></figcaption><pre>10:00:00,1200,4
+10:01:00,1500,64
+10:02:00,1790,70</pre></figure>
+    <div class="key"><b>Что нужно сделать</b><p>Посчитать долю ошибок за окна 10:00–10:01 и 10:01–10:02.</p></div>
+    <details><summary>Решение</summary>
+    <p>Первое окно: ошибок 64 − 4 = 60, успешных 1500 − 1200 = 300, всего 360. Доля 60 / 360 ≈ 17%. Второе окно: ошибок 70 − 64 = 6, успешных 1790 − 1500 = 290, всего 296. Доля 6 / 296 ≈ 2%. Значения в файле только растут, поэтому количество за окно — разница значений в конце и в начале окна.</p>
+    </details>
+
+    <h3>Задача 3. Интервал измерения</h3>
+    <p>Ситуация: в программе <code>interval.py</code> из §6 всплеск длится с 12:00:10 по 12:00:29.</p>
+    <div class="key"><b>Что нужно сделать</b><p>Запустить программу с интервалами 30 и 15 секунд и определить, попадёт ли всплеск в историю.</p></div>
+    <details><summary>Решение</summary>
+    <figure class="code"><figcaption><span>interval.py</span><span>изменённый цикл</span></figcaption><pre><span class="k">for</span> interval <span class="k">in</span> (<span class="n">30</span>, <span class="n">15</span>):</pre></figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>два интервала</span></figcaption><pre>раз в 30 с: точек  5, максимум 2
+раз в 15 с: точек  9, максимум 40</pre></figure>
+    <p>При интервале 30 секунд измерения приходятся на 12:00:00 и 12:00:30 — обе точки мимо всплеска. При 15 секундах точка 12:00:15 попадает на него. Всплеск длиной 20 секунд попадает в историю при любом интервале не длиннее 20 секунд: хотя бы одно измерение придётся на него.</p>
+    </details>
+  </section>
+
+  <section class="part" id="s14">
+    <h2><span class="sec">§14</span>Проверьте себя</h2>
+    <p class="about">Вопросы по лекции. Ответ раскрывается щелчком.</p>
+    <details><summary>Чем мониторинг отличается от ручной проверки сайта раз в день?</summary><p>Мониторинг измеряет регулярно и без участия человека, сохраняет значения с отметкой времени и проверяет правила. Ручная проверка даёт одно наблюдение и не оставляет истории.</p></details>
+    <details><summary>На двух панелях «Длительность запросов» стоят 84 мс и 380 мс. Может ли это быть правдой одновременно?</summary><p>Да, если одна панель показывает медиану, а другая среднее. На стенде так вышло на одних и тех же 20 запросах.</p></details>
+    <details><summary>Почему при минутном интервале на графике может не оказаться всплеска длиной 20 секунд?</summary><p>Мгновенное значение сохраняется только в моменты измерений. Если всплеск начался и закончился между ними, ни одна точка его не содержит.</p></details>
+    <details><summary>Почему доля ошибок за 5 секунд вышла 55%, а за 30 секунд — 18%?</summary><p>Короткое окно целиком пришлось на сбой. Длинное накрыло и сбой, и спокойные секунды вокруг него, где ошибок не было.</p></details>
+    <details><summary>Ночью не было ни одного запроса. Что показать на панели доли ошибок?</summary><p>«Нет данных». Знаменатель равен нулю, наблюдений нет, а 0% ошибок выглядел бы как исправная работа.</p></details>
+    <details><summary>Зачем в правиле оповещения длительность?</summary><p>Чтобы одиночный короткий всплеск не поднимал тревогу. Уведомление приходит, только если условие выполняется заданное время подряд.</p></details>
+  </section>
+
+  <section class="part" id="s15">
+    <h2><span class="sec">§15</span>Шпаргалка</h2>
+    <p class="about">Опорные понятия лекции одним списком.</p>
+    <div class="cheat">
+      <div><b>Пять шагов</b><code>измерить → сохранить</code><code>сопоставить → показать</code><code>отреагировать</code></div>
+      <div><b>Точка ряда</b><code>момент + значение</code><code>один объект, один способ</code></div>
+      <div><b>Показатель</b><code>объект</code><code>величина</code><code>единица</code><code>способ расчёта</code></div>
+      <div><b>Доля</b><code>количество за окно</code><code>/ все за то же окно</code><code>0 запросов → нет данных</code></div>
+      <div><b>Несколько экземпляров</b><code>сумма / сумма</code><code>не среднее процентов</code></div>
+      <div><b>Базовый уровень</b><code>тот же час вчера</code><code>тот же день неделю назад</code></div>
+      <div><b>Правило оповещения</b><code>показатель</code><code>порог</code><code>длительность</code><code>получатель</code></div>
+    </div>
+  </section>
+
+  <section class="part" id="s16">
+    <h2><span class="sec">§16</span>Глоссарий</h2>
+    <p class="about">Термины лекции, включая понятия из лекции 1.1: формулировка, пример и рисунок.</p>
+    <div class="glossary">
+      <article class="gl" id="g-telemetry">
+        <div class="gl__text">
+          <h3>Телеметрия<i>telemetry</i></h3>
+          <p class="gl__def">Сведения о работе программы, которые она передаёт во внешнее хранилище: метрики, логи, трассы.</p>
+          <p class="gl__ex"><b>Пример</b>строки <code>lab_http_requests_total</code> на <code>/metrics</code> стенда.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.1, §10</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Телеметрия"><rect class="sc-acc" x="10" y="45" width="90" height="40" rx="8"/><text class="t tc" x="55" y="70">сервис</text><path class="sc-arrow" d="M104 65 L150 65"/><path class="sc-arrow" d="M142 69 L150 65 L142 61"/><rect class="sc-box" x="156" y="30" width="94" height="70" rx="8"/><text class="t tc" x="203" y="61">хранилище</text><text class="t tc" x="203" y="79">вне процесса</text></svg></figure>
+      </article>
+      <article class="gl" id="g-monitoring">
+        <div class="gl__text">
+          <h3>Мониторинг<i>monitoring</i></h3>
+          <p class="gl__def">Регулярный сбор, хранение и анализ измерений работы системы: измерить, сохранить, сопоставить, показать, отреагировать.</p>
+          <p class="gl__ex"><b>Пример</b><code>collect.py</code> каждые 5 секунд читает число ответов 500 и записывает его со временем.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.1, §10; лекция 1.2, §1</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Мониторинг"><rect class="sc-acc" x="6" y="45" width="44" height="34" rx="6"/><rect class="sc-acc" x="57" y="45" width="44" height="34" rx="6"/><rect class="sc-box" x="108" y="45" width="44" height="34" rx="6"/><rect class="sc-box" x="159" y="45" width="44" height="34" rx="6"/><rect class="sc-box" x="210" y="45" width="44" height="34" rx="6"/><text class="t tc" x="130" y="112">пять шагов по порядку</text></svg></figure>
+      </article>
+      <article class="gl" id="g-instance">
+        <div class="gl__text">
+          <h3>Экземпляр<i>instance</i></h3>
+          <p class="gl__def">Отдельный запущенный процесс одной программы. Каждый экземпляр считает свои показатели.</p>
+          <p class="gl__ex"><b>Пример</b><code>api-1</code> и <code>api-2</code> в §9: 10 и 990 запросов за 5 минут.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.1, §3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Экземпляр"><rect class="sc-acc" x="20" y="40" width="66" height="50" rx="8"/><text class="tb tc" x="53" y="70">№1</text><rect class="sc-acc" x="100" y="40" width="66" height="50" rx="8"/><text class="tb tc" x="133" y="70">№2</text><rect class="sc-acc" x="180" y="40" width="66" height="50" rx="8"/><text class="tb tc" x="213" y="70">№3</text><text class="t tc" x="130" y="118">одна программа — три процесса</text></svg></figure>
+      </article>
+      <article class="gl" id="g-duration">
+        <div class="gl__text">
+          <h3>Длительность<i>latency</i></h3>
+          <p class="gl__def">Время от начала до конца операции. Код ответа о ней ничего не сообщает.</p>
+          <p class="gl__ex"><b>Пример</b>в прогоне из 20 запросов 18 шли около 84 мс, два — около 3025 мс.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.1, §7</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Длительность"><rect class="sc-acc" x="10" y="35" width="16" height="22"/><text class="tm" x="32" y="51">84 мс</text><rect class="sc-wrn" x="10" y="75" width="240" height="22"/><text class="tm" x="16" y="91">3025 мс</text></svg></figure>
+      </article>
+      <article class="gl" id="g-series">
+        <div class="gl__text">
+          <h3>Временной ряд<i>time series</i></h3>
+          <p class="gl__def">Последовательность значений одной величины у одного объекта, упорядоченная по времени. Точка ряда — момент и значение.</p>
+          <p class="gl__ex"><b>Пример</b>ответы 500 у <code>/products</code>: 0, 0, 0, 0, 5, 11, 11, 11.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.2, §3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Временной ряд"><line class="sc-axis" x1="10" y1="110" x2="250" y2="110"/><polyline class="sc-plot" points="20,100 50,100 80,100 110,100 140,75 170,45 200,45 230,45"/><circle class="sc-dot" cx="20" cy="100" r="4"/><circle class="sc-dot" cx="50" cy="100" r="4"/><circle class="sc-dot" cx="80" cy="100" r="4"/><circle class="sc-dot" cx="110" cy="100" r="4"/><circle class="sc-dot" cx="140" cy="75" r="4"/><circle class="sc-dot" cx="170" cy="45" r="4"/><circle class="sc-dot" cx="200" cy="45" r="4"/><circle class="sc-dot" cx="230" cy="45" r="4"/></svg></figure>
+      </article>
+      <article class="gl" id="g-metric">
+        <div class="gl__text">
+          <h3>Показатель<i>indicator</i></h3>
+          <p class="gl__def">Измеряемое значение с четырьмя обязательными частями: объект, величина, единица, способ расчёта.</p>
+          <p class="gl__ex"><b>Пример</b>«медиана длительности <code>/products</code> у экземпляра 1 за минуту — 85 мс».</p>
+          <p class="gl__where"><b>Где</b>лекция 1.2, §4</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Показатель"><rect class="sc-acc" x="90" y="45" width="80" height="40" rx="8"/><text class="tb tc" x="130" y="70">85 мс</text><text class="t tc" x="45" y="30">объект</text><text class="t tc" x="215" y="30">величина</text><text class="t tc" x="45" y="112">единица</text><text class="t tc" x="215" y="112">расчёт</text><path class="sc-line" d="M70 36 L92 50"/><path class="sc-line" d="M190 36 L168 50"/><path class="sc-line" d="M70 102 L92 82"/><path class="sc-line" d="M190 102 L168 82"/></svg></figure>
+      </article>
+      <article class="gl" id="g-mean-median">
+        <div class="gl__text">
+          <h3>Среднее и медиана<i>mean, median</i></h3>
+          <p class="gl__def">Среднее — сумма значений, делённая на их число; чувствительно к редким большим значениям. Медиана — значение посередине упорядоченного списка: половина меньше, половина больше.</p>
+          <p class="gl__ex"><b>Пример</b>20 запросов стенда: среднее 380 мс, медиана 84 мс.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.2, §5</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Среднее и медиана"><line class="sc-axis" x1="10" y1="110" x2="250" y2="110"/><rect class="sc-acc" x="20" y="104" width="20" height="6"/><rect class="sc-acc" x="50" y="104" width="20" height="6"/><rect class="sc-wrn" x="80" y="20" width="20" height="90"/><rect class="sc-acc" x="110" y="104" width="20" height="6"/><rect class="sc-acc" x="140" y="104" width="20" height="6"/><line class="sc-arrow" x1="10" y1="86" x2="170" y2="86" stroke-dasharray="5 4"/><text class="tm" x="176" y="90">среднее</text><text class="tm" x="176" y="126">медиана</text></svg></figure>
+      </article>
+      <article class="gl" id="g-interval">
+        <div class="gl__text">
+          <h3>Интервал измерения<i>scrape interval</i></h3>
+          <p class="gl__def">Промежуток между двумя измерениями одного показателя. Мгновенные значения между измерениями не сохраняются.</p>
+          <p class="gl__ex"><b>Пример</b>при интервале 60 секунд всплеск очереди длиной 20 секунд пропал, при 5 секундах — попал в 4 точки.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.2, §6</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Интервал измерения"><line class="sc-axis" x1="10" y1="105" x2="250" y2="105"/><polyline class="sc-line" stroke-dasharray="4 3" points="10,98 60,98 60,30 110,30 110,98 250,98"/><circle class="sc-dot-w" cx="20" cy="98" r="5"/><circle class="sc-dot-w" cx="130" cy="98" r="5"/><circle class="sc-dot-w" cx="240" cy="98" r="5"/><text class="t tc" x="130" y="124">всплеск между точками</text></svg></figure>
+      </article>
+      <article class="gl" id="g-window">
+        <div class="gl__text">
+          <h3>Окно времени<i>time window</i></h3>
+          <p class="gl__def">Промежуток, за который складывают измерения, чтобы получить одно число: количество, долю, среднее.</p>
+          <p class="gl__ex"><b>Пример</b>доля ошибок стенда за 5 секунд — 55%, за 30 секунд — 18%.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.2, §7</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Окно времени"><line class="sc-axis" x1="10" y1="100" x2="250" y2="100"/><rect class="sc-soft" x="20" y="30" width="220" height="64" rx="4"/><rect class="sc-amb" x="110" y="44" width="40" height="50" rx="4"/><text class="tm tc" x="130" y="40">5 с</text><text class="tm tc" x="130" y="120">30 с</text></svg></figure>
+      </article>
+      <article class="gl" id="g-share">
+        <div class="gl__text">
+          <h3>Доля<i>ratio</i></h3>
+          <p class="gl__def">Количество событий за окно, делённое на количество всех событий за то же окно. Для нескольких экземпляров складывают количества. При нулевом знаменателе доли нет — «нет данных».</p>
+          <p class="gl__ex"><b>Пример</b>(5 + 0) / (10 + 990) = 0,5%.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.2, §7–§9</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Доля"><rect class="sc-wrn" x="60" y="20" width="140" height="34" rx="6"/><text class="t tc" x="130" y="42">ошибки за окно</text><line class="sc-axis" x1="60" y1="64" x2="200" y2="64"/><rect class="sc-acc" x="60" y="74" width="140" height="34" rx="6"/><text class="t tc" x="130" y="96">все за окно</text></svg></figure>
+      </article>
+      <article class="gl" id="g-baseline">
+        <div class="gl__text">
+          <h3>Базовый уровень<i>baseline</i></h3>
+          <p class="gl__def">Значение показателя, обычное для этого сервиса в это время. С ним сравнивают текущее значение.</p>
+          <p class="gl__ex"><b>Пример</b>вчера в 14:00 — 620 запросов в минуту, сегодня 300: на 52% меньше.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.2, §10</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Базовый уровень"><line class="sc-axis" x1="10" y1="110" x2="250" y2="110"/><polyline class="sc-line" stroke-dasharray="5 4" points="10,100 60,95 110,50 160,40 210,45 250,90"/><polyline class="sc-plot" points="10,100 60,95 110,50 140,42 160,80"/><circle class="sc-dot-w" cx="160" cy="80" r="5"/><text class="tm" x="168" y="84">сегодня</text><text class="tm" x="168" y="34">вчера</text></svg></figure>
+      </article>
+      <article class="gl" id="g-rule">
+        <div class="gl__text">
+          <h3>Правило оповещения<i>alerting rule</i></h3>
+          <p class="gl__def">Условие на показатель с порогом, длительностью и получателем. Когда условие выполняется заданное время подряд, получатель получает уведомление.</p>
+          <p class="gl__ex"><b>Пример</b>доля ответов 500 у <code>/products</code> выше 2% пять минут подряд — уведомление дежурному.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.2, §11</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Правило оповещения"><line class="sc-axis" x1="10" y1="110" x2="250" y2="110"/><line class="sc-arrow-w" x1="10" y1="80" x2="250" y2="80" stroke-dasharray="5 4"/><polyline class="sc-plot" points="10,100 40,60 70,100 110,60 140,55 170,58 200,52 230,56"/><circle class="sc-dot-w" cx="230" cy="56" r="5"/><text class="tm tw" x="150" y="30">уведомление</text></svg></figure>
+      </article>
+    </div>
+  </section>
+
+  <section class="part">
+    <h3>Итог лекции</h3>
+    <p>Мониторинг — цепочка из пяти шагов: измерить, сохранить, сопоставить, показать, отреагировать. Значения, снятые по расписанию и сохранённые со временем, образуют временной ряд, и по нему видно, когда началось изменение. Число из ряда читают вместе с объектом, величиной, единицей и способом расчёта: те же 20 запросов дали медиану 84 мс и среднее 380 мс. От интервала измерения зависит, попадут ли короткие события в историю, от окна — что означает доля. Когда запросов нет, на панели пишут «нет данных», а доли нескольких экземпляров объединяют суммой количеств. Текущее значение сравнивают с базовым уровнем, а правило оповещения с длительностью превращает ряд в уведомление без ложных тревог.</p>
+    <h3>Источники</h3>
+    <ul class="sources">
+      <li>Google SRE Book. Monitoring Distributed Systems — sre.google/sre-book/monitoring-distributed-systems</li>
+      <li>Prometheus. Data model — prometheus.io/docs/concepts/data_model</li>
+      <li>Python. statistics — docs.python.org/3/library/statistics.html</li>
+      <li>Вывод <code>collect.py</code>, <code>experiment.py</code>, <code>window.py</code> снят на стенде products-api (FastAPI 0.115.6) 10.11.2026; <code>interval.py</code>, <code>share.py</code> и сравнение с базовым уровнем — модели на придуманных числах, вывод получен запуском в Python 3</li>
+    </ul>
+  </section>
+
+  <div class="pager">
+    <a href="1-1-posle-razvertyvaniya.html">← 1.1 Сервис после развёртывания</a>
+    <a href="index.html">К содержанию справочника</a>
+    <a href="1-3-nablyudaemost.html">1.3 Наблюдаемость →</a>
+  </div>
+  <div class="colophon">
+    <span>Лекция 1.2 · Мониторинг · Метрики и наблюдаемость</span>
+    <span class="author-line">Автор: Макаров Максим Николаевич</span>
+  </div>
+    </main>
+  </div>
+</div>
+<script src="reader.js"></script>
+</body>
+</html>

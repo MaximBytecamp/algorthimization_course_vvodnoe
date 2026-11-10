@@ -1,0 +1,798 @@
+/* Метрики и наблюдаемость — лекции. Основа — вёрстка справочника по Python;
+   в конце файла — блоки лекций (определение, рисунок, разбор кода, вывод, переход)
+   Автор: Макаров Максим Николаевич */
+
+:root {
+  --ink: #020835;
+  --ink-soft: #3B4467;
+  --ink-faint: #8A93B2;
+  --blue: #2D7FC1;
+  --sky: #6FB8E3;
+  --light: #BFE2F5;
+  --paper: #F2F1E9;
+  --page: #FFFDF8;
+  --rule: rgba(2, 8, 53, .16);
+  --pixel: "Pixelify Sans", "Roboto Mono", monospace;
+  --body: Inter, system-ui, -apple-system, sans-serif;
+  --display: Literata, "PT Serif", Georgia, "Times New Roman", serif;
+  --mono: "Roboto Mono", "SFMono-Regular", Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 17px;
+  line-height: 1.6;
+  background-image:
+    linear-gradient(rgba(2, 8, 53, .055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(2, 8, 53, .055) 1px, transparent 1px);
+  background-size: 32px 32px;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--blue); }
+code, samp { font-family: var(--mono); }
+kbd {
+  display: inline-block;
+  padding: 2px 7px;
+  border: 2px solid var(--ink);
+  border-bottom-width: 3px;
+  background: #fff;
+  font: 600 13px/1.3 var(--mono);
+  white-space: nowrap;
+}
+
+/* ── Служебные подписи ───────────────────────────────────────── */
+.eyebrow {
+  margin: 0;
+  font: 600 11px/1.4 var(--pixel);
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--blue);
+}
+.author-line {
+  font: 600 11px/1.5 var(--pixel);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+/* ── Книга: корешок + блок страниц ───────────────────────────── */
+.book {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 5vh 24px 8vh;
+}
+.book__body {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  border: 3px solid var(--ink);
+  box-shadow: 10px 10px 0 var(--ink);
+  background: var(--page);
+}
+
+/* Корешок с прошивкой */
+.spine {
+  position: relative;
+  background: var(--ink);
+  color: var(--light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px 0;
+  overflow: hidden;
+}
+.spine span {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font: 600 11px/1 var(--pixel);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--sky);
+}
+.spine::before,
+.spine::after {
+  content: "";
+  position: absolute;
+  top: 26px;
+  bottom: 26px;
+  width: 0;
+  border-left: 2px dashed rgba(191, 226, 245, .45);
+}
+.spine::before { left: 14px; }
+.spine::after { right: 14px; }
+
+/* Страница: край сшивки слева, «стопка листов» справа */
+.leaf {
+  position: relative;
+  padding: 46px clamp(22px, 4.4vw, 64px) 40px;
+  background: var(--page);
+  border-left: 3px solid var(--ink);
+  background-image: linear-gradient(90deg, rgba(2, 8, 53, .07), rgba(2, 8, 53, 0) 26px);
+}
+
+/* ── Колонтитул ──────────────────────────────────────────────── */
+.running {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  margin-bottom: 34px;
+  border-bottom: 2px solid var(--ink);
+}
+.running__folio {
+  font: 700 12px/1 var(--mono);
+  color: var(--ink-soft);
+}
+
+/* ── Заголовки ───────────────────────────────────────────────── */
+h1 {
+  margin: 0 0 14px;
+  font-family: var(--display);
+  font-size: clamp(29px, 4vw, 53px);
+  line-height: 1.04;
+  letter-spacing: -.022em;
+}
+h2 {
+  margin: 56px 0 16px;
+  font-family: var(--display);
+  font-size: clamp(21px, 2.05vw, 29px);
+  line-height: 1.2;
+  letter-spacing: -.015em;
+  scroll-margin-top: 24px;
+}
+h2 .sec {
+  display: inline-block;
+  margin-right: 12px;
+  padding: 5px 10px;
+  background: var(--ink);
+  color: var(--sky);
+  font: 700 13px/1 var(--mono);
+  letter-spacing: 0;
+  vertical-align: middle;
+}
+h3 {
+  margin: 32px 0 10px;
+  font-size: clamp(17px, 1.4vw, 21px);
+  letter-spacing: -.01em;
+}
+p { margin: 0 0 16px; max-width: 74ch; }
+.lead {
+  max-width: 70ch;
+  color: var(--ink-soft);
+  font-size: clamp(17px, 1.35vw, 21px);
+  line-height: 1.5;
+}
+strong { font-weight: 700; }
+.term { font-weight: 700; box-shadow: inset 0 -.42em 0 var(--light); }
+
+ul, ol { max-width: 74ch; margin: 0 0 16px; padding-left: 22px; }
+li { margin-bottom: 7px; }
+li::marker { color: var(--blue); font-weight: 700; }
+
+/* ── Паспорт темы ────────────────────────────────────────────── */
+.passport {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0;
+  margin: 30px 0 8px;
+  border: 3px solid var(--ink);
+  background: #fff;
+  box-shadow: 6px 6px 0 var(--ink);
+}
+.passport div {
+  padding: 14px 16px;
+  border-right: 2px solid var(--rule);
+}
+.passport div:last-child { border-right: 0; }
+.passport dt {
+  margin: 0 0 6px;
+  font: 600 10px/1.3 var(--pixel);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--blue);
+}
+.passport dd { margin: 0; font-size: 15px; line-height: 1.4; }
+
+/* ── Код ─────────────────────────────────────────────────────── */
+figure.code {
+  margin: 22px 0;
+  border: 3px solid var(--ink);
+  background: #0E1430;
+  box-shadow: 6px 6px 0 var(--ink);
+  overflow: hidden;
+}
+figure.code figcaption {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 14px;
+  background: var(--ink);
+  color: var(--sky);
+  font: 600 11px/1.3 var(--pixel);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+figure.code pre {
+  margin: 0;
+  padding: 18px 16px;
+  overflow-x: auto;
+  color: #E8ECF8;
+  font: 400 14.5px/1.65 var(--mono);
+  tab-size: 4;
+}
+figure.code--out { background: #fff; }
+figure.code--out pre { color: var(--ink); }
+figure.code--out figcaption { background: var(--light); color: var(--ink); }
+.c { color: #7E8AAE; }
+.s { color: #9BE38C; }
+.n { color: #FFC46B; }
+.k { color: #78C6FF; }
+.f { color: #FF9ED2; }
+p code, li code, td code {
+  padding: 1px 5px;
+  background: #fff;
+  border: 1px solid var(--rule);
+  font-size: .9em;
+}
+
+figure.illustration {
+  margin: 22px 0;
+  border: 3px solid var(--ink);
+  background: #fff;
+  box-shadow: 6px 6px 0 var(--ink);
+  overflow: hidden;
+}
+figure.illustration img {
+  display: block;
+  width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+}
+/* Вертикальный снимок (панель, список) при ширине колонки упирается
+   в max-height, и object-fit оставляет белые поля по бокам. Такому кадру
+   задаём ширину по содержимому и снимаем ограничение высоты. */
+figure.illustration--narrow { max-width: 480px; margin-inline: auto; }
+figure.illustration--narrow img { max-height: none; }
+figure.illustration figcaption {
+  padding: 9px 14px;
+  border-top: 2px solid var(--ink);
+  background: var(--light);
+  color: var(--ink-soft);
+  font: 600 10px/1.4 var(--pixel);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* ── Номера поверх снимка ────────────────────────────────────
+   Когда текст разбирает снимок по пунктам, номер должен стоять
+   на самом элементе: подпись «слева внизу» читатель сопоставляет
+   с экраном дольше, чем цифру на нужной панели.
+   Координаты заданы в процентах от кадра, поэтому пропорция
+   картинки в разметке должна совпадать с пропорцией файла. */
+.shot {
+  position: relative;
+  line-height: 0;
+}
+.shot img { display: block; width: 100%; }
+.shot__pin {
+  position: absolute;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  background: var(--blue);
+  color: #fff;
+  border: 2px solid #fff;
+  border-radius: 3px;
+  font: 700 12px/1 var(--mono, ui-monospace, monospace);
+  box-shadow: 0 2px 6px rgba(2, 8, 53, .45);
+}
+@media (max-width: 600px) {
+  .shot__pin { min-width: 18px; height: 18px; font-size: 10px; border-width: 1px; }
+}
+
+/* ── Схема: рисованное объяснение механизма ──────────────────── */
+figure.viz {
+  margin: 22px 0;
+  border: 3px solid var(--ink);
+  background: var(--page);
+  box-shadow: 6px 6px 0 var(--ink);
+  overflow: hidden;
+}
+figure.viz figcaption {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 14px;
+  background: var(--ink);
+  color: var(--sky);
+  font: 600 11px/1.3 var(--pixel);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+.viz__body { padding: 20px 16px; overflow-x: auto; }
+.viz__body svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+.viz--wide .viz__body svg { width: 940px; max-width: none; }
+.viz__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0;
+  padding: 0 16px 16px;
+  list-style: none;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.viz__legend li { display: flex; align-items: center; gap: 7px; }
+.viz__legend i {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  border: 2px solid var(--ink);
+  background: #fff;
+}
+.viz-svg-label { font: 600 13px var(--mono); fill: var(--ink); }
+.viz-svg-small { font: 600 11px var(--pixel); letter-spacing: .8px; fill: var(--ink-soft); text-transform: uppercase; }
+.viz-svg-idx { font: 500 12px var(--mono); fill: var(--ink-faint); }
+
+/* ── Заметка на полях ────────────────────────────────────────── */
+.margin-note {
+  margin: 24px 0;
+  padding: 16px 18px;
+  border-left: 6px solid var(--blue);
+  background: #fff;
+  border-top: 2px solid var(--rule);
+  border-right: 2px solid var(--rule);
+  border-bottom: 2px solid var(--rule);
+  max-width: 74ch;
+}
+/* Заголовок блока — только прямой потомок. Без «>» правило ловило и
+   выделения внутри абзаца: «Add python.exe to PATH» посреди фразы
+   становилось отдельной строкой капслоком и разрывало предложение. */
+.margin-note > b {
+  display: block;
+  margin-bottom: 6px;
+  font: 600 10px/1.3 var(--pixel);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--blue);
+}
+.margin-note p:last-child { margin-bottom: 0; }
+.margin-note--warn { border-left-color: #D7541F; }
+.margin-note--warn > b { color: #D7541F; }
+
+/* ── Таблицы ─────────────────────────────────────────────────── */
+.table-scroll { overflow-x: auto; margin: 22px 0; }
+table {
+  width: 100%;
+  min-width: 460px;
+  border-collapse: collapse;
+  background: #fff;
+  border: 3px solid var(--ink);
+  box-shadow: 6px 6px 0 var(--ink);
+  font-size: 15.5px;
+}
+th, td { padding: 11px 14px; text-align: left; border-bottom: 2px solid var(--rule); vertical-align: top; }
+th {
+  background: var(--ink);
+  color: var(--sky);
+  font: 600 11px/1.3 var(--pixel);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+tbody tr:last-child td { border-bottom: 0; }
+
+/* Таблицы «Частые ошибки»: коду и пояснениям нужно больше места. */
+.errors-table table {
+  min-width: 920px;
+  table-layout: fixed;
+}
+.errors-table th:nth-child(1),
+.errors-table td:nth-child(1) { width: 30%; }
+.errors-table th:nth-child(2),
+.errors-table td:nth-child(2) { width: 35%; }
+.errors-table th:nth-child(3),
+.errors-table td:nth-child(3) { width: 35%; }
+.errors-table td { overflow-wrap: break-word; }
+.errors-table td code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* ── Схема «имя → значение» ──────────────────────────────────── */
+.boxes { display: grid; gap: 10px; margin: 22px 0; max-width: 640px; }
+.boxes div {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) 26px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+.boxes b {
+  padding: 9px 12px;
+  border: 2px solid var(--ink);
+  background: #fff;
+  font: 500 14px/1 var(--mono);
+  font-weight: 700;
+}
+.boxes i { color: var(--blue); font-style: normal; text-align: center; font-weight: 700; }
+.boxes span {
+  padding: 9px 12px;
+  border: 2px dashed var(--ink);
+  background: var(--light);
+  font: 500 14px/1 var(--mono);
+}
+
+/* ── Проверь себя ────────────────────────────────────────────── */
+details {
+  margin: 0 0 10px;
+  padding: 14px 16px;
+  border: 2px solid var(--ink);
+  background: #fff;
+  max-width: 74ch;
+}
+details summary {
+  cursor: pointer;
+  font-weight: 650;
+  list-style: none;
+}
+details summary::-webkit-details-marker { display: none; }
+details summary::before {
+  content: "▸ ";
+  color: var(--blue);
+  font-weight: 700;
+}
+details[open] summary::before { content: "▾ "; }
+details[open] summary { margin-bottom: 10px; }
+details p:last-child, details ul:last-child { margin-bottom: 0; }
+
+/* ── Колофон / подпись автора ────────────────────────────────── */
+.colophon {
+  margin-top: 60px;
+  padding-top: 18px;
+  border-top: 3px solid var(--ink);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 26px;
+  justify-content: space-between;
+  align-items: baseline;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 34px;
+}
+.pager a {
+  padding: 12px 16px;
+  border: 3px solid var(--ink);
+  background: var(--light);
+  color: var(--ink);
+  text-decoration: none;
+  box-shadow: 4px 4px 0 var(--ink);
+  font-weight: 650;
+  transition: transform .08s steps(2), box-shadow .08s steps(2);
+}
+.pager a:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--ink); }
+
+@media (max-width: 720px) {
+  body { font-size: 16px; }
+  .book { padding: 3vh 12px 6vh; }
+  .book__body { grid-template-columns: 34px minmax(0, 1fr); box-shadow: 6px 6px 0 var(--ink); }
+  .spine::before { left: 8px; }
+  .spine::after { right: 8px; }
+  .leaf { padding: 28px 18px 30px; }
+  .boxes div { grid-template-columns: 1fr; gap: 4px; }
+  .boxes i { text-align: left; }
+
+  .errors-table { overflow: visible; }
+  .errors-table table,
+  .errors-table tbody,
+  .errors-table tr,
+  .errors-table td { display: block; width: 100%; }
+  .errors-table table {
+    min-width: 0;
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+  .errors-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .errors-table tr {
+    margin-bottom: 16px;
+    border: 2px solid var(--ink);
+    background: #fff;
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .errors-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .errors-table td:nth-child(1),
+  .errors-table td:nth-child(2),
+  .errors-table td:nth-child(3) { width: 100%; }
+  .errors-table tbody tr td { border-bottom: 1px solid var(--rule); }
+  .errors-table tbody tr td:last-child { border-bottom: 0; }
+  .errors-table td::before {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--blue);
+    font: 600 9px/1.3 var(--pixel);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .errors-table td:nth-child(1)::before { content: "Что написано"; }
+  .errors-table td:nth-child(2)::before { content: "Что произойдёт"; }
+  .errors-table td:nth-child(3)::before { content: "Как правильно"; }
+  .errors-table td code {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* ── Элементы страницы главы ─────────────────────────────────── */
+.chapter-head { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+.chapter-num { display: inline-block; margin-bottom: 14px; padding: 6px 12px; background: var(--blue); color: #fff; font: 700 13px/1 var(--mono); box-shadow: 4px 4px 0 var(--ink); }
+.quote { margin: 30px 0 0; padding: 16px 20px; border-left: 6px solid var(--ink); background: var(--light); font-size: 17px; line-height: 1.5; }
+.quote p { margin: 0; max-width: none; }
+
+.contents { margin: 34px 0 0; padding: 18px 20px; border: 2px dashed var(--ink); background: #fff; }
+.contents b { display: block; margin-bottom: 10px; font: 600 10px/1.3 var(--pixel); letter-spacing: 1.2px; text-transform: uppercase; color: var(--blue); }
+.contents ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 32px; max-width: none; }
+.contents li { break-inside: avoid; margin-bottom: 4px; font-size: 15px; }
+.contents a { color: var(--ink); text-decoration: none; }
+.contents a:hover { color: var(--blue); text-decoration: underline; }
+
+.cheat { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin: 22px 0; }
+.cheat div { padding: 16px 18px; border: 3px solid var(--ink); background: #fff; box-shadow: 5px 5px 0 var(--ink); }
+.cheat b { display: block; margin-bottom: 8px; font: 600 10px/1.3 var(--pixel); letter-spacing: 1.2px; text-transform: uppercase; color: var(--blue); }
+.cheat code { display: block; margin-bottom: 6px; font-size: 14px; background: none; border: 0; padding: 0; }
+
+.type-badge { display: inline-block; margin-right: 10px; padding: 4px 10px; background: var(--light); border: 2px solid var(--ink); font: 700 14px/1 var(--mono); letter-spacing: 0; vertical-align: middle; }
+.u { color: var(--blue); font-weight: 700; box-shadow: inset 0 -2px 0 var(--sky); }
+
+.steps { counter-reset: st; list-style: none; padding: 0; margin: 22px 0; max-width: 74ch; }
+.steps li { counter-increment: st; position: relative; padding: 10px 0 10px 46px; border-bottom: 2px solid var(--rule); }
+.steps li:last-child { border-bottom: 0; }
+.steps li::before { content: counter(st); position: absolute; left: 0; top: 10px; width: 30px; height: 30px; display: grid; place-items: center; background: var(--ink); color: var(--sky); font: 700 13px/1 var(--mono); }
+
+@media (max-width: 720px) { .contents ol { columns: 1; } }
+
+
+/* ══ Блоки лекций по наблюдаемости ═══════════════════════════════
+   Подача спокойная и цельная: три цвета (тёмно-синий текст, синий акцент, бледно-голубая подсветка),
+   оранжевый — только для ошибок. Тень остаётся у кода; рисунки, определения, разборы и таблицы —
+   в тонкой рамке без тени, служебные строки (о чём раздел, вывод, переход) — текстом с чертой. */
+:root {
+  --warn: #C4511F;
+  --warn-soft: #F8E6DD;
+  --tint: #EEF2F9;
+}
+
+.chapter-head .chapter-num { justify-self: start; }
+
+/* разделы отделены пунктиром */
+.part + .part { margin-top: 48px; padding-top: 4px; border-top: 2px dashed var(--rule); }
+.part > h2:first-child { margin-top: 36px; }
+
+/* о чём раздел — продолжение заголовка */
+.about { margin: -6px 0 20px; color: var(--ink-soft); font-size: 17px; }
+
+/* переход к следующему разделу */
+.next { margin: 28px 0 0; padding-top: 12px; border-top: 1px solid var(--rule); color: var(--ink-soft); font-size: 15.5px; max-width: 74ch; }
+.next::before { content: "→ "; color: var(--blue); font-weight: 700; }
+
+p code, li code, td code, dd code, summary code, .walk span code, figcaption code { padding: 1px 5px; background: #fff; border: 1px solid var(--rule); font-size: .9em; }
+
+/* определение термина: заголовок-термин и строки «что это / что даёт / пример» */
+.def { margin: 24px 0; border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); max-width: 74ch; }
+.def__term { padding: 10px 0 8px; font: 700 19px/1.3 var(--display); }
+.def__term i { margin-left: 10px; font: 500 13px var(--mono); font-style: normal; color: var(--blue); }
+.def dl { display: grid; grid-template-columns: 120px 1fr; margin: 0; }
+.def dt, .def dd { margin: 0; padding: 8px 0; border-top: 1px solid var(--rule); }
+.def dt { font: 600 10px/2 var(--pixel); letter-spacing: 1.2px; text-transform: uppercase; color: var(--blue); }
+.def dd { font-size: 15.5px; line-height: 1.5; }
+
+/* вывод раздела */
+.key { margin: 24px 0; padding: 2px 0 2px 16px; border-left: 3px solid var(--blue); max-width: 74ch; }
+.key > b { display: block; margin-bottom: 4px; font: 600 10px/1.3 var(--pixel); letter-spacing: 1.2px; text-transform: uppercase; color: var(--blue); }
+.key p:last-child { margin-bottom: 0; }
+.key--warn { border-left-color: var(--warn); }
+.key--warn > b { color: var(--warn); }
+
+/* код: ошибка и выделенная строка вывода */
+figure.code--err { background: #fff; }
+figure.code--err figcaption { background: var(--warn-soft); color: var(--warn); }
+figure.code--err pre { color: #8F2D0B; }
+.hl { color: var(--blue); font-weight: 700; }
+
+/* разбор кода: строка программы → что она делает */
+.walk { margin: 22px 0; border: 2px solid var(--ink); background: #fff; }
+.walk div { display: grid; grid-template-columns: minmax(180px, 38%) 1fr; }
+.walk div + div { border-top: 1px solid var(--rule); }
+.walk > div > code { padding: 10px 14px; border-right: 1px solid var(--rule); font-size: 13.5px; font-weight: 500; overflow-wrap: anywhere; }
+.walk span { padding: 10px 14px; font-size: 15.5px; line-height: 1.5; }
+
+/* рисунок ситуации или схема механизма */
+figure.scene { margin: 22px 0; border: 2px solid var(--ink); background: #fff; }
+figure.scene svg { display: block; width: 100%; height: auto; padding: 18px 16px 10px; }
+figure.scene figcaption { padding: 8px 14px 10px; border-top: 1px solid var(--rule); color: var(--ink-soft); font-size: 14px; line-height: 1.45; }
+figure.scene figcaption b { color: var(--ink); }
+.scene-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.scene-pair figure.scene { margin: 22px 0 10px; }
+
+.sc-box { fill: #fff; stroke: var(--ink); stroke-width: 2; }
+.sc-soft { fill: #fff; stroke: var(--ink-faint); stroke-width: 2; stroke-dasharray: 6 4; }
+.sc-acc { fill: var(--light); stroke: var(--ink); stroke-width: 2; }
+.sc-amb { fill: var(--tint); stroke: var(--ink); stroke-width: 2; }
+.sc-wrn { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 2; }
+.sc-ink { fill: var(--ink); }
+.sc-person { fill: var(--light); stroke: var(--ink); stroke-width: 1.5; }
+.sc-line { fill: none; stroke: var(--ink-soft); stroke-width: 1.5; }
+.sc-arrow { fill: none; stroke: var(--blue); stroke-width: 2.5; }
+.sc-arrow-w { fill: none; stroke: var(--warn); stroke-width: 2.5; stroke-dasharray: 6 4; }
+.sc-grid { stroke: var(--rule); stroke-width: 1; }
+.sc-axis { stroke: var(--ink); stroke-width: 1.5; }
+.sc-plot { fill: none; stroke: var(--blue); stroke-width: 3.5; stroke-linejoin: round; }
+.sc-dot { fill: #fff; stroke: var(--ink); stroke-width: 2.5; }
+.sc-dot-w { fill: #fff; stroke: var(--warn); stroke-width: 2.5; }
+.t { font: 500 13px var(--body); fill: var(--ink-soft); }
+.tm { font: 500 12.5px var(--mono); fill: var(--ink); }
+.tb { font: 700 14px var(--body); fill: var(--ink); }
+.tbig { font: 700 26px var(--mono); fill: var(--ink); }
+.tw { fill: var(--warn); font-weight: 600; }
+.ta { fill: var(--blue); font-weight: 700; }
+.tc { text-anchor: middle; }
+.tr { text-anchor: end; }
+
+/* таблицы и шпаргалка — в одной рамке с рисунками, без тени и тёмной шапки */
+table { border-width: 2px; box-shadow: none; }
+th { background: var(--tint); color: var(--ink-soft); }
+table.series { min-width: 520px; }
+table.series td, table.series th { text-align: center; font-family: var(--mono); }
+table.series th { font-family: var(--pixel); }
+table.series th:first-child, table.series td:first-child { text-align: left; }
+table.series .mark { background: var(--light); font-weight: 700; }
+.yes { color: var(--blue); font-weight: 700; }
+.no { color: var(--warn); font-weight: 700; }
+.caption { margin: -6px 0 20px; font-size: 14px; color: var(--ink-soft); }
+.cheat div { border-width: 2px; box-shadow: none; }
+.passport { border-width: 2px; box-shadow: none; }
+.sources { font-size: 14px; color: var(--ink-soft); }
+
+/* серия рисунков: системная история по шагам */
+.story { counter-reset: step; display: grid; gap: 14px; margin: 22px 0; }
+.story figure.scene { margin: 0; counter-increment: step; }
+.story figure.scene figcaption::before { content: "Шаг " counter(step) " · "; color: var(--blue); font-weight: 700; }
+.story > p { margin: 0; color: var(--ink-soft); }
+
+/* глоссарий: формулировка, пример и рисунок у каждого термина */
+.glossary { display: grid; gap: 14px; margin: 22px 0; }
+.gl { display: grid; grid-template-columns: minmax(0, 1fr) 280px; border: 2px solid var(--ink); background: #fff; scroll-margin-top: 24px; }
+.gl__text { padding: 14px 18px 12px; }
+.gl h3 { margin: 0 0 8px; font-family: var(--display); font-size: 19px; }
+.gl h3 i { margin-left: 8px; font: 500 12.5px var(--mono); font-style: normal; color: var(--blue); }
+.gl__def { margin: 0 0 8px; font-size: 15.5px; line-height: 1.5; }
+.gl__ex { margin: 0 0 8px; font-size: 14.5px; color: var(--ink-soft); }
+.gl__ex b, .gl__where b { font: 600 10px/1 var(--pixel); letter-spacing: 1px; text-transform: uppercase; color: var(--blue); margin-right: 6px; }
+.gl__where { margin: 0; font-size: 13.5px; color: var(--ink-faint); }
+.gl__pic { margin: 0; display: grid; place-items: center; border-left: 1px solid var(--rule); }
+.gl__pic svg { display: block; width: 100%; height: auto; padding: 8px; }
+
+/* режим чтения: один раздел на экране */
+.reader-start { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px 24px; align-items: center; margin: 26px 0 0; padding: 16px 18px; border: 2px solid var(--ink); background: #fff; }
+.reader-start b { display: block; margin-bottom: 4px; font: 600 10px/1.3 var(--pixel); letter-spacing: 1.2px; text-transform: uppercase; color: var(--blue); }
+.reader-start p { margin: 0; font-size: 15.5px; color: var(--ink-soft); }
+.reader-start__btns { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+.reader-start button, .reader-bar button { padding: 9px 16px; border: 2px solid var(--ink); background: #fff; color: var(--ink); font: 650 15px/1.2 var(--body); cursor: pointer; }
+.reader-start button:hover, .reader-bar button:hover:not(:disabled) { background: var(--light); }
+.reader-start button.primary, .reader-bar__next { background: var(--ink) !important; color: #fff !important; }
+.reader-bar button:disabled { opacity: .35; cursor: default; }
+.reader-bar, .reader-progress { display: none; }
+body.reading .reader-bar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; gap: 12px; align-items: center; justify-content: center; padding: 10px 16px; border-top: 2px solid var(--ink); background: var(--page); }
+.reader-bar__where { flex: 0 1 420px; min-width: 0; display: grid; text-align: center; }
+.reader-bar__where b { font: 600 10px/1.4 var(--pixel); letter-spacing: 1.2px; text-transform: uppercase; color: var(--blue); }
+.reader-bar__where span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 650; font-size: 15px; }
+.reader-bar__exit { border-color: var(--rule) !important; font-size: 14px !important; }
+body.reading .reader-progress { display: block; position: fixed; top: 0; left: 0; right: 0; z-index: 20; height: 4px; background: var(--tint); }
+.reader-progress i { display: block; height: 100%; width: 0; background: var(--blue); transition: width .2s; }
+body.reading .chapter-head, body.reading .passport, body.reading .reader-start, body.reading .contents,
+body.reading .pager, body.reading .colophon, body.reading .leaf > .part:not(.is-current) { display: none; }
+body.reading .leaf > .part.is-current { margin-top: 0; padding-top: 0; border-top: 0; }
+body.reading .leaf > .part.is-current > h2:first-child { margin-top: 8px; }
+body.reading .book { padding-bottom: 110px; }
+body.reading .part .next { cursor: pointer; }
+body.reading .part .next:hover { color: var(--blue); }
+
+@media (max-width: 720px) {
+  .walk div, .def dl { grid-template-columns: 1fr; }
+  .walk > div > code { border-right: 0; }
+  .def dt { padding-bottom: 0; }
+  .def dd { border-top: 0; padding-top: 2px; }
+  .scene-pair { grid-template-columns: 1fr; }
+  .gl { grid-template-columns: 1fr; }
+  .gl__pic { border-left: 0; border-top: 1px solid var(--rule); }
+  .gl__pic svg { max-width: 320px; }
+  .reader-start { grid-template-columns: 1fr; }
+  .reader-start__btns { justify-content: flex-start; }
+  body.reading .reader-bar { flex-wrap: wrap; gap: 8px; padding: 10px; }
+  .reader-bar__where { order: -1; flex-basis: 100%; }
+  .reader-bar button { padding: 8px 12px; font-size: 14px; }
+}
+
+/* ── Кадры, модель, оглавление с номерами разделов ── */
+figure.shot-fig { margin: 22px 0; border: 2px solid var(--ink); background: #fff; }
+figure.shot-fig img { display: block; width: 100%; height: auto; }
+figure.shot-fig figcaption { padding: 8px 14px 10px; border-top: 1px solid var(--rule); color: var(--ink-soft); font-size: 14px; }
+.story > figure.shot-fig { margin: 0; }
+
+.contents ol { list-style: none; padding-left: 0; }
+.contents .csec { display: inline-block; min-width: 46px; color: var(--blue); font: 700 13px var(--mono); }
+.pager__soon { padding: 12px 16px; border: 2px dashed var(--rule); color: var(--ink-faint); font-weight: 600; }
+
+.model { margin: 22px 0; padding: 16px; border: 2px solid var(--ink); background: #fff; }
+.model__top { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; }
+.model__proc { display: grid; padding: 8px 14px; border: 2px solid var(--ink); background: var(--light); min-width: 170px; }
+.model__proc b { font: 600 10px/1.4 var(--pixel); letter-spacing: 1.2px; text-transform: uppercase; color: var(--blue); }
+.model__proc strong { font: 700 24px var(--mono); }
+.model__btns, .model__scen { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.model button { padding: 8px 14px; border: 2px solid var(--ink); background: #fff; color: var(--ink); font: 650 14.5px/1.2 var(--body); cursor: pointer; }
+.model button:hover { background: var(--light); }
+.model button.primary { background: var(--ink); color: #fff; }
+.model button.warn { border-color: var(--warn); color: var(--warn); }
+.model__chart { display: block; width: 100%; height: auto; margin: 14px 0 6px; }
+.model__bottom { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.model__table { margin: 0; }
+.model__table table { min-width: 0; }
+.model__table tr.after-restart td { color: var(--warn); font-weight: 700; }
+.model__calc { margin: 0; display: grid; gap: 6px; }
+.model__calc div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--rule); }
+.model__calc dt { font-size: 14.5px; color: var(--ink-soft); }
+.model__calc dd { margin: 0; font: 700 16px var(--mono); }
+.model__verdict { margin: 6px 0 0; font-weight: 650; font-size: 15px; }
+.model__verdict.ok { color: var(--blue); }
+.model__verdict.bad { color: var(--warn); }
+.model__scen { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--rule); font-size: 14.5px; color: var(--ink-soft); }
+details summary figure.scene { margin: 12px 0 4px; font-weight: 400; }
+@media (max-width: 720px) { .model__bottom { grid-template-columns: 1fr; } }
+
+p code, li code, dd code, .walk span code, figcaption code { overflow-wrap: anywhere; }
+/* узкий экран: длинный код и адреса переносятся, колонки не шире экрана */
+.cheat { grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); }
+.cheat code, .sources li, .gl__text code { overflow-wrap: anywhere; }
+@media (max-width: 720px) { .gl { grid-template-columns: minmax(0, 1fr); } }
+.gl h3 { overflow-wrap: anywhere; }
+
+/* ── Оглавление книги ── */
+.toc-part + .toc-part { margin-top: 40px; padding-top: 4px; border-top: 2px dashed var(--rule); }
+.toc-part h2 .sec { margin-right: 12px; }
+.toc-list { list-style: none; margin: 0; padding: 0; max-width: none; columns: 2; column-gap: 32px; }
+.toc-list li { break-inside: avoid; margin: 0; padding: 6px 0; border-bottom: 1px solid var(--rule); font-size: 15.5px; }
+.toc-list a { color: var(--ink); text-decoration: none; font-weight: 600; }
+.toc-list a:hover { color: var(--blue); }
+.toc-list .csec { display: inline-block; min-width: 46px; color: var(--blue); font: 700 13px var(--mono); }
+.toc-list .soon { color: var(--ink-faint); }
+.toc-list .soon .csec { color: var(--ink-faint); }
+.toc-list i { margin-left: 8px; font: 600 9px/1 var(--pixel); letter-spacing: 1px; text-transform: uppercase; font-style: normal; }
+@media (max-width: 720px) { .toc-list { columns: 1; } }

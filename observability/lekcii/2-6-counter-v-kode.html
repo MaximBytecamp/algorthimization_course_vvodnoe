@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>2.6 Counter в реальном коде · Метрики и наблюдаемость</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="book">
+  <div class="book__body">
+    <div class="spine"><span>Часть 2 · Метрики в коде</span></div>
+    <main class="leaf">
+  <div class="running">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Метрики и наблюдаемость</a> · часть 2 · метрики в коде</p>
+    <p class="running__folio">Лекция 2.6</p>
+  </div>
+
+  <header class="chapter-head">
+    <span class="chapter-num">2.6</span>
+    <h1>Counter в реальном коде</h1>
+    <p class="lead">Последняя лекция о счётчике: подсчёт исключений, правило одной регистрации и сервис из нескольких процессов. В конце — карта всей темы Counter.</p>
+  </header>
+  <dl class="passport">
+    <div><dt>Тема</dt><dd>Counter</dd></div>
+    <div><dt>Библиотека</dt><dd><code>prometheus-client</code> 0.26.0</dd></div>
+    <div><dt>Опирается на</dt><dd>Лекции 2.2–2.5</dd></div>
+    <div><dt>Результат</dt><dd>Писать счётчики, которые работают в сервисе</dd></div>
+  </dl>
+
+  <div class="reader-start">
+    <div>
+      <b>Режим чтения</b>
+      <p>Лекция откроется по одному разделу: на экране одна мысль, кнопка «Дальше» ведёт к следующей. Стрелки ← → на клавиатуре тоже листают, Esc возвращает всю лекцию.</p>
+    </div>
+    <div class="reader-start__btns">
+      <button type="button" data-reader-start="continue" hidden></button>
+      <button type="button" class="primary" data-reader-start="begin">Читать по шагам</button>
+    </div>
+  </div>
+
+  <nav class="contents">
+    <b>В этой лекции</b>
+    <ol>
+      <li><a href="#s1"><span class="csec">§1</span>Подсчёт исключений</a></li>
+      <li><a href="#s2"><span class="csec">§2</span>Одна метрика — одна регистрация</a></li>
+      <li><a href="#s3"><span class="csec">§3</span>Несколько процессов</a></li>
+      <li><a href="#s4"><span class="csec">§4</span>Частые ошибки</a></li>
+      <li><a href="#s5"><span class="csec">§5</span>Практика</a></li>
+      <li><a href="#s6"><span class="csec">§6</span>Проверьте себя</a></li>
+      <li><a href="#s7"><span class="csec">§7</span>Шпаргалка</a></li>
+      <li><a href="#s8"><span class="csec">§8</span>Глоссарий</a></li>
+    </ol>
+  </nav>
+
+<section class="part" id="s1">
+    <h2><span class="sec">§1</span>Подсчёт исключений</h2>
+    <p class="about">Как посчитать ошибки функции, не дописывая <code>inc()</code> в каждый обработчик.</p>
+
+    <p>Декоратор <code>count_exceptions</code> прибавляет единицу каждый раз, когда функция завершается исключением. Само исключение он пропускает дальше.</p>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>ошибки разбора суммы заказа</span></figcaption>
+<pre>failures = <span class="f">Counter</span>(<span class="s">"parse_failures"</span>, <span class="s">"Ошибки разбора заказа"</span>, registry=registry)
+
+<span class="f">@failures.count_exceptions</span>(ValueError)
+<span class="k">def</span> <span class="f">parse_amount</span>(text):
+    <span class="k">return</span> <span class="f">int</span>(text)
+
+<span class="k">for</span> text <span class="k">in</span> [<span class="s">"120"</span>, <span class="s">"abc"</span>, <span class="s">"75"</span>, <span class="s">""</span>]:
+    <span class="k">try</span>:
+        <span class="f">parse_amount</span>(text)
+    <span class="k">except</span> ValueError:
+        <span class="k">pass</span>
+
+<span class="f">print</span>(registry.<span class="f">get_sample_value</span>(<span class="s">"parse_failures_total"</span>))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>две ошибки из четырёх строк</span></figcaption><pre>2.0</pre></figure>
+    <p>Рисунок показывает, что происходит с каждой из четырёх строк в цикле:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 180" role="img" aria-label="Строки 120 и 75 проходят, abc и пустая строка дают ValueError, счётчик 2">
+        <rect class="sc-box" x="20" y="14" width="80" height="30" rx="6"/><text class="tm tc" x="60" y="34">"120"</text>
+        <rect class="sc-box" x="20" y="54" width="80" height="30" rx="6"/><text class="tm tc" x="60" y="74">"abc"</text>
+        <rect class="sc-box" x="20" y="94" width="80" height="30" rx="6"/><text class="tm tc" x="60" y="114">"75"</text>
+        <rect class="sc-box" x="20" y="134" width="80" height="30" rx="6"/><text class="tm tc" x="60" y="154">""</text>
+        <path class="sc-line" d="M104 29 L170 80 M104 69 L170 84 M104 109 L170 90 M104 149 L170 94"/>
+        <rect class="sc-amb" x="170" y="50" width="140" height="74" rx="10"/>
+        <text class="tm tc" x="240" y="82">parse_amount</text><text class="tm tc" x="240" y="104">int(text)</text>
+        <text class="tm ta" x="340" y="34">✓ 120</text>
+        <text class="tm tw" x="340" y="74">✗ ValueError</text>
+        <text class="tm ta" x="340" y="114">✓ 75</text>
+        <text class="tm tw" x="340" y="154">✗ ValueError</text>
+        <path class="sc-arrow-w" d="M450 70 C 480 70, 480 96, 504 96 M450 150 C 480 150, 480 104, 504 104"/>
+        <rect class="sc-acc" x="510" y="64" width="120" height="70" rx="10"/>
+        <text class="tm tc" x="570" y="88" style="font-size:11px">parse_failures</text><text class="tbig tc" x="570" y="120" style="font-size:22px">2.0</text>
+      </svg>
+      <figcaption>Каждое исключение <code>ValueError</code> прибавляет к счётчику 1. Успешные вызовы счётчик не трогают.</figcaption>
+    </figure>
+    <p>Строки <code>"120"</code> и <code>"75"</code> превращаются в числа, и счётчик их не замечает. Строки <code>"abc"</code> и <code>""</code> вызывают <code>ValueError</code>, и каждая оранжевая стрелка прибавляет к счётчику 1. Итог 2.0 совпадает с выводом программы. Ниже — что делает каждая конструкция:</p>
+    <div class="walk">
+      <div><code>@failures.count_exceptions(ValueError)</code><span>Оборачивает функцию. Исключение <code>ValueError</code> внутри неё прибавляет к счётчику 1. Без аргумента считаются исключения любого типа.</span></div>
+      <div><code>try / except ValueError: pass</code><span>Декоратор не перехватывает исключение, оно доходит до цикла. Здесь его перехватывает цикл, чтобы программа дошла до конца.</span></div>
+    </div>
+    <p>Чтобы считать исключения в нескольких строках, эти строки помещают в блок <code>with failures.count_exceptions():</code>. Счётчик растёт на каждое исключение, которое вылетело из блока.</p>
+    <p class="next">Во всех примерах счётчик создавался один раз в начале программы. У этого правила есть причина.</p>
+  </section>
+
+<section class="part" id="s2">
+    <h2><span class="sec">§2</span>Одна метрика — одна регистрация</h2>
+    <p class="about">Почему счётчик создают один раз на уровне модуля.</p>
+
+    <p>Реестр принимает одно имя только один раз. Второй счётчик с тем же именем реестр отклоняет:</p>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>счётчик создан дважды</span></figcaption>
+<pre>orders = <span class="f">Counter</span>(<span class="s">"orders"</span>, <span class="s">"Принятые заказы"</span>, registry=registry)
+orders_again = <span class="f">Counter</span>(<span class="s">"orders"</span>, <span class="s">"Принятые заказы"</span>, registry=registry)</pre>
+    </figure>
+    <figure class="code code--out code--err"><figcaption><span>Ошибка</span><span>имя уже занято</span></figcaption><pre>DuplicateTimeseries: Duplicated timeseries in CollectorRegistry: {'orders', 'orders_created', 'orders_total'}</pre></figure>
+    <p>Изобразим реестр как список мест под имена метрик:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Первый Counter orders занимает место в реестре, второй отклонён">
+        <rect class="sc-box" x="20" y="18" width="200" height="40" rx="8"/><text class="tm tc" x="120" y="43">Counter("orders") №1</text>
+        <rect class="sc-box" x="20" y="90" width="200" height="40" rx="8"/><text class="tm tc" x="120" y="115">Counter("orders") №2</text>
+        <rect class="sc-soft" x="380" y="14" width="240" height="120" rx="12"/>
+        <text class="t tc" x="500" y="36">реестр</text>
+        <rect class="sc-acc" x="400" y="48" width="200" height="34" rx="6"/><text class="tm tc" x="500" y="70">orders</text>
+        <path class="sc-arrow" d="M226 38 C 300 38, 320 65, 392 65 M384 59 L392 65 L384 71"/>
+        <path class="sc-arrow-w" d="M226 110 H340"/>
+        <text class="tb tc tw" x="352" y="116">✗</text>
+        <text class="t tc tw" x="500" y="112">DuplicateTimeseries</text>
+      </svg>
+      <figcaption>Место под имя <code>orders</code> занято первым счётчиком.</figcaption>
+    </figure>
+    <p>Первый счётчик занимает место <code>orders</code> — синяя стрелка. Второй приходит с тем же именем, место уже занято, и реестр выдаёт <code>DuplicateTimeseries</code>.</p>
+    <p>Ошибка обычно появляется, когда <code>Counter(...)</code> написан внутри функции обработки заказа. Первый вызов функции проходит, второй падает. Реестр запрещает повтор: два счётчика с одним именем дали бы в ответе две строки одного ряда, и по ним нельзя было бы выбрать верное число.</p>
+    <p class="next">Похожая путаница возникает и без повторной регистрации, если у сервиса несколько процессов.</p>
+  </section>
+
+<section class="part" id="s3">
+    <h2><span class="sec">§3</span>Несколько процессов</h2>
+    <p class="about">Какие числа получает Prometheus, если сервис запущен несколькими процессами, и как получить общее число.</p>
+
+    <p>Веб-серверы на Python часто запускают несколько процессов одного сервиса, например <code>uvicorn --workers 2</code>. У каждого процесса своя память и свой счётчик. Как у двух касс в магазине: у первой 6 чеков, у второй 14. Если спрашивать случайную кассу, ответ будет то 6, то 14. Сумму 20 не назовёт ни одна.</p>
+    <p>Опыт: <code>uvicorn --workers 2</code>, 20 запросов, затем шесть запросов <code>/metrics</code> подряд. Каждый запрос попадал в один из процессов:</p>
+    <div class="table-scroll">
+      <table class="series">
+        <thead><tr><th>Ответ</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr></thead>
+        <tbody><tr><td>Значение</td><td>6</td><td>14</td><td class="mark">6</td><td>14</td><td>14</td><td>14</td></tr></tbody>
+      </table>
+    </div>
+    <p class="caption">Первый процесс обработал 6 запросов, второй — 14. Ни один ответ не показывает 20.</p>
+    <p>Переход 14 → 6 Prometheus принял бы за сброс. Для такого сервиса в библиотеке есть режим нескольких процессов.</p>
+    <div class="def">
+      <div class="def__term">Режим нескольких процессов<i>multiprocess mode</i></div>
+      <dl>
+        <dt>Что это</dt><dd>Каждый процесс пишет свои числа в файл в общей папке. Ответ <code>/metrics</code> складывает файлы.</dd>
+        <dt>Что даёт</dt><dd>В ответе одно общее число всех процессов.</dd>
+        <dt>Как включить</dt><dd>Переменная окружения <code>PROMETHEUS_MULTIPROC_DIR</code> с путём к папке.</dd>
+      </dl>
+    </div>
+    <p>Рисунки показывают оба варианта: слева сервис без режима нескольких процессов, справа — с ним.</p>
+    <div class="scene-pair">
+      <figure class="scene">
+        <svg viewBox="0 0 300 200" role="img" aria-label="Prometheus попадает то в процесс 1 со значением 6, то в процесс 2 со значением 14">
+          <rect class="sc-acc" x="90" y="10" width="120" height="36" rx="8"/><text class="tb tc" x="150" y="33">Prometheus</text>
+          <path class="sc-arrow" d="M130 50 L80 112 M80 104 L80 112 L88 108"/>
+          <path class="sc-arrow" d="M170 50 L220 112 M220 104 L220 112 L212 108"/>
+          <rect class="sc-box" x="20" y="118" width="120" height="58" rx="8"/><text class="t tc" x="80" y="140">процесс 1</text><text class="tb tc" x="80" y="164">6</text>
+          <rect class="sc-box" x="160" y="118" width="120" height="58" rx="8"/><text class="t tc" x="220" y="140">процесс 2</text><text class="tb tc" x="220" y="164">14</text>
+          <text class="t tc tw" x="150" y="196">ответ: то 6, то 14</text>
+        </svg>
+        <figcaption><b>Без общего режима.</b> Ответ даёт тот процесс, в который попал запрос.</figcaption>
+      </figure>
+      <figure class="scene">
+        <svg viewBox="0 0 300 200" role="img" aria-label="Процессы пишут 6 и 14 в общую папку, ответ 20">
+          <rect class="sc-box" x="20" y="10" width="120" height="40" rx="8"/><text class="t tc" x="80" y="35">процесс 1: 6</text>
+          <rect class="sc-box" x="160" y="10" width="120" height="40" rx="8"/><text class="t tc" x="220" y="35">процесс 2: 14</text>
+          <path class="sc-line" d="M80 54 L120 84 M220 54 L180 84"/>
+          <rect class="sc-amb" x="60" y="84" width="180" height="44" rx="8"/><text class="tm tc" x="150" y="111">metrics-dir/ (файлы)</text>
+          <path class="sc-arrow" d="M150 132 V150 M144 143 L150 150 L156 143"/>
+          <rect class="sc-acc" x="90" y="154" width="120" height="38" rx="8"/><text class="tb tc" x="150" y="179">20.0</text>
+        </svg>
+        <figcaption><b>Режим нескольких процессов.</b> Ответ складывает числа из файлов.</figcaption>
+      </figure>
+    </div>
+    <p>Слева Prometheus каждый раз попадает в один из процессов и получает его число — 6 или 14. Справа процессы пишут свои числа в общую папку <code>metrics-dir</code>, и ответ собирается из обеих записей: 20.0. Режим включается переменной окружения — это видно в первых строках кода:</p>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>два процесса, общая папка</span></figcaption>
+<pre><span class="k">import</span> os
+os.<span class="f">makedirs</span>(<span class="s">"metrics-dir"</span>, exist_ok=<span class="k">True</span>)
+os.environ[<span class="s">"PROMETHEUS_MULTIPROC_DIR"</span>] = <span class="s">"metrics-dir"</span>
+
+<span class="k">from</span> multiprocessing <span class="k">import</span> Process
+<span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, generate_latest, multiprocess
+
+requests = <span class="f">Counter</span>(<span class="s">"http_requests"</span>, <span class="s">"HTTP-запросы"</span>)
+
+<span class="k">def</span> <span class="f">worker</span>(n):
+    <span class="k">for</span> _ <span class="k">in</span> <span class="f">range</span>(n):
+        requests.<span class="f">inc</span>()
+
+<span class="k">if</span> __name__ == <span class="s">"__main__"</span>:
+    <span class="k">for</span> n <span class="k">in</span> (<span class="n">6</span>, <span class="n">14</span>):
+        p = <span class="f">Process</span>(target=worker, args=(n,))
+        p.<span class="f">start</span>()
+        p.<span class="f">join</span>()
+
+    registry = <span class="f">CollectorRegistry</span>()
+    multiprocess.<span class="f">MultiProcessCollector</span>(registry)
+    <span class="f">print</span>(<span class="f">generate_latest</span>(registry).<span class="f">decode</span>())</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>сумма двух процессов</span></figcaption><pre># HELP http_requests_total HTTP-запросы
+# TYPE http_requests_total counter
+http_requests_total 20.0</pre></figure>
+    <div class="walk">
+      <div><code>os.environ["PROMETHEUS_MULTIPROC_DIR"]</code><span>Включает режим. Переменную задают до импорта библиотеки: от неё при импорте зависит, где будут храниться числа — в памяти или в файлах.</span></div>
+      <div><code>Process(target=worker, args=(n,))</code><span>Запускает отдельный процесс, который обрабатывает <code>n</code> запросов. В папке появляется его файл с числом.</span></div>
+      <div><code>MultiProcessCollector(registry)</code><span>Читает все файлы папки и складывает значения. Так строится ответ <code>/metrics</code>.</span></div>
+    </div>
+    <p>Второй способ — один процесс на контейнер. Тогда каждый процесс отдаёт свой ответ, Prometheus хранит их отдельными рядами, и числа не смешиваются.</p>
+  </section>
+
+  <section class="part" id="s4">
+    <h2><span class="sec">§4</span>Частые ошибки</h2>
+    <p class="about">Что пишут неправильно и как исправить.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Что написано</th><th>Что произойдёт</th><th>Как правильно</th></tr></thead>
+        <tbody>
+          <tr><td><code>Counter(...)</code> внутри функции</td><td><code>DuplicateTimeseries</code> при втором вызове</td><td>создать счётчик один раз на уровне модуля</td></tr>
+          <tr><td><code>@count_exceptions</code> без обработки исключения</td><td>счётчик растёт, но программа всё равно падает</td><td>перехватывать исключение в вызывающем коде</td></tr>
+          <tr><td>несколько процессов без общего режима</td><td>ответ <code>/metrics</code> то от одного процесса, то от другого</td><td><code>PROMETHEUS_MULTIPROC_DIR</code> или один процесс на контейнер</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="part" id="s5">
+    <h2><span class="sec">§5</span>Практика</h2>
+    <p class="about">Задача на то, что разобрано в лекции. Решение спрятано под задачей.</p>
+    <h3>Задача 1. Ошибка во втором заказе</h3>
+    <p>Ситуация:</p>
+    <ul>
+      <li>первый заказ обрабатывается без ошибок;</li>
+      <li>на втором заказе программа падает с <code>DuplicateTimeseries</code>.</li>
+    </ul>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>код с ошибкой</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> Counter
+
+
+<span class="k">def</span> <span class="f">handle_order</span>(order_id):
+    orders = <span class="f">Counter</span>(<span class="s">"orders"</span>, <span class="s">"Принятые заказы"</span>)
+    orders.<span class="f">inc</span>()
+    <span class="f">print</span>(<span class="s">"принят заказ"</span>, order_id)
+
+
+<span class="f">handle_order</span>(<span class="n">1</span>)
+<span class="f">handle_order</span>(<span class="n">2</span>)</pre>
+    </figure>
+    <div class="key"><b>Что нужно сделать</b><p>Объяснить, почему падает второй вызов, и исправить код так, чтобы оба заказа обработались.</p></div>
+    <details><summary>Решение</summary>
+    <p><code>Counter(...)</code> стоит внутри функции. Первый вызов регистрирует счётчик <code>orders</code> в общем реестре. Второй вызов пытается зарегистрировать его снова, и реестр отказывает (§2). Счётчик нужно создать один раз, на уровне модуля:</p>
+    <figure class="code">
+      <figcaption><span>main.py</span><span>счётчик на уровне модуля</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> Counter
+
+ORDERS = <span class="f">Counter</span>(<span class="s">"orders"</span>, <span class="s">"Принятые заказы"</span>)
+
+
+<span class="k">def</span> <span class="f">handle_order</span>(order_id):
+    ORDERS.<span class="f">inc</span>()
+    <span class="f">print</span>(<span class="s">"принят заказ"</span>, order_id)
+
+
+<span class="f">handle_order</span>(<span class="n">1</span>)
+<span class="f">handle_order</span>(<span class="n">2</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>оба заказа приняты</span></figcaption><pre>принят заказ 1
+принят заказ 2</pre></figure>
+    </details>
+  </section>
+
+  <section class="part" id="s6">
+    <h2><span class="sec">§6</span>Проверьте себя</h2>
+    <p class="about">Вопросы по лекции. Ответ раскрывается щелчком.</p>
+    <details><summary>Перехватывает ли декоратор <code>count_exceptions</code> исключение?</summary><p>Нет. Он прибавляет к счётчику 1 и пропускает исключение дальше. Перехватывать его должен вызывающий код.</p></details>
+    <details><summary>Почему <code>Counter(...)</code> нельзя писать внутри обработчика запроса?</summary><p>Второй вызов обработчика попытается зарегистрировать счётчик с тем же именем, и реестр выдаст <code>DuplicateTimeseries</code>.</p></details>
+    <details><summary>Сервис запущен в двух процессах без режима нескольких процессов. Что вернёт <code>/metrics</code>?</summary><p>Число того процесса, в который попал запрос: то одно, то другое. Суммы ни один ответ не покажет.</p></details>
+  </section>
+
+  <section class="part" id="s7">
+    <h2><span class="sec">§7</span>Шпаргалка</h2>
+    <p class="about">Конструкции лекции одним списком.</p>
+    <div class="cheat">
+      <div><b>Считать исключения</b><code>@c.count_exceptions(ValueError)</code></div>
+      <div><b>Считать исключения в блоке</b><code>with c.count_exceptions():</code></div>
+      <div><b>Счётчик в сервисе</b><code>ORDERS = Counter(...)  # на уровне модуля</code></div>
+      <div><b>Несколько процессов</b><code>PROMETHEUS_MULTIPROC_DIR=metrics-dir</code><code>MultiProcessCollector(registry)</code></div>
+    </div>
+  </section>
+
+  <section class="part" id="s8">
+    <h2><span class="sec">§8</span>Глоссарий</h2>
+    <p class="about">Термины лекции, включая введённые раньше: формулировка, пример и рисунок.</p>
+    <div class="glossary">
+      <article class="gl" id="g-schetchik">
+        <div class="gl__text">
+          <h3>Счётчик<i>counter</i></h3>
+          <p class="gl__def">Метрика, значение которой с момента запуска программы только растёт. Каждое событие прибавляет к ней число.</p>
+          <p class="gl__ex"><b>Пример</b>принятые заказы, ошибки оплаты, отправленные байты.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.2, §1–§4</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Счётчик растёт ступеньками"><line class="sc-axis" x1="14" y1="112" x2="248" y2="112"/><polyline class="sc-plot" points="20,104 70,104 70,82 130,82 130,60 190,60 190,38 244,38"/><text class="tm ta" x="78" y="76">+1</text><text class="tm ta" x="138" y="54">+1</text><text class="tm ta" x="198" y="32">+1</text><text class="t" x="20" y="126">только вверх</text></svg></figure>
+      </article>
+      <article class="gl" id="g-reestr">
+        <div class="gl__text">
+          <h3>Реестр<i>CollectorRegistry</i></h3>
+          <p class="gl__def">Список метрик программы. Из него строится текст ответа <code>/metrics</code>: в ответ попадают все метрики реестра.</p>
+          <p class="gl__ex"><b>Пример</b><code>registry = CollectorRegistry()</code>; <code>Counter(..., registry=registry)</code>.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.2, §2; лекция 2.6, §2</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Реестр собирает метрики в ответ"><rect class="sc-soft" x="10" y="10" width="112" height="110" rx="8"/><text class="t tc" x="66" y="28">реестр</text><rect class="sc-acc" x="22" y="40" width="88" height="28" rx="5"/><text class="tm tc" x="66" y="59" style="font-size:11px">orders</text><rect class="sc-acc" x="22" y="78" width="88" height="28" rx="5"/><text class="tm tc" x="66" y="97" style="font-size:11px">errors</text><path class="sc-arrow" d="M128 66 L160 66 M154 69 L160 66 L154 63"/><rect class="sc-box" x="166" y="34" width="84" height="64" rx="4"/><text class="tm tc" x="208" y="62" style="font-size:10.5px">текст</text><text class="tm tc" x="208" y="80" style="font-size:10.5px">/metrics</text></svg></figure>
+      </article>
+      <article class="gl" id="g-metka">
+        <div class="gl__text">
+          <h3>Метка<i>label</i></h3>
+          <p class="gl__def">Пара «имя = значение», которая уточняет, к чему относится число. Метрика с разными значениями метки делится на разные ряды.</p>
+          <p class="gl__ex"><b>Пример</b><code>status="paid"</code> и <code>status="cancelled"</code> делят счётчик заказов на два ряда.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.3, §1–§3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Метка делит метрику на два ряда"><rect class="sc-acc" x="8" y="46" width="96" height="36" rx="6"/><text class="tm tc" x="56" y="68" style="font-size:10.5px">orders_total</text><path class="sc-arrow" d="M108 56 L148 32 M144 38 L148 32 L141 32"/><path class="sc-arrow" d="M108 72 L148 96 M141 96 L148 96 L144 90"/><rect class="sc-box" x="152" y="12" width="100" height="40" rx="6"/><text class="tm tc" x="202" y="30" style="font-size:10px">status="paid"</text><text class="tb tc" x="202" y="46">2</text><rect class="sc-box" x="152" y="78" width="100" height="40" rx="6"/><text class="tm tc" x="202" y="96" style="font-size:9.5px">status="cancelled"</text><text class="tb tc" x="202" y="112">1</text></svg></figure>
+      </article>
+      <article class="gl" id="g-process">
+        <div class="gl__text">
+          <h3>Процесс<i>process</i></h3>
+          <p class="gl__def">Запущенная программа со своей памятью. Метрики хранятся в памяти процесса. Когда процесс завершается, память освобождается.</p>
+          <p class="gl__ex"><b>Пример</b><code>python main.py</code> — каждый запуск создаёт новый процесс.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.5, §2; лекция 2.6, §3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Процесс и его память"><rect class="sc-box" x="10" y="26" width="100" height="72" rx="8"/><text class="t tc" x="60" y="46">процесс 1</text><rect class="sc-amb" x="22" y="56" width="76" height="28" rx="4"/><text class="tm tc" x="60" y="75" style="font-size:11px">orders=40</text><path class="sc-arrow-w" d="M114 62 H144"/><text class="t tc tw" x="130" y="118">перезапуск</text><rect class="sc-box" x="150" y="26" width="100" height="72" rx="8"/><text class="t tc" x="200" y="46">процесс 2</text><rect class="sc-amb" x="162" y="56" width="76" height="28" rx="4"/><text class="tm tc" x="200" y="75" style="font-size:11px">orders=0</text></svg></figure>
+      </article>
+      <article class="gl" id="g-sbros">
+        <div class="gl__text">
+          <h3>Сброс<i>counter reset</i></h3>
+          <p class="gl__def">Возврат счётчика к нулю при перезапуске процесса. Prometheus находит сброс по уменьшению значения и прибавляет к росту значение после сброса.</p>
+          <p class="gl__ex"><b>Пример</b>100, 130, затем 15, 45: рост 30 + 15 + 30 = 75.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.5, §2–§3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Сброс счётчика"><line class="sc-axis" x1="14" y1="112" x2="248" y2="112"/><polyline class="sc-plot" points="20,70 100,30"/><line class="sc-arrow-w" x1="100" y1="30" x2="124" y2="112"/><polyline class="sc-plot" points="124,112 170,98 240,72"/><text class="t tw" x="128" y="60">сброс</text><text class="tm" x="16" y="90">100</text><text class="tm" x="88" y="22">130</text><text class="tm" x="168" y="90">15</text><text class="tm" x="226" y="64">45</text></svg></figure>
+      </article>
+      <article class="gl" id="g-multiproc">
+        <div class="gl__text">
+          <h3>Режим нескольких процессов<i>multiprocess mode</i></h3>
+          <p class="gl__def">Режим prometheus-client: каждый процесс сервиса пишет свои числа в файл в общей папке, а ответ <code>/metrics</code> складывает файлы. Включается переменной <code>PROMETHEUS_MULTIPROC_DIR</code>.</p>
+          <p class="gl__ex"><b>Пример</b>процессы насчитали 6 и 14 — в ответе 20.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.6, §3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Числа двух процессов складываются"><rect class="sc-box" x="14" y="12" width="96" height="34" rx="6"/><text class="t tc" x="62" y="34">процесс 1: 6</text><rect class="sc-box" x="150" y="12" width="96" height="34" rx="6"/><text class="t tc" x="198" y="34">процесс 2: 14</text><path class="sc-line" d="M62 50 L110 70 M198 50 L150 70"/><rect class="sc-amb" x="70" y="70" width="120" height="26" rx="5"/><text class="tm tc" x="130" y="88" style="font-size:11px">metrics-dir/</text><path class="sc-arrow" d="M130 98 L130 108 M127 102 L130 108 L133 102"/><text class="tb tc ta" x="130" y="126">20.0</text></svg></figure>
+      </article>
+    </div>
+  </section>
+
+  <section class="part">
+    <h3>Итог лекции</h3>
+<p>Вся тема Counter на одной схеме: путь события от кода до графика и два места, где путь меняется.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 270" role="img" aria-label="Карта лекции: событие, inc, память процесса, /metrics, опрос, отсчёт, ряд, рост и скорость; метки делят на ряды; перезапуск вызывает сброс">
+        <rect class="sc-box" x="14" y="20" width="130" height="44" rx="8"/><text class="t tc" x="79" y="47">событие</text>
+        <rect class="sc-box" x="174" y="20" width="130" height="44" rx="8"/><text class="tm tc" x="239" y="47">inc()</text>
+        <rect class="sc-acc" x="334" y="20" width="130" height="44" rx="8"/><text class="t tc" x="399" y="47">память процесса</text>
+        <rect class="sc-box" x="494" y="20" width="130" height="44" rx="8"/><text class="tm tc" x="559" y="47">/metrics</text>
+        <path class="sc-arrow" d="M148 42 L170 42"/><path class="sc-arrow" d="M162 46 L170 42 L162 38"/><path class="sc-arrow" d="M308 42 L330 42"/><path class="sc-arrow" d="M322 46 L330 42 L322 38"/><path class="sc-arrow" d="M468 42 L490 42"/><path class="sc-arrow" d="M482 46 L490 42 L482 38"/><path class="sc-arrow" d="M559 68 L559 122"/><path class="sc-arrow" d="M555 114 L559 122 L563 114"/>
+        <rect class="sc-box" x="494" y="126" width="130" height="44" rx="8"/><text class="t tc" x="559" y="153">опрос</text>
+        <rect class="sc-acc" x="334" y="126" width="130" height="44" rx="8"/><text class="t tc" x="399" y="153">отсчёт в базе</text>
+        <rect class="sc-box" x="174" y="126" width="130" height="44" rx="8"/><text class="t tc" x="239" y="153">ряд</text>
+        <rect class="sc-acc" x="14" y="126" width="130" height="44" rx="8"/><text class="t tc" x="79" y="146">рост</text><text class="t tc" x="79" y="162">и скорость</text>
+        <path class="sc-arrow" d="M490 148 L468 148"/><path class="sc-arrow" d="M476 144 L468 148 L476 152"/><path class="sc-arrow" d="M330 148 L308 148"/><path class="sc-arrow" d="M316 144 L308 148 L316 152"/><path class="sc-arrow" d="M170 148 L148 148"/><path class="sc-arrow" d="M156 144 L148 148 L156 152"/>
+        <rect class="sc-soft" x="174" y="210" width="130" height="40" rx="8"/><text class="t tc" x="239" y="235">метки → ряды</text><path class="sc-arrow" d="M239 206 L239 174"/><path class="sc-arrow" d="M243 182 L239 174 L235 182"/>
+        <rect class="sc-wrn" x="334" y="210" width="130" height="40" rx="8"/><text class="t tc tw" x="399" y="235">перезапуск</text><path class="sc-arrow-w" d="M399 206 L399 174"/><path class="sc-arrow" style="stroke-dasharray:none;stroke:#C4511F" d="M403 182 L399 174 L395 182"/>
+        <text class="t tw" x="474" y="235">→ сброс, учёт в росте</text>
+      </svg>
+      <figcaption>Верхний ряд — что делает программа, нижний — что делает Prometheus.</figcaption>
+    </figure>
+    <p>Верхний ряд читается слева направо: событие вызывает <code>inc()</code>, число копится в памяти процесса и попадает в ответ <code>/metrics</code>. Нижний ряд — справа налево: опрос забирает ответ, значение становится отсчётом в базе, отсчёты складываются в ряд, по ряду считают рост и скорость. Метки делят одну метрику на несколько рядов. Перезапуск обнуляет память процесса, и в отсчётах появляется сброс, который учитывают при подсчёте роста.</p>
+    
+    <p>Декоратор <code>count_exceptions</code> считает исключения функции и пропускает их дальше. Счётчик регистрируют в реестре один раз, на уровне модуля. Если сервис работает в нескольких процессах, общее число даёт режим нескольких процессов или отдельный процесс на контейнер.</p>
+    <h3>Источники</h3>
+    <ul class="sources">
+      <li>Prometheus. Metric types: Counter — prometheus.io/docs/concepts/metric_types</li>
+      <li>Prometheus. Query functions: increase, rate, resets — prometheus.io/docs/prometheus/latest/querying/functions</li>
+      <li>prometheus-client для Python: Counter, Multiprocess Mode — prometheus.github.io/client_python</li>
+      <li>Примеры лекции запущены на Python 3.12 и prometheus-client 0.26.0 06.11.2026; опыты с перезапуском и двумя процессами — на стенде сервиса заказов 23.10.2026</li>
+    </ul>
+  </section>
+
+  <div class="pager">
+    <a href="2-5-rost-i-sbros.html">← 2.5 Рост, скорость и сброс</a>
+    <a href="index.html">К содержанию справочника</a>
+    <span class="pager__soon">2.7 Gauge · готовится →</span>
+  </div>
+  <div class="colophon">
+    <span>Лекция 2.6 · Counter в реальном коде · Метрики и наблюдаемость</span>
+    <span class="author-line">Автор: Макаров Максим Николаевич</span>
+  </div>
+    </main>
+  </div>
+</div>
+<script src="reader.js"></script>
+</body>
+</html>
