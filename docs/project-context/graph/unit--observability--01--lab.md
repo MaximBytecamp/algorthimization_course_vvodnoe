@@ -23,5 +23,6 @@ tags:
 - [observability/lab/console.html](../../../observability/lab/console.html)
 - [observability/lab/experiment.py](../../../observability/lab/experiment.py)
 - [observability/lab/prometheus.yml](../../../observability/lab/prometheus.yml)
+- [observability/lab/stage_trace.py](../../../observability/lab/stage_trace.py)
 
 _Узел создан автоматически. Факты о состоянии работы храните в тематической заметке или `CURRENT.md`._

@@ -25,6 +25,7 @@ tags:
 - [observability/lekcii/1-4-signaly.html](../../../observability/lekcii/1-4-signaly.html)
 - [observability/lekcii/1-5-chto-izmeryat.html](../../../observability/lekcii/1-5-chto-izmeryat.html)
 - [observability/lekcii/1-6-razbor-incidenta.html](../../../observability/lekcii/1-6-razbor-incidenta.html)
+- [observability/lekcii/2-1-otvet-metrics.html](../../../observability/lekcii/2-1-otvet-metrics.html)
 - [observability/lekcii/2-2-counter.html](../../../observability/lekcii/2-2-counter.html)
 - [observability/lekcii/2-3-metki.html](../../../observability/lekcii/2-3-metki.html)
 - [observability/lekcii/2-4-http.html](../../../observability/lekcii/2-4-http.html)

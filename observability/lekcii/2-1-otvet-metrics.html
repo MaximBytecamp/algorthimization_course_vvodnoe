@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>2.2 Counter: создать и прибавить · Метрики и наблюдаемость</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="book">
+  <div class="book__body">
+    <div class="spine"><span>Часть 2 · Метрики в коде</span></div>
+    <main class="leaf">
+  <div class="running">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Метрики и наблюдаемость</a> · часть 2 · метрики в коде</p>
+    <p class="running__folio">Лекция 2.1</p>
+  </div>
+
+  <header class="chapter-head">
+    <span class="chapter-num">2.1</span>
+    <h1>Ответ /metrics: формат текста и реестр</h1>
+    <p class="lead">Часть 2 — о том, как приложение само создаёт метрики. Начнём с того, что оно в итоге отдаёт: текст по адресу <code>/metrics</code>. В лекции разобраны строки этого текста и правила их записи, ошибки, из-за которых ответ не читается, и реестр — список метрик, из которого текст собирается. Все выводы получены запуском библиотеки prometheus-client.</p>
+  </header>
+  <dl class="passport">
+    <div><dt>Тема</dt><dd>Формат ответа и реестр</dd></div>
+    <div><dt>Библиотека</dt><dd><code>prometheus-client</code> 0.26.0</dd></div>
+    <div><dt>Опирается на</dt><dd>часть 1: временной ряд (1.2), метрика (1.4)</dd></div>
+    <div><dt>Результат</dt><dd>Читать и проверять любой ответ <code>/metrics</code></dd></div>
+  </dl>
+
+  <div class="reader-start">
+    <div>
+      <b>Режим чтения</b>
+      <p>Лекция откроется по одному разделу: на экране одна мысль, кнопка «Дальше» ведёт к следующей. Стрелки ← → на клавиатуре тоже листают, Esc возвращает всю лекцию.</p>
+    </div>
+    <div class="reader-start__btns">
+      <button type="button" data-reader-start="continue" hidden></button>
+      <button type="button" class="primary" data-reader-start="begin">Читать по шагам</button>
+    </div>
+  </div>
+
+    <nav class="contents">
+    <b>В этой лекции</b>
+    <ol>
+      <li><a href="#s0"><span class="csec">§0</span>Как запускать примеры</a></li>
+      <li><a href="#s1"><span class="csec">§1</span>Что отдаёт /metrics</a></li>
+      <li><a href="#s2"><span class="csec">§2</span>Строка значения</a></li>
+      <li><a href="#s3"><span class="csec">§3</span>Строки HELP и TYPE</a></li>
+      <li><a href="#s4"><span class="csec">§4</span>Ошибки записи</a></li>
+      <li><a href="#s5"><span class="csec">§5</span>Реестр по умолчанию</a></li>
+      <li><a href="#s6"><span class="csec">§6</span>Свой реестр</a></li>
+      <li><a href="#s7"><span class="csec">§7</span>Как реестр собирает ответ</a></li>
+      <li><a href="#s8"><span class="csec">§8</span>Content-Type и OpenMetrics</a></li>
+      <li><a href="#s9"><span class="csec">§9</span>Частые ошибки</a></li>
+      <li><a href="#s10"><span class="csec">§10</span>Практика</a></li>
+      <li><a href="#s11"><span class="csec">§11</span>Проверьте себя</a></li>
+      <li><a href="#s12"><span class="csec">§12</span>Шпаргалка</a></li>
+      <li><a href="#s13"><span class="csec">§13</span>Глоссарий</a></li>
+    </ol>
+  </nav>
+
+  <section class="part" id="s0">
+    <h2><span class="sec">§0</span>Как запускать примеры</h2>
+    <p class="about">Что установить и как запустить код лекции у себя.</p>
+    <p>Примеры части 2 — короткие программы на Python. Они проверены на Python 3.12 и библиотеке prometheus-client 0.26.0. Библиотеку ставят в <span class="term">виртуальное окружение</span> — отдельную папку с пакетами проекта. Так пакеты проекта не смешиваются с пакетами системы.</p>
+    <figure class="code">
+      <figcaption><span>Терминал</span><span>окружение и библиотека</span></figcaption>
+<pre>python3 -m venv .venv
+source .venv/bin/activate
+pip install prometheus-client==0.26.0
+pip show prometheus-client</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>первые две строки</span></figcaption><pre>Name: prometheus_client
+Version: 0.26.0</pre></figure>
+    <div class="walk">
+      <div><code>python3 -m venv .venv</code><span>Создаёт окружение в папке <code>.venv</code>.</span></div>
+      <div><code>source .venv/bin/activate</code><span>Включает окружение в этом терминале. В Windows команда другая: <code>.venv\Scripts\activate</code>.</span></div>
+      <div><code>pip install prometheus-client==0.26.0</code><span>Ставит библиотеку той версии, на которой проверены примеры.</span></div>
+      <div><code>pip show prometheus-client</code><span>Показывает, какая версия установлена.</span></div>
+    </div>
+    <p><b>Прогон на живых данных.</b> Проверим, что изменила команда <code>source .venv/bin/activate</code>. Спросим у Python, откуда он запущен, до активации и после:</p>
+    <figure class="code">
+      <figcaption><span>Терминал</span><span>Python до и после активации</span></figcaption>
+<pre>python3 -c &quot;import sys; print(sys.prefix)&quot;
+source .venv/bin/activate
+python -c &quot;import sys; print(sys.prefix)&quot;
+python -c &quot;import prometheus_client as p; print(p.__file__)&quot;</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>пути</span></figcaption><pre>/Users/makarovmn/.pyenv/versions/3.12.12
+/…/.venv
+/…/.venv/lib/python3.12/site-packages/prometheus_client/__init__.py</pre></figure>
+    <p>До активации Python — общий, системный. После — тот, что в папке <code>.venv</code>, и библиотека берётся из неё же. Пути на вашем компьютере будут другими, важно, что второй и третий указывают внутрь <code>.venv</code>.</p>
+    <p>Примеры запускают двумя способами. Большинство программ печатают результат и сразу завершаются. Программа-сервис из лекции 2.4 работает, пока её не остановят, и её смотрят в браузере:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Два способа запуска: программа печатает вывод в терминал; сервис работает, браузер открывает localhost:8000/metrics">
+        <rect class="sc-box" x="10" y="20" width="130" height="44" rx="8"/><text class="tm tc" x="75" y="47">main.py</text>
+        <path class="sc-arrow" d="M144 42 L250 42"/><path class="sc-arrow" d="M242 46 L250 42 L242 38"/><text class="tm tc ta" x="197" y="14">python main.py</text>
+        <rect class="sc-acc" x="256" y="20" width="200" height="44" rx="8"/><text class="t tc" x="356" y="47">вывод в терминале</text>
+        <text class="t" x="466" y="40">программа</text><text class="t" x="466" y="58">завершилась</text>
+        <rect class="sc-box" x="10" y="100" width="130" height="44" rx="8"/><text class="tm tc" x="75" y="118">main.py</text><text class="tm tc" x="75" y="136">(сервис)</text>
+        <path class="sc-arrow" d="M144 122 L250 122"/><path class="sc-arrow" d="M242 126 L250 122 L242 118"/><text class="tm tc ta" x="197" y="112">работает</text>
+        <rect class="sc-acc" x="256" y="100" width="200" height="44" rx="8"/><text class="t tc" x="356" y="127">порт 8000 открыт</text>
+        <path class="sc-arrow" d="M560 122 L462 122"/><path class="sc-arrow" d="M470 118 L462 122 L470 126"/><rect class="sc-box" x="520" y="96" width="110" height="52" rx="8"/><text class="t tc" x="575" y="118">браузер</text><text class="tm tc" x="575" y="136" style="font-size:10px">:8000/metrics</text>
+      </svg>
+      <figcaption>Верхняя строка — обычный пример, нижняя — пример-сервис.</figcaption>
+    </figure>
+    <p>Верхний путь подходит для большинства примеров части 2: код сохраняют в файл <code>main.py</code> рядом с папкой <code>.venv</code> и запускают командой <code>python main.py</code>. Нижний — для примеров, которые работают как сервис, например программы из §1: пока она работает, адрес <code>http://localhost:8000/metrics</code> открывается в браузере. Останавливают сервис клавишами Ctrl+C.</p>
+    <p class="next">Окружение готово. Начнём с того, что приложение отдаёт по адресу <code>/metrics</code>.</p>
+  </section>
+
+  <section class="part" id="s1">
+    <h2><span class="sec">§1</span>Что отдаёт /metrics</h2>
+    <p class="about">Какой текст приложение отдаёт по адресу <code>/metrics</code> и кто его читает.</p>
+    <p>На вокзале висит табло. Оно никому ничего не отправляет: на нём написаны текущие сведения о поездах, и каждый, кто подошёл, читает одни и те же строки. Адрес <code>/metrics</code> устроен так же. Приложение держит там текущие значения своих метрик, а Prometheus, браузер или <code>curl</code> приходят и читают их.</p>
+    <div class="def">
+      <div class="def__term">Адрес /metrics<i>metrics endpoint</i></div>
+      <dl><dt>Что это</dt><dd>Адрес внутри приложения, на который оно отвечает текстом с текущими значениями своих метрик.</dd><dt>Кто читает</dt><dd>Prometheus — по расписанию; человек — браузером или <code>curl</code>, чтобы проверить.</dd><dt>Пример</dt><dd><code>http://localhost:8000/metrics</code> у программы из этого раздела.</dd></dl>
+    </div>
+    <p>Получим такой ответ от настоящей библиотеки. Программа ниже заводит счётчик HTTP-запросов и открывает адрес <code>/metrics</code> на порту 8000. Затем она записывает в счётчик 125 успешных запросов, 3 запроса к несуществующей странице и 1 запрос неразрешённым методом:</p>
+    <figure class="code">
+      <figcaption><span>server.py</span><span>счётчик и адрес /metrics</span></figcaption>
+<pre><span class="k">import</span> time
+<span class="k">from</span> prometheus_client <span class="k">import</span> Counter, start_http_server
+
+requests = <span class="f">Counter</span>(<span class="s">&quot;http_requests&quot;</span>, <span class="s">&quot;HTTP requests&quot;</span>, [<span class="s">&quot;method&quot;</span>, <span class="s">&quot;status&quot;</span>])
+<span class="f">start_http_server</span>(<span class="n">8000</span>)
+
+<span class="k">for</span> _ <span class="k">in</span> <span class="f">range</span>(<span class="n">125</span>):
+    requests.<span class="f">labels</span>(method=<span class="s">&quot;GET&quot;</span>, status=<span class="s">&quot;200&quot;</span>).<span class="f">inc</span>()
+<span class="k">for</span> _ <span class="k">in</span> <span class="f">range</span>(<span class="n">3</span>):
+    requests.<span class="f">labels</span>(method=<span class="s">&quot;GET&quot;</span>, status=<span class="s">&quot;404&quot;</span>).<span class="f">inc</span>()
+requests.<span class="f">labels</span>(method=<span class="s">&quot;POST&quot;</span>, status=<span class="s">&quot;405&quot;</span>).<span class="f">inc</span>()
+
+time.<span class="f">sleep</span>(<span class="n">3600</span>)</pre>
+    </figure>
+    <div class="walk">
+      <div><code>Counter("http_requests", …, ["method", "status"])</code><span>Счётчик с двумя метками: метод запроса и код ответа.</span></div>
+      <div><code>start_http_server(8000)</code><span>Открывает порт 8000 и отвечает на <code>GET /metrics</code> текстом из реестра библиотеки.</span></div>
+      <div><code>requests.labels(…).inc()</code><span>Прибавляет единицу к ряду с нужными метками.</span></div>
+      <div><code>time.sleep(3600)</code><span>Держит программу запущенной, чтобы адрес можно было открыть из другого терминала.</span></div>
+    </div>
+    <p>Запросим ответ из второго терминала. Ключ <code>-i</code> добавляет к тексту заголовки HTTP:</p>
+    <figure class="code">
+      <figcaption><span>Терминал 2</span><span>ответ с заголовками</span></figcaption>
+<pre>curl -si localhost:8000/metrics</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>ответ, полностью</span></figcaption><pre>HTTP/1.0 200 OK
+Date: Tue, 10 Nov 2026 15:51:55 GMT
+Server: WSGIServer/0.2 CPython/3.12.12
+Content-Type: text/plain; version=0.0.4; charset=utf-8
+Content-Length: 1555
+
+# HELP python_gc_objects_collected_total Objects collected during gc
+# TYPE python_gc_objects_collected_total counter
+python_gc_objects_collected_total{generation=&quot;0&quot;} 247.0
+python_gc_objects_collected_total{generation=&quot;1&quot;} 14.0
+python_gc_objects_collected_total{generation=&quot;2&quot;} 0.0
+# HELP python_gc_objects_uncollectable_total Uncollectable objects found during GC
+# TYPE python_gc_objects_uncollectable_total counter
+python_gc_objects_uncollectable_total{generation=&quot;0&quot;} 0.0
+python_gc_objects_uncollectable_total{generation=&quot;1&quot;} 0.0
+python_gc_objects_uncollectable_total{generation=&quot;2&quot;} 0.0
+# HELP python_gc_collections_total Number of times this generation was collected
+# TYPE python_gc_collections_total counter
+python_gc_collections_total{generation=&quot;0&quot;} 33.0
+python_gc_collections_total{generation=&quot;1&quot;} 2.0
+python_gc_collections_total{generation=&quot;2&quot;} 0.0
+# HELP python_info Python platform information
+# TYPE python_info gauge
+python_info{implementation=&quot;CPython&quot;,major=&quot;3&quot;,minor=&quot;12&quot;,patchlevel=&quot;12&quot;,version=&quot;3.12.12&quot;} 1.0
+# HELP http_requests_total HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{method=&quot;GET&quot;,status=&quot;200&quot;} 125.0
+http_requests_total{method=&quot;GET&quot;,status=&quot;404&quot;} 3.0
+http_requests_total{method=&quot;POST&quot;,status=&quot;405&quot;} 1.0
+# HELP http_requests_created HTTP requests
+# TYPE http_requests_created gauge
+http_requests_created{method=&quot;GET&quot;,status=&quot;200&quot;} 1.794324779661935e+09
+http_requests_created{method=&quot;GET&quot;,status=&quot;404&quot;} 1.7943247796620722e+09
+http_requests_created{method=&quot;POST&quot;,status=&quot;405&quot;} 1.79432477966208e+09</pre></figure>
+    <p>Ответ состоит из трёх частей. Первые пять строк — заголовки HTTP: код <code>200 OK</code> и <code>Content-Type</code>, который сообщает формат текста. Затем идут метрики, которые библиотека добавила сама: <code>python_gc_*</code> — сборка мусора Python, <code>python_info</code> — версия Python. Последние десять строк — наш счётчик. На схеме — путь этого текста:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 160" role="img" aria-label="Код вызывает inc и меняет числа в реестре; по запросу GET /metrics реестр превращается в текст и уходит Prometheus, браузеру или curl"><rect class="sc-box" x="10" y="50" width="120" height="56" rx="8"/><text class="tb tc" x="70" y="74">код</text><text class="tm tc" x="70" y="94">inc()</text><path class="sc-arrow" d="M134 78 L176 78"/><path class="sc-arrow" d="M168 82 L176 78 L168 74"/><rect class="sc-acc" x="180" y="30" width="170" height="96" rx="8"/><text class="tb tc" x="265" y="54">реестр</text><text class="t tc" x="265" y="76">все метрики</text><text class="t tc" x="265" y="94">процесса</text><text class="t tc" x="265" y="112">в памяти</text><path class="sc-arrow" d="M354 78 L396 78"/><path class="sc-arrow" d="M388 82 L396 78 L388 74"/><rect class="sc-amb" x="400" y="50" width="100" height="56" rx="8"/><text class="tb tc" x="450" y="74">текст</text><text class="tm tc" x="450" y="94">/metrics</text><path class="sc-arrow" d="M504 78 L540 78"/><path class="sc-arrow" d="M532 82 L540 78 L532 74"/><text class="t" x="546" y="64">Prometheus</text><text class="t" x="546" y="84">браузер</text><text class="t" x="546" y="104">curl</text><text class="t tc" x="450" y="144">собирается заново при каждом запросе</text></svg>
+      <figcaption>Числа живут в реестре; текст собирается из реестра в момент запроса.</figcaption>
+    </figure>
+    <p>Слева код прибавляет к счётчикам. Числа лежат в памяти процесса — в <span class="term">реестре</span>, общем списке метрик. Когда приходит запрос <code>GET /metrics</code>, библиотека проходит по реестру и собирает из него текст. Готового текста между запросами нет: каждый читатель получает его свежим. Остальная лекция разбирает этот текст строка за строкой, а затем — сам реестр.</p>
+    <div class="key"><b>Вывод</b><p>Адрес <code>/metrics</code> отдаёт текущие значения метрик обычным текстом. Текст собирается из реестра в момент запроса.</p></div>
+    <p class="next">Начнём со строки значения — в ответе её больше всего.</p>
+  </section>
+
+  <section class="part" id="s2">
+    <h2><span class="sec">§2</span>Строка значения</h2>
+    <p class="about">Из каких частей состоит строка значения и по каким правилам каждая записывается.</p>
+    <p>Строка складской ведомости: «коробки · цвет синий · склад № 2 · 125 штук». Сначала — что считают, потом уточнения, в конце — количество. Строка значения в <code>/metrics</code> построена так же:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Строка http_requests_total, метки method GET и status 200, значение 125.0"><rect class="sc-acc" x="10" y="20" width="190" height="40" rx="6"/><text class="tm tc" x="105" y="45">http_requests_total</text><rect class="sc-box" x="206" y="20" width="300" height="40" rx="6"/><text class="tm tc" x="356" y="45">{method="GET",status="200"}</text><rect class="sc-wrn" x="512" y="20" width="118" height="40" rx="6"/><text class="tb tc" x="571" y="46">125.0</text><text class="t tc" x="105" y="84">имя метрики</text><text class="t tc" x="105" y="102">что считаем</text><text class="t tc" x="356" y="84">метки</text><text class="t tc" x="356" y="102">о каких событиях число</text><text class="t tc" x="571" y="84">значение</text><text class="t tc" x="571" y="102">сколько</text><text class="t tc" x="320" y="138">имя вместе с метками — один временной ряд</text></svg>
+      <figcaption>Три части строки значения.</figcaption>
+    </figure>
+    <p>Имя и метки вместе называют ряд, о котором идёт речь, значение говорит, сколько в нём сейчас. Для каждой части есть правила записи:</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Часть</th><th>Правило</th><th>Пример</th></tr></thead>
+        <tbody>
+          <tr><td>имя метрики</td><td>латинские буквы, цифры и <code>_</code>; первый символ — не цифра</td><td><code>http_requests_total</code></td></tr>
+          <tr><td>имя метки</td><td>те же символы; имена с <code>__</code> в начале заняты служебными метками Prometheus</td><td><code>status</code></td></tr>
+          <tr><td>значение метки</td><td>всегда текст в двойных кавычках, даже если похоже на число</td><td><code>status="200"</code></td></tr>
+          <tr><td>порядок меток</td><td>не важен: тот же набор в другом порядке — тот же ряд</td><td><code>{status="200",method="GET"}</code></td></tr>
+          <tr><td>значение</td><td>число через точку; допустимы <code>125</code>, <code>125.0</code>, <code>1.25e2</code>, а также <code>NaN</code>, <code>+Inf</code>, <code>-Inf</code></td><td><code>125.0</code></td></tr>
+        </tbody>
+      </table></div>
+    <p>Проверим эти правила программой. В библиотеке есть разборщик формата — функция, которая читает текст <code>/metrics</code> так же, как его читает получатель, и возвращает отдельные значения. Дадим ей три строки, записанные по-разному:</p>
+    <figure class="code">
+      <figcaption><span>parse_ok.py</span><span>разбор трёх строк</span></figcaption>
+<pre><span class="k">from</span> prometheus_client.parser <span class="k">import</span> text_string_to_metric_families
+
+text = <span class="s">&quot;&quot;</span>&quot;<span class="c"># HELP http_requests_total Total HTTP requests</span>
+<span class="c"># TYPE http_requests_total counter</span>
+http_requests_total{method=<span class="s">&quot;GET&quot;</span>,status=<span class="s">&quot;200&quot;</span>} <span class="n">125</span>
+http_requests_total{status=<span class="s">&quot;404&quot;</span>,method=<span class="s">&quot;GET&quot;</span>} <span class="n">1</span>.25e2
+http_requests_total{method=<span class="s">&quot;POST&quot;</span>,status=<span class="s">&quot;405&quot;</span>} <span class="n">1.0</span>
+<span class="s">&quot;&quot;</span>&quot;
+
+<span class="k">for</span> family <span class="k">in</span> <span class="f">text_string_to_metric_families</span>(text):
+    <span class="f">print</span>(family.name, family.type, family.documentation)
+    <span class="k">for</span> sample <span class="k">in</span> family.samples:
+        <span class="f">print</span>(<span class="s">&quot;  &quot;</span>, sample.name, sample.labels, sample.value)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>что прочитал разборщик</span></figcaption><pre>http_requests counter Total HTTP requests
+   http_requests_total {&#x27;method&#x27;: &#x27;GET&#x27;, &#x27;status&#x27;: &#x27;200&#x27;} 125
+   http_requests_total {&#x27;status&#x27;: &#x27;404&#x27;, &#x27;method&#x27;: &#x27;GET&#x27;} 125.0
+   http_requests_total {&#x27;method&#x27;: &#x27;POST&#x27;, &#x27;status&#x27;: &#x27;405&#x27;} 1.0</pre></figure>
+    <div class="walk">
+      <div><code>text_string_to_metric_families(text)</code><span>Разбирает текст и возвращает метрики по одной. Метрику вместе со всеми её рядами библиотека называет семейством (family).</span></div>
+      <div><code>family.name, family.type, family.documentation</code><span>Имя семейства, тип из строки <code>TYPE</code> и текст из строки <code>HELP</code>.</span></div>
+      <div><code>family.samples</code><span>Отдельные значения: имя строки, метки словарём, число.</span></div>
+    </div>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Строка текста</th><th>Что получилось на прогоне</th></tr></thead>
+        <tbody>
+          <tr><td><code>…{method="GET",status="200"} 125</code></td><td>метки <code>{'method': 'GET', 'status': '200'}</code>, значение 125</td></tr>
+          <tr><td><code>…{status="404",method="GET"} 1.25e2</code></td><td>метки в другом порядке прочитаны так же; <code>1.25e2</code> → 125.0</td></tr>
+          <tr><td><code>…{method="POST",status="405"} 1.0</code></td><td>значение 1.0</td></tr>
+          <tr><td>строки <code>HELP</code> и <code>TYPE</code></td><td>тип <code>counter</code>, описание <code>Total HTTP requests</code>; имя семейства — <code>http_requests</code>, без <code>_total</code></td></tr>
+        </tbody>
+      </table></div>
+    <p>Все три записи числа прочитаны как числа, порядок меток не помешал. Имя семейства разборщик записал без окончания <code>_total</code>: у счётчика окончание относится к строке значения, а сама метрика называется короче.</p>
+    <div class="key"><b>Вывод</b><p>Строка значения — имя, метки в фигурных скобках и число через пробел. Значения меток — всегда в кавычках, число — всегда через точку.</p></div>
+    <p class="next">Над строками значений стоят строки с решёткой. Разберём, что они сообщают.</p>
+  </section>
+
+  <section class="part" id="s3">
+    <h2><span class="sec">§3</span>Строки HELP и TYPE</h2>
+    <p class="about">Что сообщают строки описания и что будет без них.</p>
+    <p>Строка, которая начинается с <code>#</code>, — комментарий. Из комментариев читают только два вида:</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Строка</th><th>Что сообщает</th><th>Из ответа §1</th></tr></thead>
+        <tbody>
+          <tr><td><code># HELP имя текст</code></td><td>пояснение для человека</td><td><code># HELP http_requests_total HTTP requests</code></td></tr>
+          <tr><td><code># TYPE имя тип</code></td><td>тип метрики: <code>counter</code>, <code>gauge</code>, <code>histogram</code>, <code>summary</code> или <code>untyped</code></td><td><code># TYPE http_requests_total counter</code></td></tr>
+        </tbody>
+      </table></div>
+    <p>На то, как хранится число, тип не влияет: в базе это такое же число. Тип подсказывает человеку и запросам, как с числом обращаться. Например, скорость роста имеет смысл считать только у счётчика. Что будет, если строк описания нет? Дадим разборщику три строки без <code>HELP</code> и <code>TYPE</code>, заодно с особыми значениями:</p>
+    <figure class="code">
+      <figcaption><span>parse_types.py</span><span>строки без описания</span></figcaption>
+<pre><span class="k">from</span> prometheus_client.parser <span class="k">import</span> text_string_to_metric_families
+
+text = <span class="s">&quot;&quot;</span>&quot;queue_length <span class="n">7</span>
+temperature{room=<span class="s">&quot;kitchen&quot;</span>} NaN
+limit_bytes +Inf
+<span class="s">&quot;&quot;</span>&quot;
+<span class="k">for</span> family <span class="k">in</span> <span class="f">text_string_to_metric_families</span>(text):
+    <span class="f">print</span>(family.name, family.type, [s.value <span class="k">for</span> s <span class="k">in</span> family.samples])</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>тип и значения</span></figcaption><pre>queue_length unknown [7]
+temperature unknown [nan]
+limit_bytes unknown [inf]</pre></figure>
+    <div class="walk">
+      <div><code>queue_length 7</code><span>Строка без меток: фигурные скобки не нужны.</span></div>
+      <div><code>temperature{room="kitchen"} NaN</code><span><code>NaN</code> — «не число», например когда значение не удалось измерить.</span></div>
+      <div><code>limit_bytes +Inf</code><span><code>+Inf</code> — бесконечность, например «ограничения нет».</span></div>
+    </div>
+    <p>Все три строки приняты. Тип у всех — <code>unknown</code>, «не указан»: без строки <code>TYPE</code> нельзя сказать, счётчик это или что-то другое. Значения <code>NaN</code> и <code>+Inf</code> прочитаны как особые числа Python — <code>nan</code> и <code>inf</code>. Поэтому библиотека всегда пишет <code>HELP</code> и <code>TYPE</code> сама: так у каждой метрики есть описание и тип.</p>
+    <div class="key"><b>Вывод</b><p><code>HELP</code> — пояснение для человека, <code>TYPE</code> — тип метрики. Без <code>TYPE</code> строки читаются, но тип остаётся неизвестным.</p></div>
+    <p class="next">Строки без описания приняты. Посмотрим, какие ошибки записи не принимаются.</p>
+  </section>
+
+  <section class="part" id="s4">
+    <h2><span class="sec">§4</span>Ошибки записи</h2>
+    <p class="about">Какие ошибки делают текст непригодным для чтения.</p>
+    <p>Бланк заявления с неправильно записанной датой возвращают целиком: остальные девять полей отдельно не принимают. С ответом <code>/metrics</code> так же. Если Prometheus не может прочитать хотя бы одну строку, опрос считается неудачным, и не сохраняется ни одно значение из ответа. Проверим, какие ошибки разборщик библиотеки не принимает:</p>
+    <figure class="code">
+      <figcaption><span>parse_bad.py</span><span>пять ошибок записи</span></figcaption>
+<pre><span class="k">from</span> prometheus_client.parser <span class="k">import</span> text_string_to_metric_families
+
+broken = {
+    <span class="s">&quot;метка без кавычек&quot;</span>: <span class="s">&#x27;http_requests_total{method=GET} 1\n&#x27;</span>,
+    <span class="s">&quot;запятая в числе&quot;</span>: <span class="s">&#x27;cpu_seconds_total 61,5\n&#x27;</span>,
+    <span class="s">&quot;неизвестный тип&quot;</span>: <span class="s">&#x27;# TYPE h countr\nh 1\n&#x27;</span>,
+    <span class="s">&quot;метка дважды&quot;</span>: <span class="s">&#x27;g{a=&quot;1&quot;,a=&quot;2&quot;} 1\n&#x27;</span>,
+    <span class="s">&quot;нет значения&quot;</span>: <span class="s">&#x27;http_requests_total{method=&quot;GET&quot;}\n&#x27;</span>,
+}
+<span class="k">for</span> title, text <span class="k">in</span> broken.<span class="f">items</span>():
+    <span class="k">try</span>:
+        <span class="f">list</span>(<span class="f">text_string_to_metric_families</span>(text))
+        <span class="f">print</span>(<span class="s">f&quot;{title:&lt;20} → принято&quot;</span>)
+    <span class="k">except</span> Exception <span class="k">as</span> error:
+        <span class="f">print</span>(<span class="s">f&quot;{title:&lt;20} → {type(error).__name__}: {error}&quot;</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>результат разбора</span></figcaption><pre>метка без кавычек    → ValueError: Invalid labels: method=GET
+запятая в числе      → ValueError: could not convert string to float: &#x27;61,5&#x27;
+неизвестный тип      → ValueError: Invalid metric type: countr
+метка дважды         → ValueError: Invalid labels: a=&quot;1&quot;,a=&quot;2&quot;
+нет значения         → ValueError: could not convert string to float: &#x27;&#x27;</pre></figure>
+    <div class="walk">
+      <div><code>broken = {…}</code><span>Словарь: название ошибки → текст с этой ошибкой.</span></div>
+      <div><code>list(text_string_to_metric_families(text))</code><span>Разбор идёт по мере чтения, поэтому <code>list(...)</code> заставляет прочитать весь текст.</span></div>
+      <div><code>except Exception as error</code><span>Перехватывает ошибку разбора и печатает её тип и текст.</span></div>
+    </div>
+    <p>Все пять текстов отклонены с <code>ValueError</code>. Сведём ошибки и их исправления в таблицу:</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Ошибка</th><th>Текст ошибки</th><th>Как правильно</th></tr></thead>
+        <tbody>
+          <tr><td><code>{method=GET}</code></td><td><code>Invalid labels: method=GET</code></td><td><code>{method="GET"}</code></td></tr>
+          <tr><td><code>61,5</code></td><td><code>could not convert string to float: '61,5'</code></td><td><code>61.5</code></td></tr>
+          <tr><td><code># TYPE h countr</code></td><td><code>Invalid metric type: countr</code></td><td><code>counter</code></td></tr>
+          <tr><td><code>{a="1",a="2"}</code></td><td><code>Invalid labels: a="1",a="2"</code></td><td>каждая метка один раз</td></tr>
+          <tr><td>нет значения</td><td><code>could not convert string to float: ''</code></td><td>число в конце строки</td></tr>
+        </tbody>
+      </table></div>
+    <p>Все пять — ошибки, при которых строку нельзя прочитать как «имя, метки, число» или тип непонятен. Пока ответ собирает библиотека, такие ошибки почти не встречаются: она сама ставит кавычки, точку и правильный тип. Они появляются, когда текст <code>/metrics</code> пишут вручную, как у стенда <code>products-api</code> из части 1, или собирают склейкой строк. Проверка своих строк разборщиком перед выпуском ловит их заранее.</p>
+    <div class="key key--warn"><b>Вывод</b><p>Значение метки без кавычек, запятая в числе, неизвестный тип, повтор метки, строка без числа — ошибки записи. Одна такая строка делает непригодным весь ответ.</p></div>
+    <p class="next">Формат разобран. Теперь — откуда берётся этот текст: реестр.</p>
+  </section>
+
+  <section class="part" id="s5">
+    <h2><span class="sec">§5</span>Реестр по умолчанию</h2>
+    <p class="about">Что лежит в реестре библиотеки, когда своих метрик ещё нет.</p>
+    <p>У консьержа в доме есть список жильцов. Когда спрашивают «кто живёт в доме», он читает список, и обходить квартиры не нужно. Реестр библиотеки — такой список метрик процесса. Каждая созданная метрика записывается в него, а ответ <code>/metrics</code> собирается из этого списка.</p>
+    <div class="def">
+      <div class="def__term">Реестр<i>registry</i></div>
+      <dl><dt>Что это</dt><dd>Список метрик процесса, из которого собирается ответ <code>/metrics</code>.</dd><dt>Реестр по умолчанию</dt><dd>Общий реестр библиотеки — <code>REGISTRY</code>. Метрика попадает в него, если при создании не указан другой.</dd><dt>Пример</dt><dd>Счётчик <code>http_requests</code> из §1 записан в <code>REGISTRY</code>.</dd></dl>
+    </div>
+    <p>Посмотрим, что лежит в общем реестре сразу после импорта библиотеки, когда своих метрик нет:</p>
+    <figure class="code">
+      <figcaption><span>registry_default.py</span><span>содержимое общего реестра</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> REGISTRY
+
+<span class="k">for</span> family <span class="k">in</span> REGISTRY.<span class="f">collect</span>():
+    <span class="f">print</span>(<span class="s">f&quot;{family.name:&lt;36} {family.type:&lt;8} рядов: {len(family.samples)}&quot;</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>четыре семейства</span></figcaption><pre>python_gc_objects_collected          counter  рядов: 3
+python_gc_objects_uncollectable      counter  рядов: 3
+python_gc_collections                counter  рядов: 3
+python_info                          gauge    рядов: 1</pre></figure>
+    <div class="walk">
+      <div><code>REGISTRY.collect()</code><span>Обходит реестр и возвращает семейства метрик с их текущими значениями — то же, из чего строится текст.</span></div>
+      <div><code>len(family.samples)</code><span>Сколько строк значений у семейства.</span></div>
+    </div>
+    <p>Своих метрик нет, а в реестре четыре семейства. Их добавляют <span class="term">сборщики</span> (collector) — объекты, которые при каждом обходе реестра сами вычисляют значения. Посмотрим, какие сборщики записаны в реестре:</p>
+    <figure class="code">
+      <figcaption><span>Терминал</span><span>сборщики общего реестра</span></figcaption>
+<pre>python -c &quot;from prometheus_client import REGISTRY; [print(type(c).__name__, REGISTRY._collector_to_names[c][:2]) for c in REGISTRY._collector_to_names]&quot;</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>три сборщика</span></figcaption><pre>GCCollector [&#x27;python_gc_objects_collected&#x27;, &#x27;python_gc_objects_collected_total&#x27;]
+PlatformCollector [&#x27;python_info&#x27;]
+ProcessCollector []</pre></figure>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Сборщик</th><th>Что отдаёт</th><th>На прогоне</th></tr></thead>
+        <tbody>
+          <tr><td><code>GCCollector</code></td><td>работа сборщика мусора Python</td><td>три семейства <code>python_gc_*</code></td></tr>
+          <tr><td><code>PlatformCollector</code></td><td>версия и реализация Python</td><td><code>python_info</code></td></tr>
+          <tr><td><code>ProcessCollector</code></td><td>память, процессор, открытые файлы процесса: <code>process_*</code></td><td>ничего: данные берутся из <code>/proc</code>, а он есть только в Linux; прогон шёл на macOS</td></tr>
+        </tbody>
+      </table></div>
+    <p><code>_collector_to_names</code> — внутреннее поле реестра; в рабочем коде к нему не обращаются, здесь оно нужно, чтобы заглянуть внутрь. На Linux, например в контейнере Docker, в ответе появятся ещё строки <code>process_cpu_seconds_total</code>, <code>process_resident_memory_bytes</code> и другие: их отдаёт тот же <code>ProcessCollector</code>.</p>
+    <div class="key"><b>Вывод</b><p>Общий реестр <code>REGISTRY</code> с самого начала содержит метрики Python и процесса. Метрики приложения добавляются к ним.</p></div>
+    <p class="next">Иногда эти служебные метрики мешают. Для этого заводят свой реестр.</p>
+  </section>
+
+  <section class="part" id="s6">
+    <h2><span class="sec">§6</span>Свой реестр</h2>
+    <p class="about">Когда заводят отдельный реестр и чем он отличается от общего.</p>
+    <p>В коротком примере или в тесте служебные метрики мешают: свой счётчик теряется среди строк <code>python_gc_*</code>. Тогда создают отдельный реестр и передают его метрике аргументом <code>registry</code>:</p>
+    <figure class="code">
+      <figcaption><span>registry_own.py</span><span>общий и свой реестр</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> REGISTRY, CollectorRegistry, Counter, generate_latest
+
+registry = <span class="f">CollectorRegistry</span>()
+orders = <span class="f">Counter</span>(<span class="s">&quot;orders&quot;</span>, <span class="s">&quot;Принятые заказы&quot;</span>, registry=registry)
+orders.<span class="f">inc</span>(<span class="n">3</span>)
+
+<span class="f">print</span>(<span class="s">&quot;в общем реестре строк:&quot;</span>, <span class="f">len</span>(<span class="f">generate_latest</span>(REGISTRY).<span class="f">decode</span>().<span class="f">splitlines</span>()))
+<span class="f">print</span>(<span class="s">&quot;в своём реестре строк:&quot;</span>, <span class="f">len</span>(<span class="f">generate_latest</span>(registry).<span class="f">decode</span>().<span class="f">splitlines</span>()))
+<span class="f">print</span>(<span class="f">generate_latest</span>(registry).<span class="f">decode</span>())</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>сравнение</span></figcaption><pre>в общем реестре строк: 18
+в своём реестре строк: 6
+# HELP orders_total Принятые заказы
+# TYPE orders_total counter
+orders_total 3.0
+# HELP orders_created Принятые заказы
+# TYPE orders_created gauge
+orders_created 1.794325915861851e+09</pre></figure>
+    <div class="walk">
+      <div><code>CollectorRegistry()</code><span>Новый пустой реестр. Сборщиков в нём нет.</span></div>
+      <div><code>Counter(…, registry=registry)</code><span>Счётчик записан в свой реестр; в общем его нет.</span></div>
+      <div><code>generate_latest(registry)</code><span>Собирает текст из указанного реестра. Возвращает байты, <code>.decode()</code> превращает их в строку.</span></div>
+    </div>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Строка</th><th>Что получилось на прогоне</th></tr></thead>
+        <tbody>
+          <tr><td><code>generate_latest(REGISTRY)</code></td><td>18 строк: только служебные метрики — счётчик в общий реестр не попал</td></tr>
+          <tr><td><code>generate_latest(registry)</code></td><td>6 строк: только <code>orders</code></td></tr>
+          <tr><td><code>orders.inc(3)</code></td><td><code>orders_total 3.0</code></td></tr>
+        </tbody>
+      </table></div>
+    <p>В своём реестре — только наш счётчик: две строки описания и значение <code>orders_total 3.0</code>. Ниже ещё три строки <code>orders_created</code> — время создания счётчика в Unix-секундах; библиотека добавляет их к каждому счётчику. Общий реестр нашего счётчика не содержит, потому что счётчик записан в другой реестр.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 140" role="img" aria-label="Общий реестр: python_gc, python_info и метрики приложения — так в сервисе; свой реестр: только orders — так в примерах и тестах"><rect class="sc-acc" x="10" y="20" width="300" height="100" rx="8"/><text class="tb" x="26" y="44">REGISTRY — общий</text><text class="tm" x="26" y="68">python_gc_* · python_info</text><text class="tm" x="26" y="88">process_* (Linux)</text><text class="tm" x="26" y="108">+ метрики приложения</text><rect class="sc-box" x="330" y="20" width="300" height="100" rx="8"/><text class="tb" x="346" y="44">CollectorRegistry() — свой</text><text class="tm" x="346" y="68">только то, что передано</text><text class="tm" x="346" y="88">registry=registry</text><text class="t" x="346" y="108">примеры, тесты</text></svg>
+      <figcaption>Два вида реестра и где каждый используют.</figcaption>
+    </figure>
+    <p>В сервисе используют общий реестр: служебные метрики там полезны — по ним видно память и процессор процесса. Свой реестр нужен, когда нужен короткий предсказуемый ответ: в примерах и тестах. Дальше в части 2 примеры идут со своим реестром — так их вывод помещается на экран.</p>
+    <div class="key"><b>Вывод</b><p>Метрика попадает в тот реестр, который ей передали, а без аргумента — в общий. Ответ <code>/metrics</code> показывает только метрики своего реестра.</p></div>
+    <p class="next">Посмотрим, как реестр превращает метрики в текст.</p>
+  </section>
+
+  <section class="part" id="s7">
+    <h2><span class="sec">§7</span>Как реестр собирает ответ</h2>
+    <p class="about">Что возвращает обход реестра и как из этого получаются строки текста.</p>
+    <p><code>generate_latest</code> не хранит готовый текст. Он обходит реестр методом <code>collect()</code> и записывает каждое семейство строками. Посмотрим, что даёт обход, без превращения в текст:</p>
+    <figure class="code">
+      <figcaption><span>registry_collect.py</span><span>обход реестра</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter
+
+registry = <span class="f">CollectorRegistry</span>()
+requests = <span class="f">Counter</span>(<span class="s">&quot;http_requests&quot;</span>, <span class="s">&quot;HTTP requests&quot;</span>, [<span class="s">&quot;status&quot;</span>], registry=registry)
+requests.<span class="f">labels</span>(status=<span class="s">&quot;200&quot;</span>).<span class="f">inc</span>(<span class="n">5</span>)
+requests.<span class="f">labels</span>(status=<span class="s">&quot;500&quot;</span>).<span class="f">inc</span>()
+
+<span class="k">for</span> family <span class="k">in</span> registry.<span class="f">collect</span>():
+    <span class="f">print</span>(<span class="s">&quot;семейство:&quot;</span>, family.name, <span class="s">&quot;| тип:&quot;</span>, family.type, <span class="s">&quot;| описание:&quot;</span>, family.documentation)
+    <span class="k">for</span> sample <span class="k">in</span> family.samples:
+        <span class="f">print</span>(<span class="s">&quot;   отсчёт:&quot;</span>, sample.name, sample.labels, sample.value)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>семейство и его отсчёты</span></figcaption><pre>семейство: http_requests | тип: counter | описание: HTTP requests
+   отсчёт: http_requests_total {&#x27;status&#x27;: &#x27;200&#x27;} 5.0
+   отсчёт: http_requests_created {&#x27;status&#x27;: &#x27;200&#x27;} 1794325915.936948
+   отсчёт: http_requests_total {&#x27;status&#x27;: &#x27;500&#x27;} 1.0
+   отсчёт: http_requests_created {&#x27;status&#x27;: &#x27;500&#x27;} 1794325915.9369578</pre></figure>
+    <div class="walk">
+      <div><code>registry.collect()</code><span>Возвращает семейства. У нас одно — <code>http_requests</code>.</span></div>
+      <div><code>family.samples</code><span>Отсчёты семейства: для каждого ряда — строка <code>_total</code> со значением и строка <code>_created</code> со временем создания.</span></div>
+    </div>
+    <p>Одна метрика с двумя рядами дала одно семейство и четыре отсчёта. Схема показывает, как они становятся текстом:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 180" role="img" aria-label="Семейство http_requests с четырьмя отсчётами превращается в строки HELP, TYPE и строки значений"><rect class="sc-acc" x="10" y="20" width="250" height="140" rx="8"/><text class="tb" x="24" y="42">семейство http_requests</text><text class="tm" x="24" y="64">тип counter</text><text class="tm" x="24" y="84">_total {200} 5.0</text><text class="tm" x="24" y="104">_created {200} …</text><text class="tm" x="24" y="124">_total {500} 1.0</text><text class="tm" x="24" y="144">_created {500} …</text><path class="sc-arrow" d="M266 90 L300 90"/><path class="sc-arrow" d="M292 94 L300 90 L292 86"/><rect class="sc-box" x="306" y="20" width="324" height="140" rx="8"/><text class="tm" x="318" y="42"># HELP http_requests_total …</text><text class="tm" x="318" y="62"># TYPE http_requests_total counter</text><text class="tm" x="318" y="82">http_requests_total{…200} 5.0</text><text class="tm" x="318" y="102">http_requests_total{…500} 1.0</text><text class="tm" x="318" y="122"># HELP http_requests_created …</text><text class="tm" x="318" y="142">http_requests_created{…} …</text></svg>
+      <figcaption>Слева — что вернул <code>collect()</code>, справа — текст, который соберёт <code>generate_latest</code>.</figcaption>
+    </figure>
+    <p>Слева — данные: тип и отсчёты. Справа — те же данные строками: для каждого имени строки описания, затем значения. Из-за того, что текст собирается при каждом запросе, Prometheus всегда получает текущие числа.</p>
+    <div class="key"><b>Вывод</b><p>Реестр хранит метрики, <code>collect()</code> отдаёт их семействами с отсчётами, <code>generate_latest</code> записывает семейства строками текста.</p></div>
+    <p class="next">Остался заголовок <code>Content-Type</code> из §1: он говорит, каким из форматов записан текст.</p>
+  </section>
+
+  <section class="part" id="s8">
+    <h2><span class="sec">§8</span>Content-Type и OpenMetrics</h2>
+    <p class="about">Почему один и тот же адрес может отдать текст в двух форматах.</p>
+    <p>У текста <code>/metrics</code> два варианта. Классический текстовый формат Prometheus — тот, что мы читали. И <span class="term">OpenMetrics</span> — его стандартизированное продолжение, которое понимают и другие системы. Какой вариант отдать, сервер выбирает по заголовку запроса <code>Accept</code>: в нём клиент перечисляет форматы, которые умеет читать. Prometheus при опросе такой заголовок отправляет. Запросим тот же адрес с тремя разными <code>Accept</code>:</p>
+    <figure class="code">
+      <figcaption><span>Терминал 2</span><span>три заголовка Accept</span></figcaption>
+<pre>curl -si localhost:8000/metrics | grep -i content-type
+curl -si -H &#x27;Accept: text/plain; version=1.0.0&#x27; localhost:8000/metrics | grep -i content-type
+curl -si -H &#x27;Accept: application/openmetrics-text; version=1.0.0&#x27; localhost:8000/metrics | grep -iE &quot;content-type|http_requests|EOF&quot;</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>ответы</span></figcaption><pre>Content-Type: text/plain; version=0.0.4; charset=utf-8
+Content-Type: text/plain; version=1.0.0; charset=utf-8; escaping=underscores
+Content-Type: application/openmetrics-text; version=1.0.0; charset=utf-8; escaping=underscores
+# HELP http_requests HTTP requests
+# TYPE http_requests counter
+http_requests_total{method=&quot;GET&quot;,status=&quot;200&quot;} 125.0
+http_requests_created{method=&quot;GET&quot;,status=&quot;200&quot;} 1.794324779661935e+09
+http_requests_total{method=&quot;GET&quot;,status=&quot;404&quot;} 3.0
+http_requests_created{method=&quot;GET&quot;,status=&quot;404&quot;} 1.7943247796620722e+09
+http_requests_total{method=&quot;POST&quot;,status=&quot;405&quot;} 1.0
+http_requests_created{method=&quot;POST&quot;,status=&quot;405&quot;} 1.79432477966208e+09
+# EOF</pre></figure>
+    <div class="walk">
+      <div><code>curl -si</code> без <code>-H</code><span><code>curl</code> не просит ничего особого — сервер отдаёт классический текст <code>version=0.0.4</code>.</span></div>
+      <div><code>-H 'Accept: text/plain; version=1.0.0'</code><span>Тот же текстовый формат, версия 1.0.0.</span></div>
+      <div><code>-H 'Accept: application/openmetrics-text …'</code><span>Формат OpenMetrics.</span></div>
+    </div>
+    <p>В OpenMetrics три отличия, видные в выводе. Строки описания называют метрику без <code>_total</code>: <code>http_requests</code>. Строки <code>_total</code> и <code>_created</code> одного ряда стоят рядом, в одном семействе. Последняя строка — <code># EOF</code>, «конец файла»: по ней видно, что ответ пришёл целиком. Числа те же самые — 125, 3 и 1.</p>
+    <div class="key"><b>Вывод</b><p>Формат ответа выбирается по заголовку <code>Accept</code> запроса. <code>Content-Type</code> ответа говорит, какой формат отдан. Числа в обоих форматах одинаковые.</p></div>
+  </section>
+
+  <section class="part" id="s9">
+    <h2><span class="sec">§9</span>Частые ошибки</h2>
+    <p class="about">Что делают неправильно и как исправить.</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Что делают</th><th>Что произойдёт</th><th>Как правильно</th></tr></thead>
+        <tbody>
+          <tr><td>пишут значение метки без кавычек</td><td>ответ не читается целиком, опрос неудачен</td><td><code>{method="GET"}</code></td></tr>
+          <tr><td>записывают дробь через запятую</td><td>то же: строку нельзя прочитать</td><td>точка: <code>61.5</code></td></tr>
+          <tr><td>собирают текст <code>/metrics</code> склейкой строк</td><td>легко ошибиться в кавычках, типе, повторах</td><td>отдавать метрики через библиотеку; свой текст проверять разборщиком</td></tr>
+          <tr><td>не пишут <code>TYPE</code></td><td>тип неизвестен, запросы не знают, что это счётчик</td><td>описывать тип каждой метрики</td></tr>
+          <tr><td>ждут <code>process_*</code> на macOS или Windows</td><td>строк нет: сборщик читает <code>/proc</code></td><td>проверять такие метрики в Linux или контейнере</td></tr>
+          <tr><td>создают метрику в одном реестре, а отдают другой</td><td>метрики нет в ответе</td><td>отдавать тот реестр, куда записана метрика</td></tr>
+        </tbody>
+      </table></div>
+  </section>
+
+  <section class="part" id="s10">
+    <h2><span class="sec">§10</span>Практика</h2>
+    <p class="about">Три задачи. Решение спрятано под задачей.</p>
+    <h3>Задача 1. Найдите ошибки</h3>
+    <p>Ситуация: коллега написал текст <code>/metrics</code> вручную:</p>
+    <figure class="code">
+      <figcaption><span>Текст</span><span>четыре строки</span></figcaption>
+<pre>orders_total{channel=&quot;web&quot;} 12
+orders_total{channel=mobile} 7
+queue_length 3,5
+temperature_celsius{room=&quot;kitchen&quot;} 21.5</pre>
+    </figure>
+    <div class="key"><b>Что нужно сделать</b><p>Найти строки, которые не будут прочитаны, и проверить ответ разборщиком из §4.</p></div>
+    <details><summary>Решение</summary>
+    <figure class="code">
+      <figcaption><span>task1.py</span><span>проверка каждой строки</span></figcaption>
+<pre><span class="k">from</span> prometheus_client.parser <span class="k">import</span> text_string_to_metric_families
+
+lines = [
+    <span class="s">&#x27;orders_total{channel=&quot;web&quot;} 12&#x27;</span>,
+    <span class="s">&#x27;orders_total{channel=mobile} 7&#x27;</span>,
+    <span class="s">&#x27;queue_length 3,5&#x27;</span>,
+    <span class="s">&#x27;temperature_celsius{room=&quot;kitchen&quot;} 21.5&#x27;</span>,
+]
+<span class="k">for</span> line <span class="k">in</span> lines:
+    <span class="k">try</span>:
+        <span class="f">list</span>(<span class="f">text_string_to_metric_families</span>(line + <span class="s">&quot;\n&quot;</span>))
+        <span class="f">print</span>(<span class="s">&quot;принято: &quot;</span>, line)
+    <span class="k">except</span> ValueError <span class="k">as</span> error:
+        <span class="f">print</span>(<span class="s">&quot;ошибка:  &quot;</span>, line, <span class="s">&quot;→&quot;</span>, error)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>результат</span></figcaption><pre>принято:  orders_total{channel=&quot;web&quot;} 12
+ошибка:   orders_total{channel=mobile} 7 → Invalid labels: channel=mobile
+ошибка:   queue_length 3,5 → could not convert string to float: &#x27;3,5&#x27;
+принято:  temperature_celsius{room=&quot;kitchen&quot;} 21.5</pre></figure>
+    <p>Не читаются две строки: у <code>channel=mobile</code> нет кавычек, в <code>3,5</code> запятая. Исправленные варианты — <code>{channel="mobile"}</code> и <code>3.5</code>. Пока в ответе есть хотя бы одна из этих строк, Prometheus не сохранит ни одного значения.</p>
+    </details>
+
+    <h3>Задача 2. Сколько строк в ответе</h3>
+    <p>Ситуация: в своём реестре один счётчик <code>orders</code> с меткой <code>channel</code>, к нему прибавили для <code>web</code> и для <code>mobile</code>.</p>
+    <div class="key"><b>Что нужно сделать</b><p>Предсказать, сколько строк будет в ответе, и проверить запуском.</p></div>
+    <details><summary>Решение</summary>
+    <figure class="code">
+      <figcaption><span>task2.py</span><span>счётчик с двумя рядами</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, generate_latest
+
+registry = <span class="f">CollectorRegistry</span>()
+orders = <span class="f">Counter</span>(<span class="s">&quot;orders&quot;</span>, <span class="s">&quot;Принятые заказы&quot;</span>, [<span class="s">&quot;channel&quot;</span>], registry=registry)
+orders.<span class="f">labels</span>(channel=<span class="s">&quot;web&quot;</span>).<span class="f">inc</span>(<span class="n">2</span>)
+orders.<span class="f">labels</span>(channel=<span class="s">&quot;mobile&quot;</span>).<span class="f">inc</span>()
+
+text = <span class="f">generate_latest</span>(registry).<span class="f">decode</span>()
+<span class="f">print</span>(<span class="f">len</span>(text.<span class="f">splitlines</span>()), <span class="s">&quot;строк&quot;</span>)
+<span class="f">print</span>(<span class="s">&quot;\n&quot;</span>.<span class="f">join</span>(line <span class="k">for</span> line <span class="k">in</span> text.<span class="f">splitlines</span>() <span class="k">if</span> <span class="s">&quot;_total&quot;</span> <span class="k">in</span> line))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>число строк и строки _total</span></figcaption><pre>8 строк
+# HELP orders_total Принятые заказы
+# TYPE orders_total counter
+orders_total{channel=&quot;web&quot;} 2.0
+orders_total{channel=&quot;mobile&quot;} 1.0</pre></figure>
+    <p>Восемь строк: <code>HELP</code> и <code>TYPE</code> для <code>orders_total</code>, два значения, затем <code>HELP</code>, <code>TYPE</code> и два значения для <code>orders_created</code>. Служебных метрик нет — реестр свой.</p>
+    </details>
+
+    <h3>Задача 3. Формат по заголовку</h3>
+    <p>Ситуация: программа из §1 запущена.</p>
+    <div class="key"><b>Что нужно сделать</b><p>Запросить <code>/metrics</code> в формате OpenMetrics и назвать три отличия от обычного текста.</p></div>
+    <details><summary>Решение</summary>
+    <p>Команда — третья из §8. Отличия: имя в <code>HELP</code> и <code>TYPE</code> без <code>_total</code>; строки <code>_total</code> и <code>_created</code> одного ряда стоят рядом; в конце строка <code># EOF</code>. <code>Content-Type</code> — <code>application/openmetrics-text</code>.</p>
+    </details>
+  </section>
+
+  <section class="part" id="s11">
+    <h2><span class="sec">§11</span>Проверьте себя</h2>
+    <p class="about">Вопросы по лекции. Ответ раскрывается щелчком.</p>
+    <details><summary>Хранит ли приложение готовый текст <code>/metrics</code> между запросами?</summary><p>Нет. Текст собирается из реестра при каждом запросе, поэтому всегда содержит текущие значения.</p></details>
+    <details><summary><code>{status="200",method="GET"}</code> и <code>{method="GET",status="200"}</code> — один ряд или два?</summary><p>Один: порядок меток не важен.</p></details>
+    <details><summary>Почему <code>status="200"</code> пишут в кавычках, хотя это число?</summary><p>Значение метки — всегда текст. Без кавычек строка не читается.</p></details>
+    <details><summary>Что будет с ответом из двухсот строк, если в одной стоит <code>61,5</code>?</summary><p>Опрос неудачен целиком: не сохранится ни одно значение.</p></details>
+    <details><summary>Откуда в ответе <code>python_gc_*</code>, если мы их не создавали?</summary><p>Их добавляет сборщик <code>GCCollector</code>, записанный в общий реестр при импорте библиотеки.</p></details>
+    <details><summary>Чем отличается ответ OpenMetrics?</summary><p>Имя в описании без <code>_total</code>, строки одного ряда рядом, в конце <code># EOF</code>. Числа те же.</p></details>
+  </section>
+
+  <section class="part" id="s12">
+    <h2><span class="sec">§12</span>Шпаргалка</h2>
+    <p class="about">Опорные понятия лекции одним списком.</p>
+    <div class="cheat">
+      <div><b>Строка значения</b><code>имя{метка="значение"} число</code></div>
+      <div><b>Описание</b><code># HELP имя текст</code><code># TYPE имя тип</code></div>
+      <div><b>Ошибки записи</b><code>метка без кавычек</code><code>запятая в числе</code><code>неизвестный тип</code></div>
+      <div><b>Реестр</b><code>REGISTRY — общий</code><code>CollectorRegistry() — свой</code></div>
+      <div><b>Сборка ответа</b><code>collect() → семейства</code><code>generate_latest → текст</code></div>
+      <div><b>Формат</b><code>Accept → Content-Type</code><code>OpenMetrics: # EOF</code></div>
+    </div>
+  </section>
+
+  <section class="part" id="s13">
+    <h2><span class="sec">§13</span>Глоссарий</h2>
+    <p class="about">Термины лекции, включая понятия части 1: формулировка, пример и рисунок.</p>
+    <div class="glossary">
+      <article class="gl" id="g-metric">
+        <div class="gl__text">
+          <h3>Метрика<i>metric</i></h3>
+          <p class="gl__def">Число, которое описывает много событий сразу и хранится как временной ряд.</p>
+          <p class="gl__ex"><b>Пример</b><code>http_requests_total{method="GET",status="200"} 125.0</code>.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.4, §2</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Метрика"><rect class="sc-box" x="10" y="30" width="60" height="70" rx="6"/><text class="t tc" x="40" y="70">много</text><path class="sc-arrow" d="M76 65 L150 65"/><path class="sc-arrow" d="M142 69 L150 65 L142 61"/><rect class="sc-acc" x="156" y="44" width="94" height="42" rx="8"/><text class="tm tc" x="203" y="70">число</text></svg></figure>
+      </article>
+      <article class="gl" id="g-series">
+        <div class="gl__text">
+          <h3>Временной ряд<i>time series</i></h3>
+          <p class="gl__def">Значения одной величины у одного объекта по времени. В <code>/metrics</code> ряд задают имя и метки.</p>
+          <p class="gl__ex"><b>Пример</b><code>http_requests_total{method="GET",status="404"}</code>.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.2, §3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Временной ряд"><line class="sc-axis" x1="10" y1="110" x2="250" y2="110"/><polyline class="sc-plot" points="20,100 70,90 120,70 170,50 230,40"/><circle class="sc-dot" cx="20" cy="100" r="4"/><circle class="sc-dot" cx="70" cy="90" r="4"/><circle class="sc-dot" cx="120" cy="70" r="4"/><circle class="sc-dot" cx="170" cy="50" r="4"/><circle class="sc-dot" cx="230" cy="40" r="4"/></svg></figure>
+      </article>
+      <article class="gl" id="g-endpoint">
+        <div class="gl__text">
+          <h3>Адрес /metrics<i>metrics endpoint</i></h3>
+          <p class="gl__def">Адрес приложения, который отдаёт текущие значения метрик текстом. Текст собирается в момент запроса.</p>
+          <p class="gl__ex"><b>Пример</b><code>http://localhost:8000/metrics</code>.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.1, §1</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Адрес /metrics"><rect class="sc-acc" x="10" y="40" width="100" height="50" rx="8"/><text class="tm tc" x="60" y="70">/metrics</text><path class="sc-arrow" d="M114 65 L150 65"/><path class="sc-arrow" d="M142 69 L150 65 L142 61"/><rect class="sc-box" x="156" y="40" width="94" height="50" rx="8"/><text class="t tc" x="203" y="70">текст</text></svg></figure>
+      </article>
+      <article class="gl" id="g-line">
+        <div class="gl__text">
+          <h3>Строка значения<i>sample line</i></h3>
+          <p class="gl__def">Имя метрики, метки в фигурных скобках и число через пробел. Значения меток в кавычках, число через точку.</p>
+          <p class="gl__ex"><b>Пример</b><code>queue_length 7</code> — строка без меток.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.1, §2</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Строка значения"><rect class="sc-acc" x="10" y="45" width="80" height="36" rx="6"/><text class="tm tc" x="50" y="68">имя</text><rect class="sc-box" x="96" y="45" width="100" height="36" rx="6"/><text class="tm tc" x="146" y="68">{метки}</text><rect class="sc-wrn" x="202" y="45" width="48" height="36" rx="6"/><text class="tm tc" x="226" y="68">7</text></svg></figure>
+      </article>
+      <article class="gl" id="g-help-type">
+        <div class="gl__text">
+          <h3>HELP и TYPE</h3>
+          <p class="gl__def">Строки описания метрики: пояснение для человека и тип. Без <code>TYPE</code> тип неизвестен.</p>
+          <p class="gl__ex"><b>Пример</b><code># TYPE http_requests_total counter</code>.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.1, §3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="HELP и TYPE"><rect class="sc-box" x="20" y="24" width="220" height="30" rx="6"/><text class="tm" x="30" y="44"># HELP … текст</text><rect class="sc-box" x="20" y="62" width="220" height="30" rx="6"/><text class="tm" x="30" y="82"># TYPE … counter</text><text class="t" x="20" y="116">над строками значений</text></svg></figure>
+      </article>
+      <article class="gl" id="g-family">
+        <div class="gl__text">
+          <h3>Семейство метрики<i>metric family</i></h3>
+          <p class="gl__def">Метрика вместе со всеми её рядами и строками описания. Так её возвращают разборщик и <code>collect()</code>.</p>
+          <p class="gl__ex"><b>Пример</b>семейство <code>http_requests</code>: тип counter, четыре отсчёта.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.1, §2, §7</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Семейство метрики"><rect class="sc-acc" x="20" y="14" width="220" height="104" rx="8"/><text class="tm" x="32" y="36">http_requests · counter</text><rect class="sc-box" x="32" y="46" width="196" height="26" rx="4"/><rect class="sc-box" x="32" y="80" width="196" height="26" rx="4"/><text class="tm" x="40" y="64">_total{200} 5.0</text><text class="tm" x="40" y="98">_total{500} 1.0</text></svg></figure>
+      </article>
+      <article class="gl" id="g-registry">
+        <div class="gl__text">
+          <h3>Реестр<i>registry</i></h3>
+          <p class="gl__def">Список метрик процесса, из которого собирается ответ <code>/metrics</code>. Общий — <code>REGISTRY</code>, свой — <code>CollectorRegistry()</code>.</p>
+          <p class="gl__ex"><b>Пример</b>в своём реестре — 6 строк, в общем — 18 строк служебных метрик.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.1, §5–§6</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Реестр"><rect class="sc-acc" x="20" y="20" width="220" height="90" rx="8"/><text class="tb" x="32" y="42">реестр</text><text class="tm" x="32" y="64">orders</text><text class="tm" x="32" y="82">http_requests</text><text class="tm" x="32" y="100">python_gc_*</text></svg></figure>
+      </article>
+      <article class="gl" id="g-collector">
+        <div class="gl__text">
+          <h3>Сборщик<i>collector</i></h3>
+          <p class="gl__def">Объект в реестре, который при каждом обходе сам вычисляет значения своих метрик.</p>
+          <p class="gl__ex"><b>Пример</b><code>GCCollector</code> отдаёт <code>python_gc_*</code>, <code>ProcessCollector</code> — <code>process_*</code> в Linux.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.1, §5</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Сборщик"><rect class="sc-box" x="10" y="40" width="110" height="50" rx="8"/><text class="tm tc" x="65" y="70">GCCollector</text><path class="sc-arrow" d="M124 65 L150 65"/><path class="sc-arrow" d="M142 69 L150 65 L142 61"/><rect class="sc-acc" x="156" y="40" width="94" height="50" rx="8"/><text class="tm tc" x="203" y="70">python_gc</text></svg></figure>
+      </article>
+      <article class="gl" id="g-openmetrics">
+        <div class="gl__text">
+          <h3>OpenMetrics</h3>
+          <p class="gl__def">Стандартизированный вариант текстового формата. Отдаётся по заголовку <code>Accept: application/openmetrics-text</code>, заканчивается <code># EOF</code>.</p>
+          <p class="gl__ex"><b>Пример</b><code>Content-Type: application/openmetrics-text; version=1.0.0</code>.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.1, §8</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="OpenMetrics"><rect class="sc-box" x="20" y="20" width="220" height="90" rx="8"/><text class="tm" x="32" y="44"># TYPE http_requests …</text><text class="tm" x="32" y="66">http_requests_total …</text><text class="tm tw" x="32" y="94"># EOF</text></svg></figure>
+      </article>
+    </div>
+  </section>
+
+  <section class="part">
+    <h3>Итог лекции</h3>
+    <p>Адрес <code>/metrics</code> отдаёт текущие значения метрик текстом, и этот текст собирается из реестра при каждом запросе. Строка значения — имя, метки в фигурных скобках и число; значения меток всегда в кавычках, число через точку. Над строками значений стоят <code>HELP</code> и <code>TYPE</code>. Значение метки без кавычек, запятая в числе, неизвестный тип и повтор метки делают непригодным весь ответ — это видно, если проверить текст разборщиком библиотеки. Общий реестр <code>REGISTRY</code> уже содержит служебные метрики Python и процесса; свой реестр <code>CollectorRegistry()</code> содержит только переданные ему метрики. Формат ответа сервер выбирает по заголовку <code>Accept</code>: классический текст или OpenMetrics.</p>
+    <h3>Источники</h3>
+    <ul class="sources">
+      <li>Prometheus. Exposition formats — prometheus.io/docs/instrumenting/exposition_formats</li>
+      <li>OpenMetrics specification — github.com/prometheus/OpenMetrics</li>
+      <li>prometheus-client для Python — prometheus.github.io/client_python</li>
+      <li>Все выводы получены запуском на Python 3.12.12 и prometheus-client 0.26.0, macOS, 10.11.2026</li>
+    </ul>
+  </section>
+
+  <div class="pager">
+    <a href="1-6-razbor-incidenta.html">← 1.6 Разбор инцидента</a>
+    <a href="index.html">К содержанию справочника</a>
+    <a href="2-2-counter.html">2.2 Counter →</a>
+  </div>
+  <div class="colophon">
+    <span>Лекция 2.1 · Ответ /metrics · Метрики и наблюдаемость</span>
+    <span class="author-line">Автор: Макаров Максим Николаевич</span>
+  </div>
+    </main>
+  </div>
+</div>
+<script src="reader.js"></script>
+</body>
+</html>

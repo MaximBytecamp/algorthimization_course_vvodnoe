@@ -20,6 +20,7 @@ tags:
 - [observability/lab-incident/README.md](../../../observability/lab-incident/README.md)
 - [observability/lab-incident/app.py](../../../observability/lab-incident/app.py)
 - [observability/lab-incident/load.py](../../../observability/lab-incident/load.py)
+- [observability/lab-incident/pool_trace.py](../../../observability/lab-incident/pool_trace.py)
 - [observability/lab-incident/stages.py](../../../observability/lab-incident/stages.py)
 - [observability/lab-incident/summary.py](../../../observability/lab-incident/summary.py)
 
