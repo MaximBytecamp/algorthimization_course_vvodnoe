@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>2.2 Counter: создать и прибавить · Метрики и наблюдаемость</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="book">
+  <div class="book__body">
+    <div class="spine"><span>Часть 2 · Метрики в коде</span></div>
+    <main class="leaf">
+  <div class="running">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Метрики и наблюдаемость</a> · часть 2 · метрики в коде</p>
+    <p class="running__folio">Лекция 2.7</p>
+  </div>
+
+  <header class="chapter-head">
+    <span class="chapter-num">2.7</span>
+    <h1>Gauge: значение «сейчас»</h1>
+    <p class="lead">Счётчик из лекций 2.2–2.6 считает события и только растёт. Второй тип метрик — gauge — показывает состояние: длину очереди, занятую память, число запросов в работе. В лекции — как его менять, почему он теряет всё, что было между опросами, как с его помощью следить за давно не выполнявшейся задачей, как сводить gauge экземпляров и процессов и как выбрать между gauge и счётчиком.</p>
+  </header>
+  <dl class="passport">
+    <div><dt>Тема</dt><dd>Gauge</dd></div>
+    <div><dt>Библиотека</dt><dd><code>prometheus-client</code> 0.26.0</dd></div>
+    <div><dt>Опирается на</dt><dd>1.2: интервал и окно; 2.2–2.6: счётчик, рост и сброс, несколько процессов</dd></div>
+    <div><dt>Результат</dt><dd>Выбирать между gauge и счётчиком и менять gauge без лишних единиц</dd></div>
+  </dl>
+
+  <div class="reader-start">
+    <div>
+      <b>Режим чтения</b>
+      <p>Лекция откроется по одному разделу: на экране одна мысль, кнопка «Дальше» ведёт к следующей. Стрелки ← → на клавиатуре тоже листают, Esc возвращает всю лекцию.</p>
+    </div>
+    <div class="reader-start__btns">
+      <button type="button" data-reader-start="continue" hidden></button>
+      <button type="button" class="primary" data-reader-start="begin">Читать по шагам</button>
+    </div>
+  </div>
+
+    <nav class="contents">
+    <b>В этой лекции</b>
+    <ol>
+      <li><a href="#s1"><span class="csec">§1</span>Текущая величина</a></li>
+      <li><a href="#s2"><span class="csec">§2</span>Шесть способов изменить значение</a></li>
+      <li><a href="#s3"><span class="csec">§3</span>Запросы в работе</a></li>
+      <li><a href="#s4"><span class="csec">§4</span>Что gauge теряет между опросами</a></li>
+      <li><a href="#s4-1"><span class="csec">§4.1</span>Два счётчика вместо gauge</a></li>
+      <li><a href="#s5"><span class="csec">§5</span>Время как значение</a></li>
+      <li><a href="#s6"><span class="csec">§6</span>Gauge нескольких экземпляров</a></li>
+      <li><a href="#s7"><span class="csec">§7</span>Gauge в нескольких процессах</a></li>
+      <li><a href="#s8"><span class="csec">§8</span>Gauge или счётчик</a></li>
+      <li><a href="#s9"><span class="csec">§9</span>Частые ошибки</a></li>
+      <li><a href="#s10"><span class="csec">§10</span>Практика</a></li>
+      <li><a href="#s11"><span class="csec">§11</span>Проверьте себя</a></li>
+      <li><a href="#s12"><span class="csec">§12</span>Шпаргалка</a></li>
+      <li><a href="#s13"><span class="csec">§13</span>Глоссарий</a></li>
+    </ol>
+  </nav>
+
+    <section class="part" id="s1">
+    <h2><span class="sec">§1</span>Текущая величина</h2>
+    <p class="about">Чем gauge отличается от счётчика и как его создать.</p>
+    <p>Табло у въезда на парковку: «Свободно 37 мест». Машина въехала — 36, выехала — снова 37. Табло не считает, сколько машин проехало за день, оно показывает, как обстоят дела сейчас. Счётчик из лекции 2.2 для этого не подходит: он только прибавляет. Для величин «сколько сейчас» в библиотеке есть второй тип.</p>
+    <div class="def">
+      <div class="def__term">Gauge<i>измеритель</i></div>
+      <dl><dt>Что это</dt><dd>Метрика с одним числом, которое может и расти, и уменьшаться.</dd><dt>Что даёт</dt><dd>Ответ на вопрос «сколько сейчас»: длина очереди, занятая память, свободные места.</dd><dt>Пример</dt><dd><code>parking_free_places 36.0</code> — свободных мест сейчас.</dd></dl>
+    </div>
+    <p>Создадим gauge и поменяем его, как меняется табло:</p>
+    <figure class="code">
+      <figcaption><span>first.py</span><span>gauge парковки</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Gauge, generate_latest
+
+registry = <span class="f">CollectorRegistry</span>()
+parking = <span class="f">Gauge</span>(<span class="s">&quot;parking_free_places&quot;</span>, <span class="s">&quot;Свободные места на парковке&quot;</span>, registry=registry)
+
+parking.<span class="f">set</span>(<span class="n">37</span>)
+parking.<span class="f">dec</span>()          <span class="c"># машина въехала</span>
+parking.<span class="f">dec</span>()          <span class="c"># ещё одна</span>
+parking.<span class="f">inc</span>()          <span class="c"># одна выехала</span>
+<span class="f">print</span>(<span class="f">generate_latest</span>(registry).<span class="f">decode</span>())</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>ответ /metrics</span></figcaption><pre># HELP parking_free_places Свободные места на парковке
+# TYPE parking_free_places gauge
+parking_free_places 36.0</pre></figure>
+    <div class="walk">
+      <div><code>Gauge("parking_free_places", …)</code><span>Создаёт gauge со значением 0. Аргументы те же, что у Counter: имя, описание, реестр.</span></div>
+      <div><code>parking.set(37)</code><span>Ставит значение целиком — табло включили.</span></div>
+      <div><code>parking.dec()</code>, <code>parking.inc()</code><span>Отнимают и прибавляют единицу: машина въехала, машина выехала.</span></div>
+    </div>
+    <p><b>Прогон на живых данных.</b> Напечатаем значение после каждой строки и добавим <code>dec(40)</code> — больше, чем было:</p>
+    <figure class="code">
+      <figcaption><span>first_trace.py</span><span>значение после каждого вызова</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Gauge
+
+registry = <span class="f">CollectorRegistry</span>()
+parking = <span class="f">Gauge</span>(<span class="s">&quot;parking_free_places&quot;</span>, <span class="s">&quot;Свободные места на парковке&quot;</span>, registry=registry)
+value = <span class="k">lambda</span>: registry.<span class="f">get_sample_value</span>(<span class="s">&quot;parking_free_places&quot;</span>)
+<span class="f">print</span>(<span class="s">&quot;после создания:&quot;</span>, <span class="f">value</span>())
+parking.<span class="f">set</span>(<span class="n">37</span>);  <span class="f">print</span>(<span class="s">&quot;set(37):&quot;</span>, <span class="f">value</span>())
+parking.<span class="f">dec</span>();    <span class="f">print</span>(<span class="s">&quot;dec():  &quot;</span>, <span class="f">value</span>())
+parking.<span class="f">dec</span>();    <span class="f">print</span>(<span class="s">&quot;dec():  &quot;</span>, <span class="f">value</span>())
+parking.<span class="f">inc</span>();    <span class="f">print</span>(<span class="s">&quot;inc():  &quot;</span>, <span class="f">value</span>())
+parking.<span class="f">dec</span>(<span class="n">40</span>);  <span class="f">print</span>(<span class="s">&quot;dec(40):&quot;</span>, <span class="f">value</span>())</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>по шагам</span></figcaption><pre>после создания: 0.0
+set(37): 37.0
+dec():   36.0
+dec():   35.0
+inc():   36.0
+dec(40): -4.0</pre></figure>
+    <p>37 → 36 → 35 → 36, а после <code>dec(40)</code> — минус 4. Gauge не проверяет, имеет ли значение смысл: отрицательное число свободных мест он запишет так же спокойно. Счётчик на <code>inc(-100)</code> в лекции 2.2 остановился с ошибкой; gauge разрешает всё. В ответе видны ещё два отличия от счётчика: у имени нет окончания <code>_total</code> и нет строки <code>_created</code>.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Значение gauge по шагам: 0, 37, 36, 35, 36, минус 4"><line class="sc-axis" x1="40" y1="100" x2="620" y2="100"/><line class="sc-grid" x1="40" y1="24" x2="620" y2="24"/><text class="tm tr" x="34" y="28">37</text><text class="tm tr" x="34" y="104">0</text><polyline class="sc-plot" points="60,100 160,24 260,26 360,28 460,26 560,108"/><circle class="sc-dot" cx="60" cy="100" r="5"/><circle class="sc-dot" cx="160" cy="24" r="5"/><circle class="sc-dot" cx="260" cy="26" r="5"/><circle class="sc-dot" cx="360" cy="28" r="5"/><circle class="sc-dot" cx="460" cy="26" r="5"/><circle class="sc-dot-w" cx="560" cy="108" r="6"/><text class="tm tc" x="60" y="140">создан</text><text class="tm tc" x="160" y="140">set(37)</text><text class="tm tc" x="260" y="140">dec()</text><text class="tm tc" x="360" y="140">dec()</text><text class="tm tc" x="460" y="140">inc()</text><text class="tm tc tw" x="560" y="140">dec(40) → −4</text></svg>
+      <figcaption>Значение gauge после каждого вызова.</figcaption>
+    </figure>
+    <p>Линия поднимается от нуля до 37, колеблется на единицу и падает ниже нуля — оранжевая точка. Ограничений сверху и снизу нет: следить за смыслом значения должен код.</p>
+    <div class="key"><b>Вывод</b><p>Gauge хранит одно число и меняется в обе стороны. Отрицательные значения он принимает, поэтому правильность значения обеспечивает код.</p></div>
+    <p class="next">Кроме <code>set</code>, <code>inc</code> и <code>dec</code>, у gauge есть ещё три способа изменить значение.</p>
+  </section>
+
+  <section class="part" id="s2">
+    <h2><span class="sec">§2</span>Шесть способов изменить значение</h2>
+    <p class="about">Какой метод выбрать, если изменения приходят по одному, значение известно целиком или его можно спросить.</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Метод</th><th>Что делает</th><th>Когда подходит</th></tr></thead>
+        <tbody>
+          <tr><td><code>inc(n)</code>, <code>dec(n)</code></td><td>прибавляет или отнимает <code>n</code>, по умолчанию 1</td><td>изменения приходят по одному: заказ встал в очередь, заказ собран</td></tr>
+          <tr><td><code>set(x)</code></td><td>ставит значение целиком</td><td>значение известно сразу: прочитали размер очереди из базы</td></tr>
+          <tr><td><code>set_to_current_time()</code></td><td>ставит текущее Unix-время</td><td>момент события: последняя удачная выгрузка (§5)</td></tr>
+          <tr><td><code>track_inprogress()</code></td><td>+1 при входе в блок <code>with</code>, −1 при выходе</td><td>сколько операций выполняется сейчас (§3)</td></tr>
+          <tr><td><code>set_function(f)</code></td><td>вызывает функцию <code>f</code> при каждом чтении</td><td>значение можно спросить в любой момент: <code>len(queue)</code></td></tr>
+        </tbody>
+      </table></div>
+    <p>Последний способ особенно удобен: не нужно следить, чтобы на каждый <code>inc</code> пришёлся свой <code>dec</code>. Gauge сам спрашивает значение в момент чтения:</p>
+    <figure class="code">
+      <figcaption><span>setfn.py</span><span>длина очереди в момент чтения</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Gauge
+
+registry = <span class="f">CollectorRegistry</span>()
+queue_length = <span class="f">Gauge</span>(<span class="s">&quot;orders_queue_length&quot;</span>, <span class="s">&quot;Заказы в очереди&quot;</span>, registry=registry)
+
+queue = [<span class="s">&quot;card&quot;</span>, <span class="s">&quot;cash&quot;</span>, <span class="s">&quot;card&quot;</span>]
+queue_length.<span class="f">set_function</span>(<span class="k">lambda</span>: <span class="f">len</span>(queue))   <span class="c"># длину считают в момент чтения</span>
+
+<span class="f">print</span>(<span class="s">&quot;в очереди 3:&quot;</span>, registry.<span class="f">get_sample_value</span>(<span class="s">&quot;orders_queue_length&quot;</span>))
+queue.<span class="f">pop</span>()
+queue.<span class="f">pop</span>()
+<span class="f">print</span>(<span class="s">&quot;собраны 2:  &quot;</span>, registry.<span class="f">get_sample_value</span>(<span class="s">&quot;orders_queue_length&quot;</span>))
+queue.<span class="f">append</span>(<span class="s">&quot;cash&quot;</span>)
+<span class="f">print</span>(<span class="s">&quot;пришёл 1:   &quot;</span>, registry.<span class="f">get_sample_value</span>(<span class="s">&quot;orders_queue_length&quot;</span>))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>три чтения</span></figcaption><pre>в очереди 3: 3.0
+собраны 2:   1.0
+пришёл 1:    2.0</pre></figure>
+    <div class="walk">
+      <div><code>set_function(lambda: len(queue))</code><span>Запоминает функцию. Значения gauge больше не хранит — вычисляет при каждом чтении.</span></div>
+      <div><code>registry.get_sample_value(…)</code><span>Чтение — то же, что при запросе <code>/metrics</code>: функция вызывается в этот момент.</span></div>
+    </div>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Строка</th><th>Что получилось на прогоне</th></tr></thead>
+        <tbody>
+          <tr><td><code>queue = ["card", "cash", "card"]</code></td><td>первое чтение — 3.0</td></tr>
+          <tr><td><code>queue.pop()</code> × 2</td><td>второе чтение — 1.0; методы gauge не вызывались</td></tr>
+          <tr><td><code>queue.append("cash")</code></td><td>третье чтение — 2.0</td></tr>
+        </tbody>
+      </table></div>
+    <p>Методы gauge ни разу не вызывали, и всё же каждое чтение показало настоящую длину списка. Так же устроен стенд заказов из лекции 1.5: длину очереди Redis API спрашивает прямо перед ответом <code>/metrics</code>.</p>
+    <div class="key"><b>Вывод</b><p>Изменения по одному — <code>inc</code>/<code>dec</code>, значение целиком — <code>set</code>, значение можно спросить — <code>set_function</code>: тогда ошибиться в паре <code>inc</code>/<code>dec</code> нельзя.</p></div>
+    <p class="next">Пара <code>inc</code>/<code>dec</code> опасна, если между ними может случиться ошибка. Разберём на запросах в работе.</p>
+  </section>
+
+  <section class="part" id="s3">
+    <h2><span class="sec">§3</span>Запросы в работе</h2>
+    <p class="about">Почему уменьшение ставят так, чтобы оно выполнилось даже при ошибке.</p>
+    <p>Табло у примерочных: на входе +1, на выходе −1. Если кто-то ушёл через запасной выход, минус не сработает, и табло навсегда покажет одного лишнего. Gauge «запросов в работе» устроен так же: +1 в начале обработки, −1 в конце. Сравним два обработчика: первый вызывает <code>dec()</code> последней строкой, второй использует <code>track_inprogress()</code>. Пять запросов, три из них заканчиваются ошибкой:</p>
+    <figure class="code">
+      <figcaption><span>inprogress.py</span><span>два обработчика, пять запросов</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Gauge
+
+registry = <span class="f">CollectorRegistry</span>()
+bad = <span class="f">Gauge</span>(<span class="s">&quot;bad_in_progress&quot;</span>, <span class="s">&quot;inc/dec без finally&quot;</span>, registry=registry)
+good = <span class="f">Gauge</span>(<span class="s">&quot;good_in_progress&quot;</span>, <span class="s">&quot;track_inprogress&quot;</span>, registry=registry)
+
+<span class="k">def</span> <span class="f">handle_bad</span>(fail):
+    bad.<span class="f">inc</span>()
+    <span class="k">if</span> fail:
+        <span class="k">raise</span> <span class="f">ValueError</span>(<span class="s">&quot;ошибка обработки&quot;</span>)
+    bad.<span class="f">dec</span>()
+
+<span class="k">def</span> <span class="f">handle_good</span>(fail):
+    <span class="k">with</span> good.<span class="f">track_inprogress</span>():
+        <span class="k">if</span> fail:
+            <span class="k">raise</span> <span class="f">ValueError</span>(<span class="s">&quot;ошибка обработки&quot;</span>)
+
+<span class="k">for</span> fail <span class="k">in</span> (<span class="k">False</span>, <span class="k">True</span>, <span class="k">False</span>, <span class="k">True</span>, <span class="k">True</span>):
+    <span class="k">for</span> handle <span class="k">in</span> (handle_bad, handle_good):
+        <span class="k">try</span>:
+            <span class="f">handle</span>(fail)
+        <span class="k">except</span> ValueError:
+            <span class="k">pass</span>
+
+<span class="f">print</span>(<span class="s">&quot;без finally:       &quot;</span>, registry.<span class="f">get_sample_value</span>(<span class="s">&quot;bad_in_progress&quot;</span>))
+<span class="f">print</span>(<span class="s">&quot;track_inprogress():&quot;</span>, registry.<span class="f">get_sample_value</span>(<span class="s">&quot;good_in_progress&quot;</span>))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>после всех запросов в работе — ни одного</span></figcaption><pre>без finally:        3.0
+track_inprogress(): 0.0</pre></figure>
+    <div class="walk">
+      <div><code>bad.inc() … bad.dec()</code><span>Исключение выходит из функции раньше, чем выполнится <code>dec()</code>.</span></div>
+      <div><code>with good.track_inprogress():</code><span>Блок <code>with</code> выполняет −1 при выходе из блока любым путём, в том числе через исключение.</span></div>
+      <div><code>for fail in (False, True, False, True, True)</code><span>Пять запросов: два удачных, три с ошибкой.</span></div>
+    </div>
+    <p>Все пять запросов закончились, в работе не осталось ни одного. <code>track_inprogress()</code> показывает 0 — верно. Первый gauge показывает 3: по одной лишней единице на каждую ошибку. Со временем он будет только расти, и по нему будет казаться, что сервис перегружен. Если блок <code>with</code> не подходит, уменьшение ставят в <code>finally</code> — он тоже выполняется всегда.</p>
+    <div class="key key--warn"><b>Вывод</b><p>Каждый <code>inc</code> должен получить свой <code>dec</code> на любом пути выполнения. Для этого — <code>track_inprogress()</code> или <code>dec()</code> в <code>finally</code>.</p></div>
+    <p class="next">Значение в памяти верное. Посмотрим, что из него попадает в историю.</p>
+  </section>
+
+  <section class="part" id="s4">
+    <h2><span class="sec">§4</span>Что gauge теряет между опросами</h2>
+    <p class="about">Опыт: наплыв заказов виден при опросе раз в секунду и пропадает при опросе раз в 15 секунд.</p>
+    <p>В лекции 1.2, §6 мы видели на модели, что значение, которое растёт и падает, сохраняется только в моменты измерений. Проверим это на настоящем gauge и настоящем <code>/metrics</code>. Программа ниже открывает <code>/metrics</code> с gauge длины очереди. На 3-й секунде в очередь приходят 10 заказов, склад собирает по одному в секунду. Программа читает <code>/metrics</code> каждую секунду. Отдельно она запоминает чтения на 0-й, 15-й и 30-й секунде — так читал бы Prometheus с интервалом 15 секунд:</p>
+    <figure class="code">
+      <figcaption><span>burst.py</span><span>наплыв и два расписания опроса</span></figcaption>
+<pre><span class="k">import</span> threading
+<span class="k">import</span> time
+<span class="k">from</span> urllib.request <span class="k">import</span> urlopen
+<span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Gauge, start_http_server
+
+registry = <span class="f">CollectorRegistry</span>()
+queue_length = <span class="f">Gauge</span>(<span class="s">&quot;orders_queue_length&quot;</span>, <span class="s">&quot;Заказы в очереди&quot;</span>, registry=registry)
+queue = []
+queue_length.<span class="f">set_function</span>(<span class="k">lambda</span>: <span class="f">len</span>(queue))
+<span class="f">start_http_server</span>(<span class="n">8001</span>, registry=registry)
+
+<span class="k">def</span> <span class="f">packer</span>():                       <span class="c"># склад: собирает один заказ в секунду</span>
+    <span class="k">while</span> <span class="k">True</span>:
+        time.<span class="f">sleep</span>(<span class="n">1</span>)
+        <span class="k">if</span> queue:
+            queue.<span class="f">pop</span>()
+
+<span class="k">def</span> <span class="f">read</span>():
+    <span class="k">for</span> line <span class="k">in</span> <span class="f">urlopen</span>(<span class="s">&quot;http://localhost:8001/metrics&quot;</span>).<span class="f">read</span>().<span class="f">decode</span>().<span class="f">splitlines</span>():
+        <span class="k">if</span> line.<span class="f">startswith</span>(<span class="s">&quot;orders_queue_length &quot;</span>):
+            <span class="k">return</span> <span class="f">int</span>(<span class="f">float</span>(line.<span class="f">split</span>()[-<span class="n">1</span>]))
+
+threading.<span class="f">Thread</span>(target=packer, daemon=<span class="k">True</span>).<span class="f">start</span>()
+started = time.<span class="f">time</span>()
+every_second, every_15 = [], []
+<span class="k">for</span> second <span class="k">in</span> <span class="f">range</span>(<span class="n">31</span>):
+    <span class="k">if</span> second == <span class="n">3</span>:
+        queue.<span class="f">extend</span>([<span class="s">&quot;order&quot;</span>] * <span class="n">10</span>)          <span class="c"># наплыв: десять заказов разом</span>
+    value = <span class="f">read</span>()
+    every_second.<span class="f">append</span>(value)
+    <span class="k">if</span> second % <span class="n">15</span> == <span class="n">0</span>:
+        every_15.<span class="f">append</span>((second, value))
+    time.<span class="f">sleep</span>(<span class="f">max</span>(<span class="n">0</span>, started + second + <span class="n">1</span> - time.<span class="f">time</span>()))
+
+<span class="f">print</span>(<span class="s">&quot;раз в секунду:&quot;</span>, every_second)
+<span class="f">print</span>(<span class="s">&quot;раз в 15 секунд:&quot;</span>, every_15)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>что увидели два расписания</span></figcaption><pre>раз в секунду: [0, 0, 0, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+раз в 15 секунд: [(0, 0), (15, 0), (30, 0)]</pre></figure>
+    <div class="walk">
+      <div><code>packer()</code><span>Склад в отдельном потоке: раз в секунду убирает один заказ из очереди.</span></div>
+      <div><code>queue.extend(["order"] * 10)</code><span>Наплыв на 3-й секунде: десять заказов разом.</span></div>
+      <div><code>read()</code><span>Настоящий запрос <code>GET /metrics</code> и строка <code>orders_queue_length</code>.</span></div>
+      <div><code>if second % 15 == 0</code><span>Чтения на 0-й, 15-й и 30-й секунде — расписание Prometheus.</span></div>
+    </div>
+    <p>Два расписания на одной шкале:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Очередь раз в секунду: с 3-й секунды 10, затем убывает до 0 к 13-й; опросы раз в 15 секунд на 0, 15 и 30 секунде — все нули"><line class="sc-axis" x1="40" y1="130" x2="620" y2="130"/><line class="sc-grid" x1="40" y1="30" x2="620" y2="30"/><text class="tm tr" x="28" y="34">10</text><text class="tm tr" x="28" y="134">0</text><polyline class="sc-plot" points="40,130 58.7,130 77.3,130 96,30 114.7,40 133.3,50 152,60 170.7,70 189.3,80 208,90 226.7,100 245.3,110 264,120 282.7,130 620,130"/><circle class="sc-dot-w" cx="40" cy="130" r="7"/><circle class="sc-dot-w" cx="320" cy="130" r="7"/><circle class="sc-dot-w" cx="600" cy="130" r="7"/><text class="t" x="110" y="24">раз в секунду: пик 10</text><text class="t tw" x="330" y="118">раз в 15 с: 0, 0, 0</text><text class="tm tc" x="40" y="150">0</text><text class="tm tc" x="320" y="150">15</text><text class="tm tc" x="600" y="150">30 с</text></svg>
+      <figcaption>Синяя линия — чтения раз в секунду, оранжевые точки — чтения раз в 15 секунд.</figcaption>
+    </figure>
+    <p>Синяя линия показывает весь наплыв: скачок до 10 и спад за 10 секунд. Оранжевые точки — три опроса раз в 15 секунд, и все три лежат на нуле. Наплыв целиком прошёл между ними. По истории с интервалом 15 секунд нельзя даже сказать, что он был.</p>
+    <div class="key key--warn"><b>Вывод</b><p>Gauge хранит только текущее значение: всё, что было между опросами, теряется. Пик короче интервала опроса может не оставить следа.</p></div>
+    <p class="next">Счётчики события не забывают. Повторим опыт с ними.</p>
+  </section>
+
+  <section class="part" id="s4-1">
+    <h2><span class="sec">§4.1</span>Два счётчика вместо gauge</h2>
+    <p class="about">Как не потерять наплыв: считать события, а длину очереди получать разностью.</p>
+    <p>Вместо gauge «длина очереди» заведём два счётчика: «принято заказов» и «собрано заказов». Длина очереди — их разность. Тот же наплыв, те же опросы на 0-й, 15-й и 30-й секунде:</p>
+    <figure class="code">
+      <figcaption><span>burst_counters.py</span><span>наплыв со счётчиками</span></figcaption>
+<pre><span class="k">import</span> threading
+<span class="k">import</span> time
+<span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter
+
+registry = <span class="f">CollectorRegistry</span>()
+created = <span class="f">Counter</span>(<span class="s">&quot;orders_created&quot;</span>, <span class="s">&quot;Принятые заказы&quot;</span>, registry=registry)
+packed = <span class="f">Counter</span>(<span class="s">&quot;orders_packed&quot;</span>, <span class="s">&quot;Собранные заказы&quot;</span>, registry=registry)
+queue = []
+
+<span class="k">def</span> <span class="f">packer</span>():
+    <span class="k">while</span> <span class="k">True</span>:
+        time.<span class="f">sleep</span>(<span class="n">1</span>)
+        <span class="k">if</span> queue:
+            queue.<span class="f">pop</span>()
+            packed.<span class="f">inc</span>()
+
+threading.<span class="f">Thread</span>(target=packer, daemon=<span class="k">True</span>).<span class="f">start</span>()
+started = time.<span class="f">time</span>()
+<span class="k">for</span> second <span class="k">in</span> <span class="f">range</span>(<span class="n">31</span>):
+    <span class="k">if</span> second == <span class="n">3</span>:
+        queue.<span class="f">extend</span>([<span class="s">&quot;order&quot;</span>] * <span class="n">10</span>)
+        created.<span class="f">inc</span>(<span class="n">10</span>)
+    <span class="k">if</span> second % <span class="n">15</span> == <span class="n">0</span>:
+        c = registry.<span class="f">get_sample_value</span>(<span class="s">&quot;orders_created_total&quot;</span>)
+        p = registry.<span class="f">get_sample_value</span>(<span class="s">&quot;orders_packed_total&quot;</span>)
+        <span class="f">print</span>(<span class="s">f&quot;{second:&gt;2} с: принято {c:.0f}, собрано {p:.0f}, в очереди {c - p:.0f}&quot;</span>)
+    time.<span class="f">sleep</span>(<span class="f">max</span>(<span class="n">0</span>, started + second + <span class="n">1</span> - time.<span class="f">time</span>()))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>три опроса</span></figcaption><pre> 0 с: принято 0, собрано 0, в очереди 0
+15 с: принято 10, собрано 10, в очереди 0
+30 с: принято 10, собрано 10, в очереди 0</pre></figure>
+    <div class="walk">
+      <div><code>created.inc(10)</code><span>Наплыв увеличивает счётчик принятых на 10.</span></div>
+      <div><code>packed.inc()</code><span>Склад прибавляет единицу на каждый собранный заказ.</span></div>
+      <div><code>c - p</code><span>Длина очереди в момент опроса — разность двух счётчиков.</span></div>
+    </div>
+    <p>Разность на 15-й секунде — 0, как и у gauge: к этому моменту очередь уже пуста. Но сами счётчики сохранили наплыв: между опросами 0 и 15 принято 10 заказов и собрано 10. Из истории видно, что за эти 15 секунд через очередь прошло 10 заказов, хотя пик длины по-прежнему не виден.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 140" role="img" aria-label="Gauge: 0, 0, 0 — наплыв не виден. Счётчики: принято 0, 10, 10; собрано 0, 10, 10 — наплыв виден как прирост 10"><rect class="sc-box" x="10" y="20" width="300" height="100" rx="8"/><text class="tb" x="26" y="44">gauge очереди</text><text class="tm" x="26" y="72">0 с: 0 · 15 с: 0 · 30 с: 0</text><text class="t tw" x="26" y="102">наплыва не было?</text><rect class="sc-acc" x="330" y="20" width="300" height="100" rx="8"/><text class="tb" x="346" y="44">два счётчика</text><text class="tm" x="346" y="68">принято: 0 → 10 → 10</text><text class="tm" x="346" y="88">собрано: 0 → 10 → 10</text><text class="t ta" x="346" y="110">за 15 с прошло 10 заказов</text></svg>
+      <figcaption>Одни и те же опросы, два способа считать очередь.</figcaption>
+    </figure>
+    <div class="key"><b>Вывод</b><p>Если кроме текущего состояния важны и события, их считают счётчиками. Счётчик сохраняет число событий между опросами, gauge — только значение в момент опроса.</p></div>
+    <p class="next">У gauge есть и неожиданное применение — хранить время.</p>
+  </section>
+
+  <section class="part" id="s5">
+    <h2><span class="sec">§5</span>Время как значение</h2>
+    <p class="about">Gauge-отметка «когда в последний раз всё прошло удачно» и её возраст.</p>
+    <p>На двери кафе висит лист «Уборка проведена: 14:00». По нему видно не только время уборки, но и сколько прошло с неё. Если сейчас 19:00, а на листе всё ещё 14:00 — уборку пропустили. Так же следят за фоновыми задачами: выгрузкой, резервной копией, рассылкой. Gauge хранит момент последнего удачного запуска, а возраст — разница с текущим временем:</p>
+    <figure class="code">
+      <figcaption><span>stamp.py</span><span>отметка последней удачной выгрузки</span></figcaption>
+<pre><span class="k">import</span> time
+<span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Gauge
+
+registry = <span class="f">CollectorRegistry</span>()
+last_success = <span class="f">Gauge</span>(<span class="s">&quot;export_last_success_timestamp_seconds&quot;</span>, <span class="s">&quot;Время последней удачной выгрузки&quot;</span>, registry=registry)
+
+<span class="k">def</span> <span class="f">export</span>(ok):
+    <span class="k">if</span> ok:
+        last_success.<span class="f">set_to_current_time</span>()
+
+<span class="k">for</span> run, ok <span class="k">in</span> <span class="f">enumerate</span>((<span class="k">True</span>, <span class="k">True</span>, <span class="k">False</span>, <span class="k">False</span>), <span class="n">1</span>):
+    <span class="f">export</span>(ok)
+    age = time.<span class="f">time</span>() - registry.<span class="f">get_sample_value</span>(<span class="s">&quot;export_last_success_timestamp_seconds&quot;</span>)
+    <span class="f">print</span>(<span class="s">f&quot;запуск {run}: {&#x27;удачно &#x27; if ok else &#x27;ошибка&#x27;}  отметка {registry.get_sample_value(&#x27;export_last_success_timestamp_seconds&#x27;):.1f}  возраст {age:.1f} с&quot;</span>)
+    time.<span class="f">sleep</span>(<span class="n">2</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>четыре запуска раз в 2 секунды</span></figcaption><pre>запуск 1: удачно   отметка 1794328792.1  возраст 0.0 с
+запуск 2: удачно   отметка 1794328794.1  возраст 0.0 с
+запуск 3: ошибка  отметка 1794328794.1  возраст 2.0 с
+запуск 4: ошибка  отметка 1794328794.1  возраст 4.0 с</pre></figure>
+    <div class="walk">
+      <div><code>set_to_current_time()</code><span>Записывает текущее Unix-время — число секунд с 1 января 1970 года.</span></div>
+      <div><code>if ok:</code><span>Отметку обновляют только при удаче. При ошибке она остаётся старой.</span></div>
+      <div><code>time.time() - …</code><span>Возраст отметки: сколько секунд прошло с последней удачи.</span></div>
+    </div>
+    <p>Первые два запуска удачны: отметка обновляется, возраст — 0. Третий и четвёртый с ошибкой: отметка застыла на 1794328794.1, а возраст растёт — 2, затем 4 секунды. Рост возраста и есть сигнал: задача давно не выполнялась успешно, хотя сама программа жива. Окончание имени <code>_timestamp_seconds</code> — принятое обозначение таких метрик.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 140" role="img" aria-label="Возраст отметки: 0, 0, затем 2 и 4 секунды — после двух ошибок подряд"><line class="sc-axis" x1="60" y1="110" x2="600" y2="110"/><rect class="sc-acc" x="100" y="106" width="60" height="4"/><rect class="sc-acc" x="230" y="106" width="60" height="4"/><rect class="sc-wrn" x="360" y="70" width="60" height="40"/><rect class="sc-wrn" x="490" y="30" width="60" height="80"/><text class="tm tc" x="130" y="96">0 с</text><text class="tm tc" x="260" y="96">0 с</text><text class="tm tc" x="390" y="62">2 с</text><text class="tm tc" x="520" y="22">4 с</text><text class="tm tc ta" x="130" y="130">удачно</text><text class="tm tc ta" x="260" y="130">удачно</text><text class="tm tc tw" x="390" y="130">ошибка</text><text class="tm tc tw" x="520" y="130">ошибка</text></svg>
+      <figcaption>Возраст отметки после каждого запуска.</figcaption>
+    </figure>
+    <div class="key"><b>Вывод</b><p>Gauge с отметкой времени последней удачи и его возраст показывают, что задача давно не выполнялась, даже если ошибок никто не считал.</p></div>
+    <p class="next">До сих пор gauge был один. Посмотрим, как сводить gauge нескольких экземпляров.</p>
+  </section>
+
+  <section class="part" id="s6">
+    <h2><span class="sec">§6</span>Gauge нескольких экземпляров</h2>
+    <p class="about">Когда складывать значения, когда усреднять и когда брать наибольшее.</p>
+    <p>Счётчики экземпляров складывают — это мы делали в лекции 1.2, §9. С gauge так можно не всегда: всё зависит от вопроса. Возьмём два gauge трёх экземпляров — длину очереди и занятую память. Числа придуманы для примера:</p>
+    <figure class="code">
+      <figcaption><span>aggregate.py</span><span>три способа свести значения</span></figcaption>
+<pre>queue = {<span class="s">&quot;api-1&quot;</span>: <span class="n">12</span>, <span class="s">&quot;api-2&quot;</span>: <span class="n">0</span>, <span class="s">&quot;api-3&quot;</span>: <span class="n">3</span>}          <span class="c"># заказов в очереди</span>
+memory = {<span class="s">&quot;api-1&quot;</span>: <span class="n">410</span>, <span class="s">&quot;api-2&quot;</span>: <span class="n">400</span>, <span class="s">&quot;api-3&quot;</span>: <span class="n">1650</span>}   <span class="c"># память процесса, МБ</span>
+
+<span class="k">for</span> name, values <span class="k">in</span> ((<span class="s">&quot;очередь&quot;</span>, queue), (<span class="s">&quot;память&quot;</span>, memory)):
+    v = <span class="f">list</span>(values.<span class="f">values</span>())
+    <span class="f">print</span>(<span class="s">f&quot;{name:&lt;8} сумма {sum(v):&gt;5}  среднее {sum(v) / len(v):&gt;7.1f}  максимум {max(v):&gt;5}&quot;</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>сумма, среднее, максимум</span></figcaption><pre>очередь  сумма    15  среднее     5.0  максимум    12
+память   сумма  2460  среднее   820.0  максимум  1650</pre></figure>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Вопрос</th><th>Как свести</th><th>Ответ</th></tr></thead>
+        <tbody>
+          <tr><td>сколько заказов ждёт всего</td><td>сумма</td><td>15</td></tr>
+          <tr><td>сколько памяти занимает сервис целиком</td><td>сумма</td><td>2460 МБ</td></tr>
+          <tr><td>сколько памяти у обычного экземпляра</td><td>среднее</td><td>820 МБ — ни у одного экземпляра столько нет</td></tr>
+          <tr><td>не кончится ли память у кого-то</td><td>максимум</td><td>1650 МБ у <code>api-3</code></td></tr>
+        </tbody>
+      </table></div>
+    <p>Среднее памяти — 820 МБ, хотя у двух экземпляров около 400, а у третьего 1650. Это та же ловушка, что со средним длительности в лекции 1.2, §5: одно большое значение тянет среднее вверх и прячет, где проблема. Если вопрос «не упадёт ли кто-то», нужен максимум и разбивка по экземплярам.</p>
+    <div class="key"><b>Вывод</b><p>Gauge сводят по вопросу: «сколько всего» — сумма, «у кого хуже всего» — максимум. Среднее gauge часто не похоже ни на один экземпляр.</p></div>
+    <p class="next">Похожий выбор приходится делать и внутри одного сервиса, если в нём несколько процессов.</p>
+  </section>
+
+  <section class="part" id="s7">
+    <h2><span class="sec">§7</span>Gauge в нескольких процессах</h2>
+    <p class="about">Режимы <code>multiprocess_mode</code> и ловушка с завершёнными процессами.</p>
+    <p>В лекции 2.6, §3 счётчики нескольких процессов складывались в общую сумму. Для gauge сумма подходит не всегда, поэтому у него есть параметр <code>multiprocess_mode</code> — как сводить значения процессов. Запустим два процесса подряд: первый ставит 3, второй — 5. Заведём три gauge с разными режимами:</p>
+    <figure class="code">
+      <figcaption><span>multiproc.py</span><span>три режима, два процесса</span></figcaption>
+<pre><span class="k">import</span> os
+os.environ[<span class="s">&quot;PROMETHEUS_MULTIPROC_DIR&quot;</span>] = <span class="s">&quot;mp&quot;</span>
+
+<span class="k">from</span> multiprocessing <span class="k">import</span> Process
+<span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Gauge, generate_latest, multiprocess
+
+modes = [<span class="s">&quot;all&quot;</span>, <span class="s">&quot;livesum&quot;</span>, <span class="s">&quot;max&quot;</span>]
+gauges = {m: <span class="f">Gauge</span>(<span class="s">f&quot;busy_{m}&quot;</span>, <span class="s">f&quot;Занятые задачи, режим {m}&quot;</span>, multiprocess_mode=m) <span class="k">for</span> m <span class="k">in</span> modes}
+
+<span class="k">def</span> <span class="f">worker</span>(busy):
+    <span class="k">for</span> g <span class="k">in</span> gauges.<span class="f">values</span>():
+        g.<span class="f">set</span>(busy)
+
+<span class="k">if</span> __name__ == <span class="s">&quot;__main__&quot;</span>:
+    <span class="k">for</span> busy <span class="k">in</span> (<span class="n">3</span>, <span class="n">5</span>):
+        p = <span class="f">Process</span>(target=worker, args=(busy,))
+        p.<span class="f">start</span>()
+        p.<span class="f">join</span>()
+    registry = <span class="f">CollectorRegistry</span>()
+    multiprocess.<span class="f">MultiProcessCollector</span>(registry)
+    <span class="k">for</span> line <span class="k">in</span> <span class="f">generate_latest</span>(registry).<span class="f">decode</span>().<span class="f">splitlines</span>():
+        <span class="k">if</span> <span class="k">not</span> line.<span class="f">startswith</span>(<span class="s">&quot;#&quot;</span>):
+            <span class="f">print</span>(line)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>строки значений</span></figcaption><pre>busy_max 5.0
+busy_livesum 8.0
+busy_all{pid=&quot;15147&quot;} 0.0
+busy_all{pid=&quot;15182&quot;} 3.0
+busy_all{pid=&quot;15183&quot;} 5.0</pre></figure>
+    <div class="walk">
+      <div><code>multiprocess_mode="all"</code><span>Не сводит: отдельный ряд на каждый процесс с меткой <code>pid</code>.</span></div>
+      <div><code>"livesum"</code><span>Сумма значений живых процессов.</span></div>
+      <div><code>"max"</code><span>Наибольшее значение среди процессов.</span></div>
+    </div>
+    <p><code>all</code> дал три ряда: 3 и 5 — рабочие процессы, 0 — главный процесс, где gauge создан. <code>max</code> — 5. А <code>livesum</code> показал 8, хотя оба рабочих процесса уже завершились. «Живыми» библиотека считает все процессы, пока ей не сообщили об обратном. Сообщают вызовом <code>mark_process_dead(pid)</code> — его добавляют туда, где процесс завершается. Повторим опыт, отметив первый процесс завершённым:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>добавлено после p.join()</span></figcaption>
+<pre>p.join()
+if busy == 3:
+    multiprocess.mark_process_dead(p.pid)   # первый процесс завершился</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>строки значений</span></figcaption><pre>busy_livesum 5.0
+busy_all{pid=&quot;22576&quot;} 3.0
+busy_all{pid=&quot;22578&quot;} 5.0
+busy_all{pid=&quot;22574&quot;} 0.0
+busy_max 5.0</pre></figure>
+    <p>Теперь <code>livesum</code> — 5: значение завершённого процесса не учтено. Его файл <code>gauge_livesum_…</code> библиотека удалила. <code>all</code> по-прежнему показывает 3 для завершённого процесса: этот режим хранит значения всех процессов, живых и завершённых.</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Режим</th><th>Что отдаёт</th><th>Когда подходит</th></tr></thead>
+        <tbody>
+          <tr><td><code>all</code></td><td>ряд на каждый процесс</td><td>нужно видеть процессы по отдельности</td></tr>
+          <tr><td><code>livesum</code></td><td>сумма живых</td><td>«сколько всего сейчас»: запросы в работе всего сервиса</td></tr>
+          <tr><td><code>max</code>, <code>min</code></td><td>наибольшее, наименьшее</td><td>«хуже всего», «лучше всего»</td></tr>
+          <tr><td><code>mostrecent</code></td><td>последнее записанное значение</td><td>значение одно на сервис, его ставит любой процесс</td></tr>
+        </tbody>
+      </table></div>
+    <div class="key key--warn"><b>Вывод</b><p>Для gauge в нескольких процессах выбирают <code>multiprocess_mode</code> по вопросу. Режимы <code>live…</code> учитывают только живые процессы, если завершение отмечено <code>mark_process_dead</code>.</p></div>
+    <p class="next">Остался вопрос выбора: когда gauge, когда счётчик.</p>
+  </section>
+
+  <section class="part" id="s8">
+    <h2><span class="sec">§8</span>Gauge или счётчик</h2>
+    <p class="about">Правило выбора и что будет, если перепутать.</p>
+    <p>Баланс банковской карты растёт от зарплаты и падает от покупок — это gauge. Сумма всех покупок за месяц только растёт — это счётчик. Чтобы выбрать тип, спросите: что значило бы уменьшение? У очереди уменьшение значит «заказ собран» — gauge. У числа принятых заказов уменьшение ничего не значит: принятый заказ не исчезает — счётчик.</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Вопрос</th><th>Counter</th><th>Gauge</th></tr></thead>
+        <tbody>
+          <tr><td>что описывает</td><td>сколько событий произошло</td><td>какое состояние сейчас</td></tr>
+          <tr><td>как меняется</td><td>только растёт, сбрасывается при перезапуске</td><td>в обе стороны</td></tr>
+          <tr><td>что смотрят</td><td>рост за промежуток</td><td>само значение, наибольшее, наименьшее</td></tr>
+          <tr><td>что теряется между опросами</td><td>моменты событий; их число сохраняется</td><td>все изменения между опросами</td></tr>
+        </tbody>
+      </table></div>
+    <p>Если перепутать, расчёты для счётчика дадут чепуху. Применим к gauge памяти функцию роста из лекции 2.5 — она считает любое уменьшение сбросом:</p>
+    <figure class="code">
+      <figcaption><span>gauge_growth.py</span><span>правило счётчика на gauge</span></figcaption>
+<pre><span class="k">def</span> <span class="f">growth</span>(samples):
+    <span class="s">&quot;&quot;</span><span class="s">&quot;Рост по правилу счётчика из лекции 2.5: уменьшение считается сбросом.&quot;</span><span class="s">&quot;&quot;</span>
+    total = <span class="n">0</span>
+    <span class="k">for</span> prev, cur <span class="k">in</span> <span class="f">zip</span>(samples, samples[<span class="n">1</span>:]):
+        total += cur - prev <span class="k">if</span> cur &gt;= prev <span class="k">else</span> cur
+    <span class="k">return</span> total
+
+memory_mb = [<span class="n">500</span>, <span class="n">300</span>, <span class="n">320</span>, <span class="n">310</span>]   <span class="c"># память процесса, МБ</span>
+<span class="f">print</span>(<span class="s">&quot;рост по правилу счётчика:&quot;</span>, <span class="f">growth</span>(memory_mb))
+<span class="f">print</span>(<span class="s">&quot;изменение на самом деле: &quot;</span>, memory_mb[-<span class="n">1</span>] - memory_mb[<span class="n">0</span>])</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>рост против настоящего изменения</span></figcaption><pre>рост по правилу счётчика: 630
+изменение на самом деле:  -190</pre></figure>
+    <p>Память уменьшилась на 190 МБ, а правило счётчика насчитало рост на 630 МБ. Оба уменьшения, 500 → 300 и 320 → 310, оно приняло за перезапуски и прибавило новые значения целиком: 20 + 300 + 310 = 630. Поэтому тип в <code>TYPE</code> важен: по нему видно, какие расчёты к метрике применимы.</p>
+    <div class="key"><b>Вывод</b><p>Уменьшение имеет смысл — gauge, значение только растёт от событий — счётчик. Расчёт роста подходит только счётчику.</p></div>
+  </section>
+
+  <section class="part" id="s9">
+    <h2><span class="sec">§9</span>Частые ошибки</h2>
+    <p class="about">Что делают неправильно и как исправить.</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Что делают</th><th>Что произойдёт</th><th>Как правильно</th></tr></thead>
+        <tbody>
+          <tr><td>ставят <code>dec()</code> последней строкой после кода, который может упасть</td><td>gauge растёт на каждую ошибку и не возвращается</td><td><code>track_inprogress()</code> или <code>dec()</code> в <code>finally</code></td></tr>
+          <tr><td>считают события gauge, обнуляя его</td><td>события между опросами теряются</td><td>события — счётчиком, состояние — gauge</td></tr>
+          <tr><td>ждут увидеть короткий пик в истории gauge</td><td>пик короче интервала опроса пропадает</td><td>счётчики событий или более частый опрос</td></tr>
+          <tr><td>усредняют gauge экземпляров для вопроса «у кого плохо»</td><td>проблемный экземпляр прячется в среднем</td><td>максимум и разбивка по экземплярам</td></tr>
+          <tr><td>берут <code>livesum</code> без <code>mark_process_dead</code></td><td>в сумме остаются завершённые процессы</td><td>отмечать завершение процесса</td></tr>
+          <tr><td>считают рост gauge как у счётчика</td><td>уменьшения принимаются за сбросы, рост выдуман</td><td>смотреть значение, наибольшее, наименьшее</td></tr>
+        </tbody>
+      </table></div>
+  </section>
+
+  <section class="part" id="s10">
+    <h2><span class="sec">§10</span>Практика</h2>
+    <p class="about">Три задачи. Решение спрятано под задачей.</p>
+    <h3>Задача 1. Открытые соединения</h3>
+    <p>Ситуация: gauge <code>db_connections_open</code> прибавляют перед запросом к базе и отнимают в <code>finally</code>. Из четырёх запросов два заканчиваются <code>TimeoutError</code>.</p>
+    <div class="key"><b>Что нужно сделать</b><p>Предсказать значение gauge после четырёх запросов и проверить запуском.</p></div>
+    <details><summary>Решение</summary>
+    <figure class="code">
+      <figcaption><span>task1.py</span><span>inc и dec в finally</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Gauge
+
+registry = <span class="f">CollectorRegistry</span>()
+connections = <span class="f">Gauge</span>(<span class="s">&quot;db_connections_open&quot;</span>, <span class="s">&quot;Открытые соединения с базой&quot;</span>, registry=registry)
+
+<span class="k">def</span> <span class="f">query</span>(fail):
+    connections.<span class="f">inc</span>()
+    <span class="k">try</span>:
+        <span class="k">if</span> fail:
+            <span class="k">raise</span> <span class="f">TimeoutError</span>(<span class="s">&quot;база не ответила&quot;</span>)
+    <span class="k">finally</span>:
+        connections.<span class="f">dec</span>()
+
+<span class="k">for</span> fail <span class="k">in</span> (<span class="k">False</span>, <span class="k">True</span>, <span class="k">True</span>, <span class="k">False</span>):
+    <span class="k">try</span>:
+        <span class="f">query</span>(fail)
+    <span class="k">except</span> TimeoutError:
+        <span class="k">pass</span>
+<span class="f">print</span>(registry.<span class="f">get_sample_value</span>(<span class="s">&quot;db_connections_open&quot;</span>))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>после четырёх запросов</span></figcaption><pre>0.0</pre></figure>
+    <p>0.0: <code>finally</code> выполнил <code>dec()</code> и после двух ошибок. Без <code>finally</code> было бы 2.0.</p>
+    </details>
+
+    <h3>Задача 2. Какой тип</h3>
+    <p>Ситуация: нужно выбрать тип для четырёх величин:</p>
+    <ul>
+      <li>сколько писем отправлено с запуска;</li>
+      <li>сколько писем ждёт отправки;</li>
+      <li>температура процессора;</li>
+      <li>сколько раз почтовый сервер отказал.</li>
+    </ul>
+    <div class="key"><b>Что нужно сделать</b><p>Для каждой величины назвать тип по правилу «что значило бы уменьшение».</p></div>
+    <details><summary>Решение</summary>
+    <p>Отправленные письма — счётчик: уменьшение ничего не значит. Ждущие письма — gauge: уменьшение значит «письмо ушло». Температура — gauge. Отказы сервера — счётчик.</p>
+    </details>
+
+    <h3>Задача 3. Давно ли была выгрузка</h3>
+    <p>Ситуация: выгрузка запускается раз в час, отметка <code>export_last_success_timestamp_seconds</code> поставлена 3 часа назад.</p>
+    <div class="key"><b>Что нужно сделать</b><p>Посчитать возраст отметки и сколько запусков подряд прошли неудачно.</p></div>
+    <details><summary>Решение</summary>
+    <figure class="code">
+      <figcaption><span>task3.py</span><span>возраст отметки</span></figcaption>
+<pre><span class="k">import</span> time
+
+last_success = time.<span class="f">time</span>() - <span class="n">3</span> * <span class="n">3600</span>      <span class="c"># отметка: удачная выгрузка 3 часа назад</span>
+age_hours = (time.<span class="f">time</span>() - last_success) / <span class="n">3600</span>
+<span class="f">print</span>(<span class="s">f&quot;возраст отметки: {age_hours:.1f} ч, выгрузка раз в час — пропущено запусков: {int(age_hours) - 1}&quot;</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>результат</span></figcaption><pre>возраст отметки: 3.0 ч, выгрузка раз в час — пропущено запусков: 2</pre></figure>
+    <p>Последняя удача — 3 часа назад, следующий запуск через час уже не обновил отметку, как и запуск через два часа. Значит, две выгрузки подряд не удались. Третья либо ещё не наступила, либо тоже не удалась.</p>
+    </details>
+  </section>
+
+  <section class="part" id="s11">
+    <h2><span class="sec">§11</span>Проверьте себя</h2>
+    <p class="about">Вопросы по лекции. Ответ раскрывается щелчком.</p>
+    <details><summary>Чем строки gauge в ответе отличаются от строк счётчика?</summary><p>У имени нет окончания <code>_total</code> и нет строки <code>_created</code>; тип в <code>TYPE</code> — <code>gauge</code>.</p></details>
+    <details><summary>Что покажет gauge после <code>set(37)</code> и <code>dec(40)</code>?</summary><p>−3. Gauge не проверяет смысл значения.</p></details>
+    <details><summary>Почему в опыте §4 опросы раз в 15 секунд дали одни нули?</summary><p>Наплыв начался на 3-й секунде и закончился на 13-й — целиком между опросами на 0-й и 15-й секунде.</p></details>
+    <details><summary>Зачем gauge с отметкой времени, если есть счётчик ошибок?</summary><p>Задача может не запускаться вовсе или падать до подсчёта ошибок. Возраст отметки растёт в любом из этих случаев.</p></details>
+    <details><summary>Почему <code>livesum</code> показал 8, хотя процессы завершились?</summary><p>Завершение процессов не было отмечено <code>mark_process_dead</code>, и библиотека считала их живыми.</p></details>
+  </section>
+
+  <section class="part" id="s12">
+    <h2><span class="sec">§12</span>Шпаргалка</h2>
+    <p class="about">Опорные понятия лекции одним списком.</p>
+    <div class="cheat">
+      <div><b>Методы</b><code>inc / dec / set</code><code>set_to_current_time()</code><code>track_inprogress()</code><code>set_function(f)</code></div>
+      <div><b>В работе</b><code>with g.track_inprogress():</code><code>dec() в finally</code></div>
+      <div><b>Между опросами</b><code>gauge забывает</code><code>счётчик помнит число</code></div>
+      <div><b>Отметка времени</b><code>…_timestamp_seconds</code><code>возраст = сейчас − отметка</code></div>
+      <div><b>Экземпляры</b><code>всего — сумма</code><code>хуже всех — максимум</code></div>
+      <div><b>Процессы</b><code>multiprocess_mode</code><code>mark_process_dead(pid)</code></div>
+    </div>
+  </section>
+
+  <section class="part" id="s13">
+    <h2><span class="sec">§13</span>Глоссарий</h2>
+    <p class="about">Термины лекции, включая понятия прежних лекций: формулировка, пример и рисунок.</p>
+    <div class="glossary">
+      <article class="gl" id="g-counter">
+        <div class="gl__text">
+          <h3>Счётчик<i>counter</i></h3>
+          <p class="gl__def">Метрика, которая только растёт и считает события. Сбрасывается при перезапуске процесса.</p>
+          <p class="gl__ex"><b>Пример</b><code>orders_created_total</code> — принятые заказы.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.2</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Счётчик"><line class="sc-axis" x1="10" y1="110" x2="250" y2="110"/><polyline class="sc-plot" points="20,100 70,85 120,70 170,50 230,30"/></svg></figure>
+      </article>
+      <article class="gl" id="g-gauge">
+        <div class="gl__text">
+          <h3>Gauge<i>измеритель</i></h3>
+          <p class="gl__def">Метрика с одним числом, которое растёт и уменьшается. Показывает состояние сейчас.</p>
+          <p class="gl__ex"><b>Пример</b><code>orders_queue_length</code> — заказов в очереди.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.7, §1</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Gauge"><line class="sc-axis" x1="10" y1="110" x2="250" y2="110"/><polyline class="sc-plot" points="20,90 60,40 100,70 140,30 180,80 230,60"/></svg></figure>
+      </article>
+      <article class="gl" id="g-inprogress">
+        <div class="gl__text">
+          <h3>track_inprogress()</h3>
+          <p class="gl__def">Блок <code>with</code>, который прибавляет 1 при входе и отнимает при любом выходе, в том числе через исключение.</p>
+          <p class="gl__ex"><b>Пример</b>после трёх ошибок — 0, а у <code>inc</code>/<code>dec</code> без <code>finally</code> — 3.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.7, §3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="track_inprogress"><rect class="sc-acc" x="40" y="30" width="180" height="70" rx="8"/><text class="tm tc" x="130" y="58">with …:</text><text class="tm" x="12" y="24">+1</text><text class="tm" x="226" y="118">−1</text><text class="t tc tw" x="130" y="84">ошибка → всё равно −1</text></svg></figure>
+      </article>
+      <article class="gl" id="g-setfunction">
+        <div class="gl__text">
+          <h3>set_function(f)</h3>
+          <p class="gl__def">Gauge вызывает функцию при каждом чтении и отдаёт её результат.</p>
+          <p class="gl__ex"><b>Пример</b><code>set_function(lambda: len(queue))</code>: 3 → 1 → 2 без вызовов gauge.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.7, §2</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="set_function"><rect class="sc-box" x="10" y="45" width="90" height="40" rx="8"/><text class="tm tc" x="55" y="70">len(queue)</text><path class="sc-arrow" d="M150 65 L104 65"/><rect class="sc-acc" x="156" y="45" width="94" height="40" rx="8"/><text class="tm tc" x="203" y="70">/metrics</text></svg></figure>
+      </article>
+      <article class="gl" id="g-timestamp">
+        <div class="gl__text">
+          <h3>Отметка времени в gauge<i>timestamp gauge</i></h3>
+          <p class="gl__def">Gauge, в котором хранится Unix-время события. Возраст отметки — текущее время минус значение.</p>
+          <p class="gl__ex"><b>Пример</b><code>export_last_success_timestamp_seconds</code>: после двух ошибок возраст 4 с.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.7, §5</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Отметка времени"><line class="sc-axis" x1="10" y1="100" x2="250" y2="100"/><line class="sc-arrow" x1="60" y1="40" x2="60" y2="100"/><line class="sc-arrow-w" x1="220" y1="40" x2="220" y2="100"/><text class="tm tc" x="60" y="32">отметка</text><text class="tm tc tw" x="220" y="32">сейчас</text><text class="tm tc" x="140" y="90">возраст</text></svg></figure>
+      </article>
+      <article class="gl" id="g-mpmode">
+        <div class="gl__text">
+          <h3>multiprocess_mode</h3>
+          <p class="gl__def">Как сводить gauge нескольких процессов: <code>all</code>, <code>livesum</code>, <code>max</code>, <code>min</code>, <code>mostrecent</code> и другие.</p>
+          <p class="gl__ex"><b>Пример</b>процессы 3 и 5: <code>livesum</code> 8, после <code>mark_process_dead</code> — 5.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.7, §7</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="multiprocess_mode"><rect class="sc-box" x="10" y="20" width="60" height="34" rx="6"/><text class="tm tc" x="40" y="42">3</text><rect class="sc-box" x="10" y="70" width="60" height="34" rx="6"/><text class="tm tc" x="40" y="92">5</text><path class="sc-arrow" d="M76 62 L140 62"/><rect class="sc-acc" x="146" y="40" width="104" height="44" rx="8"/><text class="tm tc" x="198" y="67">livesum 8</text></svg></figure>
+      </article>
+      <article class="gl" id="g-aggregate">
+        <div class="gl__text">
+          <h3>Сведение gauge экземпляров</h3>
+          <p class="gl__def">Сумма отвечает «сколько всего», максимум — «у кого хуже всего», среднее часто не похоже ни на один экземпляр.</p>
+          <p class="gl__ex"><b>Пример</b>память 410, 400, 1650 МБ: среднее 820, максимум 1650.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.7, §6</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Сведение gauge"><rect class="sc-acc" x="20" y="90" width="50" height="20"/><rect class="sc-acc" x="90" y="90" width="50" height="20"/><rect class="sc-wrn" x="160" y="30" width="50" height="80"/><line class="sc-arrow" x1="10" y1="70" x2="250" y2="70" stroke-dasharray="5 4"/><text class="tm" x="216" y="64">ср.</text></svg></figure>
+      </article>
+    </div>
+  </section>
+
+  <section class="part">
+    <h3>Итог лекции</h3>
+    <p>Gauge хранит одно число, которое меняется в обе стороны, и отвечает на вопрос «сколько сейчас». Его меняют парой <code>inc</code>/<code>dec</code>, целиком через <code>set</code> или функцией через <code>set_function</code>. Уменьшение должно выполниться на любом пути, поэтому для «запросов в работе» берут <code>track_inprogress()</code>. Между опросами gauge всё забывает: наплыв до 10 заказов при опросе раз в 15 секунд дал три нуля, а пара счётчиков сохранила 10 принятых и 10 собранных. Gauge с отметкой времени показывает, как давно задача выполнялась удачно. Значения экземпляров сводят по вопросу — суммой или максимумом, а в нескольких процессах — режимом <code>multiprocess_mode</code>, не забывая <code>mark_process_dead</code>. Выбрать между gauge и счётчиком помогает вопрос «что значило бы уменьшение».</p>
+    <h3>Источники</h3>
+    <ul class="sources">
+      <li>Prometheus. Metric types: Gauge — prometheus.io/docs/concepts/metric_types</li>
+      <li>Prometheus. Instrumentation: counter vs. gauge — prometheus.io/docs/practices/instrumentation</li>
+      <li>prometheus-client для Python: Gauge, Multiprocess Mode — prometheus.github.io/client_python</li>
+      <li>Все выводы получены запуском на Python 3.12.12 и prometheus-client 0.26.0, macOS, 10.11.2026; числа в §6 придуманы для примера</li>
+    </ul>
+  </section>
+
+  <div class="pager">
+    <a href="2-6-counter-v-kode.html">← 2.6 Counter в реальном коде</a>
+    <a href="index.html">К содержанию справочника</a>
+    <span class="pager__soon">2.8 Histogram · готовится →</span>
+  </div>
+  <div class="colophon">
+    <span>Лекция 2.7 · Gauge · Метрики и наблюдаемость</span>
+    <span class="author-line">Автор: Макаров Максим Николаевич</span>
+  </div>
+    </main>
+  </div>
+</div>
+<script src="reader.js"></script>
+</body>
+</html>
