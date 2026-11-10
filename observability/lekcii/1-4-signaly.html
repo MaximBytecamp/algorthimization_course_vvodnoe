@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>1.4 Сигналы · Метрики и наблюдаемость</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="book">
+  <div class="book__body">
+    <div class="spine"><span>Часть 1 · Основы наблюдаемости</span></div>
+    <main class="leaf">
+  <div class="running">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Метрики и наблюдаемость</a> · часть 1 · основы наблюдаемости</p>
+    <p class="running__folio">Лекция 1.4</p>
+  </div>
+
+  <header class="chapter-head">
+    <span class="chapter-num">1.4</span>
+    <h1>Сигналы: метрики, логи, трассы, профили</h1>
+    <p class="lead">В лекции 1.3 стенд отвечал на вопросы по числам <code>/metrics</code> и по событиям <code>/events</code>. Это разные виды телеметрии, и у каждого свой круг вопросов и своя цена хранения. В лекции разобраны четыре вида — метрики, логи, трассы и профили: что каждый хранит, на какой вопрос отвечает, сколько места занимает и как переходить от одного к другому.</p>
+  </header>
+  <dl class="passport">
+    <div><dt>Тема</dt><dd>Основы наблюдаемости</dd></div>
+    <div><dt>Стенд</dt><dd><code>products-api</code> на FastAPI, <code>/metrics</code> и <code>/events</code>; профиль — <code>cProfile</code> из Python</dd></div>
+    <div><dt>Опирается на</dt><dd>лекции 1.1–1.3: телеметрия, временной ряд, событие, идентификатор запроса</dd></div>
+    <div><dt>Результат</dt><dd>Выбирать сигнал под вопрос и понимать, чего в нём нет</dd></div>
+  </dl>
+
+  <div class="reader-start">
+    <div>
+      <b>Режим чтения</b>
+      <p>Лекция откроется по одному разделу: на экране одна мысль, кнопка «Дальше» ведёт к следующей. Стрелки ← → на клавиатуре тоже листают, Esc возвращает всю лекцию.</p>
+    </div>
+    <div class="reader-start__btns">
+      <button type="button" data-reader-start="continue" hidden></button>
+      <button type="button" class="primary" data-reader-start="begin">Читать по шагам</button>
+    </div>
+  </div>
+
+  <nav class="contents">
+    <b>В этой лекции</b>
+    <ol>
+      <li><a href="#s1"><span class="csec">§1</span>Четыре сигнала</a></li>
+      <li><a href="#s2"><span class="csec">§2</span>Метрика: числа за все запросы</a></li>
+      <li><a href="#s3"><span class="csec">§3</span>Лог: запись о каждом событии</a></li>
+      <li><a href="#s4"><span class="csec">§4</span>Трасса: этапы одной операции</a></li>
+      <li><a href="#s5"><span class="csec">§5</span>Профиль: где программа тратит процессор</a></li>
+      <li><a href="#s6"><span class="csec">§6</span>Сколько стоит каждый сигнал</a></li>
+      <li><a href="#s7"><span class="csec">§7</span>Какой сигнал на какой вопрос</a></li>
+      <li><a href="#s8"><span class="csec">§8</span>Переход от сигнала к сигналу</a></li>
+      <li><a href="#s9"><span class="csec">§9</span>Частые ошибки</a></li>
+      <li><a href="#s10"><span class="csec">§10</span>Практика</a></li>
+      <li><a href="#s11"><span class="csec">§11</span>Проверьте себя</a></li>
+      <li><a href="#s12"><span class="csec">§12</span>Шпаргалка</a></li>
+      <li><a href="#s13"><span class="csec">§13</span>Глоссарий</a></li>
+    </ol>
+  </nav>
+
+  <section class="part" id="s1">
+    <h2><span class="sec">§1</span>Четыре сигнала</h2>
+    <p class="about">Какие виды телеметрии бывают и чем они отличаются.</p>
+    <p>Работу магазина за день можно описать по-разному. Итог кассы: сколько чеков и на какую сумму. Пачка чеков: что купил каждый покупатель и когда. Запись камеры: как один покупатель шёл по залу и где стоял дольше всего. Табель: кто из продавцов чем был занят. Все четыре описания правдивы, но отвечают на разные вопросы. У сервиса тоже есть четыре вида телеметрии. Их называют <span class="term">сигналами</span>.</p>
+    <div class="def">
+      <div class="def__term">Сигнал телеметрии<i>signal</i></div>
+      <dl><dt>Что это</dt><dd>Вид данных, которые сервис сообщает о себе: метрики, логи, трассы, профили.</dd><dt>Чем отличаются</dt><dd>Подробностью: одни сжимают все запросы в несколько чисел, другие хранят каждый шаг одной операции.</dd><dt>Пример</dt><dd>У стенда метрики отдаёт <code>/metrics</code>, события с этапами — <code>/events</code>.</dd></dl>
+    </div>
+    <p>На схеме — четыре сигнала на одном и том же медленном запросе к <code>/products</code>:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 210" role="img" aria-label="Один медленный запрос в четырёх сигналах: в метрике он один из двух в корзине до 5 секунд; в логе — запись с кодом и длительностью; в трассе — три этапа; в профиле — функции и время процессора"><rect class="sc-wrn" x="250" y="10" width="140" height="40" rx="8"/><text class="tb tc" x="320" y="35">запрос 3022 мс</text><path class="sc-line" d="M300 52 L90 74"/><path class="sc-line" d="M310 52 L250 74"/><path class="sc-line" d="M330 52 L400 74"/><path class="sc-line" d="M340 52 L555 74"/><rect class="sc-acc" x="10" y="76" width="150" height="120" rx="8"/><text class="tb tc" x="85" y="98">метрика</text><text class="tm tc" x="85" y="124">le="5.0"</text><text class="t tc" x="85" y="144">+1 к числу</text><text class="t tc" x="85" y="162">запрос растворился</text><text class="t tc" x="85" y="180">в сумме</text><rect class="sc-acc" x="170" y="76" width="150" height="120" rx="8"/><text class="tb tc" x="245" y="98">лог</text><text class="tm tc" x="245" y="124">status 200</text><text class="tm tc" x="245" y="144">3022 мс</text><text class="tm tc" x="245" y="164">request_id</text><text class="t tc" x="245" y="184">одна запись</text><rect class="sc-acc" x="330" y="76" width="150" height="120" rx="8"/><text class="tb tc" x="405" y="98">трасса</text><rect class="sc-box" x="346" y="112" width="6" height="14"/><rect class="sc-wrn" x="352" y="134" width="108" height="14"/><rect class="sc-box" x="460" y="156" width="6" height="14"/><text class="t tc" x="405" y="188">три этапа</text><rect class="sc-acc" x="490" y="76" width="140" height="120" rx="8"/><text class="tb tc" x="560" y="98">профиль</text><text class="t tc" x="560" y="124">функции и</text><text class="t tc" x="560" y="142">время</text><text class="t tc" x="560" y="160">процессора</text><text class="t tc" x="560" y="184">весь процесс</text></svg>
+      <figcaption>Один запрос и четыре вида записи о нём.</figcaption>
+    </figure>
+    <p>Сверху — один медленный запрос, 3022 мс. В метрике он только прибавил единицу к числу запросов длиной до 5 секунд: после этого его не отличить от другого такого же запроса. В логе о нём есть отдельная запись с кодом, длительностью и номером. В трассе — три этапа на шкале времени. Профиль описывает весь процесс целиком: какие функции и сколько времени занимали процессор. Дальше разберём каждый сигнал на стенде, от самого сжатого к самому подробному.</p>
+    <p class="next">Начнём с метрики — её мы уже видели в лекциях 1.2 и 1.3.</p>
+  </section>
+
+  <section class="part" id="s2">
+    <h2><span class="sec">§2</span>Метрика: числа за все запросы</h2>
+    <p class="about">Что метрика хранит и что теряет.</p>
+    <div class="def">
+      <div class="def__term">Метрика<i>metric</i></div>
+      <dl><dt>Что это</dt><dd>Число, которое описывает много событий сразу: сколько их было, какая доля с ошибкой, сколько уложилось в заданное время. Хранится как временной ряд.</dd><dt>Что даёт</dt><dd>Масштаб и изменения во времени при малом объёме.</dd><dt>Пример</dt><dd><code>lab_http_requests_total{status="500"} 1</code> — одна ошибка за всё время работы процесса.</dd></dl>
+    </div>
+    <p>Отправим на стенд 1000 запросов: 20 из <code>experiment.py</code> (среди них 2 медленных и 1 с ошибкой) и ещё 980 быстрых. Посмотрим на <code>/metrics</code>:</p>
+    <figure class="code code--out"><figcaption><span>/metrics</span><span>после 1000 запросов</span></figcaption><pre>lab_http_requests_total{route="/products",status="200"} 999
+lab_http_requests_total{route="/products",status="500"} 1
+lab_http_request_duration_seconds_bucket{le="0.1"} 998
+lab_http_request_duration_seconds_bucket{le="0.25"} 998
+lab_http_request_duration_seconds_bucket{le="0.5"} 998
+lab_http_request_duration_seconds_bucket{le="1.0"} 998
+lab_http_request_duration_seconds_bucket{le="2.5"} 998
+lab_http_request_duration_seconds_bucket{le="5.0"} 1000
+lab_http_request_duration_seconds_bucket{le="+Inf"} 1000
+lab_http_request_duration_seconds_sum 88.06372551841196
+lab_http_request_duration_seconds_count 1000</pre></figure>
+    <div class="walk">
+      <div><code>requests_total</code><span>Две строки — сколько запросов завершилось кодом 200 и кодом 500: 999 и 1.</span></div>
+      <div><code>bucket{le="..."}</code><span>Сколько запросов уложилось в заданное время. <code>le</code> — «не дольше». До 0,1 секунды — 998, до 5 секунд — 1000. Значит, два запроса шли от 2,5 до 5 секунд.</span></div>
+      <div><code>_sum</code>, <code>_count</code><span>Сумма длительностей всех запросов в секундах и их число: 88,06 с за 1000 запросов.</span></div>
+    </div>
+    <p>Тысяча запросов уместилась в одиннадцать строк. По ним видно масштаб: ошибок одна на тысячу, медленных два на тысячу, среднее 88 мс. Если снимать эти строки по расписанию, как в лекции 1.2, получатся ряды, и по ним видно, когда что изменилось. На схеме — что метрика делает с запросами:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Тысяча запросов слева сводятся воронкой к одиннадцати числам справа"><g><rect class="sc-box" x="20" y="20" width="10" height="10"/><rect class="sc-box" x="34" y="20" width="10" height="10"/><rect class="sc-box" x="48" y="20" width="10" height="10"/><rect class="sc-box" x="62" y="20" width="10" height="10"/><rect class="sc-box" x="76" y="20" width="10" height="10"/><rect class="sc-box" x="90" y="20" width="10" height="10"/><rect class="sc-box" x="20" y="34" width="10" height="10"/><rect class="sc-wrn" x="34" y="34" width="10" height="10"/><rect class="sc-box" x="48" y="34" width="10" height="10"/><rect class="sc-box" x="62" y="34" width="10" height="10"/><rect class="sc-box" x="76" y="34" width="10" height="10"/><rect class="sc-box" x="90" y="34" width="10" height="10"/><rect class="sc-box" x="20" y="48" width="10" height="10"/><rect class="sc-box" x="34" y="48" width="10" height="10"/><rect class="sc-box" x="48" y="48" width="10" height="10"/><rect class="sc-box" x="62" y="48" width="10" height="10"/><rect class="sc-wrn" x="76" y="48" width="10" height="10"/><rect class="sc-box" x="90" y="48" width="10" height="10"/><rect class="sc-box" x="20" y="62" width="10" height="10"/><rect class="sc-box" x="34" y="62" width="10" height="10"/><rect class="sc-box" x="48" y="62" width="10" height="10"/><rect class="sc-box" x="62" y="62" width="10" height="10"/><rect class="sc-box" x="76" y="62" width="10" height="10"/><rect class="sc-box" x="90" y="62" width="10" height="10"/></g><text class="t tc" x="60" y="98">1000 запросов</text><text class="t tc" x="60" y="116">у каждого номер,</text><text class="t tc" x="60" y="134">этапы, время</text><path class="sc-line" d="M120 20 L300 60"/><path class="sc-line" d="M120 76 L300 84"/><path class="sc-arrow" d="M240 72 L296 72"/><path class="sc-arrow" d="M288 76 L296 72 L288 68"/><rect class="sc-acc" x="306" y="30" width="150" height="84" rx="8"/><text class="tb tc" x="381" y="64">11 чисел</text><text class="t tc" x="381" y="86">829 байт</text><text class="t" x="476" y="54">ошибок: 1</text><text class="t" x="476" y="78">медленных: 2</text><text class="t tw" x="476" y="102">какие — неизвестно</text></svg>
+      <figcaption>Метрика сводит много запросов к нескольким числам.</figcaption>
+    </figure>
+    <p>Слева — запросы, у каждого свой номер, время и этапы; оранжевые — необычные. Справа от воронки остаются только числа. Оранжевые запросы в них учтены, но номеров и подробностей у них больше нет. Это и сила, и предел метрики: она дёшево показывает «сколько» и «когда», но на вопрос «какие запросы» не отвечает — это мы видели в лекции 1.3.</p>
+    <div class="key"><b>Вывод</b><p>Метрика отвечает на вопросы о масштабе и изменениях во времени. Отдельные запросы в ней не различить.</p></div>
+    <p class="next">Отдельные запросы различает следующий сигнал — лог.</p>
+  </section>
+
+  <section class="part" id="s3">
+    <h2><span class="sec">§3</span>Лог: запись о каждом событии</h2>
+    <p class="about">Что хранит запись лога и чего в ней нет.</p>
+    <div class="def">
+      <div class="def__term">Лог<i>log</i></div>
+      <dl><dt>Что это</dt><dd>Последовательность записей о событиях. Каждая запись описывает одно событие: когда, где, что произошло и с какими подробностями.</dd><dt>Что даёт</dt><dd>Подробности конкретного события: код ответа, номер запроса, текст исключения.</dd><dt>Пример</dt><dd>Записи <code>/events</code> стенда — по одной на каждый запрос <code>/products</code>.</dd></dl>
+    </div>
+    <p>Событие, которое мы разбирали в лекции 1.3, — это и есть запись лога. Возьмём из лога стенда запись о запросе с ошибкой:</p>
+    <figure class="code code--out"><figcaption><span>/events</span><span>запись о запросе с ошибкой, сокращено</span></figcaption><pre>{
+  "timestamp": "2026-11-10T11:…+00:00",
+  "level": "ERROR",
+  "service": "products-api",
+  "route": "/products",
+  "status": 500,
+  "duration_ms": 73.422,
+  "request_id": "0fc8ef7a23654219a1e206afb3c24b6d",
+  "scenario": "error",
+  "exception": "Traceback (most recent call last): … TimeoutError: Simulated dependency timeout; no database is connected"
+}</pre></figure>
+    <p>Поле <code>level</code> — <span class="term">уровень важности</span> записи. Обычные запросы стенд пишет с уровнем <code>INFO</code>, запросы с ошибкой — с уровнем <code>ERROR</code>. По уровню записи быстро отбирают: например, показать только ошибки. Поле <code>exception</code> хранит traceback — то, что в лекции 1.1 разработчик видел в терминале. Здесь он сохранён вместе с номером запроса и временем, и его можно найти после того, как терминал закрыли.</p>
+    <p>Ту же ошибку Uvicorn напечатал и в свой терминал. Сравним с записью выше:</p>
+    <figure class="code code--out"><figcaption><span>Терминал Uvicorn</span><span>тот же запрос</span></figcaption><pre>dependency_timeout request_id=0fc8ef7a23654219a1e206afb3c24b6d
+Traceback (most recent call last):
+  File ".../lab/app.py", line 55, in products
+    raise TimeoutError("Simulated dependency timeout; no database is connected")
+TimeoutError: Simulated dependency timeout; no database is connected
+INFO:     127.0.0.1:63107 - "GET /products?scenario=error HTTP/1.1" 500 Internal Server Error</pre></figure>
+    <p>В терминале — строки текста: их удобно читать глазами, но программе трудно их разобрать, например понять, где кончается номер и начинается код. В <code>/events</code> — запись с именованными полями в формате JSON. Такую запись программа читает по полям, как в <code>slow.py</code> из лекции 1.3. Записи с именованными полями называют <span class="term">структурированными</span>. На схеме — одна запись лога и вопросы, на которые она отвечает:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 160" role="img" aria-label="Запись лога с полями отвечает, что случилось с запросом 0fc8ef7a; на вопрос, сколько всего ошибок, отвечает только подсчёт всех записей"><rect class="sc-acc" x="20" y="16" width="250" height="128" rx="8"/><text class="tb tc" x="145" y="38">запись 0fc8ef7a</text><text class="tm" x="36" y="62">level: ERROR</text><text class="tm" x="36" y="82">status: 500</text><text class="tm" x="36" y="102">duration_ms: 73.4</text><text class="tm" x="36" y="122">exception: TimeoutError</text><path class="sc-arrow" d="M276 60 L318 60"/><path class="sc-arrow" d="M310 64 L318 60 L310 56"/><text class="t" x="326" y="56">что случилось с этим запросом?</text><text class="t ta" x="326" y="76">есть ответ — в одной записи</text><path class="sc-arrow" d="M276 112 L318 112"/><path class="sc-arrow" d="M310 116 L318 112 L310 108"/><text class="t" x="326" y="108">сколько всего ошибок за час?</text><text class="t tw" x="326" y="128">нужно прочитать все записи</text></svg>
+      <figcaption>Одна запись лога и два вопроса к логу.</figcaption>
+    </figure>
+    <p>Верхний вопрос — о конкретном запросе — закрывает одна запись: код, длительность, исключение. Нижний — о масштабе — по одной записи не решить. Чтобы узнать, сколько ошибок было за час, нужно перебрать все записи за час. Метрика отвечает на него одной строкой.</p>
+    <div class="key"><b>Вывод</b><p>Лог отвечает на вопрос «что случилось с этим запросом». Масштаб по логу считать дорого: для этого читают все записи.</p></div>
+    <p class="next">Запись лога сообщает, что запрос шёл 3022 мс. Где внутри запроса ушло это время, показывает трасса.</p>
+  </section>
+
+  <section class="part" id="s4">
+    <h2><span class="sec">§4</span>Трасса: этапы одной операции</h2>
+    <p class="about">Как трасса показывает, где запрос потратил время и где остановился.</p>
+    <p>Маршрут посылки в службе доставки показывает не только «доставлено за 5 дней», но и где посылка провела каждый из них: день на складе, три дня в пути, день в пункте выдачи. Если доставка затянулась, по маршруту видно, на каком участке. Трасса делает то же для запроса.</p>
+    <div class="def">
+      <div class="def__term">Трасса и этап<i>trace, span</i></div>
+      <dl><dt>Трасса</dt><dd>Путь одной операции, разбитый на этапы, с началом и длительностью каждого.</dd><dt>Этап (span)</dt><dd>Одна часть операции: имя, смещение от начала операции и длительность.</dd><dt>Пример</dt><dd>Поле <code>spans</code> события стенда: <code>validate</code>, <code>dependency.wait</code>, <code>serialize</code>.</dd></dl>
+    </div>
+    <p>На стенде этапы записывает функция <code>stage</code> из лекции 1.3 и кладёт их в то же событие. Это упрощение: в настоящих системах трассы собирают отдельно от логов, а этапы одной операции могут прийти из разных сервисов. Возьмём из <code>/events</code> этапы двух необычных запросов — медленного и с ошибкой:</p>
+    <figure class="code code--out"><figcaption><span>/events</span><span>поле spans двух запросов, выписано по строкам</span></figcaption><pre>slow  200  3021.4 мс
+  validate                     0.0  +   10.6
+  dependency.wait (simulated) 10.6  + 3000.3
+  serialize                 3010.9  +   10.5
+error 500    73.4 мс
+  validate                     0.0  +   11.1
+  dependency.wait (simulated) 11.1  +   61.0</pre></figure>
+    <p>Первое число в строке этапа — смещение от начала запроса, второе — длительность, обе в миллисекундах. Нарисуем обе трассы на своих шкалах:</p>
+    <div class="story">
+    <figure class="scene">
+      <svg viewBox="0 0 640 130" role="img" aria-label="Трасса медленного запроса: validate 10,6 мс, dependency.wait 3000,3 мс, serialize 10,5 мс"><line class="sc-axis" x1="150" y1="104" x2="610" y2="104"/><text class="tm" x="10" y="26">validate</text><rect class="sc-acc" x="150" y="14" width="3" height="16"/><text class="tm" x="10" y="56">dependency</text><rect class="sc-wrn" x="152" y="44" width="456" height="16"/><text class="tm" x="10" y="86">serialize</text><rect class="sc-acc" x="608" y="74" width="2" height="16"/><text class="tm tc" x="150" y="122">0</text><text class="tm tc" x="610" y="122">3021 мс</text><text class="tm tw tc" x="380" y="80">3000,3 мс</text></svg>
+      <figcaption><b>slow, 200.</b> Почти всё время — ожидание зависимости.</figcaption>
+    </figure>
+      <p>У медленного запроса оранжевая полоса ожидания зависимости занимает всю шкалу, а <code>validate</code> и <code>serialize</code> — тонкие черты по краям. Теперь запрос с ошибкой, на шкале в 73 мс:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 130" role="img" aria-label="Трасса запроса с ошибкой: validate 11,1 мс, dependency.wait 61 мс, этапа serialize нет"><line class="sc-axis" x1="150" y1="104" x2="610" y2="104"/><text class="tm" x="10" y="26">validate</text><rect class="sc-acc" x="150" y="14" width="70" height="16"/><text class="tm" x="10" y="56">dependency</text><rect class="sc-wrn" x="220" y="44" width="384" height="16"/><text class="tm" x="10" y="86">serialize</text><rect class="sc-soft" x="604" y="74" width="6" height="16"/><text class="t tw" x="420" y="88">этапа нет: исключение</text><text class="tm tc" x="150" y="122">0</text><text class="tm tc" x="610" y="122">73 мс</text></svg>
+      <figcaption><b>error, 500.</b> Трасса обрывается после ожидания зависимости.</figcaption>
+    </figure>
+    </div>
+    <p>У запроса с ошибкой этапов два: после ожидания зависимости возникло исключение, и до <code>serialize</code> обработчик не дошёл. Пунктирное место в третьей строке пустое. Так трасса показывает не только где ушло время, но и на каком этапе операция остановилась. Код ответа 500 и запись лога сообщают, что запрос упал; трасса показывает, после какого этапа.</p>
+    <div class="key"><b>Вывод</b><p>Трасса отвечает на вопросы «на каком этапе ушло время» и «где операция остановилась» — для одной конкретной операции.</p></div>
+    <p class="next">Трасса показывает, что запрос ждал зависимость. Ждал — значит процессор в это время был свободен. Чем занят процессор, показывает четвёртый сигнал.</p>
+  </section>
+
+  <section class="part" id="s5">
+    <h2><span class="sec">§5</span>Профиль: где программа тратит процессор</h2>
+    <p class="about">Чем время по часам отличается от времени процессора и что показывает профиль.</p>
+    <p>Повар провёл на кухне час. Сорок минут из них суп варился сам, а повар резал овощи для салата. Если считать по часам, суп занял час. Если считать, чем были заняты руки повара, суп занял пять минут, а салат — сорок. Программа так же делит время: часть она ждёт ответа базы или сети, часть работает сама и занимает процессор.</p>
+    <p>Проверим на примере. Функция <code>load_rows</code> полсекунды ждёт базу данных, затем собирает 200 000 строк. Функция <code>render</code> превращает строки в JSON. Измерим каждую двумя таймерами: по часам и по времени процессора.</p>
+    <figure class="code">
+      <figcaption><span>walls.py</span><span>время по часам и время процессора</span></figcaption>
+<pre><span class="k">import</span> json
+<span class="k">import</span> time
+
+<span class="k">def</span> <span class="f">load_rows</span>():
+    time.<span class="f">sleep</span>(<span class="n">0.5</span>)                          <span class="c"># ждём базу данных: процессор свободен</span>
+    <span class="k">return</span> [{<span class="s">"id"</span>: i, <span class="s">"name"</span>: <span class="s">f"товар {i}"</span>} <span class="k">for</span> i <span class="k">in</span> <span class="f">range</span>(<span class="n">200_000</span>)]
+
+<span class="k">def</span> <span class="f">render</span>(rows):
+    <span class="k">return</span> json.<span class="f">dumps</span>(rows, ensure_ascii=<span class="k">False</span>)
+
+wall, cpu = time.<span class="f">perf_counter</span>(), time.<span class="f">process_time</span>()
+rows = <span class="f">load_rows</span>()
+<span class="f">print</span>(<span class="s">f"load_rows  по часам: {time.perf_counter() - wall:.2f} с  процессор: {time.process_time() - cpu:.2f} с"</span>)
+wall, cpu = time.<span class="f">perf_counter</span>(), time.<span class="f">process_time</span>()
+<span class="f">render</span>(rows)
+<span class="f">print</span>(<span class="s">f"render     по часам: {time.perf_counter() - wall:.2f} с  процессор: {time.process_time() - cpu:.2f} с"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>два таймера</span></figcaption><pre>load_rows  по часам: 0.53 с  процессор: 0.03 с
+render     по часам: 0.05 с  процессор: 0.05 с</pre></figure>
+    <div class="walk">
+      <div><code>time.perf_counter()</code><span>Время по часам — тот же таймер, что в функции <code>stage</code>. Идёт всегда, в том числе пока программа ждёт.</span></div>
+      <div><code>time.process_time()</code><span>Время процессора: сколько процессор выполнял код этого процесса. Пока программа спит в <code>time.sleep</code>, оно не растёт.</span></div>
+    </div>
+    <p>По часам <code>load_rows</code> заняла 0,53 секунды, а процессор работал на ней 0,03: полсекунды программа ждала. У <code>render</code> оба числа совпадают — всё её время процессор был занят. Трасса показала бы <code>load_rows</code> как самый долгий этап. Но если сервер перегружен по процессору, искать нужно в <code>render</code>.</p>
+    <div class="def">
+      <div class="def__term">Профиль<i>profile</i></div>
+      <dl><dt>Что это</dt><dd>Распределение ресурса — чаще всего времени процессора или памяти — по функциям программы за промежуток времени.</dd><dt>Что даёт</dt><dd>Ответ на вопрос «какой код занимает процессор», когда процессор загружен, а медленного этапа в трассе нет.</dd><dt>Пример</dt><dd>Отчёт <code>cProfile</code> ниже: <code>iterencode</code> из модуля <code>json</code> заняла 0,044 с процессора.</dd></dl>
+    </div>
+    <p>В Python профиль строит модуль <code>cProfile</code>. Запустим тот же отчёт под ним и попросим считать только время процессора:</p>
+    <figure class="code">
+      <figcaption><span>profile_report.py</span><span>профиль процессора</span></figcaption>
+<pre><span class="k">import</span> cProfile
+<span class="k">import</span> pstats
+<span class="c"># ... функции load_rows и render — как в walls.py</span>
+
+<span class="k">def</span> <span class="f">report</span>():
+    rows = <span class="f">load_rows</span>()
+    <span class="k">return</span> <span class="f">render</span>(rows)
+
+profiler = cProfile.<span class="f">Profile</span>(time.process_time)   <span class="c"># считать только время процессора</span>
+profiler.<span class="f">runcall</span>(report)
+pstats.<span class="f">Stats</span>(profiler).<span class="f">strip_dirs</span>().<span class="f">sort_stats</span>(<span class="s">"tottime"</span>).<span class="f">print_stats</span>(<span class="n">4</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>четыре функции с наибольшим временем</span></figcaption><pre>   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.044    0.044    0.044    0.044 encoder.py:205(iterencode)
+        1    0.037    0.037    0.037    0.037 profile_report.py:6(load_rows)
+        1    0.000    0.000    0.000    0.000 {built-in method time.sleep}
+        1    0.000    0.000    0.044    0.044 encoder.py:183(encode)</pre></figure>
+    <div class="walk">
+      <div><code>cProfile.Profile(time.process_time)</code><span>Профилировщик, который измеряет время таймером процессора.</span></div>
+      <div><code>runcall(report)</code><span>Выполняет <code>report</code> и записывает каждый вызов функции внутри неё.</span></div>
+      <div><code>tottime</code><span>Время процессора внутри самой функции, без вложенных вызовов. <code>cumtime</code> — вместе с вложенными.</span></div>
+      <div><code>strip_dirs()</code>, <code>print_stats(4)</code><span>Убрать длинные пути к файлам и показать четыре строки с наибольшим <code>tottime</code>.</span></div>
+    </div>
+    <p>Первая строка — <code>iterencode</code>, внутренняя функция модуля <code>json</code>: 0,044 с процессора. Вторая — <code>load_rows</code>: 0,037 с, это сборка списка из 200 000 строк. Третья — <code>time.sleep</code>: полсекунды ожидания дали ноль процессора. На схеме — оба взгляда на один и тот же вызов <code>report</code>:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="По часам load_rows 530 мс и render 50 мс; по процессору load_rows 37 мс, render 44 мс"><text class="t" x="10" y="34">по часам</text><rect class="sc-wrn" x="130" y="20" width="420" height="22"/><text class="tm tc" x="340" y="36">load_rows 530 мс (ожидание)</text><rect class="sc-acc" x="550" y="20" width="40" height="22"/><text class="tm" x="560" y="60">render</text><text class="t" x="10" y="104">процессор</text><rect class="sc-acc" x="130" y="90" width="30" height="22"/><rect class="sc-acc" x="160" y="90" width="35" height="22"/><text class="tm" x="132" y="130">load_rows 37</text><text class="tm" x="216" y="106">render 44 мс</text><line class="sc-axis" x1="130" y1="12" x2="130" y2="118"/></svg>
+      <figcaption>Одна шкала для обеих строк. Длина полосы — время в миллисекундах.</figcaption>
+    </figure>
+    <p>Верхняя строка — время по часам, его измеряет трасса: <code>load_rows</code> занимает почти всё, <code>render</code> — короткий хвост. Нижняя строка — время процессора, его измеряет профиль: обе функции маленькие, и <code>render</code> даже больше. Сигналы не противоречат друг другу, они меряют разное.</p>
+    <div class="key"><b>Вывод</b><p>Профиль отвечает на вопрос «какой код занимает процессор или память». Ожидание базы и сети в профиле процессора не видно — оно видно в трассе.</p></div>
+    <p class="next">Все четыре сигнала разобраны. Сравним, сколько места занимает каждый.</p>
+  </section>
+
+  <section class="part" id="s6">
+    <h2><span class="sec">§6</span>Сколько стоит каждый сигнал</h2>
+    <p class="about">Как растёт объём метрик и логов с числом запросов.</p>
+    <p>Итог кассы за день — одна строка, сколько бы покупателей ни пришло. Пачка чеков растёт с каждым покупателем. С сигналами так же. Измерим на стенде размер ответов <code>/metrics</code> и <code>/events</code> после 20, 200 и 1000 запросов:</p>
+    <figure class="code">
+      <figcaption><span>sizes.py</span><span>размер метрик и лога</span></figcaption>
+<pre><span class="k">from</span> urllib.request <span class="k">import</span> urlopen
+
+BASE = <span class="s">"http://127.0.0.1:8015"</span>
+
+<span class="k">def</span> <span class="f">size</span>(path):
+    <span class="k">return</span> <span class="f">len</span>(<span class="f">urlopen</span>(BASE + path).<span class="f">read</span>())
+
+<span class="k">def</span> <span class="f">send</span>(count):
+    <span class="k">for</span> _ <span class="k">in</span> <span class="f">range</span>(count):
+        <span class="f">urlopen</span>(BASE + <span class="s">"/products?scenario=fast"</span>).<span class="f">read</span>()
+
+total = <span class="n">20</span>                                   <span class="c"># уже отправил experiment.py</span>
+<span class="k">for</span> extra <span class="k">in</span> (<span class="n">0</span>, <span class="n">180</span>, <span class="n">800</span>):
+    <span class="f">send</span>(extra)
+    total += extra
+    <span class="f">print</span>(<span class="s">f"запросов: {total:&gt;4}  /metrics: {size('/metrics'):&gt;6} байт  /events: {size('/events'):&gt;7} байт"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>три замера</span></figcaption><pre>запросов:   20  /metrics:    817 байт  /events:    9505 байт
+запросов:  200  /metrics:    826 байт  /events:   92664 байт
+запросов: 1000  /metrics:    829 байт  /events:  462345 байт</pre></figure>
+    <div class="walk">
+      <div><code>len(urlopen(...).read())</code><span>Размер ответа в байтах.</span></div>
+      <div><code>send(extra)</code><span>Отправить ещё <code>extra</code> быстрых запросов: 0, затем 180, затем 800 — всего получается 20, 200, 1000.</span></div>
+    </div>
+    <p>Те же числа на графике:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 190" role="img" aria-label="Размер /events растёт от 9,5 до 462 килобайт пропорционально числу запросов; размер /metrics остаётся около 0,8 килобайта"><line class="sc-grid" x1="70" y1="20" x2="610" y2="20"/><line class="sc-axis" x1="70" y1="160" x2="610" y2="160"/><text class="tm tr" x="64" y="24">462 КБ</text><text class="tm tr" x="64" y="164">0</text><polyline class="sc-plot" style="stroke:var(--warn)" points="70,157 167,132 610,20"/><circle class="sc-dot-w" cx="70" cy="157" r="4"/><circle class="sc-dot-w" cx="167" cy="132" r="4"/><circle class="sc-dot-w" cx="610" cy="20" r="4"/><polyline class="sc-plot" points="70,160 167,160 610,160"/><circle class="sc-dot" cx="70" cy="160" r="4"/><circle class="sc-dot" cx="167" cy="160" r="4"/><circle class="sc-dot" cx="610" cy="160" r="4"/><text class="t tw" x="230" y="60">/events: растёт с каждым запросом</text><text class="t" x="380" y="150">/metrics: 817 → 829 байт</text><text class="tm tc" x="70" y="180">20</text><text class="tm tc" x="167" y="180">200</text><text class="tm tr" x="616" y="180">1000</text><text class="tm tc" x="390" y="180">запросов</text></svg>
+      <figcaption>Размер ответа в зависимости от числа запросов. Шкала общая для двух линий.</figcaption>
+    </figure>
+    <p>Оранжевая линия лога поднимается ровно: каждый запрос добавляет около 460 байт. Синяя линия метрик лежит на дне: за 980 запросов она выросла на 12 байт — в числах стало больше цифр. Тысяча запросов в логе заняла в 558 раз больше места, чем в метриках. При миллионе запросов в сутки разница станет ещё заметнее: лог растёт с потоком, метрика — нет.</p>
+    <p>Стенд хранит в <code>/events</code> только 2000 последних записей, иначе память процесса росла бы без предела. Настоящие системы решают ту же задачу иначе: хранят логи меньше дней, чем метрики, а трассы записывают для части запросов. Отсюда правило выбора: метрики держат долго и для всего, подробные сигналы — короче и выборочно.</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Сигнал</th><th>Объём растёт</th><th>Обычно хранят</th></tr></thead>
+        <tbody>
+          <tr><td>метрика</td><td>с числом рядов, не с числом запросов</td><td>долго, для всех запросов</td></tr>
+          <tr><td>лог</td><td>с каждым событием</td><td>короче, иногда только важные уровни</td></tr>
+          <tr><td>трасса</td><td>с каждым этапом каждой операции</td><td>для части операций</td></tr>
+          <tr><td>профиль</td><td>с числом функций и частотой снимков</td><td>снимки за промежутки времени</td></tr>
+        </tbody>
+      </table></div>
+    <div class="key"><b>Вывод</b><p>Чем подробнее сигнал, тем быстрее растёт его объём. Поэтому метрики хранят долго и полностью, а логи и трассы — короче или выборочно.</p></div>
+    <p class="next">Теперь соберём, какой сигнал на какой вопрос отвечает.</p>
+  </section>
+
+  <section class="part" id="s7">
+    <h2><span class="sec">§7</span>Какой сигнал на какой вопрос</h2>
+    <p class="about">Таблица выбора сигнала по вопросу.</p>
+    <p>Каждый сигнал в §2–§5 отвечал на свой вопрос. Сведём их в одну таблицу с примерами со стенда:</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Вопрос</th><th>Сигнал</th><th>Пример со стенда</th></tr></thead>
+        <tbody>
+          <tr><td>сколько и какая доля, как менялось</td><td>метрика</td><td>1 ошибка и 2 медленных из 1000</td></tr>
+          <tr><td>что случилось с конкретным запросом</td><td>лог</td><td>запрос <code>0fc8ef7a</code>: 500, <code>TimeoutError</code></td></tr>
+          <tr><td>на каком этапе ушло время, где операция остановилась</td><td>трасса</td><td>3000 мс в <code>dependency.wait</code>; у ошибки нет <code>serialize</code></td></tr>
+          <tr><td>какой код занимает процессор</td><td>профиль</td><td><code>iterencode</code> 0,044 с, <code>time.sleep</code> 0</td></tr>
+        </tbody>
+      </table></div>
+    <p>Если расположить сигналы по подробности, получится лестница. На схеме — сколько операций охватывает каждый сигнал и сколько подробностей о каждой хранит:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Метрика охватывает все запросы и знает о каждом мало; лог — каждое событие с полями; трасса — этапы части операций; профиль — функции процесса"><line class="sc-axis" x1="60" y1="150" x2="620" y2="150"/><line class="sc-axis" x1="60" y1="150" x2="60" y2="14"/><text class="t" x="68" y="24">подробность об одной операции ↑</text><text class="t tr" x="620" y="166">охват операций →</text><rect class="sc-acc" x="470" y="110" width="140" height="32" rx="8"/><text class="tb tc" x="540" y="131">метрика</text><rect class="sc-acc" x="330" y="76" width="140" height="32" rx="8"/><text class="tb tc" x="400" y="97">лог</text><rect class="sc-acc" x="190" y="42" width="140" height="32" rx="8"/><text class="tb tc" x="260" y="63">трасса</text><rect class="sc-box" x="70" y="110" width="140" height="32" rx="8"/><text class="tb tc" x="140" y="131">профиль</text><text class="t tc" x="140" y="100">другая ось: функции</text></svg>
+      <figcaption>Расположение блоков показывает порядок величин; измеренных значений на схеме нет.</figcaption>
+    </figure>
+    <p>Голубые блоки идут ступенями: метрика справа внизу — охватывает все запросы, но о каждом хранит меньше всего. Лог выше и левее — запись о каждом событии. Трасса выше всех — каждый этап, но обычно только для части операций. Профиль стоит отдельно, белым: он описывает функции процесса, поэтому на лестницу операций не ложится. Ни один сигнал не заменяет другие: каждый отвечает на свой вопрос.</p>
+    <div class="key"><b>Вывод</b><p>Сигнал выбирают по вопросу: масштаб — метрика, конкретный запрос — лог, этапы — трасса, процессор и память — профиль.</p></div>
+    <p class="next">При разборе сбоя вопросы идут цепочкой, и от сигнала к сигналу нужно переходить. Разберём, что делает переход возможным.</p>
+  </section>
+
+  <section class="part" id="s8">
+    <h2><span class="sec">§8</span>Переход от сигнала к сигналу</h2>
+    <p class="about">Какие общие поля связывают сигналы.</p>
+    <p>Разбор сбоя обычно идёт от общего к частному. Метрика показывает, что медленных запросов стало больше и с какого времени. Затем в логе за это время отбирают медленные запросы и берут их номера. По номеру открывают трассу и видят этап. Если на этапе работает процессор, смотрят профиль. На стенде этот путь выглядит так:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 190" role="img" aria-label="Переход: метрика — время и сервис — лог — номер запроса — трасса — время и сервис — профиль"><rect class="sc-acc" x="10" y="20" width="140" height="70" rx="8"/><text class="tb tc" x="80" y="44">метрика</text><text class="tm tc" x="80" y="66">le="5.0": +2</text><text class="t tc" x="80" y="82">когда, сколько</text><path class="sc-arrow" d="M154 55 L180 55"/><path class="sc-arrow" d="M172 59 L180 55 L172 51"/><rect class="sc-acc" x="184" y="20" width="140" height="70" rx="8"/><text class="tb tc" x="254" y="44">лог</text><text class="tm tc" x="254" y="66">duration &gt; 2500</text><text class="t tc" x="254" y="82">какие запросы</text><path class="sc-arrow" d="M328 55 L354 55"/><path class="sc-arrow" d="M346 59 L354 55 L346 51"/><rect class="sc-acc" x="358" y="20" width="140" height="70" rx="8"/><text class="tb tc" x="428" y="44">трасса</text><text class="tm tc" x="428" y="66">dependency.wait</text><text class="t tc" x="428" y="82">какой этап</text><path class="sc-arrow" d="M502 55 L528 55"/><path class="sc-arrow" d="M520 59 L528 55 L520 51"/><rect class="sc-box" x="532" y="20" width="100" height="70" rx="8"/><text class="tb tc" x="582" y="44">профиль</text><text class="t tc" x="582" y="66">если этап</text><text class="t tc" x="582" y="82">считает</text><text class="tm tc" x="167" y="122">время,</text><text class="tm tc" x="167" y="140">service</text><text class="tm tc" x="341" y="122">request_id</text><text class="tm tc" x="515" y="122">время,</text><text class="tm tc" x="515" y="140">service</text><path class="sc-line" d="M167 64 V108"/><path class="sc-line" d="M341 64 V108"/><path class="sc-line" d="M515 64 V108"/><text class="t tc" x="320" y="176">под стрелками — общее поле, по которому переходят</text></svg>
+      <figcaption>Путь разбора и поля, которые связывают соседние сигналы.</figcaption>
+    </figure>
+    <p>Под каждой стрелкой — поле, которое есть у обоих соседних сигналов. От метрики к логу переходят по времени и имени сервиса: метрика говорит «в этом окне у <code>products-api</code> два медленных запроса», и в логе берут записи того же сервиса за то же окно. От лога к трассе — по номеру запроса: в настоящих системах для этого в запись лога кладут номер трассы. От трассы к профилю — снова по времени и сервису: профиль снимается за промежуток и запрос не различает.</p>
+    <p>Отсюда требование к самим сигналам: время в UTC и одинаковое имя сервиса во всех четырёх, номер запроса — в логе и трассе. Если в метриках сервис называется <code>products-api</code>, а в логах <code>catalog</code>, переход по имени не сработает.</p>
+    <div class="key"><b>Вывод</b><p>Сигналы связывают общие поля: время, имя сервиса и номер запроса. Их задают одинаково во всех сигналах, иначе переход от одного к другому обрывается.</p></div>
+  </section>
+
+  <section class="part" id="s9">
+    <h2><span class="sec">§9</span>Частые ошибки</h2>
+    <p class="about">Что делают неправильно и как исправить.</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Что делают</th><th>Что произойдёт</th><th>Как правильно</th></tr></thead>
+        <tbody>
+          <tr><td>ищут в метриках конкретный запрос</td><td>запроса там нет: метрика хранит только числа</td><td>взять время из метрики и искать запрос в логе</td></tr>
+          <tr><td>считают масштаб по логу каждый раз заново</td><td>перебор всех записей, медленно и дорого</td><td>завести метрику на нужное количество</td></tr>
+          <tr><td>пишут логи обычным текстом</td><td>программа не разберёт поля, поиск по номеру ненадёжен</td><td>писать записи с именованными полями, например JSON</td></tr>
+          <tr><td>ищут ожидание базы в профиле процессора</td><td>ожидание в профиле процессора не видно</td><td>смотреть этапы в трассе</td></tr>
+          <tr><td>хранят все логи и трассы столько же, сколько метрики</td><td>объём растёт с каждым запросом</td><td>хранить подробные сигналы короче или выборочно</td></tr>
+          <tr><td>называют сервис по-разному в разных сигналах</td><td>переход от метрики к логу не находит записей</td><td>одно имя сервиса во всех сигналах</td></tr>
+        </tbody>
+      </table></div>
+  </section>
+
+  <section class="part" id="s10">
+    <h2><span class="sec">§10</span>Практика</h2>
+    <p class="about">Три задачи на то, что разобрано в лекции. Решение спрятано под задачей.</p>
+    <h3>Задача 1. Выберите сигнал</h3>
+    <p>Ситуация: команда разбирает жалобы. Вопросы:</p>
+    <ul>
+      <li>сколько заказов с ошибкой было за вчерашний день;</li>
+      <li>почему не оформился заказ, номер которого прислал пользователь;</li>
+      <li>на каком этапе оформления заказ провёл 8 секунд;</li>
+      <li>почему процессор сервера загружен на 100%, хотя запросов не больше обычного.</li>
+    </ul>
+    <div class="key"><b>Что нужно сделать</b><p>Для каждого вопроса назвать сигнал, который на него отвечает.</p></div>
+    <details><summary>Решение</summary>
+    <p>Первый — метрика: количество за интервал. Второй — лог: запись о конкретном заказе с текстом ошибки. Третий — трасса: этапы одной операции. Четвёртый — профиль процессора: какие функции занимают процессор.</p>
+    </details>
+
+    <h3>Задача 2. Объём лога</h3>
+    <p>Ситуация: по замеру из §6 одна запись <code>/events</code> занимает около 460 байт. Сервис обрабатывает 1 000 000 запросов в сутки.</p>
+    <div class="key"><b>Что нужно сделать</b><p>Посчитать в Python, сколько мегабайт лога в сутки и за 30 дней даст одна запись на запрос.</p></div>
+    <details><summary>Решение</summary>
+    <figure class="code"><figcaption><span>Python</span><span>объём лога</span></figcaption><pre>per_day = <span class="n">460</span> * <span class="n">1_000_000</span> / <span class="n">1024</span> / <span class="n">1024</span>
+<span class="f">print</span>(<span class="s">f"в сутки: {per_day:.0f} МБ, за 30 дней: {per_day * 30 / 1024:.1f} ГБ"</span>)</pre></figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>оценка</span></figcaption><pre>в сутки: 439 МБ, за 30 дней: 12.9 ГБ</pre></figure>
+    <p>Метрики того же сервиса остаются в пределах килобайт на один снимок: их объём зависит от числа рядов и частоты снимков; число запросов на него не влияет.</p>
+    </details>
+
+    <h3>Задача 3. По часам и по процессору</h3>
+    <p>Ситуация: в <code>walls.py</code> из §5 время ожидания в <code>load_rows</code> увеличили с 0,5 до 2 секунд.</p>
+    <div class="key"><b>Что нужно сделать</b><p>Предсказать, как изменятся оба числа для <code>load_rows</code>, и проверить запуском.</p></div>
+    <details><summary>Решение</summary>
+    <p>Время по часам вырастет примерно до 2 секунд (при проверке вышло 2,04), время процессора останется около 0,03: ожидание процессор не занимает. В трассе этот этап станет длиннее, в профиле процессора — нет.</p>
+    </details>
+  </section>
+
+  <section class="part" id="s11">
+    <h2><span class="sec">§11</span>Проверьте себя</h2>
+    <p class="about">Вопросы по лекции. Ответ раскрывается щелчком.</p>
+    <details><summary>Почему 1000 запросов уместились в <code>/metrics</code> в 829 байт?</summary><p>Метрика хранит числа о запросах: сколько с каждым кодом, сколько уложилось в каждое время. Число строк не зависит от числа запросов.</p></details>
+    <details><summary>Что есть в записи лога, чего нет в метрике?</summary><p>Подробности конкретного события: номер запроса, время, код, длительность, текст исключения.</p></details>
+    <details><summary>Чем трасса запроса с ошибкой отличается от трассы медленного запроса на стенде?</summary><p>В ней два этапа вместо трёх: после ожидания зависимости возникло исключение, и этап <code>serialize</code> не выполнялся.</p></details>
+    <details><summary>Почему <code>time.sleep</code> в профиле процессора занимает 0?</summary><p>Пока программа спит, процессор не выполняет её код. Профиль процессора считает только время работы процессора.</p></details>
+    <details><summary>Какие поля связывают метрику с логом, а лог с трассой?</summary><p>Метрику с логом — время и имя сервиса. Лог с трассой — номер запроса или трассы.</p></details>
+  </section>
+
+  <section class="part" id="s12">
+    <h2><span class="sec">§12</span>Шпаргалка</h2>
+    <p class="about">Опорные понятия лекции одним списком.</p>
+    <div class="cheat">
+      <div><b>Метрика</b><code>сколько, доля, когда</code><code>объём не растёт с запросами</code></div>
+      <div><b>Лог</b><code>что случилось с запросом</code><code>запись на каждое событие</code></div>
+      <div><b>Трасса</b><code>на каком этапе</code><code>где остановилась</code></div>
+      <div><b>Профиль</b><code>какой код занимает процессор</code><code>ожидание не видно</code></div>
+      <div><b>Время</b><code>по часам — трасса</code><code>процессора — профиль</code></div>
+      <div><b>Связь сигналов</b><code>время в UTC</code><code>имя сервиса</code><code>номер запроса</code></div>
+    </div>
+  </section>
+
+  <section class="part" id="s13">
+    <h2><span class="sec">§13</span>Глоссарий</h2>
+    <p class="about">Термины лекции, включая понятия из лекций 1.1–1.3: формулировка, пример и рисунок.</p>
+    <div class="glossary">
+      <article class="gl" id="g-telemetry">
+        <div class="gl__text">
+          <h3>Телеметрия<i>telemetry</i></h3>
+          <p class="gl__def">Сведения о работе программы, которые она передаёт во внешнее хранилище. Делится на сигналы.</p>
+          <p class="gl__ex"><b>Пример</b><code>/metrics</code> и <code>/events</code> стенда.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.1, §10</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Телеметрия"><rect class="sc-acc" x="10" y="45" width="90" height="40" rx="8"/><text class="t tc" x="55" y="70">сервис</text><path class="sc-arrow" d="M104 65 L150 65"/><path class="sc-arrow" d="M142 69 L150 65 L142 61"/><rect class="sc-box" x="156" y="30" width="94" height="70" rx="8"/><text class="t tc" x="203" y="61">хранилище</text><text class="t tc" x="203" y="79">вне процесса</text></svg></figure>
+      </article>
+      <article class="gl" id="g-signal">
+        <div class="gl__text">
+          <h3>Сигнал<i>signal</i></h3>
+          <p class="gl__def">Вид телеметрии: метрики, логи, трассы, профили. Сигналы различаются подробностью и объёмом.</p>
+          <p class="gl__ex"><b>Пример</b>один медленный запрос — +1 в метрике, запись в логе, три этапа в трассе.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.4, §1</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Сигнал"><rect class="sc-acc" x="8" y="40" width="56" height="50" rx="6"/><rect class="sc-acc" x="70" y="40" width="56" height="50" rx="6"/><rect class="sc-acc" x="132" y="40" width="56" height="50" rx="6"/><rect class="sc-box" x="194" y="40" width="56" height="50" rx="6"/><text class="tm tc" x="36" y="70">метр.</text><text class="tm tc" x="98" y="70">лог</text><text class="tm tc" x="160" y="70">трасса</text><text class="tm tc" x="222" y="70">проф.</text></svg></figure>
+      </article>
+      <article class="gl" id="g-metric">
+        <div class="gl__text">
+          <h3>Метрика<i>metric</i></h3>
+          <p class="gl__def">Число, которое описывает много событий сразу и хранится как временной ряд. Объём не зависит от числа запросов.</p>
+          <p class="gl__ex"><b>Пример</b>1000 запросов стенда — 11 строк, 829 байт.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.4, §2</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Метрика"><rect class="sc-box" x="10" y="30" width="60" height="70" rx="6"/><text class="t tc" x="40" y="70">1000</text><path class="sc-arrow" d="M76 65 L150 65"/><path class="sc-arrow" d="M142 69 L150 65 L142 61"/><rect class="sc-acc" x="156" y="44" width="94" height="42" rx="8"/><text class="tm tc" x="203" y="70">11 чисел</text></svg></figure>
+      </article>
+      <article class="gl" id="g-log">
+        <div class="gl__text">
+          <h3>Лог<i>log</i></h3>
+          <p class="gl__def">Последовательность записей о событиях. Структурированная запись хранит именованные поля, например в JSON.</p>
+          <p class="gl__ex"><b>Пример</b>запись <code>0fc8ef7a</code>: <code>ERROR</code>, 500, <code>TimeoutError</code>.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.4, §3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Лог"><rect class="sc-acc" x="30" y="14" width="200" height="26" rx="4"/><rect class="sc-wrn" x="30" y="48" width="200" height="26" rx="4"/><rect class="sc-acc" x="30" y="82" width="200" height="26" rx="4"/><text class="tm" x="40" y="32">INFO 200</text><text class="tm" x="40" y="66">ERROR 500</text><text class="tm" x="40" y="100">INFO 200</text></svg></figure>
+      </article>
+      <article class="gl" id="g-level">
+        <div class="gl__text">
+          <h3>Уровень важности<i>log level</i></h3>
+          <p class="gl__def">Поле записи лога, которое показывает её важность: <code>INFO</code> — обычное событие, <code>ERROR</code> — ошибка.</p>
+          <p class="gl__ex"><b>Пример</b>запросы с кодом 500 стенд пишет с уровнем <code>ERROR</code>.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.4, §3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Уровень важности"><rect class="sc-box" x="20" y="30" width="100" height="30" rx="6"/><text class="tm tc" x="70" y="50">INFO</text><rect class="sc-wrn" x="140" y="30" width="100" height="30" rx="6"/><text class="tm tc" x="190" y="50">ERROR</text><text class="t tc" x="130" y="100">отбор по уровню</text></svg></figure>
+      </article>
+      <article class="gl" id="g-trace">
+        <div class="gl__text">
+          <h3>Трасса и этап<i>trace, span</i></h3>
+          <p class="gl__def">Трасса — путь одной операции по этапам. Этап — часть операции с именем, смещением и длительностью.</p>
+          <p class="gl__ex"><b>Пример</b>у запроса с ошибкой два этапа: <code>validate</code> и <code>dependency.wait</code>.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.4, §4</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Трасса"><line class="sc-axis" x1="10" y1="110" x2="250" y2="110"/><rect class="sc-acc" x="10" y="20" width="36" height="18"/><rect class="sc-wrn" x="46" y="48" width="190" height="18"/><rect class="sc-soft" x="236" y="76" width="12" height="18"/></svg></figure>
+      </article>
+      <article class="gl" id="g-profile">
+        <div class="gl__text">
+          <h3>Профиль<i>profile</i></h3>
+          <p class="gl__def">Распределение времени процессора или памяти по функциям программы за промежуток времени.</p>
+          <p class="gl__ex"><b>Пример</b><code>iterencode</code> — 0,044 с процессора, <code>time.sleep</code> — 0.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.4, §5</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Профиль"><rect class="sc-acc" x="10" y="20" width="200" height="22"/><text class="tm" x="16" y="36">iterencode</text><rect class="sc-acc" x="10" y="52" width="168" height="22"/><text class="tm" x="16" y="68">load_rows</text><rect class="sc-box" x="10" y="84" width="3" height="22"/><text class="tm" x="20" y="100">time.sleep 0</text></svg></figure>
+      </article>
+      <article class="gl" id="g-cpu-time">
+        <div class="gl__text">
+          <h3>Время по часам и время процессора<i>wall time, CPU time</i></h3>
+          <p class="gl__def">Время по часам идёт всегда, в том числе при ожидании. Время процессора растёт, только пока процессор выполняет код процесса.</p>
+          <p class="gl__ex"><b>Пример</b><code>load_rows</code>: 0,53 с по часам и 0,03 с процессора.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.4, §5</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Время по часам и время процессора"><text class="tm" x="10" y="40">часы</text><rect class="sc-wrn" x="80" y="26" width="170" height="20"/><text class="tm" x="10" y="90">CPU</text><rect class="sc-acc" x="80" y="76" width="10" height="20"/></svg></figure>
+      </article>
+      <article class="gl" id="g-request-id">
+        <div class="gl__text">
+          <h3>Идентификатор запроса<i>request ID</i></h3>
+          <p class="gl__def">Уникальный номер запроса во всех записях о нём. По нему переходят от записи лога к трассе.</p>
+          <p class="gl__ex"><b>Пример</b><code>0fc8ef7a…</code> в записи лога и в терминале Uvicorn.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.3, §8</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Идентификатор запроса"><rect class="sc-acc" x="10" y="45" width="90" height="40" rx="8"/><text class="t tc" x="55" y="70">лог</text><path class="sc-arrow" d="M104 65 L150 65"/><path class="sc-arrow" d="M142 69 L150 65 L142 61"/><rect class="sc-acc" x="156" y="45" width="94" height="40" rx="8"/><text class="t tc" x="203" y="70">трасса</text><text class="tm tc" x="128" y="36">0fc8</text></svg></figure>
+      </article>
+    </div>
+  </section>
+
+  <section class="part">
+    <h3>Итог лекции</h3>
+    <p>Телеметрия делится на четыре сигнала. Метрика сводит все запросы к нескольким числам: на стенде 1000 запросов заняли 829 байт, по ним видно масштаб и изменения, но не отдельные запросы. Лог хранит запись о каждом событии с полями и текстом исключения и растёт с каждым запросом: 462 345 байт на ту же тысячу. Трасса показывает этапы одной операции: где ушло время и где операция остановилась. Профиль показывает, какой код занимает процессор; ожидание в нём не отражается. Сигнал выбирают по вопросу, а переходят между сигналами по общим полям: времени, имени сервиса и номеру запроса.</p>
+    <h3>Источники</h3>
+    <ul class="sources">
+      <li>OpenTelemetry. Signals — opentelemetry.io/docs/concepts/signals</li>
+      <li>Python. The Python Profilers (cProfile, pstats), time — docs.python.org/3/library</li>
+      <li>Вывод <code>/metrics</code>, <code>/events</code>, терминала Uvicorn и <code>sizes.py</code> снят на стенде products-api (FastAPI 0.115.6) 10.11.2026; <code>walls.py</code> и <code>profile_report.py</code> запущены на Python 3.12, числа на другом компьютере будут другими</li>
+    </ul>
+  </section>
+
+  <div class="pager">
+    <a href="1-3-nablyudaemost.html">← 1.3 Наблюдаемость</a>
+    <a href="index.html">К содержанию справочника</a>
+    <span class="pager__soon">1.5 Что измерять · готовится →</span>
+  </div>
+  <div class="colophon">
+    <span>Лекция 1.4 · Сигналы · Метрики и наблюдаемость</span>
+    <span class="author-line">Автор: Макаров Максим Николаевич</span>
+  </div>
+    </main>
+  </div>
+</div>
+<script src="reader.js"></script>
+</body>
+</html>
