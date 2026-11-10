@@ -49,12 +49,14 @@
       <li><a href="#s1"><span class="csec">§1</span>Вопрос, для которого нет панели</a></li>
       <li><a href="#s2"><span class="csec">§2</span>Наблюдаемость</a></li>
       <li><a href="#s3"><span class="csec">§3</span>Ответ из сохранённых событий</a></li>
+      <li><a href="#s3-1"><span class="csec">§3.1</span>Пример по шагам: долгие отчёты</a></li>
       <li><a href="#s4"><span class="csec">§4</span>Вопрос, для которого нет данных</a></li>
       <li><a href="#s5"><span class="csec">§5</span>Мониторинг и наблюдаемость при разборе сбоя</a></li>
       <li><a href="#s6"><span class="csec">§6</span>Инструментация</a></li>
       <li><a href="#s7"><span class="csec">§7</span>Время в UTC</a></li>
       <li><a href="#s8"><span class="csec">§8</span>Идентификатор запроса</a></li>
       <li><a href="#s9"><span class="csec">§9</span>Сколько значений у поля</a></li>
+      <li><a href="#s9-1"><span class="csec">§9.1</span>Пример по шагам: откуда берутся ряды</a></li>
       <li><a href="#s10"><span class="csec">§10</span>Где телеметрия теряется</a></li>
       <li><a href="#s11"><span class="csec">§11</span>Частые ошибки</a></li>
       <li><a href="#s12"><span class="csec">§12</span>Практика</a></li>
@@ -154,10 +156,74 @@ events = json.<span class="f">load</span>(<span class="f">urlopen</span>(<span c
     </figure>
     <p>Из ряда в 20 событий условие прошли два — седьмое и семнадцатое, как раз те, что <code>experiment.py</code> отправил со сценарием <code>slow</code>. Для каждого программа нашла самый долгий этап: ожидание зависимости, около 3000 мс из 3022. Код сервиса не менялся, и проблему не пришлось повторять: ответ нашёлся в уже сохранённых данных.</p>
     <div class="key"><b>Вывод</b><p>На вопрос, которого не было при настройке панелей, стенд ответил, потому что сохранял о каждом запросе событие с подробностями: длительностью, сценарием, этапами.</p></div>
+    <p class="next">Разберём ещё один новый вопрос по шагам — на событиях сервиса отчётов.</p>
+  </section>
+
+    <section class="part" id="s3-1">
+    <h2><span class="sec">§3.1</span>Пример по шагам: долгие отчёты</h2>
+    <p class="about">Как новый вопрос решается по событиям за три шага, а по метрике — нет.</p>
+    <p>Возьмём сервис отчётов. Пользователи жалуются, что некоторые отчёты строятся минуту. Сервис пишет о каждом отчёте событие: номер, длительность и число строк. Восемь событий, числа придуманы для примера:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>события сервиса отчётов</span></figcaption>
+<pre>events = [  <span class="c"># номер, длительность, число строк в отчёте</span>
+    {<span class="s">"id"</span>: <span class="s">"r1"</span>, <span class="s">"ms"</span>: <span class="n">900</span>,   <span class="s">"rows"</span>: <span class="n">120</span>},
+    {<span class="s">"id"</span>: <span class="s">"r2"</span>, <span class="s">"ms"</span>: <span class="n">1100</span>,  <span class="s">"rows"</span>: <span class="n">150</span>},
+    {<span class="s">"id"</span>: <span class="s">"r3"</span>, <span class="s">"ms"</span>: <span class="n">61000</span>, <span class="s">"rows"</span>: <span class="n">52000</span>},
+    {<span class="s">"id"</span>: <span class="s">"r4"</span>, <span class="s">"ms"</span>: <span class="n">950</span>,   <span class="s">"rows"</span>: <span class="n">90</span>},
+    {<span class="s">"id"</span>: <span class="s">"r5"</span>, <span class="s">"ms"</span>: <span class="n">58000</span>, <span class="s">"rows"</span>: <span class="n">48000</span>},
+    {<span class="s">"id"</span>: <span class="s">"r6"</span>, <span class="s">"ms"</span>: <span class="n">1000</span>,  <span class="s">"rows"</span>: <span class="n">200</span>},
+    {<span class="s">"id"</span>: <span class="s">"r7"</span>, <span class="s">"ms"</span>: <span class="n">1050</span>,  <span class="s">"rows"</span>: <span class="n">47000</span>},
+    {<span class="s">"id"</span>: <span class="s">"r8"</span>, <span class="s">"ms"</span>: <span class="n">64000</span>, <span class="s">"rows"</span>: <span class="n">55000</span>},
+]</pre>
+    </figure>
+    <p>Новый вопрос: зависит ли длительность от размера отчёта? Сначала посмотрим, что ответит метрика. Она хранит только количество долгих отчётов:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>что известно по метрике</span></figcaption>
+<pre><span class="f">print</span>(<span class="s">"метрика: дольше 10 с —"</span>, <span class="f">sum</span>(e[<span class="s">"ms"</span>] &gt; <span class="n">10_000</span> <span class="k">for</span> e <span class="k">in</span> events), <span class="s">"из"</span>, <span class="f">len</span>(events))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>одно число</span></figcaption><pre>метрика: дольше 10 с — 3 из 8</pre></figure>
+    <p>Три долгих отчёта из восьми — масштаб есть, связи с размером нет. Теперь зададим тот же вопрос событиям.</p>
+    <div class="story">
+    <p><b>Шаг 1. Отобрать долгие события.</b></p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>отбор</span></figcaption>
+<pre>slow = [e <span class="k">for</span> e <span class="k">in</span> events <span class="k">if</span> e[<span class="s">"ms"</span>] &gt; <span class="n">10_000</span>]
+<span class="f">print</span>(<span class="s">"шаг 1:"</span>, [e[<span class="s">"id"</span>] <span class="k">for</span> e <span class="k">in</span> slow])</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>долгие отчёты</span></figcaption><pre>шаг 1: ['r3', 'r5', 'r8']</pre></figure>
+    <figure class="scene">
+      <svg viewBox="0 0 640 110" role="img" aria-label="Восемь событий; r3, r5 и r8 долгие — около минуты"><rect class="sc-box" x="10" y="30" width="68" height="50" rx="6"/><text class="tm tc" x="44" y="52">r1</text><text class="tm tc" x="44" y="70">0,9 с</text><rect class="sc-box" x="88" y="30" width="68" height="50" rx="6"/><text class="tm tc" x="122" y="52">r2</text><text class="tm tc" x="122" y="70">1,1 с</text><rect class="sc-wrn" x="166" y="30" width="68" height="50" rx="6"/><text class="tm tc" x="200" y="52">r3</text><text class="tm tc" x="200" y="70">61 с</text><rect class="sc-box" x="244" y="30" width="68" height="50" rx="6"/><text class="tm tc" x="278" y="52">r4</text><text class="tm tc" x="278" y="70">0,95 с</text><rect class="sc-wrn" x="322" y="30" width="68" height="50" rx="6"/><text class="tm tc" x="356" y="52">r5</text><text class="tm tc" x="356" y="70">58 с</text><rect class="sc-box" x="400" y="30" width="68" height="50" rx="6"/><text class="tm tc" x="434" y="52">r6</text><text class="tm tc" x="434" y="70">1 с</text><rect class="sc-box" x="478" y="30" width="68" height="50" rx="6"/><text class="tm tc" x="512" y="52">r7</text><text class="tm tc" x="512" y="70">1,05 с</text><rect class="sc-wrn" x="556" y="30" width="68" height="50" rx="6"/><text class="tm tc" x="590" y="52">r8</text><text class="tm tc" x="590" y="70">64 с</text><text class="t" x="10" y="20">восемь событий, оранжевым — дольше 10 секунд</text></svg>
+      <figcaption>Отбор по полю <code>ms</code>.</figcaption>
+    </figure>
+    <p>Пока это то же, что дала метрика: три долгих отчёта. Разница в том, что у каждого из них сохранены остальные поля.</p>
+    <p><b>Шаг 2. Разделить все события по размеру.</b> Отчёт от 10 000 строк назовём большим:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>две группы</span></figcaption>
+<pre>big = [e <span class="k">for</span> e <span class="k">in</span> events <span class="k">if</span> e[<span class="s">"rows"</span>] &gt;= <span class="n">10_000</span>]
+small = [e <span class="k">for</span> e <span class="k">in</span> events <span class="k">if</span> e[<span class="s">"rows"</span>] &lt; <span class="n">10_000</span>]
+<span class="f">print</span>(<span class="s">"шаг 2: больших"</span>, [e[<span class="s">"id"</span>] <span class="k">for</span> e <span class="k">in</span> big], <span class="s">"малых"</span>, [e[<span class="s">"id"</span>] <span class="k">for</span> e <span class="k">in</span> small])</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>группы по полю rows</span></figcaption><pre>шаг 2: больших ['r3', 'r5', 'r7', 'r8'] малых ['r1', 'r2', 'r4', 'r6']</pre></figure>
+    <p><b>Шаг 3. Доля долгих в каждой группе.</b></p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>сравнение групп</span></figcaption>
+<pre><span class="k">for</span> name, group <span class="k">in</span> ((<span class="s">"больших"</span>, big), (<span class="s">"малых"</span>, small)):
+    long_ = <span class="f">sum</span>(e[<span class="s">"ms"</span>] &gt; <span class="n">10_000</span> <span class="k">for</span> e <span class="k">in</span> group)
+    <span class="f">print</span>(<span class="s">f"шаг 3: долгих среди {name}: {long_} из {len(group)}"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>ответ на новый вопрос</span></figcaption><pre>шаг 3: долгих среди больших: 3 из 4
+шаг 3: долгих среди малых: 0 из 4</pre></figure>
+    <figure class="scene">
+      <svg viewBox="0 0 640 140" role="img" aria-label="Большие отчёты: r3, r5, r8 долгие, r7 быстрый — 3 из 4; малые: r1, r2, r4, r6 все быстрые — 0 из 4"><text class="tb" x="10" y="30">большие</text><rect class="sc-wrn" x="110" y="12" width="68" height="30" rx="6"/><text class="tm tc" x="144" y="32">r3</text><rect class="sc-wrn" x="188" y="12" width="68" height="30" rx="6"/><text class="tm tc" x="222" y="32">r5</text><rect class="sc-box" x="266" y="12" width="68" height="30" rx="6"/><text class="tm tc" x="300" y="32">r7</text><rect class="sc-wrn" x="344" y="12" width="68" height="30" rx="6"/><text class="tm tc" x="378" y="32">r8</text><text class="t tw" x="430" y="32">долгих 3 из 4</text><text class="tb" x="10" y="90">малые</text><rect class="sc-box" x="110" y="72" width="68" height="30" rx="6"/><text class="tm tc" x="144" y="92">r1</text><rect class="sc-box" x="188" y="72" width="68" height="30" rx="6"/><text class="tm tc" x="222" y="92">r2</text><rect class="sc-box" x="266" y="72" width="68" height="30" rx="6"/><text class="tm tc" x="300" y="92">r4</text><rect class="sc-box" x="344" y="72" width="68" height="30" rx="6"/><text class="tm tc" x="378" y="92">r6</text><text class="t ta" x="430" y="92">долгих 0 из 4</text><text class="t" x="10" y="130">все долгие отчёты — большие; не все большие — долгие (r7)</text></svg>
+      <figcaption>Те же восемь событий, разделённые по полю <code>rows</code>.</figcaption>
+    </figure>
+    </div>
+    <p>Верхний ряд — большие отчёты: три из четырёх оранжевые. Нижний — малые: ни одного долгого. Все долгие отчёты оказались большими, значит, размер связан с длительностью. Но <code>r7</code> на 47 000 строк построился за секунду: размер объясняет не всё. Следующий вопрос к событиям — чем <code>r7</code> отличается от <code>r3</code>. Ответить на него можно, только если в событиях есть ещё поля: тип отчёта, тариф, этапы построения.</p>
+    <div class="key"><b>Вывод</b><p>Метрика сказала «3 из 8». События с полем <code>rows</code> за три шага — отбор, деление на группы, сравнение — показали связь с размером. Без поля <code>rows</code> второй и третий шаги сделать нельзя.</p></div>
     <p class="next">Ответ нашёлся, потому что нужные поля были записаны. Посмотрим, что будет, если поля нет.</p>
   </section>
 
-  <section class="part" id="s4">
+<section class="part" id="s4">
     <h2><span class="sec">§4</span>Вопрос, для которого нет данных</h2>
     <p class="about">Почему наблюдаемость оценивают по конкретному вопросу.</p>
     <p>Пусть команда хочет знать, с каких клиентов пришли медленные запросы: из браузера или из мобильного приложения. Если медленно работает только приложение, искать нужно в нём. Зададим и этот вопрос сохранённым событиям:</p>
@@ -334,10 +400,46 @@ series = <span class="n">1</span>
         </tbody>
       </table></div>
     <div class="key"><b>Вывод</b><p>Каждое сочетание признаков ряда — отдельный ряд в памяти хранилища. Признаки с огромным числом значений — номера запросов, пользователей, заказов — пишут в события.</p></div>
+    <p class="next">Посчитаем ряды по шагам на шести запросах.</p>
+  </section>
+
+    <section class="part" id="s9-1">
+    <h2><span class="sec">§9.1</span>Пример по шагам: откуда берутся ряды</h2>
+    <p class="about">Шесть запросов, два набора признаков и разное число рядов.</p>
+    <p>Посчитаем ряды вручную на шести запросах. У каждого запроса три признака: маршрут, код ответа и номер пользователя. Числа придуманы для примера:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>шесть запросов</span></figcaption>
+<pre>requests = [(<span class="s">"/products"</span>, <span class="n">200</span>, <span class="s">"u1"</span>), (<span class="s">"/products"</span>, <span class="n">200</span>, <span class="s">"u2"</span>), (<span class="s">"/products"</span>, <span class="n">500</span>, <span class="s">"u1"</span>),
+            (<span class="s">"/cart"</span>, <span class="n">200</span>, <span class="s">"u3"</span>), (<span class="s">"/products"</span>, <span class="n">200</span>, <span class="s">"u4"</span>), (<span class="s">"/cart"</span>, <span class="n">200</span>, <span class="s">"u1"</span>)]</pre>
+    </figure>
+    <p>Хранилище заводит отдельный ряд на каждое новое сочетание признаков. Множество Python <code>{...}</code> оставляет только разные сочетания — то же самое делает хранилище:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>сколько разных сочетаний</span></figcaption>
+<pre>by_route_status = {(route, code) <span class="k">for</span> route, code, _ <span class="k">in</span> requests}
+by_user = {(route, code, user) <span class="k">for</span> route, code, user <span class="k">in</span> requests}
+<span class="f">print</span>(<span class="s">"рядов без user_id:"</span>, <span class="f">len</span>(by_route_status), <span class="f">sorted</span>(by_route_status))
+<span class="f">print</span>(<span class="s">"рядов с user_id:  "</span>, <span class="f">len</span>(by_user))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>два набора признаков</span></figcaption><pre>рядов без user_id: 3 [('/cart', 200), ('/products', 200), ('/products', 500)]
+рядов с user_id:   6</pre></figure>
+    <p>На схеме — куда попадает каждый запрос в обоих случаях:</p>
+    <div class="story">
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Без user_id: шесть запросов раскладываются в три ряда: /products 200 — три запроса, /products 500 — один, /cart 200 — два"><rect class="sc-acc" x="10" y="20" width="200" height="110" rx="8"/><text class="tb tc" x="110" y="42">/products, 200</text><text class="tm tc" x="110" y="72">u1 · u2 · u4</text><text class="t tc" x="110" y="104">значение 3</text><rect class="sc-acc" x="220" y="20" width="200" height="110" rx="8"/><text class="tb tc" x="320" y="42">/products, 500</text><text class="tm tc" x="320" y="72">u1</text><text class="t tc" x="320" y="104">значение 1</text><rect class="sc-acc" x="430" y="20" width="200" height="110" rx="8"/><text class="tb tc" x="530" y="42">/cart, 200</text><text class="tm tc" x="530" y="72">u3 · u1</text><text class="t tc" x="530" y="104">значение 2</text></svg>
+      <figcaption><b>Признаки route и status.</b> Три ряда, в каждом счётчик растёт.</figcaption>
+    </figure>
+      <p>Без номера пользователя запросы с одинаковым маршрутом и кодом складываются в один ряд: в первом ряду их три. Теперь добавим номер пользователя:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="С user_id: шесть рядов по одному запросу"><rect class="sc-wrn" x="10" y="20" width="96" height="110" rx="8"/><text class="tm tc" x="58" y="50">/products</text><text class="tm tc" x="58" y="68">200 · u1</text><text class="t tc" x="58" y="104">1</text><rect class="sc-wrn" x="114" y="20" width="96" height="110" rx="8"/><text class="tm tc" x="162" y="50">/products</text><text class="tm tc" x="162" y="68">200 · u2</text><text class="t tc" x="162" y="104">1</text><rect class="sc-wrn" x="218" y="20" width="96" height="110" rx="8"/><text class="tm tc" x="266" y="50">/products</text><text class="tm tc" x="266" y="68">500 · u1</text><text class="t tc" x="266" y="104">1</text><rect class="sc-wrn" x="322" y="20" width="96" height="110" rx="8"/><text class="tm tc" x="370" y="50">/cart</text><text class="tm tc" x="370" y="68">200 · u3</text><text class="t tc" x="370" y="104">1</text><rect class="sc-wrn" x="426" y="20" width="96" height="110" rx="8"/><text class="tm tc" x="474" y="50">/products</text><text class="tm tc" x="474" y="68">200 · u4</text><text class="t tc" x="474" y="104">1</text><rect class="sc-wrn" x="530" y="20" width="100" height="110" rx="8"/><text class="tm tc" x="580" y="50">/cart</text><text class="tm tc" x="580" y="68">200 · u1</text><text class="t tc" x="580" y="104">1</text></svg>
+      <figcaption><b>Признаки route, status и user_id.</b> Шесть рядов, в каждом одно событие.</figcaption>
+    </figure>
+    </div>
+    <p>С номером пользователя каждый запрос попал в свой ряд: шесть рядов со значением 1. На шести запросах это вдвое больше. На 100 000 пользователей рядов станет в 100 000 раз больше, как посчитал <code>series.py</code> выше. И ни один ряд не отвечает на вопрос «сколько ошибок у <code>/products</code>»: чтобы его получить, хранилищу придётся сложить все ряды обратно.</p>
+    <div class="key"><b>Вывод</b><p>Число рядов — число разных сочетаний признаков. Признак, у которого почти у каждого запроса своё значение, превращает каждый запрос в отдельный ряд.</p></div>
     <p class="next">Данные записаны в нужные места. Осталось проверить, всё ли из записанного доживает до разбора.</p>
   </section>
 
-  <section class="part" id="s10">
+<section class="part" id="s10">
     <h2><span class="sec">§10</span>Где телеметрия теряется</h2>
     <p class="about">Почему отсутствие записи не доказывает, что события не было.</p>
     <p>Телеметрия описывает только то, что измерили и сохранили. На стенде это легко проверить. Адрес <code>/events</code> хранит события в памяти процесса. Посчитаем события, затем перезапустим сервис и посчитаем снова:</p>

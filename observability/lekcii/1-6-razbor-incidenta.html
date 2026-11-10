@@ -50,9 +50,12 @@
       <li><a href="#s2"><span class="csec">§2</span>Стенд: каталог с пулом соединений</a></li>
       <li><a href="#s3"><span class="csec">§3</span>Шаг 1. Уточнить жалобу</a></li>
       <li><a href="#s4"><span class="csec">§4</span>Шаг 2. Оценить масштаб</a></li>
+      <li><a href="#s4-1"><span class="csec">§4.1</span>Пример по шагам: p95 вручную</a></li>
       <li><a href="#s5"><span class="csec">§5</span>Шаг 3. Сузить область</a></li>
+      <li><a href="#s5-1"><span class="csec">§5.1</span>Пример по шагам: общий p95 и p95 экземпляра</a></li>
       <li><a href="#s6"><span class="csec">§6</span>Шаг 4. Посмотреть трассу</a></li>
       <li><a href="#s7"><span class="csec">§7</span>Шаг 5. Проверить гипотезы</a></li>
+      <li><a href="#s7-1"><span class="csec">§7.1</span>Пример по шагам: пул из двух соединений</a></li>
       <li><a href="#s8"><span class="csec">§8</span>Шаг 6. Проверить исправление</a></li>
       <li><a href="#s9"><span class="csec">§9</span>Отчёт о разборе</a></li>
       <li><a href="#s10"><span class="csec">§10</span>Частые ошибки</a></li>
@@ -169,10 +172,44 @@ api-3      62.0       0     48 мс    48 мс</pre></figure>
         </tbody>
       </table></div>
     <div class="key"><b>Вывод</b><p>Медиана на месте, p95 растёт — медленной стала часть запросов. Поток и ошибки не изменились, так что три частые догадки исключены. Почему медленны эти запросы, по метрикам всего сервиса не понять.</p></div>
+    <p class="next">Посчитаем медиану и p95 вручную на двадцати запросах.</p>
+  </section>
+
+    <section class="part" id="s4-1">
+    <h2><span class="sec">§4.1</span>Пример по шагам: p95 вручную</h2>
+    <p class="about">Как из двадцати длительностей получаются медиана и p95.</p>
+    <p>Посчитаем медиану и p95 на двадцати запросах. Семнадцать идут около 48 мс, три — секунды. Числа придуманы для примера, но похожи на начало сбоя на <code>api-2</code>:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>медиана и p95 по шагам</span></figcaption>
+<pre><span class="k">import</span> math
+
+durations = [<span class="n">47</span>, <span class="n">48</span>, <span class="n">48</span>, <span class="n">49</span>, <span class="n">48</span>, <span class="n">47</span>, <span class="n">2100</span>, <span class="n">48</span>, <span class="n">50</span>, <span class="n">48</span>, <span class="n">49</span>, <span class="n">47</span>, <span class="n">48</span>, <span class="n">48</span>, <span class="n">4800</span>, <span class="n">49</span>, <span class="n">48</span>, <span class="n">47</span>, <span class="n">48</span>, <span class="n">7400</span>]   <span class="c"># мс</span>
+
+ordered = <span class="f">sorted</span>(durations)
+<span class="f">print</span>(<span class="s">"по возрастанию:"</span>, ordered)
+rank = math.<span class="f">ceil</span>(<span class="n">0.95</span> * <span class="f">len</span>(ordered))            <span class="c"># номер значения p95 в упорядоченном списке</span>
+<span class="f">print</span>(<span class="s">f"p95: номер {rank} из {len(ordered)} → {ordered[rank - 1]} мс"</span>)
+<span class="f">print</span>(<span class="s">f"медиана: среднее 10-го и 11-го → {(ordered[9] + ordered[10]) / 2:.0f} мс"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>три шага</span></figcaption><pre>по возрастанию: [47, 47, 47, 47, 48, 48, 48, 48, 48, 48, 48, 48, 48, 49, 49, 49, 50, 2100, 4800, 7400]
+p95: номер 19 из 20 → 4800 мс
+медиана: среднее 10-го и 11-го → 48 мс</pre></figure>
+    <div class="walk">
+      <div><code>sorted(durations)</code><span>Шаг 1: выстроить длительности по возрастанию. Три медленных уходят в конец.</span></div>
+      <div><code>math.ceil(0.95 * 20)</code><span>Шаг 2: номер p95. 0,95 × 20 = 19, округление вверх оставляет 19. Значит, p95 — девятнадцатое значение: 95% запросов не дольше него.</span></div>
+      <div><code>ordered[rank - 1]</code><span>Шаг 3: взять это значение. Счёт в Python идёт с нуля, поэтому девятнадцатое — <code>ordered[18]</code>.</span></div>
+    </div>
+    <p>Тот же упорядоченный список на рисунке:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 140" role="img" aria-label="Двадцать клеток по возрастанию: семнадцать около 48 мс, затем 2100, 4800, 7400; десятая и одиннадцатая — медиана 48 мс, девятнадцатая — p95 4800 мс"><rect class="sc-box" x="10" y="40" width="28" height="34" rx="3"/><rect class="sc-box" x="41" y="40" width="28" height="34" rx="3"/><rect class="sc-box" x="72" y="40" width="28" height="34" rx="3"/><rect class="sc-box" x="103" y="40" width="28" height="34" rx="3"/><rect class="sc-box" x="134" y="40" width="28" height="34" rx="3"/><rect class="sc-box" x="165" y="40" width="28" height="34" rx="3"/><rect class="sc-box" x="196" y="40" width="28" height="34" rx="3"/><rect class="sc-box" x="227" y="40" width="28" height="34" rx="3"/><rect class="sc-box" x="258" y="40" width="28" height="34" rx="3"/><rect class="sc-acc" x="289" y="40" width="28" height="34" rx="3"/><rect class="sc-acc" x="320" y="40" width="28" height="34" rx="3"/><rect class="sc-box" x="351" y="40" width="28" height="34" rx="3"/><rect class="sc-box" x="382" y="40" width="28" height="34" rx="3"/><rect class="sc-box" x="413" y="40" width="28" height="34" rx="3"/><rect class="sc-box" x="444" y="40" width="28" height="34" rx="3"/><rect class="sc-box" x="475" y="40" width="28" height="34" rx="3"/><rect class="sc-box" x="506" y="40" width="28" height="34" rx="3"/><rect class="sc-box" x="537" y="40" width="28" height="34" rx="3"/><rect class="sc-wrn" x="568" y="40" width="28" height="34" rx="3"/><rect class="sc-box" x="599" y="40" width="28" height="34" rx="3"/><text class="tm tc" x="24" y="62">47</text><text class="tm tc" x="303" y="62">48</text><text class="tm tc" x="334" y="62">48</text><text class="tm tc" x="520" y="62">50</text><text class="tm tc" x="551" y="62">2,1</text><text class="tm tc" x="582" y="62">4,8</text><text class="tm tc" x="613" y="62">7,4</text><text class="tm tc" x="24" y="30">1</text><text class="tm tc" x="318" y="30">10 · 11</text><text class="tm tc" x="582" y="30">19</text><text class="t tc ta" x="318" y="98">медиана 48 мс</text><text class="t tc tw" x="560" y="98">p95 = 4800 мс</text><text class="t" x="10" y="130">клетка — один запрос; 2,1, 4,8 и 7,4 — секунды, остальное — мс</text></svg>
+      <figcaption>Двадцать запросов по возрастанию. Голубые — середина списка, оранжевая — девятнадцатая клетка.</figcaption>
+    </figure>
+    <p>Голубые клетки в середине — десятая и одиннадцатая, обе по 48 мс: медиана не заметила трёх медленных запросов. Оранжевая клетка — девятнадцатая, 4800 мс: в неё и упирается p95. p95 покажет медленные запросы, как только их больше 5%: здесь хватило бы двух из двадцати. Медиана сдвинется, только когда медленной станет половина.</p>
+    <div class="key"><b>Вывод</b><p>p95 — значение на месте 95% упорядоченного списка. Медиана — на середине. Поэтому при «иногда медленно» медиана стоит, а p95 растёт.</p></div>
     <p class="next">Следующий шаг — найти, где находятся медленные запросы.</p>
   </section>
 
-  <section class="part" id="s5">
+<section class="part" id="s5">
     <h2><span class="sec">§5</span>Шаг 3. Сузить область</h2>
     <p class="about">Как разбивка по экземплярам показывает, где искать.</p>
     <p>Метрики делят по признакам из описания ряда: экземпляр, версия, маршрут. На стенде у каждой строки <code>/metrics</code> есть <code>instance</code> и <code>version</code>, а <code>summary.py</code> делит запросы по экземплярам:</p>
@@ -191,10 +228,52 @@ api-3      62.0       0     48 мс    49 мс</pre></figure>
     </figure>
     <p>Верхняя полоса — все запросы: две трети голубые, на быстрых экземплярах, треть оранжевая, на <code>api-2</code>. Общий p95 отсекает 5% самых долгих запросов. Почти все они на <code>api-2</code>, а 5% всего потока — это 15% запросов <code>api-2</code>, чёрная полоска справа. Значит, общий p95 совпадает с 85-м перцентилем <code>api-2</code>. Проверка по данным: p85 у <code>api-2</code> — 6666,7 мс, общий p95 — 6667 мс.</p>
     <div class="key"><b>Вывод</b><p>Разбивка по экземплярам нашла область: только <code>api-2</code>, только версия 2.15.0. Общий перцентиль не равен перцентилю худшего экземпляра, поэтому показатели всегда смотрят и по отдельности.</p></div>
+    <p class="next">Проверим это объяснение по шагам на маленьком наборе.</p>
+  </section>
+
+    <section class="part" id="s5-1">
+    <h2><span class="sec">§5.1</span>Пример по шагам: общий p95 и p95 экземпляра</h2>
+    <p class="about">Почему общий перцентиль меньше перцентиля худшего экземпляра — на шестидесяти запросах.</p>
+    <p>Проверим объяснение из §5 на наборе, который легко пересчитать. Три экземпляра, по 20 запросов на каждом. <code>api-1</code> и <code>api-3</code> отвечают за 48–49 мс. У <code>api-2</code> очередь растёт, и его запросы идут 100, 200, 300 … 2000 мс. Числа придуманы для примера:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>p95 по экземпляру и по всем</span></figcaption>
+<pre><span class="k">import</span> math
+
+<span class="k">def</span> <span class="f">p</span>(values, q):
+    ordered = <span class="f">sorted</span>(values)
+    <span class="k">return</span> ordered[math.<span class="f">ceil</span>(q * <span class="f">len</span>(ordered)) - <span class="n">1</span>]
+
+api_1 = [<span class="n">48</span>] * <span class="n">20</span>
+api_3 = [<span class="n">49</span>] * <span class="n">20</span>
+api_2 = [<span class="n">100</span> * n <span class="k">for</span> n <span class="k">in</span> <span class="f">range</span>(<span class="n">1</span>, <span class="n">21</span>)]         <span class="c"># 100, 200, ..., 2000 мс: очередь растёт</span>
+everything = api_1 + api_2 + api_3
+
+<span class="f">print</span>(<span class="s">"p95 api-2:"</span>, <span class="f">p</span>(api_2, <span class="n">0.95</span>), <span class="s">"мс"</span>)
+<span class="f">print</span>(<span class="s">"p95 всех: "</span>, <span class="f">p</span>(everything, <span class="n">0.95</span>), <span class="s">"мс"</span>)
+<span class="f">print</span>(<span class="s">"p85 api-2:"</span>, <span class="f">p</span>(api_2, <span class="n">0.85</span>), <span class="s">"мс"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>три перцентиля</span></figcaption><pre>p95 api-2: 1900 мс
+p95 всех:  1700 мс
+p85 api-2: 1700 мс</pre></figure>
+    <p>Функция <code>p</code> делает три шага из §4.1: сортирует, находит номер, берёт значение. Разберём, откуда берутся два ответа.</p>
+    <div class="story">
+    <p><b>Шаг 1. p95 одного <code>api-2</code>.</b> 0,95 × 20 = 19, девятнадцатое значение его списка — 1900 мс.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 90" role="img" aria-label="Двадцать запросов api-2 от 100 до 2000 мс; девятнадцатый — 1900 мс"><rect class="sc-wrn" x="10" y="30" width="28" height="30" rx="3"/><rect class="sc-wrn" x="41" y="30" width="28" height="30" rx="3"/><rect class="sc-wrn" x="72" y="30" width="28" height="30" rx="3"/><rect class="sc-wrn" x="103" y="30" width="28" height="30" rx="3"/><rect class="sc-wrn" x="134" y="30" width="28" height="30" rx="3"/><rect class="sc-wrn" x="165" y="30" width="28" height="30" rx="3"/><rect class="sc-wrn" x="196" y="30" width="28" height="30" rx="3"/><rect class="sc-wrn" x="227" y="30" width="28" height="30" rx="3"/><rect class="sc-wrn" x="258" y="30" width="28" height="30" rx="3"/><rect class="sc-wrn" x="289" y="30" width="28" height="30" rx="3"/><rect class="sc-wrn" x="320" y="30" width="28" height="30" rx="3"/><rect class="sc-wrn" x="351" y="30" width="28" height="30" rx="3"/><rect class="sc-wrn" x="382" y="30" width="28" height="30" rx="3"/><rect class="sc-wrn" x="413" y="30" width="28" height="30" rx="3"/><rect class="sc-wrn" x="444" y="30" width="28" height="30" rx="3"/><rect class="sc-wrn" x="475" y="30" width="28" height="30" rx="3"/><rect class="sc-wrn" x="506" y="30" width="28" height="30" rx="3"/><rect class="sc-wrn" x="537" y="30" width="28" height="30" rx="3"/><rect class="sc-ink" x="568" y="30" width="28" height="30" rx="3"/><rect class="sc-wrn" x="599" y="30" width="28" height="30" rx="3"/><text class="tm tc" x="24" y="22">100</text><text class="tm tc" x="582" y="22">1900</text><text class="tm tc" x="613" y="84">2000</text><text class="t" x="10" y="84">api-2: 20 запросов, тёмная клетка — 19-я</text></svg>
+      <figcaption>Список <code>api-2</code> по возрастанию.</figcaption>
+    </figure>
+    <p><b>Шаг 2. p95 всех шестидесяти.</b> 0,95 × 60 = 57: нужно пятьдесят седьмое значение общего списка. Сорок запросов <code>api-1</code> и <code>api-3</code> короче всех запросов <code>api-2</code> и встают в начало. После них идут двадцать запросов <code>api-2</code>, и пятьдесят седьмое место — семнадцатый из них, 1700 мс.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 110" role="img" aria-label="Общий список из шестидесяти: сорок быстрых, затем двадцать запросов api-2; пятьдесят седьмое место — семнадцатый запрос api-2, 1700 мс"><rect class="sc-acc" x="10" y="30" width="360" height="30" rx="3"/><text class="t tc" x="190" y="50">40 запросов api-1 и api-3, 48–49 мс</text><rect class="sc-wrn" x="372" y="30" width="206" height="30" rx="3"/><rect class="sc-ink" x="578" y="30" width="13" height="30"/><rect class="sc-wrn" x="591" y="30" width="39" height="30" rx="3"/><text class="tm tr" x="636" y="22">3 долгих</text><text class="tm tc" x="190" y="22">1–40</text><text class="tm tc" x="460" y="22">41–60: api-2</text><text class="tm tr" x="630" y="80">57-е = 17-й api-2 = 1700 мс</text><text class="t" x="10" y="104">5% самых долгих из 60 — это 3 запроса; у api-2 это 3 из 20, то есть 15%</text></svg>
+      <figcaption>Общий список по возрастанию. Тёмная полоска — пятьдесят седьмое место.</figcaption>
+    </figure>
+    </div>
+    <p>Выше 57-го места остаются три запроса — 5% от шестидесяти. Все три с <code>api-2</code>, но для <code>api-2</code> это 3 из 20, то есть 15%. Поэтому общий p95 совпадает с p85 <code>api-2</code>: 1700 мс в обоих случаях, как и на стенде в §5 (6667 мс и 6666,7 мс). Худший экземпляр занимает в общем потоке только треть, и его хвост «разбавляется» быстрыми запросами соседей.</p>
+    <div class="key"><b>Вывод</b><p>Общий перцентиль считается по объединённому списку. Если плохой экземпляр получает треть запросов, общий p95 показывает его p85 и занижает худший случай.</p></div>
     <p class="next">Известно, где медленно. Чтобы понять, на каком этапе запроса, нужна трасса.</p>
   </section>
 
-  <section class="part" id="s6">
+<section class="part" id="s6">
     <h2><span class="sec">§6</span>Шаг 4. Посмотреть трассу</h2>
     <p class="about">На каком этапе медленный запрос потратил время.</p>
     <p>Пользователь прислал номер запроса <code>d1ea2bac…</code>. По нему в <code>/events</code> экземпляра <code>api-2</code> находится запись с этапами — так же, как в лекции 1.3 программой <code>find.py</code>:</p>
@@ -276,10 +355,53 @@ hold = <span class="n">0.0406</span>      <span class="c"># секунд дер�
     </figure>
     <p>Слева приходит 62 запроса в секунду, справа пул пропускает 49. Разница копится посередине — это насыщение из лекции 1.5. К концу 30-секундного прогона в очереди около 390 запросов, и последний ждёт около 8 секунд. На стенде максимальное ожидание — 7809 мс, p95 в последнем окне — 7669 мс. Расчёт объясняет все наблюдения сразу: медленно только на <code>api-2</code>, SQL быстрый, ожидание растёт с каждой секундой, поток прежний.</p>
     <div class="key"><b>Вывод</b><p>Гипотеза «пул уменьшен до 2» выдержала проверку и расчёт. Остальные опровергнуты данными. Но вывод станет окончательным только после опыта: исправить и измерить снова.</p></div>
+    <p class="next">Посмотрим, как набегает ожидание, на первых десяти запросах.</p>
+  </section>
+
+    <section class="part" id="s7-1">
+    <h2><span class="sec">§7.1</span>Пример по шагам: пул из двух соединений</h2>
+    <p class="about">Как ожидание набегает на первых десяти запросах.</p>
+    <p>Расчёт «нужно 2,5 соединения, есть 2» сказал, что очередь будет расти. Посмотрим, как это происходит, на первых десяти запросах. Запрос приходит каждые 16 мс — это 62 в секунду. Каждый держит соединение 40 мс. Соединений 2. Запрос берёт то соединение, которое освободится раньше:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>пул по миллисекундам</span></figcaption>
+<pre>POOL, HOLD, GAP = <span class="n">2</span>, <span class="n">40</span>, <span class="n">16</span>        <span class="c"># соединений; мс держит запрос; мс между запросами (62 в секунду)</span>
+
+free_at = [<span class="n">0</span>] * POOL               <span class="c"># когда освободится каждое соединение</span>
+<span class="k">for</span> n <span class="k">in</span> <span class="f">range</span>(<span class="n">10</span>):
+    arrived = n * GAP
+    slot = <span class="f">min</span>(<span class="f">range</span>(POOL), key=<span class="k">lambda</span> i: free_at[i])
+    start = <span class="f">max</span>(arrived, free_at[slot])
+    free_at[slot] = start + HOLD
+    <span class="f">print</span>(<span class="s">f"запрос {n + 1:&gt;2}: пришёл {arrived:&gt;3} мс, соединение {slot + 1}, ждал {start - arrived:&gt;3} мс, готов {start + HOLD:&gt;3} мс"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>десять запросов, пул 2</span></figcaption><pre>запрос  1: пришёл   0 мс, соединение 1, ждал   0 мс, готов  40 мс
+запрос  2: пришёл  16 мс, соединение 2, ждал   0 мс, готов  56 мс
+запрос  3: пришёл  32 мс, соединение 1, ждал   8 мс, готов  80 мс
+запрос  4: пришёл  48 мс, соединение 2, ждал   8 мс, готов  96 мс
+запрос  5: пришёл  64 мс, соединение 1, ждал  16 мс, готов 120 мс
+запрос  6: пришёл  80 мс, соединение 2, ждал  16 мс, готов 136 мс
+запрос  7: пришёл  96 мс, соединение 1, ждал  24 мс, готов 160 мс
+запрос  8: пришёл 112 мс, соединение 2, ждал  24 мс, готов 176 мс
+запрос  9: пришёл 128 мс, соединение 1, ждал  32 мс, готов 200 мс
+запрос 10: пришёл 144 мс, соединение 2, ждал  32 мс, готов 216 мс</pre></figure>
+    <div class="walk">
+      <div><code>free_at</code><span>Для каждого соединения — момент, когда оно освободится. В начале оба свободны: <code>[0, 0]</code>.</span></div>
+      <div><code>min(range(POOL), key=...)</code><span>Номер соединения, которое освободится раньше.</span></div>
+      <div><code>start = max(arrived, free_at[slot])</code><span>Запрос начинает, когда он пришёл и соединение свободно — что наступит позже. Разница <code>start - arrived</code> и есть ожидание.</span></div>
+      <div><code>free_at[slot] = start + HOLD</code><span>Соединение занято на 40 мс от начала запроса.</span></div>
+    </div>
+    <p>Те же десять запросов на шкале времени, по строке на соединение:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Два соединения заняты без перерыва; перед каждым запросом с третьего — пунктирное ожидание, растущее на 8 мс каждые два запроса: 8, 8, 16, 16, 24, 24, 32, 32"><line class="sc-axis" x1="110" y1="120" x2="630" y2="120"/><text class="tm" x="10" y="46">соединение 1</text><text class="tm" x="10" y="96">соединение 2</text><rect class="sc-acc" x="110" y="30" width="96" height="24"/><text class="tm tc" x="158" y="47">1</text><rect class="sc-acc" x="206" y="30" width="96" height="24"/><text class="tm tc" x="254" y="47">3</text><rect class="sc-acc" x="302" y="30" width="96" height="24"/><text class="tm tc" x="350" y="47">5</text><rect class="sc-acc" x="398" y="30" width="96" height="24"/><text class="tm tc" x="446" y="47">7</text><rect class="sc-acc" x="494" y="30" width="96" height="24"/><text class="tm tc" x="542" y="47">9</text><rect class="sc-acc" x="148" y="80" width="96" height="24"/><text class="tm tc" x="196" y="97">2</text><rect class="sc-acc" x="244" y="80" width="96" height="24"/><text class="tm tc" x="292" y="97">4</text><rect class="sc-acc" x="340" y="80" width="96" height="24"/><text class="tm tc" x="388" y="97">6</text><rect class="sc-acc" x="436" y="80" width="96" height="24"/><text class="tm tc" x="484" y="97">8</text><rect class="sc-acc" x="532" y="80" width="96" height="24"/><text class="tm tc" x="580" y="97">10</text><line class="sc-arrow-w" x1="187" y1="24" x2="206" y2="24" stroke-dasharray="3 2"/><line class="sc-arrow-w" x1="264" y1="24" x2="302" y2="24" stroke-dasharray="3 2"/><line class="sc-arrow-w" x1="341" y1="24" x2="398" y2="24" stroke-dasharray="3 2"/><line class="sc-arrow-w" x1="418" y1="24" x2="494" y2="24" stroke-dasharray="3 2"/><line class="sc-arrow-w" x1="225" y1="74" x2="244" y2="74" stroke-dasharray="3 2"/><line class="sc-arrow-w" x1="302" y1="74" x2="340" y2="74" stroke-dasharray="3 2"/><line class="sc-arrow-w" x1="379" y1="74" x2="436" y2="74" stroke-dasharray="3 2"/><line class="sc-arrow-w" x1="456" y1="74" x2="532" y2="74" stroke-dasharray="3 2"/><text class="tm tc" x="110" y="138">0</text><text class="tm tc" x="302" y="138">80</text><text class="tm tc" x="494" y="138">160</text><text class="tm tr" x="630" y="138">216 мс</text></svg>
+      <figcaption>Голубое — запрос держит соединение 40 мс. Оранжевый пунктир — сколько он ждал до этого.</figcaption>
+    </figure>
+    <p>Обе строки заполнены без промежутков: каждое соединение освобождается и сразу занимается следующим запросом — загрузка 100%. Оранжевый пунктир перед блоками — ожидание: у 3-го и 4-го запроса 8 мс, у 5-го и 6-го — 16, у 9-го и 10-го — 32. Каждая пара ждёт на 8 мс дольше предыдущей. Откуда 8: два запроса приходят за 32 мс, а соединения освобождаются для пары за 40 мс. На каждой паре отставание растёт на 40 − 32 = 8 мс.</p>
+    <p>Если запустить ту же программу с <code>POOL = 10</code>, все десять строк покажут «ждал 0 мс»: свободное соединение есть всегда. За секунду при пуле 2 набегает 31 пара — около 250 мс ожидания, за 30 секунд — около 7,5 секунды. Это и увидел стенд: p95 в последнем окне 7669 мс.</p>
+    <div class="key"><b>Вывод</b><p>Когда запросы приходят чаще, чем освобождаются соединения, каждое новое ожидание длиннее предыдущего на одну и ту же величину. Маленький перевес — 8 мс на пару — за полминуты превращается в секунды.</p></div>
     <p class="next">Последний шаг — исправление и повторное измерение.</p>
   </section>
 
-  <section class="part" id="s8">
+<section class="part" id="s8">
     <h2><span class="sec">§8</span>Шаг 6. Проверить исправление</h2>
     <p class="about">Как убедиться, что причина найдена верно.</p>
     <p>Гипотеза объясняет данные, но окончательно её подтверждает вмешательство. На <code>api-2</code> меняют только одно — размер пула возвращают к 10. Версия остаётся 2.15.0, нагрузка — та же: 186 запросов в секунду.</p>

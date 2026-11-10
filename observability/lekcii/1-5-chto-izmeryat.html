@@ -50,7 +50,9 @@
       <li><a href="#s2"><span class="csec">§2</span>Стенд заказов</a></li>
       <li><a href="#s3"><span class="csec">§3</span>Четыре золотых сигнала</a></li>
       <li><a href="#s4"><span class="csec">§4</span>RED: показатели запросов</a></li>
+      <li><a href="#s4-1"><span class="csec">§4.1</span>Пример по шагам: RED из двух снимков</a></li>
       <li><a href="#s5"><span class="csec">§5</span>Наплыв заказов: RED молчит</a></li>
+      <li><a href="#s5-1"><span class="csec">§5.1</span>Пример по шагам: как растёт очередь</a></li>
       <li><a href="#s6"><span class="csec">§6</span>USE: показатели ресурсов</a></li>
       <li><a href="#s7"><span class="csec">§7</span>Отказ платёжного шлюза</a></li>
       <li><a href="#s8"><span class="csec">§8</span>Задержка успешных и ошибочных запросов</a></li>
@@ -186,10 +188,46 @@ before = <span class="f">snapshot</span>()
   40с     2.8    0      2.9</pre></figure>
     <p>Частота — 3 запроса в секунду, как и задано. Ошибок 0. Средняя длительность ответа — 2–3 мс. По RED API в полном порядке.</p>
     <div class="key"><b>Вывод</b><p>RED — частота, ошибки и длительность — одинаково считается для любого маршрута и любого обработчика. Его берут из счётчика запросов и суммы длительностей за окно.</p></div>
+    <p class="next">Разберём расчёт RED по шагам на одном окне.</p>
+  </section>
+
+    <section class="part" id="s4-1">
+    <h2><span class="sec">§4.1</span>Пример по шагам: RED из двух снимков</h2>
+    <p class="about">Как три буквы RED получаются из трёх строк <code>/metrics</code>.</p>
+    <p>В <code>watch.py</code> расчёт RED спрятан в нескольких строках. Разберём его вручную на одном окне. Программа сняла <code>/metrics</code> API дважды, с разницей 5 секунд. Нужны три числа: сколько всего запросов, сколько с кодом 5xx и сумма их длительностей в секундах. Числа придуманы для примера, но близки к фазе наплыва на стенде:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 140" role="img" aria-label="Два снимка: в 12:00:00 запросов 1000, ошибок 2, сумма 2,100 с; в 12:00:05 запросов 1055, ошибок 3, сумма 2,210 с; разница 55, 1, 0,110 с"><rect class="sc-box" x="10" y="20" width="190" height="100" rx="8"/><text class="tb tc" x="105" y="42">12:00:00</text><text class="tm" x="26" y="66">запросов   1000</text><text class="tm" x="26" y="86">ошибок 5xx    2</text><text class="tm" x="26" y="106">сумма, с  2.100</text><rect class="sc-box" x="225" y="20" width="190" height="100" rx="8"/><text class="tb tc" x="320" y="42">12:00:05</text><text class="tm" x="241" y="66">запросов   1055</text><text class="tm" x="241" y="86">ошибок 5xx    3</text><text class="tm" x="241" y="106">сумма, с  2.210</text><path class="sc-arrow" d="M420 70 L440 70"/><path class="sc-arrow" d="M432 74 L440 70 L432 66"/><rect class="sc-amb" x="445" y="20" width="185" height="100" rx="8"/><text class="tb tc" x="537" y="42">за 5 секунд</text><text class="tm" x="461" y="66">запросов     55</text><text class="tm" x="461" y="86">ошибок        1</text><text class="tm" x="461" y="106">сумма, с  0.110</text></svg>
+      <figcaption>Два снимка счётчиков и разница между ними.</figcaption>
+    </figure>
+    <p>Счётчики в снимках растут с запуска процесса, поэтому сами по себе ничего не говорят об окне. Справа — разница: за 5 секунд пришло 55 запросов, одна ошибка, и вместе они шли 0,110 секунды. Из этих трёх разностей получаются три буквы:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>RED за одно окно</span></figcaption>
+<pre>before = {<span class="s">"requests"</span>: <span class="n">1000</span>, <span class="s">"errors_5xx"</span>: <span class="n">2</span>, <span class="s">"seconds_sum"</span>: <span class="n">2.100</span>}   <span class="c"># /metrics в 12:00:00</span>
+after = {<span class="s">"requests"</span>: <span class="n">1055</span>, <span class="s">"errors_5xx"</span>: <span class="n">3</span>, <span class="s">"seconds_sum"</span>: <span class="n">2.210</span>}    <span class="c"># /metrics в 12:00:05</span>
+window = <span class="n">5</span>
+
+requests = after[<span class="s">"requests"</span>] - before[<span class="s">"requests"</span>]
+rate = requests / window
+errors = after[<span class="s">"errors_5xx"</span>] - before[<span class="s">"errors_5xx"</span>]
+duration_ms = (after[<span class="s">"seconds_sum"</span>] - before[<span class="s">"seconds_sum"</span>]) / requests * <span class="n">1000</span>
+<span class="f">print</span>(<span class="s">f"R: {requests} запросов / {window} с = {rate:.0f} в секунду"</span>)
+<span class="f">print</span>(<span class="s">f"E: {errors} ошибка из {requests} = {errors / requests:.1%}"</span>)
+<span class="f">print</span>(<span class="s">f"D: {after['seconds_sum'] - before['seconds_sum']:.3f} с / {requests} = {duration_ms:.0f} мс на запрос"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>три буквы</span></figcaption><pre>R: 55 запросов / 5 с = 11 в секунду
+E: 1 ошибка из 55 = 1.8%
+D: 0.110 с / 55 = 2 мс на запрос</pre></figure>
+    <div class="walk">
+      <div><code>rate</code><span>R — частота: разница числа запросов, делённая на длину окна. 55 / 5 = 11.</span></div>
+      <div><code>errors</code><span>E — ошибки: разница счётчика 5xx. Долю считают от числа запросов за то же окно, как в лекции 1.2.</span></div>
+      <div><code>duration_ms</code><span>D — длительность: сколько секунд прибавилось к сумме, делённое на число запросов. 0,110 / 55 = 0,002 с = 2 мс. Это средняя длительность за окно.</span></div>
+    </div>
+    <p>Все три буквы получились из разностей. Если вместо разности взять само значение счётчика — 1055 запросов, — выйдет «211 в секунду». Это число за всё время работы, делённое на 5 секунд. Поэтому RED всегда считают за окно.</p>
+    <div class="key"><b>Вывод</b><p>RED за окно — три разности двух снимков: число запросов, число ошибок, сумма длительностей. Частота — первая разность, делённая на окно; длительность — третья, делённая на первую.</p></div>
     <p class="next">Посмотрим, что покажет RED, когда заказов станет больше, чем обработчик успевает оплатить.</p>
   </section>
 
-  <section class="part" id="s5">
+<section class="part" id="s5">
     <h2><span class="sec">§5</span>Наплыв заказов: RED молчит</h2>
     <p class="about">Что происходит с очередью, пока API отвечает за 2 мс.</p>
     <p>Во второй фазе опыта на стенд 30 секунд шло 11 заказов в секунду. Два слота по 0,4 секунды на задание теоретически оплачивают 5 заказов в секунду; на стенде вышло 4. Затем 50 секунд шёл 1 заказ в секунду, и очередь разбиралась. Выведем RED API вместе с очередью и временем ожидания в ней:</p>
@@ -215,10 +253,39 @@ before = <span class="f">snapshot</span>()
     </div>
     <p>Во время наплыва оранжевая линия очереди поднимается почти прямо: каждые 5 секунд в очередь прибавляется около 35 заданий — 11 пришло в секунду, 4 ушло. На пике 201 задание. Когда наплыв кончился, линия идёт вниз со скоростью около 3 заданий в секунду — обработчик оплачивает 4, приходит 1. Ожидание продолжает расти: задания, попавшие в конец очереди на пике, стоят дольше всех, и последние из них ждали 49 секунд. Пользователь, который оформил заказ в этот момент, ответ <code>202</code> получил за 2 мс, а оплату — почти через минуту.</p>
     <div class="key key--warn"><b>Вывод</b><p>RED у API показывает только приём заказов. Проблема оказалась за очередью: обработчик был занят полностью, задания копились, ожидание дошло до 49 секунд. Чтобы её увидеть, нужны показатели ресурса — обработчика и его очереди.</p></div>
+    <p class="next">Посчитаем рост очереди по секундам.</p>
+  </section>
+
+    <section class="part" id="s5-1">
+    <h2><span class="sec">§5.1</span>Пример по шагам: как растёт очередь</h2>
+    <p class="about">Очередь и ожидание по секундам.</p>
+    <p>Почему за 30 секунд наплыва очередь выросла до двухсот заданий? Посчитаем по секундам. Каждую секунду приходит 11 заказов, обработчик оплачивает 4 — как на стенде. Всё, что не оплачено, остаётся в очереди. Последнее задание очереди ждёт, пока обработчик пройдёт всех перед ним: длина очереди, делённая на 4 в секунду.</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>очередь по секундам</span></figcaption>
+<pre>arrive, served = <span class="n">11</span>, <span class="n">4</span>          <span class="c"># заказов в секунду: приходит и оплачивает обработчик</span>
+queue = <span class="n">0</span>
+<span class="k">for</span> second <span class="k">in</span> <span class="f">range</span>(<span class="n">1</span>, <span class="n">7</span>):
+    queue += arrive - served
+    <span class="f">print</span>(<span class="s">f"{second} с: пришло {arrive}, оплачено {served}, в очереди {queue:&gt;2}, последний ждёт {queue / served:.2f} с"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>первые шесть секунд наплыва</span></figcaption><pre>1 с: пришло 11, оплачено 4, в очереди  7, последний ждёт 1.75 с
+2 с: пришло 11, оплачено 4, в очереди 14, последний ждёт 3.50 с
+3 с: пришло 11, оплачено 4, в очереди 21, последний ждёт 5.25 с
+4 с: пришло 11, оплачено 4, в очереди 28, последний ждёт 7.00 с
+5 с: пришло 11, оплачено 4, в очереди 35, последний ждёт 8.75 с
+6 с: пришло 11, оплачено 4, в очереди 42, последний ждёт 10.50 с</pre></figure>
+    <p><code>queue += arrive - served</code> — главная строка: каждую секунду очередь прибавляет разницу между тем, что пришло, и тем, что ушло. Та же арифметика столбиками:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Шесть секунд: очередь 7, 14, 21, 28, 35, 42; каждую секунду приходит 11, уходит 4, остаётся 7"><line class="sc-axis" x1="20" y1="150" x2="620" y2="150"/><rect class="sc-amb" x="50" y="129" width="50" height="21"/><rect class="sc-amb" x="140" y="108" width="50" height="42"/><rect class="sc-amb" x="230" y="87" width="50" height="63"/><rect class="sc-amb" x="320" y="66" width="50" height="84"/><rect class="sc-amb" x="410" y="45" width="50" height="105"/><rect class="sc-amb" x="500" y="24" width="50" height="126"/><rect class="sc-wrn" x="500" y="24" width="50" height="21"/><text class="tm tc" x="75" y="122">7</text><text class="tm tc" x="165" y="101">14</text><text class="tm tc" x="255" y="80">21</text><text class="tm tc" x="345" y="59">28</text><text class="tm tc" x="435" y="38">35</text><text class="tm tc" x="525" y="17">42</text><text class="tm tc" x="75" y="166">1 с</text><text class="tm tc" x="165" y="166">2 с</text><text class="tm tc" x="255" y="166">3 с</text><text class="tm tc" x="345" y="166">4 с</text><text class="tm tc" x="435" y="166">5 с</text><text class="tm tc" x="525" y="166">6 с</text><text class="t" x="560" y="40">+7</text><text class="t" x="560" y="56">за секунду</text></svg>
+      <figcaption>Длина очереди в конце каждой секунды. Оранжевое — прибавка за шестую секунду.</figcaption>
+    </figure>
+    <p>Столбики растут ступеньками по 7 заданий. Оранжевая верхушка последнего — те 7 заказов, что не успели оплатить в шестую секунду. За 5 секунд очередь выросла на 35 — ровно столько прибавлялось на стенде между строками <code>watch.py</code> в §5. За 30 секунд по расчёту набралось бы 210, на стенде — 201: близко к расчёту.</p>
+    <p>Ожидание растёт вместе с очередью: к шестой секунде последнее задание ждёт 10,5 секунды, хотя каждый заказ оплачивается за 0,4 секунды. Время работы у заказа прежнее — выросло только время в очереди. Его RED у API не показывает.</p>
+    <div class="key"><b>Вывод</b><p>Если приходит больше, чем уходит, очередь растёт на разницу каждую секунду, а ожидание — пропорционально очереди. Пока поток не упадёт ниже мощности обработчика, очередь сама не уменьшится.</p></div>
     <p class="next">Показатели ресурсов собирает третий набор — USE.</p>
   </section>
 
-  <section class="part" id="s6">
+<section class="part" id="s6">
     <h2><span class="sec">§6</span>USE: показатели ресурсов</h2>
     <p class="about">Три вопроса к каждому ресурсу.</p>
     <p>У кассы в магазине три состояния, о которых стоит знать управляющему. Как часто кассир занят. Сколько людей стоит в очереди. Сколько раз за день касса ломалась. Если кассир занят всё время и очередь растёт, нужна вторая касса, даже если каждый покупатель обслуживается быстро. То же спрашивают о любом ресурсе сервиса.</p>

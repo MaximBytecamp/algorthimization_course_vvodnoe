@@ -53,6 +53,7 @@
       <li><a href="#s5"><span class="csec">§5</span>Одно название, два числа</a></li>
       <li><a href="#s6"><span class="csec">§6</span>Интервал измерения</a></li>
       <li><a href="#s7"><span class="csec">§7</span>Окно времени и доля</a></li>
+      <li><a href="#s7-1"><span class="csec">§7.1</span>Пример по шагам: от запросов к доле</a></li>
       <li><a href="#s8"><span class="csec">§8</span>Когда запросов нет</a></li>
       <li><a href="#s9"><span class="csec">§9</span>Доля по нескольким экземплярам</a></li>
       <li><a href="#s10"><span class="csec">§10</span>Базовый уровень</a></li>
@@ -322,10 +323,72 @@ rows = <span class="f">list</span>(csv.<span class="f">reader</span>(<span class
     </figure>
     <p>В каждом окне 10 или 11 запросов — нагрузка ровная. Ошибки есть только в двух окнах подряд, в четвёртом и пятом, и там они составляют половину запросов. Окно 5 секунд показывает этот сбой как есть: 55%. Окно 30 секунд накрывает и сбой, и спокойные окна вокруг него, поэтому доля выходит 18%. Оба числа верны, но говорят о разном: короткое окно — каково было пользователям в момент сбоя, длинное — какая доля запросов за полминуты пострадала.</p>
     <div class="key"><b>Вывод</b><p>Количество без окна и без общего числа запросов не читается. Доля — это количество за окно, делённое на количество за то же окно, а длина окна меняет ответ: здесь 55% против 18%.</p></div>
+    <p class="next">Посчитаем то же самое по шагам на наборе из двенадцати запросов.</p>
+  </section>
+
+    <section class="part" id="s7-1">
+    <h2><span class="sec">§7.1</span>Пример по шагам: от запросов к доле</h2>
+    <p class="about">Весь путь на двенадцати запросах: события, измерения, окно, доля.</p>
+    <p>Пройдём §2–§7 ещё раз на наборе, который помещается на одном рисунке. За 50 секунд пришло 12 запросов, три из них закончились кодом 500. Числа придуманы для примера. Каждый запрос — пара «секунда, код»:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>исходные данные</span></figcaption>
+<pre>requests = [(<span class="n">2</span>, <span class="n">200</span>), (<span class="n">5</span>, <span class="n">200</span>), (<span class="n">9</span>, <span class="n">500</span>), (<span class="n">12</span>, <span class="n">200</span>), (<span class="n">14</span>, <span class="n">200</span>), (<span class="n">18</span>, <span class="n">500</span>),
+            (<span class="n">21</span>, <span class="n">500</span>), (<span class="n">23</span>, <span class="n">200</span>), (<span class="n">27</span>, <span class="n">200</span>), (<span class="n">33</span>, <span class="n">200</span>), (<span class="n">38</span>, <span class="n">200</span>), (<span class="n">44</span>, <span class="n">200</span>)]   <span class="c"># (секунда, код)</span></pre>
+    </figure>
+    <p>На шкале времени эти запросы выглядят так. Вертикальные черты — моменты, когда программа мониторинга снимает значения: раз в 10 секунд.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 120" role="img" aria-label="Двенадцать запросов на шкале 0–50 секунд, три оранжевых с кодом 500 — на 9, 18 и 21 секунде; черты измерений каждые 10 секунд"><line class="sc-axis" x1="40" y1="70" x2="600" y2="70"/><line class="sc-grid" x1="40" y1="20" x2="40" y2="78"/><line class="sc-grid" x1="150" y1="20" x2="150" y2="78"/><line class="sc-grid" x1="260" y1="20" x2="260" y2="78"/><line class="sc-grid" x1="370" y1="20" x2="370" y2="78"/><line class="sc-grid" x1="480" y1="20" x2="480" y2="78"/><line class="sc-grid" x1="590" y1="20" x2="590" y2="78"/><circle class="sc-dot" cx="62" cy="50" r="6"/><circle class="sc-dot" cx="95" cy="50" r="6"/><circle class="sc-dot-w" cx="139" cy="50" r="6"/><circle class="sc-dot" cx="172" cy="50" r="6"/><circle class="sc-dot" cx="194" cy="50" r="6"/><circle class="sc-dot-w" cx="238" cy="50" r="6"/><circle class="sc-dot-w" cx="271" cy="50" r="6"/><circle class="sc-dot" cx="293" cy="50" r="6"/><circle class="sc-dot" cx="337" cy="50" r="6"/><circle class="sc-dot" cx="403" cy="50" r="6"/><circle class="sc-dot" cx="458" cy="50" r="6"/><circle class="sc-dot" cx="524" cy="50" r="6"/><text class="tm tc" x="40" y="94">0</text><text class="tm tc" x="150" y="94">10</text><text class="tm tc" x="260" y="94">20</text><text class="tm tc" x="370" y="94">30</text><text class="tm tc" x="480" y="94">40</text><text class="tm tc" x="590" y="94">50 с</text><text class="t tc" x="320" y="114">черта — момент измерения</text></svg>
+      <figcaption>Белые точки — ответы 200, оранжевые — ответы 500.</figcaption>
+    </figure>
+    <p>Отдельных запросов у программы мониторинга нет. В каждый момент измерения она получает только два числа: сколько всего было ответов 200 и сколько ответов 500 с начала работы. Посмотрим, что она сохранит.</p>
+    <div class="story">
+    <p><b>Шаг 1. Измерить и сохранить.</b> В каждый момент считаем запросы, пришедшие не позже этого момента:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>шесть измерений</span></figcaption>
+<pre>history = []
+<span class="k">for</span> moment <span class="k">in</span> (<span class="n">0</span>, <span class="n">10</span>, <span class="n">20</span>, <span class="n">30</span>, <span class="n">40</span>, <span class="n">50</span>):                  <span class="c"># измерение раз в 10 секунд</span>
+    ok = <span class="f">sum</span>(<span class="n">1</span> <span class="k">for</span> second, code <span class="k">in</span> requests <span class="k">if</span> second &lt;= moment <span class="k">and</span> code == <span class="n">200</span>)
+    failed = <span class="f">sum</span>(<span class="n">1</span> <span class="k">for</span> second, code <span class="k">in</span> requests <span class="k">if</span> second &lt;= moment <span class="k">and</span> code == <span class="n">500</span>)
+    history.<span class="f">append</span>((moment, ok, failed))
+    <span class="f">print</span>(<span class="s">f"t={moment:&gt;2} с  ответов 200: {ok:&gt;2}  ответов 500: {failed}"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>история — шесть точек</span></figcaption><pre>t= 0 с  ответов 200:  0  ответов 500: 0
+t=10 с  ответов 200:  2  ответов 500: 1
+t=20 с  ответов 200:  4  ответов 500: 2
+t=30 с  ответов 200:  6  ответов 500: 3
+t=40 с  ответов 200:  8  ответов 500: 3
+t=50 с  ответов 200:  9  ответов 500: 3</pre></figure>
+    <p>Выражение <code>second &lt;= moment</code> оставляет запросы, которые уже пришли к моменту измерения. Строка <code>t=10</code> говорит: к 10-й секунде было два ответа 200 (на 2-й и 5-й секунде) и один ответ 500 (на 9-й). Те же шесть точек столбиками:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Столбики в моменты 0–50 секунд: синие — ответы 200 (0, 2, 4, 6, 8, 9), оранжевые сверху — ответы 500 (0, 1, 2, 3, 3, 3)"><line class="sc-axis" x1="20" y1="150" x2="620" y2="150"/><rect class="sc-acc" x="135" y="130" width="30" height="20"/><rect class="sc-wrn" x="135" y="120" width="30" height="10"/><rect class="sc-acc" x="245" y="110" width="30" height="40"/><rect class="sc-wrn" x="245" y="90" width="30" height="20"/><rect class="sc-acc" x="355" y="90" width="30" height="60"/><rect class="sc-wrn" x="355" y="60" width="30" height="30"/><rect class="sc-acc" x="465" y="70" width="30" height="80"/><rect class="sc-wrn" x="465" y="40" width="30" height="30"/><rect class="sc-acc" x="575" y="60" width="30" height="90"/><rect class="sc-wrn" x="575" y="30" width="30" height="30"/><text class="tm tc" x="40" y="142">0</text><text class="tm tc" x="150" y="114">2+1</text><text class="tm tc" x="260" y="84">4+2</text><text class="tm tc" x="370" y="54">6+3</text><text class="tm tc" x="480" y="34">8+3</text><text class="tm tc" x="590" y="24">9+3</text><text class="tm tc" x="40" y="166">0</text><text class="tm tc" x="150" y="166">10</text><text class="tm tc" x="260" y="166">20</text><text class="tm tc" x="370" y="166">30</text><text class="tm tc" x="480" y="166">40</text><text class="tm tc" x="590" y="166">50 с</text></svg>
+      <figcaption>Значения в моменты измерений. Синее — ответы 200, оранжевое — ответы 500.</figcaption>
+    </figure>
+    <p>Столбики только растут: числа считают всё с начала работы. После 30-й секунды оранжевая часть больше не меняется — ошибок больше не было.</p>
+    <p><b>Шаг 2. Окно 10–30 секунд.</b> Количество за окно — разница значений в конце и в начале окна, как в §7:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 140" role="img" aria-label="Окно 10–30 секунд: в нём шесть запросов, из них два с кодом 500; доля 2 из 6 = 33 процента"><rect class="sc-amb" x="150" y="24" width="220" height="56" rx="4"/><line class="sc-axis" x1="40" y1="70" x2="600" y2="70"/><circle class="sc-dot" cx="62" cy="50" r="6"/><circle class="sc-dot" cx="95" cy="50" r="6"/><circle class="sc-dot-w" cx="139" cy="50" r="6"/><circle class="sc-dot" cx="172" cy="50" r="6"/><circle class="sc-dot" cx="194" cy="50" r="6"/><circle class="sc-dot-w" cx="238" cy="50" r="6"/><circle class="sc-dot-w" cx="271" cy="50" r="6"/><circle class="sc-dot" cx="293" cy="50" r="6"/><circle class="sc-dot" cx="337" cy="50" r="6"/><circle class="sc-dot" cx="403" cy="50" r="6"/><circle class="sc-dot" cx="458" cy="50" r="6"/><circle class="sc-dot" cx="524" cy="50" r="6"/><text class="tm tc" x="150" y="94">10</text><text class="tm tc" x="370" y="94">30</text><text class="t tc" x="260" y="16">окно</text><text class="tm tc" x="260" y="118">ошибок: 3 − 1 = 2 · всего: (6 − 2) + 2 = 6</text><text class="tm tc tw" x="260" y="136">2 / 6 = 33%</text></svg>
+      <figcaption>Окно 10–30 секунд закрашено. Под ним — расчёт по двум измерениям.</figcaption>
+    </figure>
+    <p>В закрашенное окно попали шесть точек, две из них оранжевые. У программы мониторинга этих точек нет, но тот же ответ получается по двум строкам истории. Ошибок в 30 с — 3, в 10 с — 1, разница 2. Успешных 6 − 2 = 4. Всего 6. Доля — 2 из 6, то есть 33%.</p>
+    <p><b>Шаг 3. Окно 0–50 секунд.</b> По первой и последней строке: ошибок 3 − 0 = 3, всего (9 − 0) + 3 = 12. Проверим программой оба окна:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>доля за два окна</span></figcaption>
+<pre><span class="k">for</span> start, end <span class="k">in</span> ((<span class="n">10</span>, <span class="n">30</span>), (<span class="n">0</span>, <span class="n">50</span>)):
+    s = <span class="f">next</span>(row <span class="k">for</span> row <span class="k">in</span> history <span class="k">if</span> row[<span class="n">0</span>] == start)
+    e = <span class="f">next</span>(row <span class="k">for</span> row <span class="k">in</span> history <span class="k">if</span> row[<span class="n">0</span>] == end)
+    failed = e[<span class="n">2</span>] - s[<span class="n">2</span>]
+    total = (e[<span class="n">1</span>] - s[<span class="n">1</span>]) + failed
+    <span class="f">print</span>(<span class="s">f"окно {start}–{end} с: {failed} из {total} = {failed / total:.0%}"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>два окна</span></figcaption><pre>окно 10–30 с: 2 из 6 = 33%
+окно 0–50 с: 3 из 12 = 25%</pre></figure>
+    </div>
+    <p><code>next(row for row in history if row[0] == start)</code> находит строку истории с нужным моментом. Короткое окно накрыло участок, где были ошибки, и дало 33%. Длинное разбавило их спокойными 20 секундами в конце и дало 25%. Это та же разница, что на стенде в §7, — 55% против 18%, только на числах, которые можно пересчитать в уме.</p>
+    <div class="key"><b>Вывод</b><p>Мониторинг хранит растущие числа в моменты измерений; отдельных запросов в нём нет. Количество за окно получают вычитанием двух измерений, долю — делением двух таких разностей.</p></div>
     <p class="next">В знаменателе доли стоит число запросов. Разберём, что делать, когда оно равно нулю.</p>
   </section>
 
-  <section class="part" id="s8">
+<section class="part" id="s8">
     <h2><span class="sec">§8</span>Когда запросов нет</h2>
     <p class="about">Почему 0% ошибок и «нет данных» — разные ответы.</p>
     <p>Ночью с 3:00 до 4:00 сервис не получил ни одного запроса. В окне ноль ошибок и ноль запросов. Попробуем посчитать долю:</p>
