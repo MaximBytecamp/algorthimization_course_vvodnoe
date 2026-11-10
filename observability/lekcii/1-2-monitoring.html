@@ -186,6 +186,31 @@ INTERVAL = <span class="n">5</span>                                   <span clas
       <div><code>file.write(...)</code><span>Дописать в файл строку «время, ответов 200, ответов 500»: <code>12:45:14,41,11</code>.</span></div>
       <div><code>time.sleep(INTERVAL)</code><span>Подождать 5 секунд до следующего снятия. Это и есть расписание.</span></div>
     </div>
+    <p><b>Прогон на живых данных.</b> Чтобы увидеть работу <code>read_counts</code> на одном снятии, выполним её тело один раз с печатью промежуточных значений. Перед этим на стенд ушли два быстрых запроса и один с ошибкой:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>одно снятие с печатью</span></figcaption>
+<pre>text = <span class="f">urlopen</span>(URL).<span class="f">read</span>().<span class="f">decode</span>()
+<span class="f">print</span>(<span class="s">"строк в ответе:"</span>, <span class="f">len</span>(text.<span class="f">splitlines</span>()))
+counts = {}
+<span class="k">for</span> line <span class="k">in</span> text.<span class="f">splitlines</span>():
+    <span class="k">if</span> line.<span class="f">startswith</span>(<span class="s">"lab_http_requests_total{"</span>):
+        status = line.<span class="f">split</span>(<span class="s">'status="'</span>)[<span class="n">1</span>][:<span class="n">3</span>]
+        counts[status] = <span class="f">int</span>(<span class="f">float</span>(line.<span class="f">split</span>()[-<span class="n">1</span>]))
+        <span class="f">print</span>(<span class="s">"строка счётчика →"</span>, status, counts[status])
+moment = datetime.<span class="f">now</span>().<span class="f">strftime</span>(<span class="s">"%H:%M:%S"</span>)
+<span class="f">print</span>(<span class="s">"counts ="</span>, counts)
+<span class="f">print</span>(<span class="s">"в файл:"</span>, <span class="s">f'{moment},{counts["200"]},{counts["500"]}'</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>одно снятие</span></figcaption><pre>строк в ответе: 15
+строка счётчика → 200 2
+строка счётчика → 500 1
+counts = {'200': 2, '500': 1}
+в файл: 16:57:43,2,1</pre></figure>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Строка</th><th>Что получилось на прогоне</th></tr></thead>
+        <tbody><tr><td><code>urlopen(URL).read().decode()</code></td><td>текст из 15 строк: подписи <code>#</code>, счётчик и гистограмма</td></tr><tr><td><code>if line.startswith(...)</code></td><td>из 15 строк прошли 2 — строки счётчика</td></tr><tr><td><code>counts[status] = ...</code></td><td><code>{'200': 2, '500': 1}</code></td></tr><tr><td><code>file.write(...)</code></td><td>строка <code>16:57:43,2,1</code></td></tr></tbody>
+      </table></div>
+    <p>Из пятнадцати строк ответа программе нужны две, и из каждой она берёт два значения: код и число. В файл уходит одна короткая строка — время и два числа.</p>
     <p><b>Шаг 5. Запустить под нагрузкой.</b> Пока программа работала, во втором терминале шла нагрузка: запрос к <code>/products</code> каждые 0,4 секунды. С 15-й по 25-ю секунду каждый второй запрос шёл со сценарием <code>error</code>. Программа напечатала:</p>
     <figure class="code code--out"><figcaption><span>Вывод</span><span>восемь измерений через 5 секунд</span></figcaption><pre>12:44:49 {'200': 0, '500': 0}
 12:44:54 {'200': 11, '500': 0}
@@ -292,6 +317,20 @@ durations = [<span class="f">float</span>(row[<span class="s">"client_ms"</span>
       <div><code>statistics.mean</code><span>Среднее: 7603,8 мс в сумме делятся на 20 → 380 мс.</span></div>
       <div><code>statistics.median</code><span>Медиана: длительности выстраивают по возрастанию и берут середину. Значений 20, поэтому середина — между 10-м и 11-м: (83,8 + 84,1) / 2 → 84 мс.</span></div>
     </div>
+    <p><b>Прогон на живых данных.</b> Посмотрим, что лежит в переменных <code>rows</code> и <code>durations</code> после чтения файла:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>что прочитала программа</span></figcaption>
+<pre><span class="f">print</span>(rows[<span class="n">6</span>])
+<span class="f">print</span>(durations[:<span class="n">8</span>])
+<span class="f">print</span>(<span class="f">round</span>(<span class="f">sum</span>(durations), <span class="n">1</span>), <span class="f">len</span>(durations))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>седьмая строка файла и первые длительности</span></figcaption><pre>{'number': '7', 'scenario': 'slow', 'status': '200', 'client_ms': '3025.535', 'handler_ms': '3022.082', 'request_id': '15f70ffbdd944d35a55a1d8a3dae9858'}
+[107.674, 84.908, 84.284, 82.357, 84.07, 82.786, 3025.535, 84.955]
+7603.8 20</pre></figure>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Строка</th><th>Что получилось на прогоне</th></tr></thead>
+        <tbody><tr><td><code>csv.DictReader(...)</code></td><td>каждая строка файла — словарь; седьмая — медленный запрос, <code>'client_ms': '3025.535'</code> (текст)</td></tr><tr><td><code>float(row["client_ms"])</code></td><td>текст <code>'3025.535'</code> → число <code>3025.535</code></td></tr><tr><td><code>statistics.mean</code></td><td>7603,8 / 20 = 380 мс</td></tr><tr><td><code>statistics.median</code></td><td>середина упорядоченного списка — 84 мс</td></tr></tbody>
+      </table></div>
     <p>Все 20 запросов на одной шкале, вместе с обоими числами:</p>
     <figure class="scene">
       <svg viewBox="0 0 640 200" role="img" aria-label="Двадцать столбиков: восемнадцать низких около 84 мс и два высоких около 3025 мс; линия среднего 380 мс выше почти всех столбиков, линия медианы 84 мс на уровне низких"><line class="sc-axis" x1="30" y1="170" x2="500" y2="170"/><rect class="sc-acc" x="34" y="165" width="18" height="5"/><rect class="sc-acc" x="57" y="166" width="18" height="4"/><rect class="sc-acc" x="80" y="166" width="18" height="4"/><rect class="sc-acc" x="103" y="166" width="18" height="4"/><rect class="sc-acc" x="126" y="166" width="18" height="4"/><rect class="sc-acc" x="149" y="166" width="18" height="4"/><rect class="sc-wrn" x="172" y="30" width="18" height="140"/><rect class="sc-acc" x="195" y="166" width="18" height="4"/><rect class="sc-acc" x="218" y="166" width="18" height="4"/><rect class="sc-acc" x="241" y="166" width="18" height="4"/><rect class="sc-acc" x="264" y="166" width="18" height="4"/><rect class="sc-acc" x="287" y="166" width="18" height="4"/><rect class="sc-acc" x="310" y="165" width="18" height="5"/><rect class="sc-acc" x="333" y="166" width="18" height="4"/><rect class="sc-acc" x="356" y="166" width="18" height="4"/><rect class="sc-acc" x="379" y="166" width="18" height="4"/><rect class="sc-wrn" x="402" y="30" width="18" height="140"/><rect class="sc-acc" x="425" y="166" width="18" height="4"/><rect class="sc-acc" x="448" y="166" width="18" height="4"/><rect class="sc-acc" x="471" y="166" width="18" height="4"/><line class="sc-arrow" x1="30" y1="152" x2="500" y2="152" stroke-dasharray="6 4"/><text class="tm" x="508" y="150">среднее 380 мс</text><text class="tm" x="508" y="172">медиана 84 мс</text><text class="tm tc" x="181" y="22">3025</text><text class="tm tc" x="411" y="22">3025</text><text class="tm tc" x="43" y="190">1</text><text class="tm tc" x="250" y="190">10</text><text class="tm tc" x="480" y="190">20</text></svg>
@@ -381,6 +420,17 @@ rows = <span class="f">list</span>(csv.<span class="f">reader</span>(<span class
       <div><code>ok + failed</code><span>Все запросы за то же окно: 5 успешных и 6 ошибок — 11.</span></div>
       <div><code>(4, 5), (1, 7)</code><span>Номера строк файла: первое окно — между соседними измерениями (5 секунд), второе — между второй и последней строкой (30 секунд).</span></div>
     </div>
+    <p><b>Прогон на живых данных.</b> Первое окно — строки 4 и 5 файла. Напечатаем их и обе разности:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>первое окно с печатью</span></figcaption>
+<pre><span class="f">print</span>(<span class="s">"rows[4] ="</span>, rows[<span class="n">4</span>]); <span class="f">print</span>(<span class="s">"rows[5] ="</span>, rows[<span class="n">5</span>])
+ok = <span class="f">int</span>(rows[<span class="n">5</span>][<span class="n">1</span>]) - <span class="f">int</span>(rows[<span class="n">4</span>][<span class="n">1</span>]); failed = <span class="f">int</span>(rows[<span class="n">5</span>][<span class="n">2</span>]) - <span class="f">int</span>(rows[<span class="n">4</span>][<span class="n">2</span>])
+<span class="f">print</span>(<span class="s">"ok ="</span>, ok, <span class="s">" failed ="</span>, failed, <span class="s">" всего ="</span>, ok + failed)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>строки файла и разности</span></figcaption><pre>rows[4] = ['12:45:09', '36', '5']
+rows[5] = ['12:45:14', '41', '11']
+ok = 5  failed = 6  всего = 11</pre></figure>
+    <p>Каждая строка файла — список из трёх текстов: время, ответов 200, ответов 500. <code>int(...)</code> превращает текст в число, разность даёт количество за окно: 41 − 36 = 5 успешных, 11 − 5 = 6 ошибок. Доля — 6 из 11.</p>
     <p>Те же данные по пятисекундным окнам — сколько запросов пришло и сколько из них завершилось ошибкой:</p>
     <figure class="scene">
       <svg viewBox="0 0 640 190" role="img" aria-label="Семь пятисекундных окон: в каждом 10 или 11 запросов; ошибки только в четвёртом (5) и пятом (6)"><line class="sc-axis" x1="40" y1="150" x2="620" y2="150"/><rect class="sc-acc" x="50" y="62" width="60" height="88"/><rect class="sc-acc" x="130" y="70" width="60" height="80"/><rect class="sc-acc" x="210" y="70" width="60" height="80"/><rect class="sc-acc" x="290" y="70" width="60" height="40"/><rect class="sc-wrn" x="290" y="110" width="60" height="40"/><rect class="sc-acc" x="370" y="62" width="60" height="40"/><rect class="sc-wrn" x="370" y="102" width="60" height="48"/><rect class="sc-acc" x="450" y="70" width="60" height="80"/><rect class="sc-acc" x="530" y="70" width="60" height="80"/><text class="tm tc" x="80" y="54">11</text><text class="tm tc" x="160" y="62">10</text><text class="tm tc" x="240" y="62">10</text><text class="tm tc tw" x="320" y="62">5 из 10</text><text class="tm tc tw" x="400" y="54">6 из 11</text><text class="tm tc" x="480" y="62">10</text><text class="tm tc" x="560" y="62">10</text><text class="tm tc" x="80" y="168">:49–:54</text><text class="tm tc" x="240" y="168">:59–:04</text><text class="tm tc" x="400" y="168">:09–:14</text><text class="tm tc" x="560" y="168">:19–:24</text></svg>

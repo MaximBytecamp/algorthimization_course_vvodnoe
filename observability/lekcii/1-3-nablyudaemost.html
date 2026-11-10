@@ -149,6 +149,24 @@ events = json.<span class="f">load</span>(<span class="f">urlopen</span>(<span c
       <div><code>max(event["spans"], key=...)</code><span>Из трёх этапов выбираем этап с наибольшей длительностью. Параметр <code>key</code> задаёт, по какому полю сравнивать словари.</span></div>
       <div><code>event["request_id"][:8]</code><span>Первые 8 символов идентификатора запроса — достаточно, чтобы различать строки вывода.</span></div>
     </div>
+    <p><b>Прогон на живых данных.</b> Выполним шаги <code>slow.py</code> для одного события — медленного — и напечатаем, что получается на каждом:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>одно событие с печатью</span></figcaption>
+<pre>event = events[<span class="n">1</span>]
+<span class="f">print</span>(<span class="s">"duration_ms:"</span>, event[<span class="s">"duration_ms"</span>], <span class="s">"&gt; 1000:"</span>, event[<span class="s">"duration_ms"</span>] &gt; <span class="n">1000</span>)
+<span class="k">for</span> span <span class="k">in</span> event[<span class="s">"spans"</span>]:
+    <span class="f">print</span>(<span class="s">"  "</span>, span[<span class="s">"name"</span>], span[<span class="s">"duration_ms"</span>])
+longest = <span class="f">max</span>(event[<span class="s">"spans"</span>], key=<span class="k">lambda</span> span: span[<span class="s">"duration_ms"</span>])
+<span class="f">print</span>(<span class="s">"max →"</span>, longest[<span class="s">"name"</span>], longest[<span class="s">"duration_ms"</span>])
+<span class="f">print</span>(<span class="s">"request_id:"</span>, event[<span class="s">"request_id"</span>], <span class="s">"→"</span>, event[<span class="s">"request_id"</span>][:<span class="n">8</span>])</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>промежуточные значения</span></figcaption><pre>duration_ms: 3022.943 &gt; 1000: True
+   validate 10.867
+   dependency.wait (simulated) 3001.751
+   serialize 10.306
+max → dependency.wait (simulated) 3001.751
+request_id: cdfe971a64c849f4bca66e3a5748e9d3 → cdfe971a</pre></figure>
+    <p>Условие дало <code>True</code>, поэтому событие проходит в вывод. <code>max</code> сравнил три этапа по <code>duration_ms</code> — 10,9, 3001,8 и 10,3 — и вернул весь словарь самого долгого. Срез <code>[:8]</code> оставил от 32-символьного номера первые восемь знаков.</p>
     <p>На схеме — как программа прошла по событиям:</p>
     <figure class="scene">
       <svg viewBox="0 0 640 170" role="img" aria-label="Двадцать событий в ряд; седьмое и семнадцатое проходят фильтр дольше 1000 мс; у обоих самый долгий этап — dependency.wait, около 3000 мс"><text class="t" x="20" y="22">20 событий в /events</text><rect class="sc-box" x="20" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="50" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="80" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="110" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="140" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="170" y="34" width="24" height="28" rx="4"/><rect class="sc-wrn" x="200" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="230" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="260" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="290" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="320" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="350" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="380" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="410" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="440" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="470" y="34" width="24" height="28" rx="4"/><rect class="sc-wrn" x="500" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="530" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="560" y="34" width="24" height="28" rx="4"/><rect class="sc-box" x="590" y="34" width="24" height="28" rx="4"/><text class="tm tw tc" x="212" y="78">№7</text><text class="tm tw tc" x="512" y="78">№17</text><path class="sc-arrow" d="M212 84 L212 104"/><path class="sc-arrow" d="M208 96 L212 104 L216 96"/><path class="sc-arrow" d="M512 84 L512 104"/><path class="sc-arrow" d="M508 96 L512 104 L516 96"/><rect class="sc-acc" x="87" y="108" width="250" height="50" rx="8"/><text class="tm tc" x="212" y="128">1ca68f55 · 3022 мс</text><text class="tm tc" x="212" y="148">dependency.wait · 3000 мс</text><rect class="sc-acc" x="387" y="108" width="250" height="50" rx="8"/><text class="tm tc" x="512" y="128">5da463e2 · 3022 мс</text><text class="tm tc" x="512" y="148">dependency.wait · 3001 мс</text></svg>
@@ -293,6 +311,32 @@ spans = []
       <div><code>await asyncio.sleep(seconds)</code><span>Работа этапа. На стенде это ожидание, в настоящем сервисе на этом месте был бы, например, запрос к базе данных.</span></div>
       <div><code>spans.append({...})</code><span>Запись результата: имя этапа, смещение и длительность в миллисекундах. Из этого списка и получилось поле <code>spans</code> события.</span></div>
     </div>
+    <p><b>Прогон на живых данных.</b> Выполним ту же функцию <code>stage</code> отдельно и добавим в неё одну строку <code>print</code>, чтобы видеть значения после каждого этапа:</p>
+    <figure class="code">
+      <figcaption><span>stage_trace.py</span><span>stage с печатью</span></figcaption>
+<pre><span class="k">async</span> <span class="k">def</span> <span class="f">stage</span>(name, seconds):
+    offset = time.<span class="f">perf_counter</span>() - started
+    begin = time.<span class="f">perf_counter</span>()
+    <span class="k">await</span> asyncio.<span class="f">sleep</span>(seconds)
+    spans.<span class="f">append</span>({<span class="s">"name"</span>: name, <span class="s">"offset_ms"</span>: <span class="f">round</span>(offset * <span class="n">1000</span>, <span class="n">3</span>),
+                  <span class="s">"duration_ms"</span>: <span class="f">round</span>((time.<span class="f">perf_counter</span>() - begin) * <span class="n">1000</span>, <span class="n">3</span>)})
+    <span class="f">print</span>(<span class="s">f"{name:&lt;16} offset = {offset * 1000:7.3f} мс  длительность = {spans[-1]['duration_ms']:7.3f} мс"</span>)
+
+<span class="f">print</span>(<span class="s">f"started = {started:.3f}  (показание таймера, секунды)"</span>)
+<span class="k">await</span> <span class="f">stage</span>(<span class="s">"validate"</span>, <span class="n">0.01</span>)
+<span class="k">await</span> <span class="f">stage</span>(<span class="s">"dependency.wait"</span>, <span class="n">0.06</span>)
+<span class="k">await</span> <span class="f">stage</span>(<span class="s">"serialize"</span>, <span class="n">0.01</span>)
+<span class="f">print</span>(spans)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>три этапа</span></figcaption><pre>started = 513939.673  (показание таймера, секунды)
+validate         offset =   0.007 мс  длительность =  10.363 мс
+dependency.wait  offset =  10.384 мс  длительность =  61.066 мс
+serialize        offset =  71.460 мс  длительность =  10.119 мс
+[{'name': 'validate', 'offset_ms': 0.007, 'duration_ms': 10.363}, {'name': 'dependency.wait', 'offset_ms': 10.384, 'duration_ms': 61.066}, {'name': 'serialize', 'offset_ms': 71.46, 'duration_ms': 10.119}]</pre></figure>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Строка</th><th>Что получилось на прогоне</th></tr></thead>
+        <tbody><tr><td><code>started</code></td><td>513939,673 — просто показание таймера; само по себе ничего не значит</td></tr><tr><td><code>offset</code></td><td>0,007 → 10,384 → 71,460 мс: каждый этап начинается, где кончился предыдущий</td></tr><tr><td><code>(perf_counter() - begin)</code></td><td>10,4, 61,1 и 10,1 мс — длительности этапов</td></tr><tr><td><code>spans.append</code></td><td>список из трёх словарей — то же поле <code>spans</code>, что в событии</td></tr></tbody>
+      </table></div>
     <p>Три записи из события §3 на общей шкале — по полям <code>offset_ms</code> и <code>duration_ms</code>:</p>
     <figure class="scene">
       <svg viewBox="0 0 640 150" role="img" aria-label="Шкала 0–3022 мс: validate 10 мс в начале, dependency.wait 3000 мс, serialize 11 мс в конце"><line class="sc-axis" x1="150" y1="122" x2="610" y2="122"/><text class="tm" x="10" y="32">validate</text><rect class="sc-acc" x="150" y="18" width="3" height="20"/><text class="tm" x="160" y="33">10,2 мс</text><text class="tm" x="10" y="66">dependency</text><rect class="sc-wrn" x="152" y="52" width="456" height="20"/><text class="tm tc tw" x="380" y="88">3000,2 мс</text><text class="tm" x="10" y="108">serialize</text><rect class="sc-acc" x="608" y="94" width="2" height="20"/><text class="tm tr" x="600" y="109">10,9 мс</text><text class="tm tc" x="150" y="140">0</text><text class="tm tc" x="610" y="140">3022 мс</text></svg>

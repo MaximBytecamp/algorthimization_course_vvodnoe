@@ -106,6 +106,52 @@
       <div><code>orders_created...inc()</code><span>Прибавить единицу к числу принятых заказов.</span></div>
       <div><code>status_code=202</code><span>Ответ «принято»: заказ записан, но ещё не оплачен.</span></div>
     </div>
+    <p><b>Прогон на живых данных.</b> Пройдём строки обработчика на одном настоящем заказе. Обработчик очереди пока не запущен — так заказ задержится в очереди, и его можно рассмотреть. Сначала состояние до заказа, затем сам заказ:</p>
+    <figure class="code">
+      <figcaption><span>Терминал</span><span>до заказа и заказ</span></figcaption>
+<pre>redis-cli -p 6389 llen orders                                  <span class="c"># сколько заданий в очереди</span>
+curl -s localhost:8025/metrics | grep -E '^orders_(created_total|awaiting_payment)'
+curl -si -X POST "localhost:8025/orders?channel=mobile"</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>до заказа и ответ</span></figcaption><pre>0
+orders_awaiting_payment 0.0
+HTTP/1.1 202 Accepted
+x-order-id: 6cbd4f6c3482
+{"order_id":"6cbd4f6c3482","state":"accepted","amount_rub":1800}</pre></figure>
+    <p>Посмотрим, что каждая строка обработчика оставила в Redis и в метриках:</p>
+    <figure class="code">
+      <figcaption><span>Терминал</span><span>после заказа</span></figcaption>
+<pre>redis-cli -p 6389 hgetall lab:order:6cbd4f6c3482
+redis-cli -p 6389 llen orders
+curl -s localhost:8025/metrics | grep -E '^orders_(created_total|awaiting_payment)'</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>след заказа</span></figcaption><pre>state
+accepted
+amount_rub
+1800
+1
+orders_created_total{channel="mobile"} 1.0
+orders_awaiting_payment 1.0</pre></figure>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Строка</th><th>Что получилось на прогоне</th></tr></thead>
+        <tbody><tr><td><code>order_id = uuid.uuid4().hex[:12]</code></td><td><code>6cbd4f6c3482</code> — он же в заголовке <code>x-order-id</code></td></tr><tr><td><code>amount = AMOUNTS[channel]</code></td><td>канал <code>mobile</code> → 1800 рублей</td></tr><tr><td><code>store.hset(...)</code></td><td>в Redis запись <code>lab:order:6cbd4f6c3482</code>: <code>state accepted</code>, <code>amount_rub 1800</code></td></tr><tr><td><code>process_order.apply_async(...)</code></td><td>длина очереди <code>orders</code>: 0 → 1</td></tr><tr><td><code>orders_created...inc()</code></td><td>до заказа строки не было, после — <code>orders_created_total{channel="mobile"} 1.0</code></td></tr><tr><td><code>store.incr(AWAITING_KEY)</code></td><td><code>orders_awaiting_payment</code>: 0 → 1</td></tr><tr><td><code>status_code=202</code></td><td><code>HTTP/1.1 202 Accepted</code></td></tr></tbody>
+      </table></div>
+    <p>Теперь запустим обработчик очереди и через несколько секунд посмотрим на тот же заказ:</p>
+    <figure class="code">
+      <figcaption><span>Терминал</span><span>после запуска обработчика</span></figcaption>
+<pre>redis-cli -p 6389 hgetall lab:order:6cbd4f6c3482
+redis-cli -p 6389 llen orders
+curl -s localhost:8026/metrics | grep -E '^orders_(paid_total|task_queue_wait_seconds_(sum|count))'</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>заказ оплачен</span></figcaption><pre>state
+paid
+amount_rub
+1800
+0
+orders_task_queue_wait_seconds_count{task="process_order"} 1.0
+orders_task_queue_wait_seconds_sum{task="process_order"} 1.2609891891479492
+orders_paid_total{channel="mobile"} 1.0</pre></figure>
+    <p>Обработчик забрал задание: очередь снова пуста, статус сменился на <code>paid</code>, у обработчика появился оплаченный заказ. Задание ждало в очереди 1,26 секунды — столько обработчик запускался. Клиент же получил <code>202</code> сразу, до оплаты: код ответа API ничего не сообщает об оплате.</p>
     <p>Код ответа <code>202</code> не говорит, оплачен ли заказ. Он говорит только, что заказ попал в очередь. Поэтому на этом стенде видно, где одни показатели молчат, а другие нет. Стенд запускается так (Redis уже работает на порту 6389, зависимости из <code>requirements.txt</code> установлены):</p>
     <figure class="code">
       <figcaption><span>Терминал</span><span>два процесса стенда</span></figcaption>
@@ -180,6 +226,24 @@ before = <span class="f">snapshot</span>()
       <div><code>d = {k: now[k] - before[k] ...}</code><span>Разница двух измерений — сколько прибавилось за 5 секунд. Это окно из лекции 1.2.</span></div>
       <div><code>rate</code>, <code>d["http_5xx"]</code>, <code>ms</code><span>Три буквы RED: запросов в секунду, ошибок за окно, средняя длительность — сумма секунд, делённая на число запросов.</span></div>
     </div>
+    <p><b>Прогон на живых данных.</b> Возьмём одно окно <code>watch.py</code>: снимок, 10 заказов за 5 секунд, второй снимок. Напечатаем три величины из обоих снимков и их разности:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>одно окно с печатью</span></figcaption>
+<pre>before = <span class="f">snapshot</span>()
+<span class="c"># ... за 5 секунд отправлено 10 заказов</span>
+now = <span class="f">snapshot</span>()
+d = {k: now[k] - before[k] <span class="k">for</span> k <span class="k">in</span> now}
+<span class="k">for</span> k <span class="k">in</span> (<span class="s">"http"</span>, <span class="s">"http_5xx"</span>, <span class="s">"http_sec"</span>):
+    <span class="f">print</span>(<span class="s">f"{k:&lt;9} before = {before[k]:&lt;9.4g} now = {now[k]:&lt;9.4g} d = {d[k]:.4g}"</span>)
+<span class="f">print</span>(<span class="s">f"rate = {d['http']:.0f} / {INTERVAL} = {d['http'] / INTERVAL}"</span>)
+<span class="f">print</span>(<span class="s">f"ms = {d['http_sec']:.4f} / {d['http']:.0f} * 1000 = {d['http_sec'] / d['http'] * 1000:.1f}"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>два снимка и разности</span></figcaption><pre>http      before = 1         now = 11        d = 10
+http_5xx  before = 0         now = 0         d = 0
+http_sec  before = 0.01713   now = 0.05208   d = 0.03495
+rate = 10 / 5 = 2.0
+ms = 0.0350 / 10 * 1000 = 3.5</pre></figure>
+    <p>Счётчик запросов в снимках — 1 и 11: он считает с запуска API, и один заказ был до опыта. За окно прибавилось 10 запросов, 0 ошибок и 0,035 секунды. Отсюда R = 2 запроса в секунду, E = 0, D = 3,5 мс.</p>
     <p>Нагрузку подаёт программа <code>phases.py</code> из той же папки: четыре фазы с разным числом заказов в секунду. Во время первой фазы на стенд шло 3 заказа в секунду. Колонки RED из вывода <code>watch.py</code>:</p>
     <figure class="code code--out"><figcaption><span>Вывод watch.py</span><span>обычная нагрузка, выбранные строки, колонки RED</span></figcaption><pre>время  запр/с  5xx  мс/запр
   10с     3.0    0      2.0

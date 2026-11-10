@@ -113,6 +113,26 @@
       <div><code>asyncio.sleep(SQL_SECONDS)</code><span>«SQL-запрос»: 40 мс.</span></div>
       <div><code>finally: pool.release()</code><span>Вернуть соединение в пул, даже если запрос упал.</span></div>
     </div>
+    <p><b>Прогон на живых данных.</b> Запустим один экземпляр с пулом 2 и отправим ему четыре запроса одновременно. Посмотрим, сколько каждый ждал на строке <code>await pool.acquire()</code>:</p>
+    <figure class="code">
+      <figcaption><span>pool_trace.py</span><span>четыре одновременных запроса</span></figcaption>
+<pre><span class="k">async</span> <span class="k">with</span> httpx.<span class="f">AsyncClient</span>() <span class="k">as</span> client:
+    <span class="k">await</span> asyncio.<span class="f">gather</span>(*(client.<span class="f">get</span>(<span class="s">"http://127.0.0.1:8032/products"</span>) <span class="k">for</span> _ <span class="k">in</span> <span class="f">range</span>(<span class="n">4</span>)))
+    events = (<span class="k">await</span> client.<span class="f">get</span>(<span class="s">"http://127.0.0.1:8032/events"</span>)).<span class="f">json</span>()[<span class="s">"events"</span>]
+<span class="k">for</span> n, event <span class="k">in</span> <span class="f">enumerate</span>(events, <span class="n">1</span>):
+    spans = {s[<span class="s">"name"</span>]: s[<span class="s">"duration_ms"</span>] <span class="k">for</span> s <span class="k">in</span> event[<span class="s">"spans"</span>]}
+    <span class="f">print</span>(<span class="s">f"запрос {n}: acquire_connection {spans['acquire_connection']:5.1f} мс, "</span>
+          <span class="s">f"select_products {spans['select_products']:4.1f} мс, всего {event['duration_ms']:5.1f} мс"</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>пул 2, четыре запроса</span></figcaption><pre>запрос 1: acquire_connection   0.0 мс, select_products 40.8 мс, всего  46.2 мс
+запрос 2: acquire_connection   0.0 мс, select_products 40.8 мс, всего  46.6 мс
+запрос 3: acquire_connection  40.9 мс, select_products 40.7 мс, всего  87.0 мс
+запрос 4: acquire_connection  40.8 мс, select_products 40.8 мс, всего  87.1 мс</pre></figure>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Строка</th><th>Что получилось на прогоне</th></tr></thead>
+        <tbody><tr><td><code>asyncio.gather(...)</code></td><td>четыре запроса отправлены одновременно</td></tr><tr><td><code>await pool.acquire()</code></td><td>первые два взяли соединения сразу (0 мс), третий и четвёртый ждали 40,9 и 40,8 мс</td></tr><tr><td><code>asyncio.sleep(SQL_SECONDS)</code></td><td>«SQL» у всех четырёх — около 40,8 мс</td></tr><tr><td><code>pool.release()</code></td><td>через 40 мс два соединения вернулись, и их сразу взяли третий и четвёртый</td></tr></tbody>
+      </table></div>
+    <p>Ожидание у третьего и четвёртого запроса равно длительности SQL у первых двух: они ждали, пока те вернут соединения. Каждый был бы быстрым, но вместе они идут вдвое дольше.</p>
     <p>Каждый экземпляр пишет событие с этапами в <code>/events</code>, отдаёт <code>/metrics</code> и свою настройку в <code>/config</code>. Нагрузку подаёт <code>load.py</code>: 186 запросов в секунду, по 62 на экземпляр, 30 секунд. Запросы уходят по расписанию, не дожидаясь ответов, — как от многих пользователей. В обычном состоянии, когда у всех версия 2.14.0 и пул 10, прогон дал:</p>
     <figure class="code code--out"><figcaption><span>python summary.py before.csv</span><span>до выпуска 2.15.0</span></figcaption><pre>группа   запр/с  ошибок  медиана  p95
 все       186.1       0     48 мс    48 мс
@@ -317,6 +337,19 @@ acquire_connection: в среднем 3884.7 мс, максимум 7809.0 мс<
       <div><code>events2.json</code><span>Ответ <code>/events</code> экземпляра <code>api-2</code>, сохранённый сразу после прогона командой <code>curl -s localhost:8032/events &gt; events2.json</code>.</span></div>
       <div><code>for e in events for s in e["spans"]</code><span>Проходит по всем этапам всех записей и оставляет этапы с нужным именем.</span></div>
     </div>
+    <p><b>Прогон на живых данных.</b> Посмотрим, что получается внутри <code>stages.py</code>: одна запись и начало собранных списков:</p>
+    <figure class="code">
+      <figcaption><span>Python</span><span>промежуточные значения</span></figcaption>
+<pre>e = events[<span class="n">0</span>]; <span class="f">print</span>(e[<span class="s">"level"</span>], [(s[<span class="s">"name"</span>], s[<span class="s">"duration_ms"</span>]) <span class="k">for</span> s <span class="k">in</span> e[<span class="s">"spans"</span>]])
+ms = [s[<span class="s">"duration_ms"</span>] <span class="k">for</span> e <span class="k">in</span> events <span class="k">for</span> s <span class="k">in</span> e[<span class="s">"spans"</span>] <span class="k">if</span> s[<span class="s">"name"</span>] == <span class="s">"select_products"</span>]
+<span class="f">print</span>(<span class="f">len</span>(ms), ms[:<span class="n">5</span>])
+ms2 = [s[<span class="s">"duration_ms"</span>] <span class="k">for</span> e <span class="k">in</span> events <span class="k">for</span> s <span class="k">in</span> e[<span class="s">"spans"</span>] <span class="k">if</span> s[<span class="s">"name"</span>] == <span class="s">"acquire_connection"</span>]
+<span class="f">print</span>(ms2[:<span class="n">5</span>], ms2[-<span class="n">3</span>:])</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>первая запись и списки</span></figcaption><pre>INFO [('acquire_connection', 0.0), ('select_products', 40.2), ('serialize', 5.7)]
+1860 [40.2, 40.1, 40.5, 40.1, 40.2]
+[0.0, 0.0, 17.7, 8.2, 26.3] [7785.0, 7809.0, 7793.0]</pre></figure>
+    <p>Первая запись прогона ещё быстрая: ожидание 0, уровень <code>INFO</code>. Список SQL-длительностей — 1860 чисел около 40 мс. Список ожиданий начинается с нуля и десятков миллисекунд, а кончается почти восемью секундами: так очередь за пулом росла за 30 секунд прогона.</p>
     <p>Картина одна у всех: SQL — около 40 мс, ожидание соединения — секунды. 1620 записей из 1860 ждали дольше секунды и получили уровень <code>WARNING</code>.</p>
     <div class="key"><b>Вывод</b><p>Место задержки найдено: ожидание соединения из пула. Почему соединений не хватает, трасса не говорит — это следующий шаг.</p></div>
     <p class="next">Долгое ожидание соединения бывает по разным причинам. Запишем их и проверим каждую.</p>

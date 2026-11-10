@@ -105,6 +105,32 @@ error 500 0.074278s</pre></figure>
       <figcaption>Длина полосы — время ответа. Шкала общая для трёх запросов.</figcaption>
     </figure>
     <p>Быстрый запрос почти не виден на шкале: 84 мс против трёх секунд медленного. Запрос с ошибкой тоже короткий, но заканчивается кодом 500. Запомним это сочетание: быстрый 200, медленный 200 и быстрая ошибка — дальше в лекции на нём видно, что сообщает код ответа и чего он не сообщает.</p>
+    <p><b>Прогон на живых данных.</b> Отправим по запросу каждого сценария и посмотрим, что функция <code>stage</code> записала для каждого из них. Записи лежат в <code>/events</code>:</p>
+    <figure class="code">
+      <figcaption><span>Терминал</span><span>три запроса и записи этапов</span></figcaption>
+<pre>for sc in fast slow error; do curl -s -o /dev/null "localhost:8015/products?scenario=$sc"; done
+curl -s localhost:8015/events | python3 -c "
+import json, sys
+for e in json.load(sys.stdin)['events']:
+    print(e['scenario'], e['status'], e['duration_ms'])
+    for s in e['spans']: print('   ', s)"</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>этапы трёх запросов</span></figcaption><pre>fast 200 82.114
+    {'name': 'validate', 'offset_ms': 0.001, 'duration_ms': 11.05}
+    {'name': 'dependency.wait (simulated)', 'offset_ms': 11.058, 'duration_ms': 60.563}
+    {'name': 'serialize', 'offset_ms': 71.629, 'duration_ms': 10.482}
+slow 200 3022.943
+    {'name': 'validate', 'offset_ms': 0.001, 'duration_ms': 10.867}
+    {'name': 'dependency.wait (simulated)', 'offset_ms': 10.87, 'duration_ms': 3001.751}
+    {'name': 'serialize', 'offset_ms': 3012.632, 'duration_ms': 10.306}
+error 500 72.665
+    {'name': 'validate', 'offset_ms': 0.002, 'duration_ms': 11.057}
+    {'name': 'dependency.wait (simulated)', 'offset_ms': 11.062, 'duration_ms': 60.499}</pre></figure>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Строка</th><th>Что получилось на прогоне</th></tr></thead>
+        <tbody><tr><td><code>stage("validate", 0.01)</code></td><td>во всех трёх запросах — около 11 мс</td></tr><tr><td><code>stage("dependency.wait …", 3.0 if slow else 0.06)</code></td><td>fast и error — около 60 мс, slow — 3001,8 мс</td></tr><tr><td><code>raise TimeoutError(...)</code></td><td>у error этапа <code>serialize</code> нет: исключение прервало обработчик, код 500</td></tr><tr><td><code>stage("serialize", 0.01)</code></td><td>у fast и slow — около 10 мс</td></tr></tbody>
+      </table></div>
+    <p>Каждая строка кода оставила след в записи: этап, его начало и длительность. Медленный запрос отличается только вторым этапом, а запрос с ошибкой — тем, что третьего этапа нет.</p>
     <p>Кроме <code>/products</code>, у сервиса есть служебные адреса:</p>
     <div class="table-scroll"><table>
         <thead><tr><th>Адрес</th><th>Что возвращает</th></tr></thead>
