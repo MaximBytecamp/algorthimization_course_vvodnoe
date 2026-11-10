@@ -19,6 +19,14 @@ styles.css и book.js из MongoDB с янтарной палитрой, PLAN.md
 Apple Silicon не работает (нет вложенной виртуализации); Win11-lab занята другим проектом.
 Список контейнеров Docker Desktop в кадр не ставить — там личные проекты пользователя.
 
+## Порядок по каждой главе (просьба пользователя 10.11.2026)
+
+Глава написана → `/vychitka` → коммит → push сразу, не дожидаясь конца модуля.
+Готово: 0.1 «Стенд» (`5dd8987`). Кадры Windows — временная ветка `shots-win` в
+clickhouse-practice (GitHub Actions, pywinauto: кнопки искать только в окнах с «Docker»
+в заголовке, нажимать через `descendants`); после съёмки ветку удалить.
+Сеанс clickhouse-client для книги — псевдотерминал Python + `pyte` (итоговый экран).
+
 ## Образец — справочник по MongoDB
 
 - Книга `~/mongodb_theory_makarov` (PLAN.md, AUTHORING.md, MODUL-N.md), стенд и
