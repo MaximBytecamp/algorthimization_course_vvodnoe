@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>2.2 Counter: создать и прибавить · Метрики и наблюдаемость</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="book">
+  <div class="book__body">
+    <div class="spine"><span>Часть 2 · Метрики в коде</span></div>
+    <main class="leaf">
+  <div class="running">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Метрики и наблюдаемость</a> · часть 2 · метрики в коде</p>
+    <p class="running__folio">Лекция 2.8</p>
+  </div>
+
+  <header class="chapter-head">
+    <span class="chapter-num">2.8</span>
+    <h1>Histogram: корзины, _sum и _count</h1>
+    <p class="lead">Для длительности одного числа мало: нужно знать, сколько запросов были быстрыми, а сколько медленными. Третий тип метрик — гистограмма — хранит это распределение в корзинах. В лекции — как устроены корзины и строки <code>_sum</code> и <code>_count</code>, как замерять время, как по корзинам оценивают перцентиль и где оценка ошибается, почему корзины экземпляров можно складывать и сколько рядов стоит одна гистограмма.</p>
+  </header>
+  <dl class="passport">
+    <div><dt>Тема</dt><dd>Histogram</dd></div>
+    <div><dt>Библиотека</dt><dd><code>prometheus-client</code> 0.26.0</dd></div>
+    <div><dt>Опирается на</dt><dd>1.2: среднее и медиана; 1.6: перцентиль; 2.2–2.5: счётчик и окно</dd></div>
+    <div><dt>Результат</dt><dd>Читать корзины, считать среднее за окно и оценивать перцентиль</dd></div>
+  </dl>
+
+  <div class="reader-start">
+    <div>
+      <b>Режим чтения</b>
+      <p>Лекция откроется по одному разделу: на экране одна мысль, кнопка «Дальше» ведёт к следующей. Стрелки ← → на клавиатуре тоже листают, Esc возвращает всю лекцию.</p>
+    </div>
+    <div class="reader-start__btns">
+      <button type="button" data-reader-start="continue" hidden></button>
+      <button type="button" class="primary" data-reader-start="begin">Читать по шагам</button>
+    </div>
+  </div>
+
+    <nav class="contents">
+    <b>В этой лекции</b>
+    <ol>
+      <li><a href="#s1"><span class="csec">§1</span>Зачем нужно распределение</a></li>
+      <li><a href="#s2"><span class="csec">§2</span>Корзины и граница le</a></li>
+      <li><a href="#s3"><span class="csec">§3</span>Что делает observe</a></li>
+      <li><a href="#s4"><span class="csec">§4</span>Строки _sum и _count</a></li>
+      <li><a href="#s5"><span class="csec">§5</span>Замер через time()</a></li>
+      <li><a href="#s6"><span class="csec">§6</span>Оценка перцентиля по корзинам</a></li>
+      <li><a href="#s7"><span class="csec">§7</span>Корзины экземпляров складываются</a></li>
+      <li><a href="#s8"><span class="csec">§8</span>Сколько рядов стоит гистограмма</a></li>
+      <li><a href="#s9"><span class="csec">§9</span>Частые ошибки</a></li>
+      <li><a href="#s10"><span class="csec">§10</span>Практика</a></li>
+      <li><a href="#s11"><span class="csec">§11</span>Проверьте себя</a></li>
+      <li><a href="#s12"><span class="csec">§12</span>Шпаргалка</a></li>
+      <li><a href="#s13"><span class="csec">§13</span>Глоссарий</a></li>
+    </ol>
+  </nav>
+
+    <section class="part" id="s1">
+    <h2><span class="sec">§1</span>Зачем нужно распределение</h2>
+    <p class="about">Почему для длительности одного числа мало.</p>
+    <p>В больнице 19 пациентов с температурой 36,6 и один с 41. Средняя температура — 36,8, почти норма, и больного по ней не найти. С длительностью запросов так же. Счётчик и gauge хранят одно число, а для длительности нужно знать, сколько запросов были быстрыми, а сколько медленными. Возьмём 20 отчётов, которые строит сервис; длительности придуманы для примера:</p>
+    <p><code>30, 40, 60, 70, 80, 90, 120, 130, 150, 180, 200, 220, 300, 350, 400, 450, 700, 900, 1400, 3000</code> мс.</p>
+    <p>Среднее — 0,44 секунды. Ни один отчёт так не строился. Разложим их по группам:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 210" role="img" aria-label="Двадцать отчётов по группам: до 50 мс — 2, 50–100 — 4, 100–250 — 6, 250–500 — 4, 0,5–1 с — 2, 1–2,5 с — 1, дольше 2,5 с — 1"><text class="tm" x="10" y="30">до 50 мс</text><rect class="sc-acc" x="150" y="16" width="80" height="20"/><text class="tm" x="236" y="31">2</text><text class="tm" x="10" y="56">50–100 мс</text><rect class="sc-acc" x="150" y="42" width="160" height="20"/><text class="tm" x="316" y="57">4</text><text class="tm" x="10" y="82">100–250 мс</text><rect class="sc-acc" x="150" y="68" width="240" height="20"/><text class="tm" x="396" y="83">6</text><text class="tm" x="10" y="108">250–500 мс</text><rect class="sc-wrn" x="150" y="94" width="160" height="20"/><text class="tm" x="316" y="109">4</text><text class="tm" x="10" y="134">0,5–1 с</text><rect class="sc-wrn" x="150" y="120" width="80" height="20"/><text class="tm" x="236" y="135">2</text><text class="tm" x="10" y="160">1–2,5 с</text><rect class="sc-wrn" x="150" y="146" width="40" height="20"/><text class="tm" x="196" y="161">1</text><text class="tm" x="10" y="186">дольше 2,5 с</text><rect class="sc-wrn" x="150" y="172" width="40" height="20"/><text class="tm" x="196" y="187">1</text></svg>
+      <figcaption>Длина полосы — число отчётов в группе. Голубые — до 0,25 секунды, оранжевые — дольше.</figcaption>
+    </figure>
+    <p>Теперь картина видна: 12 отчётов из 20 уложились в четверть секунды, 2 шли дольше секунды. Хранить каждую длительность метрика не может: при тысяче запросов в секунду это миллионы чисел. Поэтому третий тип метрик хранит то же, что рисунок: сколько значений попало в каждую группу.</p>
+    <div class="def">
+      <div class="def__term">Гистограмма<i>histogram</i></div>
+      <dl><dt>Что это</dt><dd>Метрика, которая раскладывает наблюдения по группам с заданными границами и считает, сколько попало в каждую. Группы называют корзинами.</dd><dt>Что даёт</dt><dd>Распределение: какая часть запросов быстрая, какая медленная, — при постоянном объёме хранения.</dd><dt>Пример</dt><dd>Длительность отчётов с границами 0,025 · 0,05 · 0,1 · 0,25 · 0,5 · 1 · 2,5 с.</dd></dl>
+    </div>
+    <p class="next">Посмотрим, как гистограмма записывает корзины в ответ <code>/metrics</code>.</p>
+  </section>
+
+  <section class="part" id="s2">
+    <h2><span class="sec">§2</span>Корзины и граница le</h2>
+    <p class="about">Почему корзины накопительные и как найти число значений между границами.</p>
+    <p>На медосмотре записывают: «не выше 130 см — 5 учеников, не выше 140 см — 12». Ученик ростом 135 см попадает в обе строки «не выше 140» и все следующие. Корзины гистограммы устроены так же: каждая считает значения, которые <b>не больше</b> её границы. Создадим гистограмму и отдадим ей 20 отчётов:</p>
+    <figure class="code">
+      <figcaption><span>buckets.py</span><span>двадцать наблюдений</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Histogram, generate_latest
+
+registry = <span class="f">CollectorRegistry</span>()
+duration = <span class="f">Histogram</span>(<span class="s">&quot;report_duration_seconds&quot;</span>, <span class="s">&quot;Время построения отчёта&quot;</span>, registry=registry,
+                     buckets=(<span class="n">0.025</span>, <span class="n">0.05</span>, <span class="n">0.1</span>, <span class="n">0.25</span>, <span class="n">0.5</span>, <span class="n">1.0</span>, <span class="n">2.5</span>))
+
+reports = [<span class="n">0.03</span>, <span class="n">0.04</span>, <span class="n">0.06</span>, <span class="n">0.07</span>, <span class="n">0.08</span>, <span class="n">0.09</span>, <span class="n">0.12</span>, <span class="n">0.13</span>, <span class="n">0.15</span>, <span class="n">0.18</span>,
+           <span class="n">0.2</span>, <span class="n">0.22</span>, <span class="n">0.3</span>, <span class="n">0.35</span>, <span class="n">0.4</span>, <span class="n">0.45</span>, <span class="n">0.7</span>, <span class="n">0.9</span>, <span class="n">1.4</span>, <span class="n">3.0</span>]     <span class="c"># секунды</span>
+<span class="k">for</span> seconds <span class="k">in</span> reports:
+    duration.<span class="f">observe</span>(seconds)
+
+<span class="f">print</span>(<span class="f">generate_latest</span>(registry).<span class="f">decode</span>())</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>ответ /metrics</span></figcaption><pre># HELP report_duration_seconds Время построения отчёта
+# TYPE report_duration_seconds histogram
+report_duration_seconds_bucket{le=&quot;0.025&quot;} 0.0
+report_duration_seconds_bucket{le=&quot;0.05&quot;} 2.0
+report_duration_seconds_bucket{le=&quot;0.1&quot;} 6.0
+report_duration_seconds_bucket{le=&quot;0.25&quot;} 12.0
+report_duration_seconds_bucket{le=&quot;0.5&quot;} 16.0
+report_duration_seconds_bucket{le=&quot;1.0&quot;} 18.0
+report_duration_seconds_bucket{le=&quot;2.5&quot;} 19.0
+report_duration_seconds_bucket{le=&quot;+Inf&quot;} 20.0
+report_duration_seconds_count 20.0
+report_duration_seconds_sum 8.870000000000001
+# HELP report_duration_seconds_created Время построения отчёта
+# TYPE report_duration_seconds_created gauge
+report_duration_seconds_created 1.794339492644335e+09</pre></figure>
+    <div class="walk">
+      <div><code>Histogram(…, buckets=(…))</code><span>Гистограмма с семью границами в секундах. Восьмую корзину, <code>+Inf</code>, библиотека добавляет сама.</span></div>
+      <div><code>duration.observe(seconds)</code><span>Одно наблюдение: длительность одного отчёта.</span></div>
+    </div>
+    <div class="def">
+      <div class="def__term">Корзина и граница le<i>bucket</i></div>
+      <dl><dt>Что это</dt><dd>Счётчик значений, которые меньше или равны границе. Граница записана в метке <code>le</code> — от less or equal, «меньше или равно».</dd><dt>Накопительность</dt><dd>Каждая корзина включает все меньшие. Корзина <code>le="+Inf"</code> считает все значения.</dd><dt>Пример</dt><dd><code>le="0.1"</code> = 6: шесть отчётов не дольше 0,1 с.</dd></dl>
+    </div>
+    <p>Числа корзин сверху вниз только растут — так и должно быть. Чтобы узнать, сколько значений лежит <b>между</b> двумя границами, из корзины вычитают предыдущую:</p>
+    <figure class="code">
+      <figcaption><span>per_bucket.py</span><span>значений между соседними границами</span></figcaption>
+<pre>buckets = [(<span class="n">0.025</span>, <span class="n">0</span>), (<span class="n">0.05</span>, <span class="n">2</span>), (<span class="n">0.1</span>, <span class="n">6</span>), (<span class="n">0.25</span>, <span class="n">12</span>), (<span class="n">0.5</span>, <span class="n">16</span>), (<span class="n">1.0</span>, <span class="n">18</span>), (<span class="n">2.5</span>, <span class="n">19</span>), (<span class="s">&quot;+Inf&quot;</span>, <span class="n">20</span>)]
+
+prev_le, prev_count = <span class="n">0</span>, <span class="n">0</span>
+<span class="k">for</span> le, count <span class="k">in</span> buckets:
+    <span class="f">print</span>(<span class="s">f&quot;от {prev_le:&lt;5} до {le:&lt;5}: {count} − {prev_count} = {count - prev_count}&quot;</span>)
+    prev_le, prev_count = le, count</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>по корзинам</span></figcaption><pre>от 0     до 0.025: 0 − 0 = 0
+от 0.025 до 0.05 : 2 − 0 = 2
+от 0.05  до 0.1  : 6 − 2 = 4
+от 0.1   до 0.25 : 12 − 6 = 6
+от 0.25  до 0.5  : 16 − 12 = 4
+от 0.5   до 1.0  : 18 − 16 = 2
+от 1.0   до 2.5  : 19 − 18 = 1
+от 2.5   до +Inf : 20 − 19 = 1</pre></figure>
+    <p>Например, от 0,25 до 0,5 с: 16 − 12 = 4 — это отчёты на 300, 350, 400 и 450 мс. Разности дают ровно те группы, что на рисунке §1. На схеме — накопительные корзины и разности между ними:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 190" role="img" aria-label="Лесенка накопительных корзин: 0, 2, 6, 12, 16, 18, 19, 20; разности между соседними: 0, 2, 4, 6, 4, 2, 1, 1"><line class="sc-axis" x1="40" y1="150" x2="620" y2="150"/><rect class="sc-acc" x="50" y="150" width="56" height="0"/><rect class="sc-acc" x="120" y="138" width="56" height="12"/><rect class="sc-acc" x="190" y="114" width="56" height="36"/><rect class="sc-acc" x="260" y="78" width="56" height="72"/><rect class="sc-acc" x="330" y="54" width="56" height="96"/><rect class="sc-acc" x="400" y="42" width="56" height="108"/><rect class="sc-acc" x="470" y="36" width="56" height="114"/><rect class="sc-acc" x="540" y="30" width="56" height="120"/><rect class="sc-wrn" x="330" y="54" width="56" height="24"/><text class="tm tc" x="78" y="144">0</text><text class="tm tc" x="148" y="132">2</text><text class="tm tc" x="218" y="108">6</text><text class="tm tc" x="288" y="72">12</text><text class="tm tc" x="358" y="48">16</text><text class="tm tc" x="428" y="36">18</text><text class="tm tc" x="498" y="30">19</text><text class="tm tc" x="568" y="24">20</text><text class="tm tc" x="78" y="168">.025</text><text class="tm tc" x="148" y="168">.05</text><text class="tm tc" x="218" y="168">.1</text><text class="tm tc" x="288" y="168">.25</text><text class="tm tc" x="358" y="168">.5</text><text class="tm tc" x="428" y="168">1</text><text class="tm tc" x="498" y="168">2.5</text><text class="tm tc" x="568" y="168">+Inf</text><text class="t tw tr" x="324" y="60">16 − 12 = 4</text><text class="t" x="40" y="186">le — граница корзины, секунды</text></svg>
+      <figcaption>Высота столбика — число в корзине. Оранжевое — разница между корзинами 0,5 и 0,25.</figcaption>
+    </figure>
+    <p>Столбики выстроены лесенкой: каждый не ниже предыдущего. Оранжевая верхушка столбика <code>le="0.5"</code> — четыре отчёта, которых нет в корзине <code>0.25</code>: они и лежат между этими границами.</p>
+    <div class="key"><b>Вывод</b><p>Корзина считает значения не больше своей границы, поэтому корзины накопительные. Число значений между границами — разность соседних корзин.</p></div>
+    <p class="next">Разберём, что делает с корзинами один вызов <code>observe</code>.</p>
+  </section>
+
+  <section class="part" id="s3">
+    <h2><span class="sec">§3</span>Что делает observe</h2>
+    <p class="about">Одно наблюдение и все строки, которые оно меняет.</p>
+    <p>Сделаем снимок всех строк гистограммы, вызовем <code>observe(0.12)</code> и сделаем второй снимок. Сравним:</p>
+    <figure class="code">
+      <figcaption><span>observe_trace.py</span><span>до и после одного наблюдения</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Histogram
+
+registry = <span class="f">CollectorRegistry</span>()
+duration = <span class="f">Histogram</span>(<span class="s">&quot;report_duration_seconds&quot;</span>, <span class="s">&quot;Время построения отчёта&quot;</span>, registry=registry,
+                     buckets=(<span class="n">0.025</span>, <span class="n">0.05</span>, <span class="n">0.1</span>, <span class="n">0.25</span>, <span class="n">0.5</span>, <span class="n">1.0</span>, <span class="n">2.5</span>))
+
+<span class="k">def</span> <span class="f">snapshot</span>():
+    <span class="k">return</span> {s.labels.<span class="f">get</span>(<span class="s">&quot;le&quot;</span>, s.name.<span class="f">split</span>(<span class="s">&quot;_&quot;</span>)[-<span class="n">1</span>]): s.value
+            <span class="k">for</span> s <span class="k">in</span> <span class="f">list</span>(registry.<span class="f">collect</span>())[<span class="n">0</span>].samples <span class="k">if</span> <span class="k">not</span> s.name.<span class="f">endswith</span>(<span class="s">&quot;_created&quot;</span>)}
+
+before = <span class="f">snapshot</span>()
+duration.<span class="f">observe</span>(<span class="n">0.12</span>)
+after = <span class="f">snapshot</span>()
+<span class="k">for</span> key <span class="k">in</span> after:
+    change = after[key] - before[key]
+    <span class="f">print</span>(<span class="s">f&quot;{key:&gt;6}: {before[key]:&lt;4} → {after[key]:&lt;5} {&#x27;+&#x27; + str(round(change, 2)) if change else &#x27;без изменений&#x27;}&quot;</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>изменение каждой строки</span></figcaption><pre> 0.025: 0.0  → 0.0   без изменений
+  0.05: 0.0  → 0.0   без изменений
+   0.1: 0.0  → 0.0   без изменений
+  0.25: 0.0  → 1.0   +1.0
+   0.5: 0.0  → 1.0   +1.0
+   1.0: 0.0  → 1.0   +1.0
+   2.5: 0.0  → 1.0   +1.0
+  +Inf: 0.0  → 1.0   +1.0
+ count: 0.0  → 1.0   +1.0
+   sum: 0.0  → 0.12  +0.12</pre></figure>
+    <div class="walk">
+      <div><code>snapshot()</code><span>Собирает строки гистограммы в словарь: граница корзины или <code>count</code>/<code>sum</code> → значение.</span></div>
+      <div><code>duration.observe(0.12)</code><span>Одно наблюдение длительностью 0,12 с.</span></div>
+    </div>
+    <p>Одно наблюдение изменило семь строк. Корзины 0,025, 0,05 и 0,1 не изменились: 0,12 больше этих границ. Пять корзин от 0,25 до <code>+Inf</code> выросли на 1. Строка <code>count</code> выросла на 1, строка <code>sum</code> — на само значение, 0,12.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 130" role="img" aria-label="observe(0.12): корзины 0,025, 0,05, 0,1 без изменений; 0,25, 0,5, 1, 2,5, +Inf — плюс 1; count плюс 1; sum плюс 0,12"><rect class="sc-box" x="10" y="20" width="60" height="36" rx="6"/><rect class="sc-box" x="76" y="20" width="60" height="36" rx="6"/><rect class="sc-box" x="142" y="20" width="60" height="36" rx="6"/><rect class="sc-acc" x="208" y="20" width="60" height="36" rx="6"/><rect class="sc-acc" x="274" y="20" width="60" height="36" rx="6"/><rect class="sc-acc" x="340" y="20" width="60" height="36" rx="6"/><rect class="sc-acc" x="406" y="20" width="60" height="36" rx="6"/><rect class="sc-acc" x="472" y="20" width="60" height="36" rx="6"/><text class="tm tc" x="40" y="43">.025</text><text class="tm tc" x="106" y="43">.05</text><text class="tm tc" x="172" y="43">.1</text><text class="tm tc" x="238" y="43">.25</text><text class="tm tc" x="304" y="43">.5</text><text class="tm tc" x="370" y="43">1</text><text class="tm tc" x="436" y="43">2.5</text><text class="tm tc" x="502" y="43">+Inf</text><text class="t tc" x="106" y="78">0,12 больше — без изменений</text><text class="t tc ta" x="370" y="78">0,12 не больше — +1</text><rect class="sc-amb" x="544" y="20" width="86" height="36" rx="6"/><text class="tm tc" x="587" y="43">count +1</text><rect class="sc-amb" x="544" y="66" width="86" height="36" rx="6"/><text class="tm tc" x="587" y="89">sum +0,12</text></svg>
+      <figcaption>Какие строки меняет одно наблюдение 0,12 с.</figcaption>
+    </figure>
+    <div class="key"><b>Вывод</b><p><code>observe(x)</code> прибавляет 1 ко всем корзинам с границей не меньше <code>x</code>, 1 — к <code>_count</code> и <code>x</code> — к <code>_sum</code>.</p></div>
+    <p class="next">Строки <code>_count</code> и <code>_sum</code> дают ещё одно полезное число.</p>
+  </section>
+
+  <section class="part" id="s4">
+    <h2><span class="sec">§4</span>Строки _sum и _count</h2>
+    <p class="about">Среднее по гистограмме — за всё время и за окно.</p>
+    <p><code>_count</code> — сколько всего наблюдений; он всегда равен корзине <code>+Inf</code>: в выводе §2 оба равны 20. <code>_sum</code> — их сумма: 8,87 секунды. Делим — получаем среднее, как средний чек: выручка, делённая на число покупателей. 8,87 / 20 = 0,4435 с. В выводе <code>_sum</code> записан как <code>8.870000000000001</code>: дробные числа в компьютере хранятся двоичными, и при сложении двадцати значений набежала ошибка в последнем знаке. На смысл она не влияет.</p>
+    <p>Но <code>_sum</code> и <code>_count</code> растут с запуска процесса, как счётчики. Их отношение — среднее за всё время работы, а при разборе жалобы нужно среднее за последние минуты. Его считают по двум снимкам, как RED в лекции 1.5, §4.1. Пусть через 5 минут после §2 пришло ещё 6 отчётов, и среди них — медленные:</p>
+    <figure class="code">
+      <figcaption><span>window.py</span><span>среднее за всё время и за окно</span></figcaption>
+<pre>before = {<span class="s">&quot;sum&quot;</span>: <span class="n">8.87</span>, <span class="s">&quot;count&quot;</span>: <span class="n">20</span>}         <span class="c"># снимок /metrics в 12:00:00</span>
+after = {<span class="s">&quot;sum&quot;</span>: <span class="n">14.27</span>, <span class="s">&quot;count&quot;</span>: <span class="n">26</span>}         <span class="c"># снимок в 12:05:00</span>
+
+all_time = after[<span class="s">&quot;sum&quot;</span>] / after[<span class="s">&quot;count&quot;</span>]
+window = (after[<span class="s">&quot;sum&quot;</span>] - before[<span class="s">&quot;sum&quot;</span>]) / (after[<span class="s">&quot;count&quot;</span>] - before[<span class="s">&quot;count&quot;</span>])
+<span class="f">print</span>(<span class="s">f&quot;среднее за всё время: {after[&#x27;sum&#x27;]} / {after[&#x27;count&#x27;]} = {all_time:.3f} с&quot;</span>)
+<span class="f">print</span>(<span class="s">f&quot;среднее за окно:      ({after[&#x27;sum&#x27;]} − {before[&#x27;sum&#x27;]}) / ({after[&#x27;count&#x27;]} − {before[&#x27;count&#x27;]}) = {window:.3f} с&quot;</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>два средних</span></figcaption><pre>среднее за всё время: 14.27 / 26 = 0.549 с
+среднее за окно:      (14.27 − 8.87) / (26 − 20) = 0.900 с</pre></figure>
+    <div class="walk">
+      <div><code>after["sum"] / after["count"]</code><span>Отношение текущих значений — среднее с запуска процесса.</span></div>
+      <div><code>(after - before) / (after - before)</code><span>Отношение приростов — среднее только за последние 5 минут.</span></div>
+    </div>
+    <p>За всё время среднее — 0,549 с: шесть новых отчётов растворились среди двадцати старых. За окно — 0,9 с: новые отчёты в среднем вдвое медленнее. Чем дольше работает процесс, тем меньше среднее «за всё время» замечает новые изменения. Поэтому у <code>_sum</code> и <code>_count</code>, как у любых счётчиков, смотрят прирост за окно.</p>
+    <div class="key"><b>Вывод</b><p>Среднее по гистограмме — <code>_sum</code> / <code>_count</code>. Для недавнего периода берут приросты обоих за окно.</p></div>
+    <p class="next">До сих пор значения передавали в <code>observe</code> руками. Для длительности есть способ проще.</p>
+  </section>
+
+  <section class="part" id="s5">
+    <h2><span class="sec">§5</span>Замер через time()</h2>
+    <p class="about">Как гистограмма сама засекает время функции или блока кода.</p>
+    <p>Чтобы записать длительность, нужно засечь время до работы и после, вычесть и передать разность в <code>observe</code>. Это делает метод <code>time()</code> — как декоратор функции или как блок <code>with</code>:</p>
+    <figure class="code">
+      <figcaption><span>timer.py</span><span>замер функции и блока</span></figcaption>
+<pre><span class="k">import</span> time
+<span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Histogram
+
+registry = <span class="f">CollectorRegistry</span>()
+duration = <span class="f">Histogram</span>(<span class="s">&quot;report_duration_seconds&quot;</span>, <span class="s">&quot;Время построения отчёта&quot;</span>, registry=registry,
+                     buckets=(<span class="n">0.1</span>, <span class="n">0.25</span>, <span class="n">0.5</span>, <span class="n">1.0</span>))
+
+@duration.<span class="f">time</span>()
+<span class="k">def</span> <span class="f">build_report</span>(seconds):
+    time.<span class="f">sleep</span>(seconds)                        <span class="c"># «строим» отчёт</span>
+
+<span class="k">for</span> seconds <span class="k">in</span> (<span class="n">0.05</span>, <span class="n">0.2</span>, <span class="n">0.3</span>, <span class="n">0.6</span>):
+    <span class="f">build_report</span>(seconds)
+
+<span class="k">with</span> duration.<span class="f">time</span>():                          <span class="c"># то же для блока кода</span>
+    time.<span class="f">sleep</span>(<span class="n">0.15</span>)
+
+get = registry.get_sample_value
+<span class="f">print</span>(<span class="s">&quot;count:&quot;</span>, <span class="f">get</span>(<span class="s">&quot;report_duration_seconds_count&quot;</span>))
+<span class="f">print</span>(<span class="s">&quot;sum:  &quot;</span>, <span class="f">round</span>(<span class="f">get</span>(<span class="s">&quot;report_duration_seconds_sum&quot;</span>), <span class="n">3</span>))
+<span class="k">for</span> le <span class="k">in</span> (<span class="s">&quot;0.1&quot;</span>, <span class="s">&quot;0.25&quot;</span>, <span class="s">&quot;0.5&quot;</span>, <span class="s">&quot;1.0&quot;</span>):
+    <span class="f">print</span>(<span class="s">f&quot;le={le}:&quot;</span>, <span class="f">get</span>(<span class="s">&quot;report_duration_seconds_bucket&quot;</span>, {<span class="s">&quot;le&quot;</span>: le}))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>что записала гистограмма</span></figcaption><pre>count: 5.0
+sum:   1.315
+le=0.1: 1.0
+le=0.25: 3.0
+le=0.5: 4.0
+le=1.0: 5.0</pre></figure>
+    <div class="walk">
+      <div><code>@duration.time()</code><span>Каждый вызов <code>build_report</code> засекается и записывается в гистограмму.</span></div>
+      <div><code>with duration.time():</code><span>То же для блока кода. Время записывается и при выходе через исключение.</span></div>
+    </div>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Строка</th><th>Что получилось на прогоне</th></tr></thead>
+        <tbody>
+          <tr><td>четыре вызова по 0,05, 0,2, 0,3, 0,6 с и блок 0,15 с</td><td><code>count</code> — 5</td></tr>
+          <tr><td>сумма заказанных пауз — 1,30 с</td><td><code>sum</code> — 1,315 с: ещё 15 мс на вызовы и сам замер</td></tr>
+          <tr><td>корзины</td><td><code>le=0.1</code> — 1 (0,05), <code>0.25</code> — 3 (+0,2 и 0,15), <code>0.5</code> — 4 (+0,3), <code>1.0</code> — 5 (+0,6)</td></tr>
+        </tbody>
+      </table></div>
+    <p>Гистограмма записала настоящее время: на пять замеров набежало 15 мс сверх заказанного. Так и должно быть: метрика показывает, сколько ждал вызывающий код.</p>
+    <div class="key"><b>Вывод</b><p><code>time()</code> засекает длительность функции или блока и сам вызывает <code>observe</code>. Записывается настоящее время, вместе с накладными расходами.</p></div>
+    <p class="next">Корзины хранят распределение. Можно ли по ним узнать перцентиль?</p>
+  </section>
+
+  <section class="part" id="s6">
+    <h2><span class="sec">§6</span>Оценка перцентиля по корзинам</h2>
+    <p class="about">Как Prometheus оценивает перцентиль и где эта оценка ошибается.</p>
+    <p>В лекции 1.6, §4.1 p95 считали по списку всех длительностей. В гистограмме списка нет: известно только, сколько значений в каждой корзине. Если в ящике «от 500 до 1000 г» лежат два яблока, а их вес не записан, остаётся считать, что они разложены по промежутку равномерно. Prometheus поступает так же: функция <code>histogram_quantile</code> считает значения внутри корзины равномерно распределёнными. Повторим её расчёт на Python и сравним с точным перцентилем:</p>
+    <figure class="code">
+      <figcaption><span>quantile.py</span><span>оценка по корзинам и точное значение</span></figcaption>
+<pre><span class="k">import</span> math
+
+<span class="k">def</span> <span class="f">histogram_quantile</span>(q, buckets):
+    <span class="s">&quot;&quot;</span><span class="s">&quot;Оценка перцентиля по накопительным корзинам, как в Prometheus.&quot;</span><span class="s">&quot;&quot;</span>
+    rank = q * buckets[-<span class="n">1</span>][<span class="n">1</span>]                  <span class="c"># корзина +Inf хранит все значения</span>
+    prev_le, prev_count = <span class="n">0.0</span>, <span class="n">0.0</span>
+    <span class="k">for</span> le, count <span class="k">in</span> buckets:
+        <span class="k">if</span> count &gt;= rank:
+            <span class="k">if</span> le == math.inf:                 <span class="c"># у +Inf нет верхней границы</span>
+                <span class="k">return</span> prev_le
+            <span class="k">return</span> prev_le + (le - prev_le) * (rank - prev_count) / (count - prev_count)
+        prev_le, prev_count = le, count
+
+<span class="k">def</span> <span class="f">exact</span>(q, values):
+    <span class="s">&quot;&quot;</span><span class="s">&quot;Точный перцентиль по всем значениям (лекция 1.6, §4.1).&quot;</span><span class="s">&quot;&quot;</span>
+    <span class="k">return</span> <span class="f">sorted</span>(values)[math.<span class="f">ceil</span>(q * <span class="f">len</span>(values)) - <span class="n">1</span>]
+
+buckets = [(<span class="n">0.025</span>, <span class="n">0</span>), (<span class="n">0.05</span>, <span class="n">2</span>), (<span class="n">0.1</span>, <span class="n">6</span>), (<span class="n">0.25</span>, <span class="n">12</span>), (<span class="n">0.5</span>, <span class="n">16</span>),
+           (<span class="n">1.0</span>, <span class="n">18</span>), (<span class="n">2.5</span>, <span class="n">19</span>), (math.inf, <span class="n">20</span>)]
+reports = [<span class="n">0.03</span>, <span class="n">0.04</span>, <span class="n">0.06</span>, <span class="n">0.07</span>, <span class="n">0.08</span>, <span class="n">0.09</span>, <span class="n">0.12</span>, <span class="n">0.13</span>, <span class="n">0.15</span>, <span class="n">0.18</span>,
+           <span class="n">0.2</span>, <span class="n">0.22</span>, <span class="n">0.3</span>, <span class="n">0.35</span>, <span class="n">0.4</span>, <span class="n">0.45</span>, <span class="n">0.7</span>, <span class="n">0.9</span>, <span class="n">1.4</span>, <span class="n">3.0</span>]
+<span class="k">for</span> q <span class="k">in</span> (<span class="n">0.5</span>, <span class="n">0.9</span>, <span class="n">0.99</span>):
+    <span class="f">print</span>(<span class="s">f&quot;p{round(q * 100)}: оценка {histogram_quantile(q, buckets):.3g}, точно {exact(q, reports)}&quot;</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>три перцентиля</span></figcaption><pre>p50: оценка 0.2, точно 0.18
+p90: оценка 1, точно 0.9
+p99: оценка 2.5, точно 3.0</pre></figure>
+    <div class="walk">
+      <div><code>rank = q * buckets[-1][1]</code><span>Номер нужного значения: для p50 из 20 — 10-е.</span></div>
+      <div><code>if count &gt;= rank</code><span>Первая корзина, в которой набралось столько значений, — нужное значение лежит в ней.</span></div>
+      <div><code>prev_le + (le - prev_le) * …</code><span>Место внутри корзины по равномерному распределению.</span></div>
+      <div><code>if le == math.inf: return prev_le</code><span>У корзины <code>+Inf</code> нет верхней границы — функция возвращает последнюю известную.</span></div>
+    </div>
+    <p><b>Прогон на живых данных.</b> Пройдём расчёт p50 по шагам с печатью:</p>
+    <figure class="code">
+      <figcaption><span>quantile_trace.py</span><span>p50 по шагам</span></figcaption>
+<pre><span class="k">import</span> math
+buckets = [(<span class="n">0.025</span>, <span class="n">0</span>), (<span class="n">0.05</span>, <span class="n">2</span>), (<span class="n">0.1</span>, <span class="n">6</span>), (<span class="n">0.25</span>, <span class="n">12</span>), (<span class="n">0.5</span>, <span class="n">16</span>), (<span class="n">1.0</span>, <span class="n">18</span>), (<span class="n">2.5</span>, <span class="n">19</span>), (math.inf, <span class="n">20</span>)]
+q = <span class="n">0.5</span>
+rank = q * buckets[-<span class="n">1</span>][<span class="n">1</span>]
+<span class="f">print</span>(<span class="s">&quot;rank =&quot;</span>, rank)
+prev_le, prev_count = <span class="n">0.0</span>, <span class="n">0.0</span>
+<span class="k">for</span> le, count <span class="k">in</span> buckets:
+    <span class="f">print</span>(<span class="s">f&quot;корзина le={le}: count={count} &gt;= {rank}? {count &gt;= rank}&quot;</span>)
+    <span class="k">if</span> count &gt;= rank:
+        share = (rank - prev_count) / (count - prev_count)
+        <span class="f">print</span>(<span class="s">f&quot;внутри корзины {prev_le}–{le}: доля ({rank} − {prev_count}) / ({count} − {prev_count}) = {share:.3f}&quot;</span>)
+        <span class="f">print</span>(<span class="s">f&quot;оценка = {prev_le} + ({le} − {prev_le}) × {share:.3f} = {prev_le + (le - prev_le) * share:.3f}&quot;</span>)
+        <span class="k">break</span>
+    prev_le, prev_count = le, count</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>шаги расчёта</span></figcaption><pre>rank = 10.0
+корзина le=0.025: count=0 &gt;= 10.0? False
+корзина le=0.05: count=2 &gt;= 10.0? False
+корзина le=0.1: count=6 &gt;= 10.0? False
+корзина le=0.25: count=12 &gt;= 10.0? True
+внутри корзины 0.1–0.25: доля (10.0 − 6) / (12 − 6) = 0.667
+оценка = 0.1 + (0.25 − 0.1) × 0.667 = 0.200</pre></figure>
+    <p>10-е значение лежит в корзине 0,1–0,25 с: в ней шесть значений, с 7-го по 12-е, и 10-е — четвёртое из шести, доля 0,667. Равномерное распределение ставит его на 0,1 + 0,15 × 0,667 = 0,2 с. Настоящее 10-е значение — 0,18. Сведём три перцентиля:</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Перцентиль</th><th>Оценка</th><th>Точно</th><th>Почему отличается</th></tr></thead>
+        <tbody>
+          <tr><td>p50</td><td>0,2</td><td>0,18</td><td>значения внутри корзины 0,1–0,25 распределены неравномерно</td></tr>
+          <tr><td>p90</td><td>1</td><td>0,9</td><td>18-е значение — последнее в корзине 0,5–1; оценка равна её верхней границе</td></tr>
+          <tr><td>p99</td><td>2,5</td><td>3,0</td><td>ранг попал в <code>+Inf</code>: оценка — последняя граница, самый долгий отчёт спрятан</td></tr>
+        </tbody>
+      </table></div>
+    <p>Пока ранг попадает в обычную корзину, оценка близка к правде. Если в корзину <code>+Inf</code> — оценка упирается в последнюю границу и показывает 2,5, хотя отчёт шёл 3 секунды. Поэтому последняя граница должна быть выше настоящих длительностей. Как выбирать границы — тема следующей лекции.</p>
+    <div class="key key--warn"><b>Вывод</b><p>Перцентиль по гистограмме — оценка. Её точность зависит от границ корзин, а выше последней границы оценить нельзя.</p></div>
+    <p class="next">У корзин есть преимущество перед готовыми перцентилями: их можно складывать.</p>
+  </section>
+
+  <section class="part" id="s7">
+    <h2><span class="sec">§7</span>Корзины экземпляров складываются</h2>
+    <p class="about">Почему гистограммы экземпляров объединяют сложением корзин, а перцентили — нельзя.</p>
+    <p>В лекции 1.6 общий p95 сервиса считался по всем запросам вместе, и он не совпал ни с одним p95 экземпляра. В настоящем сервисе списков запросов нет — есть гистограммы экземпляров. Корзины — это счётчики, а счётчики складываются: «не дольше 0,1 с» у трёх экземпляров вместе — сумма трёх таких корзин. Сравним три способа получить общий p95. Возьмём три экземпляра по 20 запросов: <code>api-1</code> и <code>api-3</code> быстрые (30–87 мс), у <code>api-2</code> очередь, его запросы идут от 0,1 до 2 с. Функции <code>histogram_quantile</code> и <code>exact</code> — из §6:</p>
+    <figure class="code">
+      <figcaption><span>merge.py</span><span>три способа получить общий p95</span></figcaption>
+<pre><span class="k">import</span> math
+<span class="c"># histogram_quantile и exact — из quantile.py, §6</span>
+
+BOUNDS = [<span class="n">0.05</span>, <span class="n">0.1</span>, <span class="n">0.25</span>, <span class="n">0.5</span>, <span class="n">1.0</span>, <span class="n">2.5</span>, math.inf]
+
+<span class="k">def</span> <span class="f">to_buckets</span>(values):
+    <span class="k">return</span> [(le, <span class="f">sum</span>(v &lt;= le <span class="k">for</span> v <span class="k">in</span> values)) <span class="k">for</span> le <span class="k">in</span> BOUNDS]
+
+fast = [<span class="n">0.03</span> + <span class="n">0.003</span> * n <span class="k">for</span> n <span class="k">in</span> <span class="f">range</span>(<span class="n">20</span>)]             <span class="c"># api-1 и api-3: 30–87 мс</span>
+slow = [<span class="n">0.1</span> * n <span class="k">for</span> n <span class="k">in</span> <span class="f">range</span>(<span class="n">1</span>, <span class="n">21</span>)]                    <span class="c"># api-2: 0,1–2,0 с, очередь растёт</span>
+instances = {<span class="s">&quot;api-1&quot;</span>: fast, <span class="s">&quot;api-2&quot;</span>: slow, <span class="s">&quot;api-3&quot;</span>: fast}
+
+p95 = {name: <span class="f">histogram_quantile</span>(<span class="n">0.95</span>, <span class="f">to_buckets</span>(v)) <span class="k">for</span> name, v <span class="k">in</span> instances.<span class="f">items</span>()}
+<span class="f">print</span>(<span class="s">&quot;p95 по экземплярам:&quot;</span>, {k: <span class="f">round</span>(v, <span class="n">3</span>) <span class="k">for</span> k, v <span class="k">in</span> p95.<span class="f">items</span>()})
+<span class="f">print</span>(<span class="s">&quot;среднее трёх p95:  &quot;</span>, <span class="f">round</span>(<span class="f">sum</span>(p95.<span class="f">values</span>()) / <span class="n">3</span>, <span class="n">3</span>))
+
+merged = [(le, <span class="f">sum</span>(<span class="f">dict</span>(<span class="f">to_buckets</span>(v))[le] <span class="k">for</span> v <span class="k">in</span> instances.<span class="f">values</span>())) <span class="k">for</span> le <span class="k">in</span> BOUNDS]
+<span class="f">print</span>(<span class="s">&quot;сложенные корзины: &quot;</span>, [c <span class="k">for</span> _, c <span class="k">in</span> merged])
+<span class="f">print</span>(<span class="s">&quot;p95 по сложенным:  &quot;</span>, <span class="f">round</span>(<span class="f">histogram_quantile</span>(<span class="n">0.95</span>, merged), <span class="n">3</span>))
+<span class="f">print</span>(<span class="s">&quot;p95 точно по всем: &quot;</span>, <span class="f">exact</span>(<span class="n">0.95</span>, fast + slow + fast))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>результаты</span></figcaption><pre>p95 по экземплярам: {&#x27;api-1&#x27;: 0.096, &#x27;api-2&#x27;: 2.35, &#x27;api-3&#x27;: 0.096}
+среднее трёх p95:   0.847
+сложенные корзины:  [14, 41, 42, 45, 50, 60, 60]
+p95 по сложенным:   2.05
+p95 точно по всем:  1.7000000000000002</pre></figure>
+    <div class="walk">
+      <div><code>to_buckets(values)</code><span>Строит накопительные корзины, как гистограмма экземпляра.</span></div>
+      <div><code>sum(p95.values()) / 3</code><span>Среднее готовых перцентилей — частая ошибка.</span></div>
+      <div><code>merged = …</code><span>Корзина с той же границей у трёх экземпляров складывается.</span></div>
+    </div>
+    <p>Три ответа на один вопрос:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Общий p95: точно 1,7 с; по сложенным корзинам 2,05 с; среднее трёх p95 0,847 с"><line class="sc-axis" x1="190" y1="120" x2="620" y2="120"/><text class="t" x="10" y="34">точно по всем</text><rect class="sc-acc" x="190" y="20" width="306" height="22"/><text class="tm" x="502" y="36">1,70 с</text><text class="t" x="10" y="70">сложенные корзины</text><rect class="sc-acc" x="190" y="56" width="369" height="22"/><text class="tm" x="565" y="72">2,05 с</text><text class="t" x="10" y="106">среднее трёх p95</text><rect class="sc-wrn" x="190" y="92" width="152" height="22"/><text class="tm tw" x="348" y="108">0,847 с</text><text class="tm tc" x="190" y="138">0</text><text class="tm tc" x="550" y="138">2 с</text></svg>
+      <figcaption>Длина полосы — общий p95, полученный тремя способами.</figcaption>
+    </figure>
+    <p>Среднее трёх p95 — 0,847 с, вдвое меньше правды: два быстрых экземпляра «разбавили» медленный. Сложенные корзины дали 2,05 с — грубее точных 1,70, потому что значение попало в широкую корзину 1–2,5 с, но порядок верный. Из готовых перцентилей правильный общий не получить. Из корзин — можно, с точностью до границ. Поэтому длительность хранят гистограммой.</p>
+    <div class="key"><b>Вывод</b><p>Корзины гистограмм нескольких экземпляров складывают и по сумме оценивают общий перцентиль. Перцентили экземпляров усреднять нельзя.</p></div>
+    <p class="next">У этой возможности есть цена: число рядов.</p>
+  </section>
+
+  <section class="part" id="s8">
+    <h2><span class="sec">§8</span>Сколько рядов стоит гистограмма</h2>
+    <p class="about">Почему метки у гистограмм выбирают особенно экономно.</p>
+    <p>Каждая корзина — отдельный ряд, причём для каждого сочетания меток свой. Посчитаем ряды гистограммы с границами по умолчанию и меткой <code>route</code> на трёх адресах:</p>
+    <figure class="code">
+      <figcaption><span>series.py</span><span>ряды одной гистограммы</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Histogram, disable_created_metrics
+
+<span class="f">disable_created_metrics</span>()
+registry = <span class="f">CollectorRegistry</span>()
+duration = <span class="f">Histogram</span>(<span class="s">&quot;http_request_duration_seconds&quot;</span>, <span class="s">&quot;Длительность запроса&quot;</span>, [<span class="s">&quot;route&quot;</span>], registry=registry)
+
+<span class="k">for</span> route <span class="k">in</span> (<span class="s">&quot;/orders&quot;</span>, <span class="s">&quot;/orders/{id}&quot;</span>, <span class="s">&quot;/report&quot;</span>):
+    duration.<span class="f">labels</span>(route=route).<span class="f">observe</span>(<span class="n">0.1</span>)
+
+samples = <span class="f">list</span>(registry.<span class="f">collect</span>())[<span class="n">0</span>].samples
+<span class="f">print</span>(<span class="s">&quot;границ по умолчанию:&quot;</span>, <span class="f">len</span>(duration._upper_bounds) - <span class="n">1</span>, <span class="s">&quot;+ +Inf&quot;</span>)
+<span class="f">print</span>(<span class="s">&quot;рядов всего:&quot;</span>, <span class="f">len</span>(samples))
+<span class="f">print</span>(<span class="s">&quot;на один адрес:&quot;</span>, <span class="f">sum</span>(s.labels[<span class="s">&quot;route&quot;</span>] == <span class="s">&quot;/report&quot;</span> <span class="k">for</span> s <span class="k">in</span> samples))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>число рядов</span></figcaption><pre>границ по умолчанию: 14 + +Inf
+рядов всего: 51
+на один адрес: 17</pre></figure>
+    <div class="walk">
+      <div><code>disable_created_metrics()</code><span>Отключает строки <code>_created</code>, чтобы считать только корзины, <code>_sum</code> и <code>_count</code>.</span></div>
+      <div><code>Histogram(…, ["route"])</code><span>Границы не заданы — берутся 14 границ по умолчанию, от 0,005 до 10 секунд.</span></div>
+      <div><code>len(samples)</code><span>Сколько строк значений отдаст гистограмма.</span></div>
+    </div>
+    <p>На один адрес — 17 рядов: 14 корзин, <code>+Inf</code>, <code>_sum</code> и <code>_count</code>. На три адреса — 51. Добавим метку <code>method</code> с двумя значениями — станет 102, а метку кода ответа с пятью значениями — 510. Счётчик с теми же метками дал бы в 17 раз меньше. Поэтому у гистограмм оставляют только метки, по которым будут делить длительность: обычно адрес, иногда метод.</p>
+    <div class="key"><b>Вывод</b><p>Гистограмма — это (число границ + 3) ряда на каждое сочетание меток. Метки у неё выбирают экономнее, чем у счётчика.</p></div>
+  </section>
+
+  <section class="part" id="s9">
+    <h2><span class="sec">§9</span>Частые ошибки</h2>
+    <p class="about">Что делают неправильно и как исправить.</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Что делают</th><th>Что произойдёт</th><th>Как правильно</th></tr></thead>
+        <tbody>
+          <tr><td>читают корзину как «от предыдущей границы до этой»</td><td>число значений в промежутке завышено</td><td>вычитать соседнюю корзину</td></tr>
+          <tr><td>берут <code>_sum / _count</code> за всё время</td><td>недавние изменения растворяются в истории</td><td>приросты <code>_sum</code> и <code>_count</code> за окно</td></tr>
+          <tr><td>принимают оценку перцентиля за точное значение</td><td>ошибка в пределах ширины корзины</td><td>помнить, что это оценка, и ставить границы там, где важна точность</td></tr>
+          <tr><td>ставят последнюю границу ниже настоящих длительностей</td><td>хвост попадает в <code>+Inf</code>, оценка упирается в последнюю границу</td><td>последняя граница выше самых долгих значений</td></tr>
+          <tr><td>усредняют перцентили экземпляров</td><td>медленный экземпляр «разбавлен» быстрыми</td><td>складывать корзины и оценивать по сумме</td></tr>
+          <tr><td>навешивают на гистограмму много меток</td><td>рядов в 17 раз больше, чем у счётчика с теми же метками</td><td>только метки, по которым будут делить длительность</td></tr>
+        </tbody>
+      </table></div>
+  </section>
+
+  <section class="part" id="s10">
+    <h2><span class="sec">§10</span>Практика</h2>
+    <p class="about">Три задачи. Решение спрятано под задачей.</p>
+    <h3>Задача 1. Куда попадёт наблюдение</h3>
+    <p>Ситуация: гистограмма с границами 0,025 · 0,05 · 0,1 · 0,25 · 0,5 · 1 · 2,5. Вызывают <code>observe(0.25)</code>.</p>
+    <div class="key"><b>Что нужно сделать</b><p>Назвать корзины, которые вырастут, и как изменятся <code>_count</code> и <code>_sum</code>.</p></div>
+    <details><summary>Решение</summary>
+    <p>Граница <code>le</code> — «меньше или равно», поэтому 0,25 попадает в корзину <code>0.25</code> и во все большие: 0,25, 0,5, 1, 2,5 и <code>+Inf</code> — пять корзин. <code>_count</code> +1, <code>_sum</code> +0,25.</p>
+    </details>
+
+    <h3>Задача 2. Корзины чужого сервиса</h3>
+    <p>Ситуация: в ответе <code>/metrics</code> корзины <code>le="0.1"</code> — 40, <code>le="0.5"</code> — 90, <code>le="1.0"</code> — 96, <code>le="+Inf"</code> — 100.</p>
+    <div class="key"><b>Что нужно сделать</b><p>Найти, сколько запросов шли от 0,1 до 0,5 с и сколько дольше секунды, и оценить p90 и p99 функцией из §6.</p></div>
+    <details><summary>Решение</summary>
+    <figure class="code">
+      <figcaption><span>task2.py</span><span>разности и оценки</span></figcaption>
+<pre><span class="k">import</span> math
+<span class="c"># histogram_quantile — из quantile.py, §6</span>
+
+buckets = [(<span class="n">0.1</span>, <span class="n">40</span>), (<span class="n">0.5</span>, <span class="n">90</span>), (<span class="n">1.0</span>, <span class="n">96</span>), (math.inf, <span class="n">100</span>)]
+<span class="f">print</span>(<span class="s">&quot;от 0,1 до 0,5 с:&quot;</span>, <span class="n">90</span> - <span class="n">40</span>)
+<span class="f">print</span>(<span class="s">&quot;дольше 1 с:     &quot;</span>, <span class="n">100</span> - <span class="n">96</span>)
+<span class="f">print</span>(<span class="s">&quot;p90 оценка:     &quot;</span>, <span class="f">round</span>(<span class="f">histogram_quantile</span>(<span class="n">0.9</span>, buckets), <span class="n">3</span>))
+<span class="f">print</span>(<span class="s">&quot;p99 оценка:     &quot;</span>, <span class="f">round</span>(<span class="f">histogram_quantile</span>(<span class="n">0.99</span>, buckets), <span class="n">3</span>))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>результат</span></figcaption><pre>от 0,1 до 0,5 с: 50
+дольше 1 с:      4
+p90 оценка:      0.5
+p99 оценка:      1.0</pre></figure>
+    <p>От 0,1 до 0,5 с — 50 запросов, дольше секунды — 4. Оценка p90 — 0,5: 90-й запрос — последний в корзине 0,1–0,5. p99 попал в <code>+Inf</code>, и оценка упёрлась в последнюю границу — 1 с, хотя 4 запроса шли дольше.</p>
+    </details>
+
+    <h3>Задача 3. Ряды гистограммы</h3>
+    <p>Ситуация: гистограмма с 7 границами, метки <code>route</code> (4 адреса) и <code>method</code> (2 метода).</p>
+    <div class="key"><b>Что нужно сделать</b><p>Посчитать число рядов без строк <code>_created</code>.</p></div>
+    <details><summary>Решение</summary>
+    <p>На сочетание меток — 7 + 3 = 10 рядов: 7 корзин, <code>+Inf</code>, <code>_sum</code>, <code>_count</code>. Сочетаний 4 × 2 = 8. Всего 80 рядов.</p>
+    </details>
+  </section>
+
+  <section class="part" id="s11">
+    <h2><span class="sec">§11</span>Проверьте себя</h2>
+    <p class="about">Вопросы по лекции. Ответ раскрывается щелчком.</p>
+    <details><summary>Почему корзины гистограммы только растут сверху вниз?</summary><p>Каждая считает значения не больше своей границы и потому включает все меньшие корзины.</p></details>
+    <details><summary>Чему всегда равен <code>_count</code>?</summary><p>Корзине <code>+Inf</code>: обе считают все наблюдения.</p></details>
+    <details><summary>Почему <code>_sum</code> в §5 больше суммы заказанных пауз?</summary><p><code>time()</code> записывает настоящее время, вместе с вызовом функции и самим замером.</p></details>
+    <details><summary>Почему оценка p99 в §6 — 2,5 с, хотя отчёт шёл 3 с?</summary><p>Ранг попал в корзину <code>+Inf</code>. У неё нет верхней границы, и функция возвращает последнюю известную.</p></details>
+    <details><summary>Как получить общий p95 трёх экземпляров?</summary><p>Сложить корзины с одинаковыми границами и оценить перцентиль по сумме. Среднее трёх p95 даёт неверный ответ.</p></details>
+  </section>
+
+  <section class="part" id="s12">
+    <h2><span class="sec">§12</span>Шпаргалка</h2>
+    <p class="about">Опорные понятия лекции одним списком.</p>
+    <div class="cheat">
+      <div><b>Строки</b><code>_bucket{le="…"}</code><code>_sum</code><code>_count</code></div>
+      <div><b>Корзины</b><code>le — «не больше»</code><code>между границами — разность</code></div>
+      <div><b>observe(x)</b><code>+1 корзинам ≥ x</code><code>+1 _count, +x _sum</code></div>
+      <div><b>Среднее</b><code>Δ_sum / Δ_count за окно</code></div>
+      <div><b>Перцентиль</b><code>оценка по корзинам</code><code>+Inf → последняя граница</code></div>
+      <div><b>Экземпляры</b><code>корзины складывают</code><code>перцентили не усредняют</code></div>
+    </div>
+  </section>
+
+  <section class="part" id="s13">
+    <h2><span class="sec">§13</span>Глоссарий</h2>
+    <p class="about">Термины лекции, включая понятия прежних лекций: формулировка, пример и рисунок.</p>
+    <div class="glossary">
+      <article class="gl" id="g-percentile">
+        <div class="gl__text">
+          <h3>Перцентиль, p95<i>percentile</i></h3>
+          <p class="gl__def">Значение, не больше которого 95% наблюдений. Медиана — p50.</p>
+          <p class="gl__ex"><b>Пример</b>p90 двадцати отчётов — 0,9 с.</p>
+          <p class="gl__where"><b>Где</b>лекция 1.6, §4</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Перцентиль"><rect class="sc-acc" x="10" y="50" width="218" height="30"/><rect class="sc-wrn" x="228" y="50" width="22" height="30"/><text class="tm tc" x="119" y="40">95%</text><text class="tm tc" x="239" y="40">5%</text></svg></figure>
+      </article>
+      <article class="gl" id="g-histogram">
+        <div class="gl__text">
+          <h3>Гистограмма<i>histogram</i></h3>
+          <p class="gl__def">Метрика, которая раскладывает наблюдения по корзинам с заданными границами и хранит <code>_sum</code> и <code>_count</code>.</p>
+          <p class="gl__ex"><b>Пример</b>20 отчётов → корзины 0, 2, 6, 12, 16, 18, 19, 20.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.8, §1</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Гистограмма"><rect class="sc-acc" x="20" y="80" width="30" height="30"/><rect class="sc-acc" x="60" y="50" width="30" height="60"/><rect class="sc-acc" x="100" y="30" width="30" height="80"/><rect class="sc-wrn" x="140" y="70" width="30" height="40"/><rect class="sc-wrn" x="180" y="95" width="30" height="15"/><line class="sc-axis" x1="10" y1="110" x2="250" y2="110"/></svg></figure>
+      </article>
+      <article class="gl" id="g-bucket">
+        <div class="gl__text">
+          <h3>Корзина, le<i>bucket</i></h3>
+          <p class="gl__def">Счётчик наблюдений не больше границы <code>le</code>. Корзины накопительные; <code>+Inf</code> считает всё.</p>
+          <p class="gl__ex"><b>Пример</b><code>le="0.5"</code> 16 − <code>le="0.25"</code> 12 = 4 отчёта между ними.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.8, §2</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Корзина"><line class="sc-axis" x1="10" y1="110" x2="250" y2="110"/><rect class="sc-acc" x="20" y="90" width="40" height="20"/><rect class="sc-acc" x="75" y="70" width="40" height="40"/><rect class="sc-acc" x="130" y="45" width="40" height="65"/><rect class="sc-acc" x="185" y="25" width="40" height="85"/></svg></figure>
+      </article>
+      <article class="gl" id="g-sumcount">
+        <div class="gl__text">
+          <h3>_sum и _count</h3>
+          <p class="gl__def">Сумма и число наблюдений. Их приросты за окно дают среднее за окно.</p>
+          <p class="gl__ex"><b>Пример</b>(14,27 − 8,87) / (26 − 20) = 0,9 с.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.8, §4</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="_sum и _count"><rect class="sc-amb" x="40" y="20" width="180" height="36" rx="6"/><text class="tm tc" x="130" y="43">Δ _sum</text><line class="sc-axis" x1="40" y1="66" x2="220" y2="66"/><rect class="sc-amb" x="40" y="76" width="180" height="36" rx="6"/><text class="tm tc" x="130" y="99">Δ _count</text></svg></figure>
+      </article>
+      <article class="gl" id="g-quantile">
+        <div class="gl__text">
+          <h3>Оценка перцентиля по корзинам<i>histogram_quantile</i></h3>
+          <p class="gl__def">Расчёт перцентиля по корзинам в предположении, что внутри корзины значения распределены равномерно. Выше последней границы оценки нет.</p>
+          <p class="gl__ex"><b>Пример</b>p50: оценка 0,2, точно 0,18; p99: оценка 2,5, точно 3,0.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.8, §6</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Оценка перцентиля"><rect class="sc-box" x="20" y="50" width="220" height="30"/><line class="sc-arrow-w" x1="166" y1="36" x2="166" y2="94"/><text class="tm tc" x="20" y="108">0,1</text><text class="tm tc" x="240" y="108">0,25</text><text class="tm tc tw" x="166" y="28">0,2</text></svg></figure>
+      </article>
+      <article class="gl" id="g-merge">
+        <div class="gl__text">
+          <h3>Сложение корзин</h3>
+          <p class="gl__def">Корзины с одной границей у нескольких экземпляров складывают; по сумме оценивают общий перцентиль.</p>
+          <p class="gl__ex"><b>Пример</b>сложенные корзины — 2,05 с, среднее трёх p95 — 0,847 с, точно — 1,70 с.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.8, §7</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Сложение корзин"><rect class="sc-acc" x="10" y="30" width="50" height="20"/><rect class="sc-wrn" x="10" y="56" width="50" height="20"/><rect class="sc-acc" x="10" y="82" width="50" height="20"/><path class="sc-arrow" d="M66 66 L140 66"/><rect class="sc-amb" x="146" y="40" width="104" height="50" rx="8"/><text class="tm tc" x="198" y="70">сумма</text></svg></figure>
+      </article>
+    </div>
+  </section>
+
+  <section class="part">
+    <h3>Итог лекции</h3>
+    <p>Гистограмма раскладывает наблюдения по корзинам и хранит распределение при постоянном объёме. Корзина считает значения не больше своей границы <code>le</code>, поэтому корзины накопительные, а число значений между границами — разность соседних. Один <code>observe(x)</code> прибавляет 1 корзинам с границей не меньше <code>x</code>, 1 — к <code>_count</code> и <code>x</code> — к <code>_sum</code>; <code>time()</code> делает это сам. Среднее за окно — приросты <code>_sum</code> и <code>_count</code>. Перцентиль по корзинам — оценка: 0,2 вместо 0,18, а выше последней границы — 2,5 вместо 3,0. Корзины экземпляров складываются, и это даёт общий перцентиль, которого не получить из усреднения готовых. Цена — число рядов: на каждое сочетание меток (число границ + 3).</p>
+    <h3>Источники</h3>
+    <ul class="sources">
+      <li>Prometheus. Metric types: Histogram — prometheus.io/docs/concepts/metric_types</li>
+      <li>Prometheus. Histograms and summaries — prometheus.io/docs/practices/histograms</li>
+      <li>prometheus-client для Python: Histogram — prometheus.github.io/client_python</li>
+      <li>Все выводы получены запуском на Python 3.12.12 и prometheus-client 0.26.0, macOS, 10.11.2026; длительности отчётов и экземпляров придуманы для примера</li>
+    </ul>
+  </section>
+
+  <div class="pager">
+    <a href="2-7-gauge.html">← 2.7 Gauge</a>
+    <a href="index.html">К содержанию справочника</a>
+    <span class="pager__soon">2.9 Выбор корзин · готовится →</span>
+  </div>
+  <div class="colophon">
+    <span>Лекция 2.8 · Histogram · Метрики и наблюдаемость</span>
+    <span class="author-line">Автор: Макаров Максим Николаевич</span>
+  </div>
+    </main>
+  </div>
+</div>
+<script src="reader.js"></script>
+</body>
+</html>

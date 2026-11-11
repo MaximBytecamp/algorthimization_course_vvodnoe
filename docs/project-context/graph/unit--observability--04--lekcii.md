@@ -32,6 +32,7 @@ tags:
 - [observability/lekcii/2-5-rost-i-sbros.html](../../../observability/lekcii/2-5-rost-i-sbros.html)
 - [observability/lekcii/2-6-counter-v-kode.html](../../../observability/lekcii/2-6-counter-v-kode.html)
 - [observability/lekcii/2-7-gauge.html](../../../observability/lekcii/2-7-gauge.html)
+- [observability/lekcii/2-8-histogram.html](../../../observability/lekcii/2-8-histogram.html)
 - [observability/lekcii/counter-model.js](../../../observability/lekcii/counter-model.js)
 - [observability/lekcii/reader.js](../../../observability/lekcii/reader.js)
 
