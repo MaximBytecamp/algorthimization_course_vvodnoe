@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>2.2 Counter: создать и прибавить · Метрики и наблюдаемость</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="book">
+  <div class="book__body">
+    <div class="spine"><span>Часть 2 · Метрики в коде</span></div>
+    <main class="leaf">
+  <div class="running">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Метрики и наблюдаемость</a> · часть 2 · метрики в коде</p>
+    <p class="running__folio">Лекция 2.12</p>
+  </div>
+
+  <header class="chapter-head">
+    <span class="chapter-num">2.12</span>
+    <h1>Метрики веб-сервиса на FastAPI</h1>
+    <p class="lead">Последняя лекция части 2 собирает всё вместе на настоящем сервисе. Стенд — каталог на FastAPI с четырьмя маршрутами. В лекции — промежуточный обработчик с RED-метриками, шаблон маршрута вместо адреса, запросы с исключением, особенности адреса <code>/metrics</code>, таблица RED по маршрутам и запуск с несколькими worker-процессами, при котором метрики теряются без режима нескольких процессов.</p>
+  </header>
+  <dl class="passport">
+    <div><dt>Тема</dt><dd>Метрики веб-сервиса</dd></div>
+    <div><dt>Стенд</dt><dd><code>lab-fastapi</code>: FastAPI 0.115.6, prometheus-client 0.26.0</dd></div>
+    <div><dt>Опирается на</dt><dd>1.5: RED; 2.6–2.11: процессы, gauge, гистограмма, имена</dd></div>
+    <div><dt>Результат</dt><dd>Добавить метрики в веб-сервис и проверить их на нагрузке</dd></div>
+  </dl>
+
+  <div class="reader-start">
+    <div>
+      <b>Режим чтения</b>
+      <p>Лекция откроется по одному разделу: на экране одна мысль, кнопка «Дальше» ведёт к следующей. Стрелки ← → на клавиатуре тоже листают, Esc возвращает всю лекцию.</p>
+    </div>
+    <div class="reader-start__btns">
+      <button type="button" data-reader-start="continue" hidden></button>
+      <button type="button" class="primary" data-reader-start="begin">Читать по шагам</button>
+    </div>
+  </div>
+
+    <nav class="contents">
+    <b>В этой лекции</b>
+    <ol>
+      <li><a href="#s1"><span class="csec">§1</span>Что измерять у веб-сервиса</a></li>
+      <li><a href="#s2"><span class="csec">§2</span>Метрики и промежуточный обработчик</a></li>
+      <li><a href="#s3"><span class="csec">§3</span>Шаблон маршрута вместо адреса</a></li>
+      <li><a href="#s4"><span class="csec">§4</span>Исключения и код 500</a></li>
+      <li><a href="#s5"><span class="csec">§5</span>Адрес /metrics</a></li>
+      <li><a href="#s6"><span class="csec">§6</span>RED по маршрутам</a></li>
+      <li><a href="#s7"><span class="csec">§7</span>Несколько worker-процессов</a></li>
+      <li><a href="#s8"><span class="csec">§8</span>Частые ошибки</a></li>
+      <li><a href="#s9"><span class="csec">§9</span>Практика</a></li>
+      <li><a href="#s10"><span class="csec">§10</span>Проверьте себя</a></li>
+      <li><a href="#s11"><span class="csec">§11</span>Шпаргалка</a></li>
+      <li><a href="#s12"><span class="csec">§12</span>Глоссарий</a></li>
+    </ol>
+  </nav>
+
+    <section class="part" id="s1">
+    <h2><span class="sec">§1</span>Что измерять у веб-сервиса</h2>
+    <p class="about">Какие метрики нужны каждому маршруту и где в коде их снимать.</p>
+    <p>В лекции 1.5 для всего, что принимает запросы, мы выбрали набор RED: частота, ошибки, длительность. Часть 2 дала инструменты: счётчик, gauge, гистограмму, правила имён. Соберём из них метрики настоящего сервиса на FastAPI. Стенд <code>lab-fastapi</code> — каталог с четырьмя маршрутами:</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Маршрут</th><th>Что делает</th><th>Особенность</th></tr></thead>
+        <tbody>
+          <tr><td><code>GET /products</code></td><td>список товаров</td><td>20–80 мс</td></tr>
+          <tr><td><code>GET /products/{product_id}</code></td><td>один товар</td><td>404 для номера больше 100</td></tr>
+          <tr><td><code>POST /orders</code></td><td>заказ</td><td>в 20% случаев исключение → 500</td></tr>
+          <tr><td><code>GET /report</code></td><td>отчёт</td><td>0,3–1,5 с</td></tr>
+        </tbody>
+      </table></div>
+    <p>Метрики не пишут в каждом обработчике: их снимают в одном месте, через которое проходит любой запрос. В FastAPI это <span class="term">промежуточный обработчик</span> (middleware) — функция, которая получает запрос до обработчика и ответ после него:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 160" role="img" aria-label="Запрос проходит промежуточный обработчик: засечь время, вызвать обработчик маршрута, по ответу записать счётчик, гистограмму и gauge"><rect class="sc-box" x="10" y="56" width="100" height="44" rx="8"/><text class="t tc" x="60" y="83">запрос</text><path class="sc-arrow" d="M114 78 L146 78"/><path class="sc-arrow" d="M138 82 L146 78 L138 74"/><rect class="sc-acc" x="150" y="14" width="330" height="132" rx="10"/><text class="tb tc" x="315" y="36">middleware measure</text><rect class="sc-box" x="166" y="50" width="96" height="36" rx="6"/><text class="tm tc" x="214" y="73">засечь</text><rect class="sc-amb" x="268" y="50" width="96" height="36" rx="6"/><text class="tm tc" x="316" y="66">call_next</text><text class="t tc" x="316" y="80">обработчик</text><rect class="sc-box" x="370" y="50" width="96" height="36" rx="6"/><text class="tm tc" x="418" y="73">записать</text><text class="tm" x="166" y="110">REQUESTS · DURATION · IN_PROGRESS</text><text class="t" x="166" y="130">по шаблону маршрута и коду</text><path class="sc-arrow" d="M484 78 L516 78"/><path class="sc-arrow" d="M508 82 L516 78 L508 74"/><rect class="sc-box" x="520" y="56" width="110" height="44" rx="8"/><text class="t tc" x="575" y="83">ответ</text></svg>
+      <figcaption>Каждый запрос проходит через промежуточный обработчик.</figcaption>
+    </figure>
+    <p>Слева запрос входит в <code>measure</code>. Тот засекает время, передаёт запрос обработчику маршрута через <code>call_next</code>, получает ответ и записывает три метрики. Справа ответ уходит клиенту. Обработчики маршрутов о метриках ничего не содержат.</p>
+    <div class="key"><b>Вывод</b><p>RED-метрики веб-сервиса снимают в одном промежуточном обработчике: так их получает каждый маршрут без правок в обработчиках.</p></div>
+    <p class="next">Посмотрим на код метрик и промежуточного обработчика.</p>
+  </section>
+
+  <section class="part" id="s2">
+    <h2><span class="sec">§2</span>Метрики и промежуточный обработчик</h2>
+    <p class="about">Три метрики, адрес /metrics и функция measure.</p>
+    <figure class="code">
+      <figcaption><span>app.py</span><span>метрики и measure</span></figcaption>
+<pre>REQUESTS = <span class="f">Counter</span>(<span class="s">&quot;http_requests&quot;</span>, <span class="s">&quot;HTTP-запросы&quot;</span>, [<span class="s">&quot;method&quot;</span>, <span class="s">&quot;route&quot;</span>, <span class="s">&quot;status&quot;</span>])
+DURATION = <span class="f">Histogram</span>(<span class="s">&quot;http_request_duration_seconds&quot;</span>, <span class="s">&quot;Длительность обработки запроса&quot;</span>,
+                     [<span class="s">&quot;method&quot;</span>, <span class="s">&quot;route&quot;</span>], buckets=(<span class="n">0.025</span>, <span class="n">0.05</span>, <span class="n">0.1</span>, <span class="n">0.25</span>, <span class="n">0.5</span>, <span class="n">1</span>, <span class="n">2.5</span>, <span class="n">5</span>, <span class="n">10</span>))
+IN_PROGRESS = <span class="f">Gauge</span>(<span class="s">&quot;http_requests_in_progress&quot;</span>, <span class="s">&quot;Запросы в работе&quot;</span>, multiprocess_mode=<span class="s">&quot;livesum&quot;</span>)
+
+app = <span class="f">FastAPI</span>(title=<span class="s">&quot;Catalog · Макаров М. Н.&quot;</span>)
+<span class="k">if</span> <span class="s">&quot;PROMETHEUS_MULTIPROC_DIR&quot;</span> <span class="k">in</span> os.environ:          <span class="c"># несколько worker-процессов</span>
+    registry = <span class="f">CollectorRegistry</span>()
+    multiprocess.<span class="f">MultiProcessCollector</span>(registry)      <span class="c"># сумма файлов всех процессов</span>
+    app.<span class="f">mount</span>(<span class="s">&quot;/metrics&quot;</span>, <span class="f">make_asgi_app</span>(registry=registry))
+<span class="k">else</span>:
+    app.<span class="f">mount</span>(<span class="s">&quot;/metrics&quot;</span>, <span class="f">make_asgi_app</span>())
+
+
+@app.<span class="f">middleware</span>(<span class="s">&quot;http&quot;</span>)
+<span class="k">async</span> <span class="k">def</span> <span class="f">measure</span>(request: Request, call_next):
+    <span class="k">if</span> request.url.path.<span class="f">startswith</span>(<span class="s">&quot;/metrics&quot;</span>):          <span class="c"># опросы Prometheus не считаем</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="f">call_next</span>(request)
+    started = time.<span class="f">perf_counter</span>()
+    status = <span class="n">500</span>                                          <span class="c"># если обработчик упадёт, так и останется</span>
+    <span class="k">with</span> IN_PROGRESS.<span class="f">track_inprogress</span>():
+        <span class="k">try</span>:
+            response = <span class="k">await</span> <span class="f">call_next</span>(request)
+            status = response.status_code
+            <span class="k">return</span> response
+        <span class="k">finally</span>:
+            route = request.scope.<span class="f">get</span>(<span class="s">&quot;route&quot;</span>)
+            template = route.path <span class="k">if</span> route <span class="k">else</span> <span class="s">&quot;unmatched&quot;</span>   <span class="c"># шаблон маршрута, а не адрес</span>
+            REQUESTS.<span class="f">labels</span>(request.method, template, <span class="f">str</span>(status)).<span class="f">inc</span>()
+            DURATION.<span class="f">labels</span>(request.method, template).<span class="f">observe</span>(time.<span class="f">perf_counter</span>() - started)</pre>
+    </figure>
+    <div class="walk">
+      <div><code>REQUESTS</code>, <code>DURATION</code>, <code>IN_PROGRESS</code><span>Счётчик запросов (R и E), гистограмма длительности (D) и gauge запросов в работе. Границы гистограммы — по правилам лекции 2.9: гуще до секунды, последняя 10 с.</span></div>
+      <div><code>app.mount("/metrics", make_asgi_app())</code><span>Подключает адрес <code>/metrics</code>: готовое приложение библиотеки отдаёт реестр. Ветку с <code>PROMETHEUS_MULTIPROC_DIR</code> разберём в §7.</span></div>
+      <div><code>if request.url.path.startswith("/metrics")</code><span>Опросы самого <code>/metrics</code> не считаем, иначе каждый опрос Prometheus станет «запросом пользователя».</span></div>
+      <div><code>status = 500</code> … <code>finally</code><span>Если обработчик упадёт, строка <code>status = response.status_code</code> не выполнится, и в <code>finally</code> запишется 500 (§4).</span></div>
+      <div><code>request.scope.get("route")</code><span>Маршрут, который FastAPI выбрал для запроса. Его <code>.path</code> — шаблон <code>/products/{product_id}</code> (§3).</span></div>
+      <div><code>track_inprogress()</code><span>+1 при входе, −1 при выходе любым путём, как в лекции 2.7, §3.</span></div>
+    </div>
+    <p><b>Прогон на живых данных.</b> Запустим сервис и отправим пять запросов — по одному на каждый случай:</p>
+    <figure class="code">
+      <figcaption><span>Терминал</span><span>пять запросов и счётчик</span></figcaption>
+<pre>for p in /products /products/7 /products/555 /nowhere; do curl -s -o /dev/null -w &quot;$p %{http_code}\n&quot; localhost:8040$p; done
+curl -s -o /dev/null -w &quot;POST /orders %{http_code}\n&quot; -X POST localhost:8040/orders
+curl -sL localhost:8040/metrics | grep -E &quot;^http_requests_(total|in_progress)&quot;</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>коды ответов и строки счётчика</span></figcaption><pre>/products 200
+/products/7 200
+/products/555 404
+/nowhere 404
+POST /orders 200
+http_requests_total{method=&quot;GET&quot;,route=&quot;/products&quot;,status=&quot;200&quot;} 1.0
+http_requests_total{method=&quot;GET&quot;,route=&quot;/products/{product_id}&quot;,status=&quot;200&quot;} 1.0
+http_requests_total{method=&quot;GET&quot;,route=&quot;/products/{product_id}&quot;,status=&quot;404&quot;} 1.0
+http_requests_total{method=&quot;GET&quot;,route=&quot;unmatched&quot;,status=&quot;404&quot;} 1.0
+http_requests_total{method=&quot;POST&quot;,route=&quot;/orders&quot;,status=&quot;200&quot;} 1.0
+http_requests_in_progress 0.0</pre></figure>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Запрос</th><th>Что записала measure</th></tr></thead>
+        <tbody>
+          <tr><td><code>/products/7</code> и <code>/products/555</code></td><td>один шаблон <code>/products/{product_id}</code>, два кода: 200 и 404</td></tr>
+          <tr><td><code>/nowhere</code></td><td>маршрута нет — <code>route="unmatched"</code>, 404</td></tr>
+          <tr><td><code>POST /orders</code></td><td>метод <code>POST</code> отдельно от <code>GET</code></td></tr>
+          <tr><td>после всех запросов</td><td><code>http_requests_in_progress 0.0</code> — ничего не зависло</td></tr>
+        </tbody>
+      </table></div>
+    <div class="key"><b>Вывод</b><p>Пять запросов дали пять рядов: по шаблону маршрута, методу и коду. Несуществующие адреса собраны в один ряд <code>unmatched</code>.</p></div>
+    <p class="next">Зачем нужен шаблон, видно на нагрузке.</p>
+  </section>
+
+  <section class="part" id="s3">
+    <h2><span class="sec">§3</span>Шаблон маршрута вместо адреса</h2>
+    <p class="about">Сколько рядов дала бы метка с адресом на тех же запросах.</p>
+    <p>В лекции 2.11, §7 шаблон адреса вводили вручную функцией <code>template</code>. В FastAPI шаблон уже есть: это <code>route.path</code> выбранного маршрута. Проверим разницу. Запустим копию сервиса, где в метку пишется адрес целиком — <code>request.url.path</code>. Обоим дадим одну и ту же нагрузку программой <code>load.py</code>: 400 запросов, по 10 одновременно, номера товаров от 1 до 150.</p>
+    <figure class="code">
+      <figcaption><span>naive.py</span><span>единственное отличие от app.py</span></figcaption>
+<pre>            template = request.url.path                      # адрес целиком</pre>
+    </figure>
+    <p>Посчитаем строки двух метрик в ответах обоих сервисов, как аудит в лекции 2.11, §6:</p>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>порт 8040 — шаблон, 8041 — адрес</span></figcaption><pre>8040 http_request_duration_seconds 65
+8040 http_requests 14
+8040 http_requests_in_progress 0.0 1
+8041 http_request_duration_seconds 1287
+8041 http_requests 200
+8041 http_requests_in_progress 0.0 1</pre></figure>
+    <figure class="scene">
+      <svg viewBox="0 0 640 120" role="img" aria-label="Строк гистограммы: с шаблоном 65, с адресом 1287"><text class="t" x="10" y="40">шаблон маршрута</text><rect class="sc-acc" x="190" y="26" width="21" height="20"/><text class="tm" x="218" y="41">65</text><text class="t" x="10" y="86">адрес целиком</text><rect class="sc-wrn" x="190" y="72" width="420" height="20"/><text class="tm tw" x="560" y="110">1287</text></svg>
+      <figcaption>Строки гистограммы длительности на одной и той же нагрузке.</figcaption>
+    </figure>
+    <p>С шаблоном у гистограммы 65 строк: 5 значений маршрута по 13 строк (9 границ, <code>+Inf</code>, <code>_sum</code>, <code>_count</code>, <code>_created</code>). С адресом — 1287: каждый номер товара из нагрузки стал отдельным рядом. Чем дольше работает сервис, тем больше разных номеров он увидит. С шаблоном число рядов не растёт.</p>
+    <div class="key"><b>Вывод</b><p>В FastAPI метку маршрута берут из <code>request.scope["route"].path</code> — это готовый шаблон. Адрес запроса в метку не пишут.</p></div>
+    <p class="next">Следующая ловушка — исключения в обработчике.</p>
+  </section>
+
+  <section class="part" id="s4">
+    <h2><span class="sec">§4</span>Исключения и код 500</h2>
+    <p class="about">Как не потерять запросы, которые упали с исключением.</p>
+    <p>Обработчик <code>/orders</code> в 20% случаев выбрасывает <code>RuntimeError</code>. До строки <code>status = response.status_code</code> дело не доходит: ответа нет, есть исключение. Если записывать метрики после <code>call_next</code> обычной строкой, упавшие запросы пропадут из счёта — как пропадали <code>dec()</code> в лекции 2.7, §3. В <code>measure</code> запись стоит в <code>finally</code>, а <code>status</code> заранее равен 500. Сравним, что увидел клиент и что записала метрика после нагрузки:</p>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>load.py: коды ответов, которые получил клиент</span></figcaption><pre>{200: 343, 404: 46, 500: 11}</pre></figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>строки счётчика после нагрузки</span></figcaption><pre>http_requests_total{method=&quot;GET&quot;,route=&quot;/products&quot;,status=&quot;200&quot;} 168.0
+http_requests_total{method=&quot;GET&quot;,route=&quot;/products/{product_id}&quot;,status=&quot;200&quot;} 103.0
+http_requests_total{method=&quot;GET&quot;,route=&quot;/products/{product_id}&quot;,status=&quot;404&quot;} 47.0
+http_requests_total{method=&quot;GET&quot;,route=&quot;unmatched&quot;,status=&quot;404&quot;} 1.0
+http_requests_total{method=&quot;POST&quot;,route=&quot;/orders&quot;,status=&quot;200&quot;} 39.0
+http_requests_total{method=&quot;GET&quot;,route=&quot;/report&quot;,status=&quot;200&quot;} 36.0
+http_requests_total{method=&quot;POST&quot;,route=&quot;/orders&quot;,status=&quot;500&quot;} 11.0</pre></figure>
+    <p>Клиент получил 11 ответов 500, и в счётчике ровно 11 строк <code>route="/orders",status="500"</code>. Uvicorn напечатал в терминал traceback каждого исключения, а метрика сосчитала их как ошибки. Остальные числа счётчика больше, чем у клиента, на пять: это запросы прогона из §2.</p>
+    <div class="key"><b>Вывод</b><p>Запись метрик ставят в <code>finally</code> с кодом 500 по умолчанию. Тогда запрос с исключением считается ошибкой и не пропадает из счёта.</p></div>
+    <p class="next">Отдельно разберём сам адрес <code>/metrics</code>.</p>
+  </section>
+
+  <section class="part" id="s5">
+    <h2><span class="sec">§5</span>Адрес /metrics</h2>
+    <p class="about">Почему /metrics отвечает перенаправлением и почему его не считают.</p>
+    <p><code>make_asgi_app()</code> — готовое приложение библиотеки, которое отдаёт реестр. <code>app.mount</code> подключает его по адресу, и у такого подключения есть особенность:</p>
+    <figure class="code">
+      <figcaption><span>Терминал</span><span>без и с -L</span></figcaption>
+<pre>curl -si localhost:8040/metrics | head -1
+curl -s -o /dev/null -w &quot;%{http_code}\n&quot; -L localhost:8040/metrics</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>ответы</span></figcaption><pre>HTTP/1.1 307 Temporary Redirect
+200</pre></figure>
+    <p>Запрос <code>/metrics</code> получает <code>307 Temporary Redirect</code> на <code>/metrics/</code> — со слешем. С ключом <code>-L</code> <code>curl</code> идёт по перенаправлению и получает 200. Поэтому в примерах лекции <code>curl</code> вызывается с <code>-L</code>, а программы обращаются сразу к <code>/metrics/</code>. Опросы при этом не попадают в счётчик: <code>measure</code> пропускает всё, что начинается с <code>/metrics</code>, — в ответе нет ни одной строки с <code>route="/metrics</code>.</p>
+    <div class="key"><b>Вывод</b><p>Подключённый через <code>mount</code> адрес <code>/metrics</code> перенаправляет на <code>/metrics/</code>. Опросы метрик не считают запросами пользователей.</p></div>
+    <p class="next">Метрики собраны. Получим из них RED по маршрутам.</p>
+  </section>
+
+  <section class="part" id="s6">
+    <h2><span class="sec">§6</span>RED по маршрутам</h2>
+    <p class="about">Таблица частоты, ошибок и длительности из одного ответа /metrics.</p>
+    <p>Из ответа <code>/metrics</code> программа собирает по каждому маршруту три буквы RED. Частоту здесь заменяет число запросов: окно одно — вся нагрузка. Длительность — среднее по <code>_sum</code> и числу запросов:</p>
+    <figure class="code">
+      <figcaption><span>red.py</span><span>RED по маршрутам</span></figcaption>
+<pre><span class="k">from</span> urllib.request <span class="k">import</span> urlopen
+
+text = <span class="f">urlopen</span>(<span class="s">&quot;http://localhost:8040/metrics/&quot;</span>).<span class="f">read</span>().<span class="f">decode</span>()
+requests, errors, seconds = {}, {}, {}
+<span class="k">for</span> line <span class="k">in</span> text.<span class="f">splitlines</span>():
+    <span class="k">if</span> line.<span class="f">startswith</span>(<span class="s">&quot;http_requests_total{&quot;</span>):
+        labels, value = line.<span class="f">split</span>(<span class="s">&quot;} &quot;</span>)
+        route = labels.<span class="f">split</span>(<span class="s">&#x27;route=&quot;&#x27;</span>)[<span class="n">1</span>].<span class="f">split</span>(<span class="s">&#x27;&quot;&#x27;</span>)[<span class="n">0</span>]
+        status = labels.<span class="f">split</span>(<span class="s">&#x27;status=&quot;&#x27;</span>)[<span class="n">1</span>].<span class="f">split</span>(<span class="s">&#x27;&quot;&#x27;</span>)[<span class="n">0</span>]
+        requests[route] = requests.<span class="f">get</span>(route, <span class="n">0</span>) + <span class="f">float</span>(value)
+        <span class="k">if</span> status.<span class="f">startswith</span>(<span class="s">&quot;5&quot;</span>):
+            errors[route] = errors.<span class="f">get</span>(route, <span class="n">0</span>) + <span class="f">float</span>(value)
+    <span class="k">if</span> line.<span class="f">startswith</span>(<span class="s">&quot;http_request_duration_seconds_sum{&quot;</span>):
+        route = line.<span class="f">split</span>(<span class="s">&#x27;route=&quot;&#x27;</span>)[<span class="n">1</span>].<span class="f">split</span>(<span class="s">&#x27;&quot;&#x27;</span>)[<span class="n">0</span>]
+        seconds[route] = <span class="f">float</span>(line.<span class="f">split</span>()[-<span class="n">1</span>])
+
+<span class="f">print</span>(<span class="s">f&quot;{&#x27;маршрут&#x27;:&lt;24}{&#x27;запросов&#x27;:&gt;9}{&#x27;5xx&#x27;:&gt;6}{&#x27;доля 5xx&#x27;:&gt;10}{&#x27;среднее, с&#x27;:&gt;12}&quot;</span>)
+<span class="k">for</span> route <span class="k">in</span> <span class="f">sorted</span>(requests):
+    share = errors.<span class="f">get</span>(route, <span class="n">0</span>) / requests[route]
+    mean = seconds.<span class="f">get</span>(route, <span class="n">0</span>) / requests[route]
+    <span class="f">print</span>(<span class="s">f&quot;{route:&lt;24}{requests[route]:&gt;9.0f}{errors.get(route, 0):&gt;6.0f}{share:&gt;10.1%}{mean:&gt;12.3f}&quot;</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>таблица</span></figcaption><pre>маршрут                  запросов   5xx  доля 5xx  среднее, с
+/orders                        50    11     22.0%       0.031
+/products                     168     0      0.0%       0.052
+/products/{product_id}        150     0      0.0%       0.011
+/report                        36     0      0.0%       0.944
+unmatched                       1     0      0.0%       0.000</pre></figure>
+    <div class="walk">
+      <div><code>line.split("} ")</code><span>Делит строку на метки и значение.</span></div>
+      <div><code>status.startswith("5")</code><span>Ошибки сервиса — коды 5xx. 404 — ответ на плохой запрос клиента, сервис в нём не виноват.</span></div>
+      <div><code>seconds[route] / requests[route]</code><span>Средняя длительность: сумма из гистограммы, делённая на число запросов.</span></div>
+    </div>
+    <p>Таблица показывает картину сервиса за секунды: у <code>/orders</code> 22% ошибок, у <code>/report</code> средняя длительность почти секунда, остальные маршруты быстрые и без ошибок. Корзины <code>/report</code> добавляют распределение:</p>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>строки гистограммы /report</span></figcaption><pre>http_requests_total{method=&quot;GET&quot;,route=&quot;/report&quot;,status=&quot;200&quot;} 36.0
+http_request_duration_seconds_bucket{le=&quot;0.025&quot;,method=&quot;GET&quot;,route=&quot;/report&quot;} 0.0
+http_request_duration_seconds_bucket{le=&quot;0.05&quot;,method=&quot;GET&quot;,route=&quot;/report&quot;} 0.0
+http_request_duration_seconds_bucket{le=&quot;0.1&quot;,method=&quot;GET&quot;,route=&quot;/report&quot;} 0.0
+http_request_duration_seconds_bucket{le=&quot;0.25&quot;,method=&quot;GET&quot;,route=&quot;/report&quot;} 0.0
+http_request_duration_seconds_bucket{le=&quot;0.5&quot;,method=&quot;GET&quot;,route=&quot;/report&quot;} 1.0
+http_request_duration_seconds_bucket{le=&quot;1.0&quot;,method=&quot;GET&quot;,route=&quot;/report&quot;} 19.0
+http_request_duration_seconds_bucket{le=&quot;2.5&quot;,method=&quot;GET&quot;,route=&quot;/report&quot;} 36.0
+http_request_duration_seconds_bucket{le=&quot;5.0&quot;,method=&quot;GET&quot;,route=&quot;/report&quot;} 36.0
+http_request_duration_seconds_bucket{le=&quot;10.0&quot;,method=&quot;GET&quot;,route=&quot;/report&quot;} 36.0
+http_request_duration_seconds_bucket{le=&quot;+Inf&quot;,method=&quot;GET&quot;,route=&quot;/report&quot;} 36.0
+http_request_duration_seconds_count{method=&quot;GET&quot;,route=&quot;/report&quot;} 36.0
+http_request_duration_seconds_sum{method=&quot;GET&quot;,route=&quot;/report&quot;} 33.990197245264426</pre></figure>
+    <p>Из 36 отчётов один уложился в 0,5 с, 19 — в секунду, все 36 — в 2,5 с. Это совпадает с тем, как устроен обработчик: от 0,3 до 1,5 с. Последняя граница, 10 с, с запасом выше хвоста — правило 1 из лекции 2.9.</p>
+    <div class="key"><b>Вывод</b><p>Счётчик с метками маршрута и кода и гистограмма по маршруту дают RED для каждого маршрута из одного ответа <code>/metrics</code>.</p></div>
+    <p class="next">Всё это работало в одном процессе. В рабочей среде FastAPI обычно запускают в нескольких.</p>
+  </section>
+
+  <section class="part" id="s7">
+    <h2><span class="sec">§7</span>Несколько worker-процессов</h2>
+    <p class="about">Почему метрики теряются при --workers и как это исправить.</p>
+    <p>Uvicorn с ключом <code>--workers 2</code> запускает два процесса, и запросы делятся между ними. У каждого процесса свой реестр в памяти — та же ситуация, что в лекции 2.6, §3. Запустим сервис с двумя процессами, отправим 20 запросов к <code>/products</code> по 10 одновременно и 30 раз прочитаем <code>/metrics</code>:</p>
+    <figure class="code">
+      <figcaption><span>poll.py</span><span>20 запросов и 30 опросов</span></figcaption>
+<pre><span class="k">import</span> concurrent.futures
+<span class="k">from</span> collections <span class="k">import</span> Counter
+<span class="k">from</span> urllib.request <span class="k">import</span> urlopen
+
+<span class="k">def</span> <span class="f">products</span>():
+    <span class="f">urlopen</span>(<span class="s">&quot;http://localhost:8040/products&quot;</span>).<span class="f">read</span>()
+
+<span class="k">def</span> <span class="f">read</span>():
+    <span class="k">for</span> line <span class="k">in</span> <span class="f">urlopen</span>(<span class="s">&quot;http://localhost:8040/metrics/&quot;</span>).<span class="f">read</span>().<span class="f">decode</span>().<span class="f">splitlines</span>():
+        <span class="k">if</span> line.<span class="f">startswith</span>(<span class="s">&#x27;http_requests_total{method=&quot;GET&quot;,route=&quot;/products&quot;&#x27;</span>):
+            <span class="k">return</span> line.<span class="f">split</span>()[-<span class="n">1</span>]
+
+<span class="k">with</span> concurrent.futures.<span class="f">ThreadPoolExecutor</span>(<span class="n">10</span>) <span class="k">as</span> pool:
+    <span class="f">list</span>(pool.<span class="f">map</span>(<span class="k">lambda</span> _: <span class="f">products</span>(), <span class="f">range</span>(<span class="n">20</span>)))      <span class="c"># 20 запросов, по 10 одновременно</span>
+    answers = <span class="f">list</span>(pool.<span class="f">map</span>(<span class="k">lambda</span> _: <span class="f">read</span>(), <span class="f">range</span>(<span class="n">30</span>)))   <span class="c"># 30 опросов /metrics</span>
+
+<span class="f">print</span>(<span class="s">&quot;отправлено запросов: 20&quot;</span>)
+<span class="f">print</span>(<span class="s">&quot;что показали 30 опросов:&quot;</span>, <span class="f">dict</span>(<span class="f">Counter</span>(answers)))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>два процесса, обычный режим</span></figcaption><pre>отправлено запросов: 20
+что показали 30 опросов: {&#x27;10.0&#x27;: 30}</pre></figure>
+    <p>Все 30 опросов попали в один и тот же процесс и показали 10 — половину. Вторые 10 запросов обработал другой процесс, и их счётчик в ответ не попал ни разу. Какой процесс ответит на опрос, выбирает операционная система; на другой машине опросы могут попадать то в один, то в другой, и значение будет прыгать. В любом случае Prometheus получает данные только части сервиса.</p>
+    <p>Решение — режим нескольких процессов из лекции 2.6: процессы пишут значения в файлы общей папки, а <code>/metrics</code> складывает файлы. В стенде это ветка с <code>PROMETHEUS_MULTIPROC_DIR</code>: свой реестр с <code>MultiProcessCollector</code>. Для gauge выбран режим <code>livesum</code> — сумма живых процессов, как в лекции 2.7, §7.</p>
+    <figure class="code">
+      <figcaption><span>Терминал</span><span>запуск в режиме нескольких процессов</span></figcaption>
+<pre>rm -rf mp &amp;&amp; mkdir mp
+PROMETHEUS_MULTIPROC_DIR=mp python -m uvicorn app:app --port 8040 --workers 2</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>те же 20 запросов и 30 опросов</span></figcaption><pre>отправлено запросов: 20
+что показали 30 опросов: {&#x27;20.0&#x27;: 30}</pre></figure>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Обычный режим: опрос попадает в процесс 1 и видит 10 из 20. Режим нескольких процессов: опрос читает файлы обоих процессов и видит 20"><text class="tb" x="10" y="22">обычный режим</text><rect class="sc-acc" x="10" y="32" width="120" height="40" rx="8"/><text class="tm tc" x="70" y="57">процесс 1: 10</text><rect class="sc-box" x="140" y="32" width="120" height="40" rx="8"/><text class="tm tc" x="200" y="57">процесс 2: 10</text><path class="sc-arrow" d="M70 76 L70 96"/><rect class="sc-wrn" x="10" y="100" width="250" height="34" rx="8"/><text class="tm tc tw" x="135" y="122">/metrics: 10</text><text class="tb" x="330" y="22">несколько процессов</text><rect class="sc-acc" x="330" y="32" width="120" height="40" rx="8"/><text class="tm tc" x="390" y="57">файл 1: 10</text><rect class="sc-acc" x="460" y="32" width="120" height="40" rx="8"/><text class="tm tc" x="520" y="57">файл 2: 10</text><path class="sc-arrow" d="M390 76 L440 96"/><path class="sc-arrow" d="M520 76 L470 96"/><rect class="sc-acc" x="330" y="100" width="250" height="34" rx="8"/><text class="tm tc" x="455" y="122">/metrics: 20</text></svg>
+      <figcaption>Слева опрос получает один процесс, справа — сумму файлов обоих.</figcaption>
+    </figure>
+    <p>Теперь все 30 опросов показали 20: какой бы процесс ни ответил, он складывает файлы обоих. В папке <code>mp</code> лежат файлы <code>counter_…</code>, <code>histogram_…</code>, <code>gauge_livesum_…</code> — по одному на процесс. Папку очищают перед каждым запуском, иначе к счёту добавятся значения прошлого запуска.</p>
+    <div class="key key--warn"><b>Вывод</b><p>С <code>--workers</code> больше одного у каждого процесса только свои запросы. Нужен режим нескольких процессов: общая папка, <code>MultiProcessCollector</code> и режим <code>livesum</code> у gauge.</p></div>
+  </section>
+
+  <section class="part" id="s8">
+    <h2><span class="sec">§8</span>Частые ошибки</h2>
+    <p class="about">Что делают неправильно и как исправить.</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Что делают</th><th>Что произойдёт</th><th>Как правильно</th></tr></thead>
+        <tbody>
+          <tr><td>пишут метрики в каждом обработчике</td><td>новый маршрут остаётся без метрик</td><td>один промежуточный обработчик для всех</td></tr>
+          <tr><td>кладут в метку <code>request.url.path</code></td><td>ряд на каждый номер: 1287 строк вместо 65</td><td><code>request.scope["route"].path</code></td></tr>
+          <tr><td>записывают метрики после <code>call_next</code> без <code>finally</code></td><td>запросы с исключением пропадают из счёта</td><td><code>status = 500</code> по умолчанию и запись в <code>finally</code></td></tr>
+          <tr><td>считают опросы <code>/metrics</code></td><td>каждый опрос Prometheus выглядит как запрос пользователя</td><td>пропускать адреса <code>/metrics</code></td></tr>
+          <tr><td>запускают <code>--workers 2</code> в обычном режиме</td><td><code>/metrics</code> показывает один процесс: 10 из 20</td><td><code>PROMETHEUS_MULTIPROC_DIR</code> и <code>MultiProcessCollector</code></td></tr>
+          <tr><td>не очищают папку процессов перед запуском</td><td>к счёту прибавляются старые файлы</td><td><code>rm -rf mp &amp;&amp; mkdir mp</code> перед стартом</td></tr>
+        </tbody>
+      </table></div>
+  </section>
+
+  <section class="part" id="s9">
+    <h2><span class="sec">§9</span>Практика</h2>
+    <p class="about">Три задачи на стенде lab-fastapi. Решение спрятано под задачей.</p>
+    <h3>Задача 1. Новый маршрут</h3>
+    <p>Ситуация: в сервис добавили <code>DELETE /orders/{order_id}</code>.</p>
+    <div class="key"><b>Что нужно сделать</b><p>Сказать, что нужно изменить в метриках, чтобы у маршрута появились RED-метрики, и сколько строк гистограммы он добавит.</p></div>
+    <details><summary>Решение</summary>
+    <p>Ничего: <code>measure</code> обрабатывает любой маршрут. Метка <code>route</code> будет <code>/orders/{order_id}</code>, метод — <code>DELETE</code>. Гистограмма добавит 13 строк на это сочетание метода и маршрута.</p>
+    </details>
+
+    <h3>Задача 2. Доля ошибок</h3>
+    <p>Ситуация: в таблице §6 у <code>/orders</code> 50 запросов, 11 из них 500.</p>
+    <div class="key"><b>Что нужно сделать</b><p>Посчитать долю ошибок и объяснить, почему 404 у <code>/products/{product_id}</code> не считаются ошибками сервиса.</p></div>
+    <details><summary>Решение</summary>
+    <p>11 / 50 = 22%. Код 404 — ответ на запрос несуществующего товара: сервис отработал правильно, ошибся клиент. Ошибки сервиса — 5xx.</p>
+    </details>
+
+    <h3>Задача 3. Сколько процессов видно</h3>
+    <p>Ситуация: сервис запущен с <code>--workers 4</code> в обычном режиме, отправлено 400 запросов, нагрузка делится поровну.</p>
+    <div class="key"><b>Что нужно сделать</b><p>Предсказать, что покажет один опрос <code>/metrics</code>, и как это исправить.</p></div>
+    <details><summary>Решение</summary>
+    <p>Около 100 — запросы одного процесса, на который попал опрос. Исправление — режим нескольких процессов из §7: общая папка и <code>MultiProcessCollector</code>, тогда опрос покажет 400.</p>
+    </details>
+  </section>
+
+  <section class="part" id="s10">
+    <h2><span class="sec">§10</span>Проверьте себя</h2>
+    <p class="about">Вопросы по лекции. Ответ раскрывается щелчком.</p>
+    <details><summary>Где снимают метрики запросов в FastAPI?</summary><p>В промежуточном обработчике, через который проходит каждый запрос.</p></details>
+    <details><summary>Откуда взять шаблон маршрута?</summary><p>Из <code>request.scope["route"].path</code>: например <code>/products/{product_id}</code>.</p></details>
+    <details><summary>Как запрос с исключением попадает в счётчик?</summary><p><code>status</code> заранее равен 500, а запись стоит в <code>finally</code> и выполняется и при исключении.</p></details>
+    <details><summary>Почему <code>curl localhost:8040/metrics</code> возвращает 307?</summary><p>Приложение метрик подключено через <code>mount</code>, и адрес без слеша перенаправляется на <code>/metrics/</code>.</p></details>
+    <details><summary>Почему с <code>--workers 2</code> опрос показал 10 из 20?</summary><p>У каждого процесса свой реестр; опрос попал в один процесс и увидел только его запросы.</p></details>
+  </section>
+
+  <section class="part" id="s11">
+    <h2><span class="sec">§11</span>Шпаргалка</h2>
+    <p class="about">Опорные понятия лекции одним списком.</p>
+    <div class="cheat">
+      <div><b>Метрики сервиса</b><code>http_requests_total{method,route,status}</code><code>http_request_duration_seconds{method,route}</code><code>http_requests_in_progress</code></div>
+      <div><b>measure</b><code>status = 500</code><code>finally: записать</code><code>пропустить /metrics</code></div>
+      <div><b>Маршрут</b><code>request.scope["route"].path</code><code>нет маршрута → unmatched</code></div>
+      <div><b>/metrics</b><code>app.mount(…, make_asgi_app())</code><code>/metrics → 307 → /metrics/</code></div>
+      <div><b>--workers</b><code>PROMETHEUS_MULTIPROC_DIR</code><code>MultiProcessCollector</code><code>gauge: livesum</code></div>
+    </div>
+  </section>
+
+  <section class="part" id="s12">
+    <h2><span class="sec">§12</span>Глоссарий</h2>
+    <p class="about">Термины лекции, включая понятия прежних лекций: формулировка, пример и рисунок.</p>
+    <div class="glossary">
+      <article class="gl" id="g-red">
+        <div class="gl__text"><h3>RED</h3><p class="gl__def">Частота, ошибки и длительность запросов — для каждого маршрута.</p><p class="gl__ex"><b>Пример</b><code>/orders</code>: 50 запросов, 22% ошибок, 0,031 с.</p><p class="gl__where"><b>Где</b>лекция 1.5, §4; лекция 2.12, §6</p></div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="RED"><rect class="sc-acc" x="10" y="40" width="74" height="50" rx="6"/><text class="tb tc" x="47" y="70">R</text><rect class="sc-acc" x="93" y="40" width="74" height="50" rx="6"/><text class="tb tc" x="130" y="70">E</text><rect class="sc-acc" x="176" y="40" width="74" height="50" rx="6"/><text class="tb tc" x="213" y="70">D</text></svg></figure>
+      </article>
+      <article class="gl" id="g-middleware">
+        <div class="gl__text"><h3>Промежуточный обработчик<i>middleware</i></h3><p class="gl__def">Функция, через которую проходит каждый запрос до обработчика маршрута и ответ после него.</p><p class="gl__ex"><b>Пример</b><code>measure</code> засекает время и записывает три метрики.</p><p class="gl__where"><b>Где</b>лекция 2.12, §1–§2</p></div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Middleware"><rect class="sc-box" x="10" y="48" width="50" height="34" rx="6"/><path class="sc-arrow" d="M64 65 L84 65"/><rect class="sc-acc" x="88" y="30" width="90" height="70" rx="8"/><text class="tm tc" x="133" y="70">measure</text><path class="sc-arrow" d="M182 65 L202 65"/><rect class="sc-box" x="206" y="48" width="44" height="34" rx="6"/></svg></figure>
+      </article>
+      <article class="gl" id="g-route">
+        <div class="gl__text"><h3>Шаблон маршрута<i>route template</i></h3><p class="gl__def">Путь маршрута с параметрами в фигурных скобках. В FastAPI — <code>request.scope["route"].path</code>.</p><p class="gl__ex"><b>Пример</b><code>/products/7</code> и <code>/products/555</code> → <code>/products/{product_id}</code>.</p><p class="gl__where"><b>Где</b>лекция 2.12, §3</p></div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Шаблон маршрута"><text class="tm" x="10" y="44">/products/7</text><text class="tm" x="10" y="70">/products/555</text><path class="sc-arrow" d="M118 58 L146 58"/><rect class="sc-acc" x="150" y="40" width="100" height="36" rx="6"/><text class="tm tc" x="200" y="63">{product_id}</text></svg></figure>
+      </article>
+      <article class="gl" id="g-workers">
+        <div class="gl__text"><h3>Worker-процессы</h3><p class="gl__def">Несколько процессов одного сервиса, между которыми делятся запросы. У каждого свой реестр, поэтому метрики собирают режимом нескольких процессов.</p><p class="gl__ex"><b>Пример</b><code>--workers 2</code>: опрос показал 10 из 20, с общей папкой — 20.</p><p class="gl__where"><b>Где</b>лекция 2.6, §3; лекция 2.12, §7</p></div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Worker-процессы"><rect class="sc-acc" x="10" y="20" width="100" height="36" rx="6"/><text class="tm tc" x="60" y="43">worker 1</text><rect class="sc-acc" x="10" y="70" width="100" height="36" rx="6"/><text class="tm tc" x="60" y="93">worker 2</text><path class="sc-arrow" d="M114 62 L150 62"/><rect class="sc-amb" x="154" y="40" width="96" height="44" rx="8"/><text class="tm tc" x="202" y="67">mp/</text></svg></figure>
+      </article>
+    </div>
+  </section>
+
+  <section class="part">
+    <h3>Итог лекции</h3>
+    <p>Метрики веб-сервиса на FastAPI снимают в одном промежуточном обработчике: счётчик запросов по методу, шаблону маршрута и коду, гистограмму длительности и gauge запросов в работе. Шаблон берут из <code>request.scope["route"].path</code>: адрес целиком дал бы 1287 строк вместо 65. Запись ставят в <code>finally</code> с кодом 500 по умолчанию, и запросы с исключением не теряются: 11 ответов 500 у клиента — 11 в счётчике. Опросы <code>/metrics</code> не считают; сам адрес при <code>mount</code> перенаправляет на <code>/metrics/</code>. Из одного ответа получается RED по каждому маршруту. С несколькими worker-процессами опрос получает данные одного процесса — 10 из 20, — и нужен режим нескольких процессов из лекции 2.6. На этом часть 2 закончена: метрики созданы, дальше — Prometheus, который их собирает.</p>
+    <h3>Источники</h3>
+    <ul class="sources">
+      <li>FastAPI. Middleware — fastapi.tiangolo.com/tutorial/middleware</li>
+      <li>prometheus-client для Python: ASGI, Multiprocess Mode — prometheus.github.io/client_python</li>
+      <li>Стенд <code>observability/lab-fastapi</code>: FastAPI 0.115.6, Uvicorn 0.34.0, prometheus-client 0.26.0, Python 3.12.12, macOS; выводы сняты 13.11.2026</li>
+    </ul>
+  </section>
+
+  <div class="pager">
+    <a href="2-11-imena-kardinalnost.html">← 2.11 Имена и кардинальность</a>
+    <a href="index.html">К содержанию справочника</a>
+    <span class="pager__soon">3.1 Архитектура Prometheus · готовится →</span>
+  </div>
+  <div class="colophon">
+    <span>Лекция 2.12 · Метрики FastAPI · Метрики и наблюдаемость</span>
+    <span class="author-line">Автор: Макаров Максим Николаевич</span>
+  </div>
+    </main>
+  </div>
+</div>
+<script src="reader.js"></script>
+</body>
+</html>

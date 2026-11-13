@@ -18,13 +18,14 @@ tags:
 ## Модули и разделы
 
 - [[unit--observability--01--lab]]
-- [[unit--observability--02--lab-incident]]
-- [[unit--observability--03--lab-orders]]
-- [[unit--observability--04--lekcii]]
-- [[unit--observability--05--modul-02-prometheus]]
-- [[unit--observability--06--modul-03-metrika]]
-- [[unit--observability--07--modul-04-sbor]]
-- [[unit--observability--08--modul-2]]
+- [[unit--observability--02--lab-fastapi]]
+- [[unit--observability--03--lab-incident]]
+- [[unit--observability--04--lab-orders]]
+- [[unit--observability--05--lekcii]]
+- [[unit--observability--06--modul-02-prometheus]]
+- [[unit--observability--07--modul-03-metrika]]
+- [[unit--observability--08--modul-04-sbor]]
+- [[unit--observability--09--modul-2]]
 
 ## Точки входа области
 

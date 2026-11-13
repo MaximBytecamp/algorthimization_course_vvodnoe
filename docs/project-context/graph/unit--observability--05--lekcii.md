@@ -28,6 +28,7 @@ tags:
 - [observability/lekcii/2-1-otvet-metrics.html](../../../observability/lekcii/2-1-otvet-metrics.html)
 - [observability/lekcii/2-10-summary.html](../../../observability/lekcii/2-10-summary.html)
 - [observability/lekcii/2-11-imena-kardinalnost.html](../../../observability/lekcii/2-11-imena-kardinalnost.html)
+- [observability/lekcii/2-12-fastapi.html](../../../observability/lekcii/2-12-fastapi.html)
 - [observability/lekcii/2-2-counter.html](../../../observability/lekcii/2-2-counter.html)
 - [observability/lekcii/2-3-metki.html](../../../observability/lekcii/2-3-metki.html)
 - [observability/lekcii/2-4-http.html](../../../observability/lekcii/2-4-http.html)
@@ -36,6 +37,5 @@ tags:
 - [observability/lekcii/2-7-gauge.html](../../../observability/lekcii/2-7-gauge.html)
 - [observability/lekcii/2-8-histogram.html](../../../observability/lekcii/2-8-histogram.html)
 - [observability/lekcii/2-9-vybor-korzin.html](../../../observability/lekcii/2-9-vybor-korzin.html)
-- [observability/lekcii/counter-model.js](../../../observability/lekcii/counter-model.js)
 
 _Узел создан автоматически. Факты о состоянии работы храните в тематической заметке или `CURRENT.md`._
