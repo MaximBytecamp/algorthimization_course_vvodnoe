@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>2.2 Counter: создать и прибавить · Метрики и наблюдаемость</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="book">
+  <div class="book__body">
+    <div class="spine"><span>Часть 2 · Метрики в коде</span></div>
+    <main class="leaf">
+  <div class="running">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Метрики и наблюдаемость</a> · часть 2 · метрики в коде</p>
+    <p class="running__folio">Лекция 2.11</p>
+  </div>
+
+  <header class="chapter-head">
+    <span class="chapter-num">2.11</span>
+    <h1>Имена, единицы, кардинальность</h1>
+    <p class="lead">Метрика полезна, только если по имени понятно, что она измеряет, и если её ряды не съедают сервис. В лекции — правила имён и единиц, что библиотека делает с неправильными именами, ошибка смешанных единиц, замер цены рядов в настоящем процессе, аудит кардинальности по ответу <code>/metrics</code> и три способа сократить ряды.</p>
+  </header>
+  <dl class="passport">
+    <div><dt>Тема</dt><dd>Имена, единицы, кардинальность</dd></div>
+    <div><dt>Библиотека</dt><dd><code>prometheus-client</code> 0.26.0</dd></div>
+    <div><dt>Опирается на</dt><dd>1.3 §9: кардинальность; 2.3: метки; 2.8: ряды гистограммы</dd></div>
+    <div><dt>Результат</dt><dd>Называть метрики по правилам и находить лишние ряды</dd></div>
+  </dl>
+
+  <div class="reader-start">
+    <div>
+      <b>Режим чтения</b>
+      <p>Лекция откроется по одному разделу: на экране одна мысль, кнопка «Дальше» ведёт к следующей. Стрелки ← → на клавиатуре тоже листают, Esc возвращает всю лекцию.</p>
+    </div>
+    <div class="reader-start__btns">
+      <button type="button" data-reader-start="continue" hidden></button>
+      <button type="button" class="primary" data-reader-start="begin">Читать по шагам</button>
+    </div>
+  </div>
+
+    <nav class="contents">
+    <b>В этой лекции</b>
+    <ol>
+      <li><a href="#s1"><span class="csec">§1</span>Из чего состоит имя метрики</a></li>
+      <li><a href="#s2"><span class="csec">§2</span>Что библиотека делает с именем</a></li>
+      <li><a href="#s3"><span class="csec">§3</span>Молчаливые исправления имён</a></li>
+      <li><a href="#s4"><span class="csec">§4</span>Смешанные единицы</a></li>
+      <li><a href="#s5"><span class="csec">§5</span>Сколько стоит ряд</a></li>
+      <li><a href="#s6"><span class="csec">§6</span>Аудит кардинальности</a></li>
+      <li><a href="#s7"><span class="csec">§7</span>Три способа сократить ряды</a></li>
+      <li><a href="#s8"><span class="csec">§8</span>Частые ошибки</a></li>
+      <li><a href="#s9"><span class="csec">§9</span>Практика</a></li>
+      <li><a href="#s10"><span class="csec">§10</span>Проверьте себя</a></li>
+      <li><a href="#s11"><span class="csec">§11</span>Шпаргалка</a></li>
+      <li><a href="#s12"><span class="csec">§12</span>Глоссарий</a></li>
+    </ol>
+  </nav>
+
+    <section class="part" id="s1">
+    <h2><span class="sec">§1</span>Из чего состоит имя метрики</h2>
+    <p class="about">Принятый порядок частей имени и базовые единицы.</p>
+    <p>Адрес на конверте пишут в принятом порядке: страна, город, улица, дом. Почтальону не нужно гадать, где что. У имён метрик тоже есть принятый порядок, и по хорошему имени без описания понятно, что измеряется и в чём:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Имя http_request_duration_seconds из частей: http — откуда, request_duration — что измеряем, seconds — единица; у счётчика в конце _total"><rect class="sc-box" x="10" y="20" width="90" height="40" rx="6"/><text class="tm tc" x="55" y="45">http</text><rect class="sc-acc" x="106" y="20" width="250" height="40" rx="6"/><text class="tm tc" x="231" y="45">_request_duration</text><rect class="sc-amb" x="362" y="20" width="120" height="40" rx="6"/><text class="tm tc" x="422" y="45">_seconds</text><rect class="sc-soft" x="488" y="20" width="142" height="40" rx="6"/><text class="tm tc" x="559" y="45">(_total)</text><text class="t tc" x="55" y="84">откуда</text><text class="t tc" x="55" y="102">подсистема</text><text class="t tc" x="231" y="84">что измеряем</text><text class="t tc" x="422" y="84">единица</text><text class="t tc" x="422" y="102">базовая</text><text class="t tc" x="559" y="84">только у</text><text class="t tc" x="559" y="102">счётчика</text><text class="t tc" x="320" y="138">латиница в нижнем регистре, слова через «_»</text></svg>
+      <figcaption>Части имени метрики в принятом порядке.</figcaption>
+    </figure>
+    <p>Первая часть — откуда метрика: <code>http</code>, <code>orders</code>, <code>process</code>. Вторая — что измеряем. Третья — единица. У счётчика в конце <code>_total</code>. Единицы берут <span class="term">базовые</span>, без приставок: секунды вместо миллисекунд, байты вместо мегабайтов. Тогда любые две метрики одной величины сравнимы без пересчёта.</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Величина</th><th>Базовая единица</th><th>Пример имени</th></tr></thead>
+        <tbody>
+          <tr><td>время</td><td>секунды</td><td><code>http_request_duration_seconds</code></td></tr>
+          <tr><td>объём</td><td>байты</td><td><code>process_resident_memory_bytes</code></td></tr>
+          <tr><td>доля</td><td>от 0 до 1 вместо процентов</td><td><code>cache_hit_ratio</code></td></tr>
+          <tr><td>момент времени</td><td>секунды Unix</td><td><code>export_last_success_timestamp_seconds</code> (2.7)</td></tr>
+          <tr><td>количество событий</td><td>без единицы, <code>_total</code></td><td><code>orders_created_total</code></td></tr>
+        </tbody>
+      </table></div>
+    <div class="key"><b>Вывод</b><p>Имя — подсистема, величина, базовая единица, у счётчика <code>_total</code>. Единицы базовые: секунды, байты, доли.</p></div>
+    <p class="next">Часть этих правил библиотека выполняет сама. Проверим какие.</p>
+  </section>
+
+  <section class="part" id="s2">
+    <h2><span class="sec">§2</span>Что библиотека делает с именем</h2>
+    <p class="about">Окончание _total и параметр unit.</p>
+    <p>Создадим четыре метрики с разными именами и посмотрим, какие имена окажутся в ответе:</p>
+    <figure class="code">
+      <figcaption><span>names.py</span><span>четыре имени</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, Gauge, Histogram, generate_latest
+
+registry = <span class="f">CollectorRegistry</span>()
+<span class="f">Counter</span>(<span class="s">&quot;orders&quot;</span>, <span class="s">&quot;Принятые заказы&quot;</span>, registry=registry).<span class="f">inc</span>()
+<span class="f">Counter</span>(<span class="s">&quot;payments_total&quot;</span>, <span class="s">&quot;Платежи&quot;</span>, registry=registry).<span class="f">inc</span>()
+<span class="f">Histogram</span>(<span class="s">&quot;report_duration&quot;</span>, <span class="s">&quot;Время отчёта&quot;</span>, unit=<span class="s">&quot;seconds&quot;</span>, registry=registry).<span class="f">observe</span>(<span class="n">0.4</span>)
+<span class="f">Gauge</span>(<span class="s">&quot;cache&quot;</span>, <span class="s">&quot;Размер кэша&quot;</span>, unit=<span class="s">&quot;bytes&quot;</span>, registry=registry).<span class="f">set</span>(<span class="n">1048576</span>)
+
+<span class="k">for</span> line <span class="k">in</span> <span class="f">generate_latest</span>(registry).<span class="f">decode</span>().<span class="f">splitlines</span>():
+    <span class="k">if</span> <span class="k">not</span> line.<span class="f">startswith</span>(<span class="s">&quot;#&quot;</span>) <span class="k">and</span> <span class="s">&quot;_created&quot;</span> <span class="k">not</span> <span class="k">in</span> line <span class="k">and</span> <span class="s">&quot;_bucket&quot;</span> <span class="k">not</span> <span class="k">in</span> line:
+        <span class="f">print</span>(line)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>строки значений</span></figcaption><pre>orders_total 1.0
+payments_total 1.0
+report_duration_seconds_count 1.0
+report_duration_seconds_sum 0.4
+cache_bytes 1.048576e+06</pre></figure>
+    <div class="walk">
+      <div><code>Counter("orders", …)</code><span>Окончания нет — библиотека добавила <code>_total</code>.</span></div>
+      <div><code>Counter("payments_total", …)</code><span>Окончание уже есть — второе не добавлено.</span></div>
+      <div><code>unit="seconds"</code>, <code>unit="bytes"</code><span>Параметр <code>unit</code> дописывает единицу в конец имени.</span></div>
+    </div>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Создали</th><th>Получили в ответе</th></tr></thead>
+        <tbody>
+          <tr><td><code>Counter("orders")</code></td><td><code>orders_total</code></td></tr>
+          <tr><td><code>Counter("payments_total")</code></td><td><code>payments_total</code></td></tr>
+          <tr><td><code>Histogram("report_duration", unit="seconds")</code></td><td><code>report_duration_seconds_…</code></td></tr>
+          <tr><td><code>Gauge("cache", unit="bytes")</code></td><td><code>cache_bytes</code></td></tr>
+        </tbody>
+      </table></div>
+    <p>Библиотека заботится об окончании <code>_total</code> и единице, если её попросить. Остальное — подсистему и смысл — выбирает автор метрики.</p>
+    <div class="key"><b>Вывод</b><p>Библиотека дописывает <code>_total</code> к счётчику и единицу из <code>unit</code>. Имя, которое уже оканчивается на <code>_total</code>, не удваивается.</p></div>
+    <p class="next">А что будет с именем, которое нарушает правила?</p>
+  </section>
+
+  <section class="part" id="s3">
+    <h2><span class="sec">§3</span>Молчаливые исправления имён</h2>
+    <p class="about">Какие ошибки в именах библиотека отклоняет, а какие тихо исправляет.</p>
+    <p>Попробуем пять имён с ошибками:</p>
+    <figure class="code">
+      <figcaption><span>bad_names.py</span><span>пять ошибок в именах</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, Histogram
+
+tries = [
+    (<span class="s">&quot;дефис в имени&quot;</span>,        <span class="k">lambda</span> r: <span class="f">Counter</span>(<span class="s">&quot;http-requests&quot;</span>, <span class="s">&quot;x&quot;</span>, registry=r)),
+    (<span class="s">&quot;начинается с цифры&quot;</span>,   <span class="k">lambda</span> r: <span class="f">Counter</span>(<span class="s">&quot;5xx_errors&quot;</span>, <span class="s">&quot;x&quot;</span>, registry=r)),
+    (<span class="s">&quot;метка с __&quot;</span>,           <span class="k">lambda</span> r: <span class="f">Counter</span>(<span class="s">&quot;errors&quot;</span>, <span class="s">&quot;x&quot;</span>, [<span class="s">&quot;__kind&quot;</span>], registry=r)),
+    (<span class="s">&quot;метка le у гистограммы&quot;</span>, <span class="k">lambda</span> r: <span class="f">Histogram</span>(<span class="s">&quot;latency_seconds&quot;</span>, <span class="s">&quot;x&quot;</span>, [<span class="s">&quot;le&quot;</span>], registry=r)),
+    (<span class="s">&quot;unit не в конце имени&quot;</span>,  <span class="k">lambda</span> r: <span class="f">Histogram</span>(<span class="s">&quot;seconds_latency&quot;</span>, <span class="s">&quot;x&quot;</span>, unit=<span class="s">&quot;seconds&quot;</span>, registry=r)),
+]
+<span class="k">for</span> title, make <span class="k">in</span> tries:
+    <span class="k">try</span>:
+        <span class="f">make</span>(<span class="f">CollectorRegistry</span>())
+        <span class="f">print</span>(<span class="s">f&quot;{title:&lt;24} → создано&quot;</span>)
+    <span class="k">except</span> ValueError <span class="k">as</span> error:
+        <span class="f">print</span>(<span class="s">f&quot;{title:&lt;24} → ValueError: {error}&quot;</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>что приняла библиотека</span></figcaption><pre>дефис в имени            → создано
+начинается с цифры       → создано
+метка с __               → ValueError: Reserved label metric name: __kind
+метка le у гистограммы   → ValueError: Reserved label methe fric name: le
+unit не в конце имени    → создано</pre></figure>
+    <p>Отклонены только метки: <code>__kind</code> — имена с двумя подчёркиваниями заняты Prometheus, <code>le</code> у гистограммы — занята корзинами (с той же опечаткой в тексте ошибки, что в лекции 2.10). Три имени метрик созданы. Посмотрим, под какими именами они попадут в ответ:</p>
+    <figure class="code">
+      <figcaption><span>odd_names.py</span><span>ответ с необычными именами</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, Histogram, generate_latest, disable_created_metrics
+<span class="k">from</span> prometheus_client.parser <span class="k">import</span> text_string_to_metric_families
+
+<span class="f">disable_created_metrics</span>()
+registry = <span class="f">CollectorRegistry</span>()
+<span class="f">Counter</span>(<span class="s">&quot;http-requests&quot;</span>, <span class="s">&quot;Дефис в имени&quot;</span>, registry=registry).<span class="f">inc</span>()
+<span class="f">Counter</span>(<span class="s">&quot;5xx_errors&quot;</span>, <span class="s">&quot;Цифра в начале&quot;</span>, registry=registry).<span class="f">inc</span>()
+<span class="f">Histogram</span>(<span class="s">&quot;seconds_latency&quot;</span>, <span class="s">&quot;unit в начале&quot;</span>, unit=<span class="s">&quot;seconds&quot;</span>, registry=registry, buckets=(<span class="n">1</span>,)).<span class="f">observe</span>(<span class="n">0.4</span>)
+
+text = <span class="f">generate_latest</span>(registry).<span class="f">decode</span>()
+<span class="f">print</span>(<span class="s">&quot;\n&quot;</span>.<span class="f">join</span>(l <span class="k">for</span> l <span class="k">in</span> text.<span class="f">splitlines</span>() <span class="k">if</span> <span class="k">not</span> l.<span class="f">startswith</span>(<span class="s">&quot;# HELP&quot;</span>)))
+<span class="k">try</span>:
+    <span class="f">print</span>(<span class="s">&quot;разборщик:&quot;</span>, [f.name <span class="k">for</span> f <span class="k">in</span> <span class="f">text_string_to_metric_families</span>(text)])
+<span class="k">except</span> ValueError <span class="k">as</span> error:
+    <span class="f">print</span>(<span class="s">&quot;разборщик: ValueError:&quot;</span>, error)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>что получилось</span></figcaption><pre># TYPE http_requests_total counter
+http_requests_total 1.0
+# TYPE _xx_errors_total counter
+_xx_errors_total 1.0
+# TYPE seconds_latency_seconds histogram
+seconds_latency_seconds_bucket{le=&quot;1.0&quot;} 1.0
+seconds_latency_seconds_bucket{le=&quot;+Inf&quot;} 1.0
+seconds_latency_seconds_count 1.0
+seconds_latency_seconds_sum 0.4
+разборщик: [&#x27;http_requests&#x27;, &#x27;_xx_errors&#x27;, &#x27;seconds_latency_seconds&#x27;]</pre></figure>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Создали</th><th>В ответе</th><th>Что случилось</th></tr></thead>
+        <tbody>
+          <tr><td><code>http-requests</code></td><td><code>http_requests_total</code></td><td>дефис заменён на <code>_</code></td></tr>
+          <tr><td><code>5xx_errors</code></td><td><code>_xx_errors_total</code></td><td>цифра в начале заменена на <code>_</code> — «5» пропала</td></tr>
+          <tr><td><code>seconds_latency</code>, <code>unit="seconds"</code></td><td><code>seconds_latency_seconds</code></td><td>единица дописана ещё раз</td></tr>
+        </tbody>
+      </table></div>
+    <p>Библиотека 0.26.0 не остановила программу. Она переделала имена так, чтобы текст оставался правильным. Самое опасное — вторая строка: метрика <code>5xx_errors</code> в Prometheus называется <code>_xx_errors_total</code>. Кто будет искать её по имени из кода, не найдёт ничего и решит, что ошибок нет. Поэтому имя проверяют по ответу <code>/metrics</code>.</p>
+    <div class="key key--warn"><b>Вывод</b><p>Недопустимые символы в имени метрики библиотека молча заменяет на <code>_</code>. Имя начинают с буквы, пишут латиницей через <code>_</code> и сверяют с ответом <code>/metrics</code>.</p></div>
+    <p class="next">Ещё одна тихая ошибка — разные единицы под одним именем.</p>
+  </section>
+
+  <section class="part" id="s4">
+    <h2><span class="sec">§4</span>Смешанные единицы</h2>
+    <p class="about">Что будет, если два сервиса пишут одну метрику в разных единицах.</p>
+    <p>API пишет <code>report_duration_seconds</code> в секундах. Обработчик очереди по ошибке передаёт в <code>observe</code> миллисекунды под тем же именем. Отчёты у обоих строятся примерно одинаково. Посчитаем общее среднее, как в лекции 2.8, §4:</p>
+    <figure class="code">
+      <figcaption><span>units.py</span><span>секунды и миллисекунды под одним именем</span></figcaption>
+<pre>api = {<span class="s">&quot;sum&quot;</span>: <span class="n">42.0</span>, <span class="s">&quot;count&quot;</span>: <span class="n">1000</span>}          <span class="c"># API пишет секунды: report_duration_seconds</span>
+worker = {<span class="s">&quot;sum&quot;</span>: <span class="n">380000.0</span>, <span class="s">&quot;count&quot;</span>: <span class="n">1000</span>}   <span class="c"># воркер по ошибке пишет миллисекунды под тем же именем</span>
+
+<span class="f">print</span>(<span class="s">&quot;среднее API:   &quot;</span>, api[<span class="s">&quot;sum&quot;</span>] / api[<span class="s">&quot;count&quot;</span>])
+<span class="f">print</span>(<span class="s">&quot;среднее воркера:&quot;</span>, worker[<span class="s">&quot;sum&quot;</span>] / worker[<span class="s">&quot;count&quot;</span>])
+total = (api[<span class="s">&quot;sum&quot;</span>] + worker[<span class="s">&quot;sum&quot;</span>]) / (api[<span class="s">&quot;count&quot;</span>] + worker[<span class="s">&quot;count&quot;</span>])
+<span class="f">print</span>(<span class="s">f&quot;общее среднее: {total:.3f} «секунды»&quot;</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>три средних</span></figcaption><pre>среднее API:    0.042
+среднее воркера: 380.0
+общее среднее: 190.021 «секунды»</pre></figure>
+    <p>У API среднее 0,042, у обработчика — 380: это 0,38 секунды, записанные миллисекундами. Общее среднее — 190 «секунд», больше трёх минут. Ни одно число не похоже на правду, и ошибки в коде нет: каждая строка работает, отличаются только единицы. Суффикс <code>_seconds</code> в имени — обещание единицы, и его проверяют при каждом <code>observe</code>: туда передают разность <code>time.perf_counter()</code> — она уже в секундах.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 120" role="img" aria-label="API: 0,042 секунды; обработчик: 380 — миллисекунды под именем seconds; сумма даёт 190 «секунд»"><rect class="sc-acc" x="10" y="20" width="180" height="44" rx="8"/><text class="tm tc" x="100" y="47">API: 0.042</text><rect class="sc-wrn" x="210" y="20" width="200" height="44" rx="8"/><text class="tm tc" x="310" y="40">обработчик: 380</text><text class="t tc tw" x="310" y="56">миллисекунды</text><path class="sc-arrow" d="M414 42 L448 42"/><path class="sc-arrow" d="M440 46 L448 42 L440 38"/><rect class="sc-wrn" x="452" y="20" width="178" height="44" rx="8"/><text class="tm tc tw" x="541" y="47">190 «секунд»</text><text class="t" x="10" y="100">одно имя report_duration_seconds — две единицы</text></svg>
+      <figcaption>Два сервиса, одно имя, разные единицы.</figcaption>
+    </figure>
+    <div class="key key--warn"><b>Вывод</b><p>Единица в имени — обещание для всех, кто пишет метрику. Разные единицы под одним именем дают правдоподобные, но неверные числа.</p></div>
+    <p class="next">Теперь — сколько стоит лишний ряд в настоящем процессе.</p>
+  </section>
+
+  <section class="part" id="s5">
+    <h2><span class="sec">§5</span>Сколько стоит ряд</h2>
+    <p class="about">Замер памяти, размера ответа и времени сборки при 10, 1000 и 100 000 рядов.</p>
+    <p>В лекции 1.3, §9 мы считали ряды на бумаге: номер пользователя в метке превращает 60 рядов в 6 миллионов. Измерим, что это значит для самого процесса. Создадим счётчик с меткой <code>user_id</code> и заполним его для 10, 1000 и 100 000 пользователей. Модуль <code>tracemalloc</code> из стандартной библиотеки Python покажет, сколько памяти заняли ряды:</p>
+    <figure class="code">
+      <figcaption><span>cost.py</span><span>память, размер и время</span></figcaption>
+<pre><span class="k">import</span> time
+<span class="k">import</span> tracemalloc
+<span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, generate_latest, disable_created_metrics
+
+<span class="f">disable_created_metrics</span>()
+<span class="k">for</span> users <span class="k">in</span> (<span class="n">10</span>, <span class="n">1_000</span>, <span class="n">100_000</span>):
+    tracemalloc.<span class="f">start</span>()
+    registry = <span class="f">CollectorRegistry</span>()
+    requests = <span class="f">Counter</span>(<span class="s">&quot;http_requests&quot;</span>, <span class="s">&quot;Запросы&quot;</span>, [<span class="s">&quot;route&quot;</span>, <span class="s">&quot;user_id&quot;</span>], registry=registry)
+    <span class="k">for</span> n <span class="k">in</span> <span class="f">range</span>(users):
+        requests.<span class="f">labels</span>(route=<span class="s">&quot;/orders&quot;</span>, user_id=<span class="s">f&quot;u{n}&quot;</span>).<span class="f">inc</span>()
+    memory = tracemalloc.<span class="f">get_traced_memory</span>()[<span class="n">0</span>]
+    tracemalloc.<span class="f">stop</span>()
+    started = time.<span class="f">perf_counter</span>()
+    text = <span class="f">generate_latest</span>(registry)
+    took = time.<span class="f">perf_counter</span>() - started
+    <span class="f">print</span>(<span class="s">f&quot;рядов {users:&gt;7}: память {memory / 1024 / 1024:6.1f} МБ, ответ /metrics {len(text) / 1024:8.1f} КБ, собирается {took * 1000:7.1f} мс&quot;</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>три замера</span></figcaption><pre>рядов      10: память    0.0 МБ, ответ /metrics      0.6 КБ, собирается     0.1 мс
+рядов    1000: память    0.7 МБ, ответ /metrics     54.7 КБ, собирается     3.5 мс
+рядов  100000: память   67.4 МБ, ответ /metrics   5653.3 КБ, собирается   365.7 мс</pre></figure>
+    <div class="walk">
+      <div><code>tracemalloc.start()</code>, <code>get_traced_memory()</code><span>Включает учёт памяти и возвращает, сколько выделено с момента включения.</span></div>
+      <div><code>requests.labels(user_id=f"u{n}")</code><span>Каждый новый пользователь — новый ряд.</span></div>
+      <div><code>generate_latest(registry)</code><span>Сборка ответа <code>/metrics</code> — то, что происходит при каждом опросе.</span></div>
+    </div>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="100 000 рядов: 67,4 МБ памяти, ответ 5,5 МБ, сборка 366 мс на каждый опрос"><text class="t" x="10" y="34">память</text><rect class="sc-wrn" x="150" y="20" width="400" height="20"/><text class="tm" x="556" y="35">67,4 МБ</text><text class="t" x="10" y="74">ответ /metrics</text><rect class="sc-wrn" x="150" y="60" width="335" height="20"/><text class="tm" x="491" y="75">5,5 МБ</text><text class="t" x="10" y="114">сборка ответа</text><rect class="sc-wrn" x="150" y="100" width="366" height="20"/><text class="tm" x="522" y="115">366 мс</text><text class="t" x="150" y="144">при 10 рядах: 0,6 КБ и 0,1 мс</text></svg>
+      <figcaption>Цена 100 000 рядов одной метрики.</figcaption>
+    </figure>
+    <p>При 100 000 рядов процесс держит 67 МБ только под эту метрику, а ответ <code>/metrics</code> весит 5,5 МБ. Хуже всего время: сборка ответа занимает 366 мс. Это повторяется при каждом опросе, например раз в 15 секунд, в том же процессе, который обслуживает пользователей. А Prometheus потом хранит все 100 000 рядов. При 10 рядах те же величины незаметны: 0,6 КБ и 0,1 мс.</p>
+    <div class="key key--warn"><b>Вывод</b><p>Каждый ряд стоит памяти процесса, места в ответе и времени на каждом опросе. Метка с номером пользователя превращает метрику в нагрузку на сервис.</p></div>
+    <p class="next">Как найти такую метрику в чужом сервисе? Посчитать ряды по ответу <code>/metrics</code>.</p>
+  </section>
+
+  <section class="part" id="s6">
+    <h2><span class="sec">§6</span>Аудит кардинальности</h2>
+    <p class="about">Программа, которая по ответу /metrics находит метрики с лишними рядами.</p>
+    <p>Запустим небольшой сервис с четырьмя метриками. В нём три типичные ошибки. Адрес заказа записывается в метку целиком (<code>/orders/1734</code>), код ответа — каждый отдельно. У счётчика входов есть метка <code>user_id</code>:</p>
+    <figure class="code">
+      <figcaption><span>service.py</span><span>сервис с тремя ошибками</span></figcaption>
+<pre><span class="k">import</span> random
+<span class="k">import</span> time
+<span class="k">from</span> prometheus_client <span class="k">import</span> Counter, Gauge, Histogram, start_http_server, disable_created_metrics
+
+<span class="f">disable_created_metrics</span>()
+random.<span class="f">seed</span>(<span class="n">1</span>)
+REQUESTS = <span class="f">Counter</span>(<span class="s">&quot;http_requests&quot;</span>, <span class="s">&quot;Запросы&quot;</span>, [<span class="s">&quot;route&quot;</span>, <span class="s">&quot;status&quot;</span>])
+DURATION = <span class="f">Histogram</span>(<span class="s">&quot;http_request_duration_seconds&quot;</span>, <span class="s">&quot;Длительность&quot;</span>, [<span class="s">&quot;route&quot;</span>])
+QUEUE = <span class="f">Gauge</span>(<span class="s">&quot;orders_queue_length&quot;</span>, <span class="s">&quot;Очередь&quot;</span>)
+LOGINS = <span class="f">Counter</span>(<span class="s">&quot;user_logins&quot;</span>, <span class="s">&quot;Входы пользователей&quot;</span>, [<span class="s">&quot;user_id&quot;</span>])     <span class="c"># метка с номером пользователя</span>
+
+<span class="k">for</span> n <span class="k">in</span> <span class="f">range</span>(<span class="n">5000</span>):
+    order = random.<span class="f">randint</span>(<span class="n">1</span>, <span class="n">3000</span>)
+    route = random.<span class="f">choice</span>([<span class="s">&quot;/orders&quot;</span>, <span class="s">f&quot;/orders/{order}&quot;</span>, <span class="s">&quot;/report&quot;</span>])   <span class="c"># адрес без шаблона</span>
+    status = random.<span class="f">choice</span>([<span class="s">&quot;200&quot;</span>, <span class="s">&quot;200&quot;</span>, <span class="s">&quot;200&quot;</span>, <span class="s">&quot;201&quot;</span>, <span class="s">&quot;404&quot;</span>, <span class="s">&quot;500&quot;</span>, <span class="s">&quot;502&quot;</span>, <span class="s">&quot;503&quot;</span>])
+    REQUESTS.<span class="f">labels</span>(route=route, status=status).<span class="f">inc</span>()
+    DURATION.<span class="f">labels</span>(route=route).<span class="f">observe</span>(random.<span class="f">random</span>())
+    LOGINS.<span class="f">labels</span>(user_id=<span class="s">f&quot;u{random.randint(1, 2000)}&quot;</span>).<span class="f">inc</span>()
+QUEUE.<span class="f">set</span>(<span class="n">7</span>)
+
+<span class="f">start_http_server</span>(<span class="n">8002</span>)
+time.<span class="f">sleep</span>(<span class="n">3600</span>)</pre>
+    </figure>
+    <p>Аудиту не нужен код сервиса. Он читает ответ <code>/metrics</code>, отрезает от имён окончания <code>_bucket</code>, <code>_sum</code>, <code>_count</code>, <code>_total</code> и считает строки каждой метрики:</p>
+    <figure class="code">
+      <figcaption><span>audit.py</span><span>подсчёт рядов по ответу</span></figcaption>
+<pre><span class="k">from</span> collections <span class="k">import</span> Counter
+<span class="k">from</span> urllib.request <span class="k">import</span> urlopen
+
+text = <span class="f">urlopen</span>(<span class="s">&quot;http://localhost:8002/metrics&quot;</span>).<span class="f">read</span>().<span class="f">decode</span>()
+series = <span class="f">Counter</span>()
+<span class="k">for</span> line <span class="k">in</span> text.<span class="f">splitlines</span>():
+    <span class="k">if</span> line <span class="k">and</span> <span class="k">not</span> line.<span class="f">startswith</span>(<span class="s">&quot;#&quot;</span>):
+        name = line.<span class="f">split</span>(<span class="s">&quot;{&quot;</span>)[<span class="n">0</span>].<span class="f">split</span>(<span class="s">&quot; &quot;</span>)[<span class="n">0</span>]
+        <span class="k">for</span> suffix <span class="k">in</span> (<span class="s">&quot;_bucket&quot;</span>, <span class="s">&quot;_count&quot;</span>, <span class="s">&quot;_sum&quot;</span>, <span class="s">&quot;_total&quot;</span>):
+            <span class="k">if</span> name.<span class="f">endswith</span>(suffix):
+                name = name[: -<span class="f">len</span>(suffix)]
+        series[name] += <span class="n">1</span>
+
+<span class="f">print</span>(<span class="s">f&quot;всего рядов: {sum(series.values())}&quot;</span>)
+<span class="k">for</span> name, count <span class="k">in</span> series.<span class="f">most_common</span>(<span class="n">5</span>):
+    <span class="f">print</span>(<span class="s">f&quot;{count:&gt;7}  {name}&quot;</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>пять самых больших метрик</span></figcaption><pre>всего рядов: 25137
+  21692  http_request_duration_seconds
+   1842  user_logins
+   1592  http_requests
+      3  python_gc_objects_collected
+      3  python_gc_objects_uncollectable</pre></figure>
+    <div class="walk">
+      <div><code>line.split("{")[0].split(" ")[0]</code><span>Имя из строки значения — всё до фигурной скобки или пробела.</span></div>
+      <div><code>name[: -len(suffix)]</code><span>Корзины, сумма и количество гистограммы считаются вместе, под одним именем.</span></div>
+      <div><code>series.most_common(5)</code><span>Пять метрик с наибольшим числом рядов.</span></div>
+    </div>
+    <p>Всего 25 137 рядов. Больше всего — у гистограммы длительности: 21 692. Причина та же, что у <code>http_requests</code>, — адрес с номером заказа в метке, но гистограмма умножает каждый адрес на 17 рядов (лекция 2.8, §8). Номер пользователя дал ещё 1842 ряда. Служебные метрики Python — по 3 ряда, они в стороне. Аудит за секунду показывает, с какой метрики начинать.</p>
+    <div class="key"><b>Вывод</b><p>Ряды считают по ответу <code>/metrics</code>: так видно, какая метрика раздута, даже без доступа к коду. Гистограмма с лишней меткой раздувается первой.</p></div>
+    <p class="next">Осталось сократить ряды, не потеряв смысла метрик.</p>
+  </section>
+
+  <section class="part" id="s7">
+    <h2><span class="sec">§7</span>Три способа сократить ряды</h2>
+    <p class="about">Шаблон адреса, класс кода ответа и отказ от метки.</p>
+    <p>Повторим тот же поток запросов с тремя исправлениями. Адрес заменим шаблоном, как в стенде заказов из лекции 1.5: <code>/orders/1734</code> → <code>/orders/{id}</code>. Код ответа — классом: <code>502</code> → <code>5xx</code>. Метку <code>user_id</code> уберём совсем: номеру пользователя место в событиях (лекция 1.3, §9).</p>
+    <figure class="code">
+      <figcaption><span>fixed.py</span><span>тот же поток с исправлениями</span></figcaption>
+<pre><span class="k">import</span> random
+<span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Counter, Histogram, disable_created_metrics
+
+<span class="f">disable_created_metrics</span>()
+random.<span class="f">seed</span>(<span class="n">1</span>)
+registry = <span class="f">CollectorRegistry</span>()
+REQUESTS = <span class="f">Counter</span>(<span class="s">&quot;http_requests&quot;</span>, <span class="s">&quot;Запросы&quot;</span>, [<span class="s">&quot;route&quot;</span>, <span class="s">&quot;status&quot;</span>], registry=registry)
+DURATION = <span class="f">Histogram</span>(<span class="s">&quot;http_request_duration_seconds&quot;</span>, <span class="s">&quot;Длительность&quot;</span>, [<span class="s">&quot;route&quot;</span>], registry=registry)
+LOGINS = <span class="f">Counter</span>(<span class="s">&quot;user_logins&quot;</span>, <span class="s">&quot;Входы пользователей&quot;</span>, registry=registry)   <span class="c"># без user_id</span>
+
+<span class="k">def</span> <span class="f">template</span>(route):
+    <span class="k">return</span> <span class="s">&quot;/orders/{id}&quot;</span> <span class="k">if</span> route.<span class="f">startswith</span>(<span class="s">&quot;/orders/&quot;</span>) <span class="k">else</span> route     <span class="c"># адрес → шаблон</span>
+
+<span class="k">for</span> n <span class="k">in</span> <span class="f">range</span>(<span class="n">5000</span>):
+    order = random.<span class="f">randint</span>(<span class="n">1</span>, <span class="n">3000</span>)
+    route = <span class="f">template</span>(random.<span class="f">choice</span>([<span class="s">&quot;/orders&quot;</span>, <span class="s">f&quot;/orders/{order}&quot;</span>, <span class="s">&quot;/report&quot;</span>]))
+    status = random.<span class="f">choice</span>([<span class="s">&quot;200&quot;</span>, <span class="s">&quot;200&quot;</span>, <span class="s">&quot;200&quot;</span>, <span class="s">&quot;201&quot;</span>, <span class="s">&quot;404&quot;</span>, <span class="s">&quot;500&quot;</span>, <span class="s">&quot;502&quot;</span>, <span class="s">&quot;503&quot;</span>])
+    REQUESTS.<span class="f">labels</span>(route=route, status=status[<span class="n">0</span>] + <span class="s">&quot;xx&quot;</span>).<span class="f">inc</span>()          <span class="c"># 502 → 5xx</span>
+    DURATION.<span class="f">labels</span>(route=route).<span class="f">observe</span>(random.<span class="f">random</span>())
+    random.<span class="f">randint</span>(<span class="n">1</span>, <span class="n">2000</span>)                                               <span class="c"># тот же поток случайных чисел</span>
+    LOGINS.<span class="f">inc</span>()
+
+<span class="k">for</span> family <span class="k">in</span> registry.<span class="f">collect</span>():
+    <span class="f">print</span>(<span class="s">f&quot;{len(family.samples):&gt;4}  {family.name}&quot;</span>)
+<span class="f">print</span>(<span class="s">&quot;всего:&quot;</span>, <span class="f">sum</span>(<span class="f">len</span>(f.samples) <span class="k">for</span> f <span class="k">in</span> registry.<span class="f">collect</span>()))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>ряды после исправлений</span></figcaption><pre>   9  http_requests
+  51  http_request_duration_seconds
+   1  user_logins
+всего: 61</pre></figure>
+    <div class="walk">
+      <div><code>template(route)</code><span>Все адреса заказов превращаются в один шаблон.</span></div>
+      <div><code>status[0] + "xx"</code><span>Первая цифра кода и <code>xx</code>: 200 и 201 → <code>2xx</code>, 500, 502, 503 → <code>5xx</code>.</span></div>
+      <div><code>Counter("user_logins", …)</code><span>Без метки: один ряд — число входов всех пользователей.</span></div>
+      <div><code>random.randint(1, 2000)</code><span>Оставлено, чтобы поток случайных адресов и кодов совпал с §6.</span></div>
+    </div>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Метрика</th><th>Было</th><th>Стало</th><th>Что сделали</th></tr></thead>
+        <tbody>
+          <tr><td><code>http_request_duration_seconds</code></td><td>21 692</td><td>51</td><td>шаблон адреса: 3 адреса × 17 рядов</td></tr>
+          <tr><td><code>user_logins</code></td><td>1842</td><td>1</td><td>убрали <code>user_id</code></td></tr>
+          <tr><td><code>http_requests</code></td><td>1592</td><td>9</td><td>шаблон адреса и класс кода</td></tr>
+          <tr><td>всего</td><td>25 126</td><td>61</td><td>в 400 раз меньше</td></tr>
+        </tbody>
+      </table></div>
+    <p>Метрики отвечают на те же вопросы: сколько запросов к каждому виду адреса, сколько ошибок 5xx, как распределена длительность, сколько входов. Пропали только подробности, которые метрике не нужны: номер конкретного заказа и пользователя. Их место — в событиях лога, где они не создают рядов.</p>
+    <div class="key"><b>Вывод</b><p>Значения меток сводят к небольшому известному набору: шаблон вместо адреса, класс вместо кода, номера — в события. Смысл метрики остаётся, рядов становится в сотни раз меньше.</p></div>
+  </section>
+
+  <section class="part" id="s8">
+    <h2><span class="sec">§8</span>Частые ошибки</h2>
+    <p class="about">Что делают неправильно и как исправить.</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Что делают</th><th>Что произойдёт</th><th>Как правильно</th></tr></thead>
+        <tbody>
+          <tr><td>пишут время в миллисекундах, байты в мегабайтах</td><td>метрики не сравнить без пересчёта</td><td>базовые единицы: секунды, байты, доли</td></tr>
+          <tr><td>дают имя с дефисом или цифрой в начале</td><td>библиотека молча меняет имя, поиск по коду не находит метрику</td><td>латиница, <code>_</code>, первая — буква; сверять с <code>/metrics</code></td></tr>
+          <tr><td>передают в <code>_seconds</code> миллисекунды</td><td>средние и перцентили в 1000 раз больше</td><td>единица в <code>observe</code> совпадает с единицей в имени</td></tr>
+          <tr><td>кладут в метку адрес с номером</td><td>ряд на каждый номер, у гистограммы ×17</td><td>шаблон адреса</td></tr>
+          <tr><td>кладут в метку каждый код ответа</td><td>лишние ряды, если коды не нужны поштучно</td><td>класс кода, если хватает</td></tr>
+          <tr><td>кладут в метку номер пользователя</td><td>сотни тысяч рядов, сотни миллисекунд на каждый опрос</td><td>номера — в события</td></tr>
+        </tbody>
+      </table></div>
+  </section>
+
+  <section class="part" id="s9">
+    <h2><span class="sec">§9</span>Практика</h2>
+    <p class="about">Три задачи. Решение спрятано под задачей.</p>
+    <h3>Задача 1. Исправьте имена</h3>
+    <p>Ситуация: в коде есть метрики:</p>
+    <ul>
+      <li><code>Counter("ReportsBuilt", …)</code>;</li>
+      <li><code>Histogram("report_time_ms", …)</code>, в <code>observe</code> передают миллисекунды;</li>
+      <li><code>Gauge("cache_size_mb", …)</code>;</li>
+      <li><code>Gauge("hit_rate_percent", …)</code> со значениями 0–100.</li>
+    </ul>
+    <div class="key"><b>Что нужно сделать</b><p>Предложить имена и единицы по правилам §1.</p></div>
+    <details><summary>Решение</summary>
+    <p><code>reports_built_total</code> — нижний регистр и <code>_total</code>. <code>report_duration_seconds</code> — секунды, в <code>observe</code> передавать секунды. <code>cache_size_bytes</code> — байты. <code>cache_hit_ratio</code> — доля от 0 до 1.</p>
+    </details>
+
+    <h3>Задача 2. Посчитайте ряды</h3>
+    <p>Ситуация: гистограмма с границами по умолчанию, метки <code>route</code> (5 шаблонов) и <code>status</code>, где код ответа записан поштучно (8 разных кодов).</p>
+    <div class="key"><b>Что нужно сделать</b><p>Посчитать ряды, затем — если заменить код классом (3 класса).</p></div>
+    <details><summary>Решение</summary>
+    <p>На сочетание меток — 17 рядов. Было: 5 × 8 × 17 = 680. С классами: 5 × 3 × 17 = 255. Ещё лучше убрать <code>status</code> из гистограммы вовсе — 85 рядов, а ошибки считать счётчиком.</p>
+    </details>
+
+    <h3>Задача 3. Найдите имя</h3>
+    <p>Ситуация: в коде <code>Counter("2fa_failures", …)</code>, в Prometheus по имени <code>2fa_failures_total</code> ничего не находится.</p>
+    <div class="key"><b>Что нужно сделать</b><p>Объяснить, где метрика, и исправить имя.</p></div>
+    <details><summary>Решение</summary>
+    <p>Библиотека заменила цифру в начале на <code>_</code>: в ответе <code>_fa_failures_total</code>, как <code>5xx_errors</code> в §3. Имя исправляют на <code>auth_2fa_failures</code> — начинается с буквы.</p>
+    </details>
+  </section>
+
+  <section class="part" id="s10">
+    <h2><span class="sec">§10</span>Проверьте себя</h2>
+    <p class="about">Вопросы по лекции. Ответ раскрывается щелчком.</p>
+    <details><summary>В каком порядке идут части имени метрики?</summary><p>Подсистема, величина, единица; у счётчика в конце <code>_total</code>.</p></details>
+    <details><summary>Что сделает библиотека с именем <code>http-requests</code>?</summary><p>Заменит дефис на <code>_</code>: <code>http_requests_total</code>.</p></details>
+    <details><summary>Почему общее среднее в §4 вышло 190 «секунд»?</summary><p>Один сервис писал секунды, другой — миллисекунды под тем же именем.</p></details>
+    <details><summary>Что стоит 100 000 рядов процессу?</summary><p>67 МБ памяти, ответ 5,5 МБ и 366 мс на сборку ответа при каждом опросе.</p></details>
+    <details><summary>Как найти раздутую метрику без доступа к коду?</summary><p>Посчитать строки каждой метрики в ответе <code>/metrics</code>, как <code>audit.py</code>.</p></details>
+  </section>
+
+  <section class="part" id="s11">
+    <h2><span class="sec">§11</span>Шпаргалка</h2>
+    <p class="about">Опорные понятия лекции одним списком.</p>
+    <div class="cheat">
+      <div><b>Имя</b><code>подсистема_величина_единица(_total)</code></div>
+      <div><b>Единицы</b><code>seconds</code><code>bytes</code><code>ratio 0…1</code></div>
+      <div><b>Библиотека</b><code>_total сама</code><code>unit= дописывает</code><code>«-» и цифру в начале → «_»</code></div>
+      <div><b>Цена ряда</b><code>100 000 рядов: 67 МБ, 366 мс на опрос</code></div>
+      <div><b>Аудит</b><code>строки каждой метрики в /metrics</code></div>
+      <div><b>Сокращение</b><code>шаблон адреса</code><code>класс кода</code><code>номера — в события</code></div>
+    </div>
+  </section>
+
+  <section class="part" id="s12">
+    <h2><span class="sec">§12</span>Глоссарий</h2>
+    <p class="about">Термины лекции, включая понятия прежних лекций: формулировка, пример и рисунок.</p>
+    <div class="glossary">
+      <article class="gl" id="g-name">
+        <div class="gl__text"><h3>Имя метрики</h3><p class="gl__def">Латиница в нижнем регистре через <code>_</code>: подсистема, величина, единица, у счётчика <code>_total</code>.</p><p class="gl__ex"><b>Пример</b><code>http_request_duration_seconds</code>.</p><p class="gl__where"><b>Где</b>лекция 2.11, §1</p></div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Имя метрики"><rect class="sc-box" x="10" y="45" width="50" height="36" rx="6"/><rect class="sc-acc" x="64" y="45" width="110" height="36" rx="6"/><rect class="sc-amb" x="178" y="45" width="72" height="36" rx="6"/><text class="tm tc" x="35" y="68">http</text><text class="tm tc" x="119" y="68">duration</text><text class="tm tc" x="214" y="68">seconds</text></svg></figure>
+      </article>
+      <article class="gl" id="g-unit">
+        <div class="gl__text"><h3>Базовая единица</h3><p class="gl__def">Единица без приставок: секунды, байты, доля от 0 до 1. Одна для всех метрик одной величины.</p><p class="gl__ex"><b>Пример</b>380 мс записывают как 0,38.</p><p class="gl__where"><b>Где</b>лекция 2.11, §1, §4</p></div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Базовая единица"><rect class="sc-wrn" x="20" y="45" width="90" height="36" rx="6"/><text class="tm tc" x="65" y="68">380 ms</text><path class="sc-arrow" d="M114 63 L146 63"/><rect class="sc-acc" x="150" y="45" width="90" height="36" rx="6"/><text class="tm tc" x="195" y="68">0.38 s</text></svg></figure>
+      </article>
+      <article class="gl" id="g-cardinality">
+        <div class="gl__text"><h3>Кардинальность</h3><p class="gl__def">Число разных значений метки; число рядов метрики — произведение кардинальностей её меток.</p><p class="gl__ex"><b>Пример</b>3 шаблона × 3 класса кода = 9 рядов счётчика.</p><p class="gl__where"><b>Где</b>лекция 1.3, §9; лекция 2.11, §5–§7</p></div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Кардинальность"><rect class="sc-wrn" x="10" y="74" width="240" height="22"/><text class="tm" x="16" y="90">25 126</text><rect class="sc-acc" x="10" y="34" width="6" height="22"/><text class="tm" x="22" y="50">61</text></svg></figure>
+      </article>
+      <article class="gl" id="g-audit">
+        <div class="gl__text"><h3>Аудит кардинальности</h3><p class="gl__def">Подсчёт рядов каждой метрики по ответу <code>/metrics</code>, чтобы найти раздутые.</p><p class="gl__ex"><b>Пример</b><code>http_request_duration_seconds</code> — 21 692 ряда из 25 137.</p><p class="gl__where"><b>Где</b>лекция 2.11, §6</p></div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Аудит"><rect class="sc-wrn" x="10" y="20" width="230" height="20"/><rect class="sc-acc" x="10" y="50" width="22" height="20"/><rect class="sc-acc" x="10" y="80" width="18" height="20"/></svg></figure>
+      </article>
+      <article class="gl" id="g-template">
+        <div class="gl__text"><h3>Шаблон адреса и класс кода</h3><p class="gl__def">Способы свести значения метки к небольшому набору: <code>/orders/{id}</code> вместо номера, <code>5xx</code> вместо 502.</p><p class="gl__ex"><b>Пример</b>гистограмма: 21 692 → 51 ряд.</p><p class="gl__where"><b>Где</b>лекция 2.11, §7</p></div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Шаблон"><text class="tm" x="10" y="40">/orders/17</text><text class="tm" x="10" y="64">/orders/2210</text><text class="tm" x="10" y="88">/orders/964</text><path class="sc-arrow" d="M120 62 L150 62"/><rect class="sc-acc" x="154" y="44" width="96" height="36" rx="6"/><text class="tm tc" x="202" y="67">/orders/{id}</text></svg></figure>
+      </article>
+    </div>
+  </section>
+
+  <section class="part">
+    <h3>Итог лекции</h3>
+    <p>Имя метрики составляют из подсистемы, величины и базовой единицы, у счётчика добавляют <code>_total</code>; единицы — секунды, байты, доли. Библиотека сама дописывает <code>_total</code> и единицу из <code>unit</code>, а недопустимые символы молча заменяет: <code>5xx_errors</code> становится <code>_xx_errors_total</code>. Разные единицы под одним именем дают среднее в 190 «секунд». Лишние ряды дорого стоят самому процессу: 100 000 рядов — 67 МБ и 366 мс на каждый опрос. Раздутые метрики находят подсчётом строк в <code>/metrics</code>, а сокращают шаблоном адреса, классом кода и переносом номеров в события: 25 126 рядов превратились в 61.</p>
+    <h3>Источники</h3>
+    <ul class="sources">
+      <li>Prometheus. Metric and label naming — prometheus.io/docs/practices/naming</li>
+      <li>Prometheus. Instrumentation: use labels — prometheus.io/docs/practices/instrumentation</li>
+      <li>prometheus-client для Python 0.26.0 — prometheus.github.io/client_python</li>
+      <li>Выводы получены запуском на Python 3.12.12 и prometheus-client 0.26.0, macOS, 13.11.2026; память измерена модулем tracemalloc</li>
+    </ul>
+  </section>
+
+  <div class="pager">
+    <a href="2-10-summary.html">← 2.10 Summary</a>
+    <a href="index.html">К содержанию справочника</a>
+    <span class="pager__soon">2.12 Метрики FastAPI · готовится →</span>
+  </div>
+  <div class="colophon">
+    <span>Лекция 2.11 · Имена и кардинальность · Метрики и наблюдаемость</span>
+    <span class="author-line">Автор: Макаров Максим Николаевич</span>
+  </div>
+    </main>
+  </div>
+</div>
+<script src="reader.js"></script>
+</body>
+</html>
