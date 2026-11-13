@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>2.2 Counter: создать и прибавить · Метрики и наблюдаемость</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="book">
+  <div class="book__body">
+    <div class="spine"><span>Часть 2 · Метрики в коде</span></div>
+    <main class="leaf">
+  <div class="running">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Метрики и наблюдаемость</a> · часть 2 · метрики в коде</p>
+    <p class="running__folio">Лекция 2.9</p>
+  </div>
+
+  <header class="chapter-head">
+    <span class="chapter-num">2.9</span>
+    <h1>Выбор корзин и native histograms</h1>
+    <p class="lead">В лекции 2.8 оценка перцентиля ошибалась в пределах ширины корзины. Здесь разберём, как выбрать границы, чтобы ошибка была маленькой: на 1000 запросах сравним три набора границ и выведем три правила. Затем — native histograms, у которых границы задаёт формула, и что из них доступно сервису на Python.</p>
+  </header>
+  <dl class="passport">
+    <div><dt>Тема</dt><dd>Границы корзин, native histograms</dd></div>
+    <div><dt>Библиотека</dt><dd><code>prometheus-client</code> 0.26.0</dd></div>
+    <div><dt>Опирается на</dt><dd>2.8: корзины, оценка перцентиля, сложение корзин</dd></div>
+    <div><dt>Результат</dt><dd>Подобрать границы под сервис и понимать, когда нужны native histograms</dd></div>
+  </dl>
+
+  <div class="reader-start">
+    <div>
+      <b>Режим чтения</b>
+      <p>Лекция откроется по одному разделу: на экране одна мысль, кнопка «Дальше» ведёт к следующей. Стрелки ← → на клавиатуре тоже листают, Esc возвращает всю лекцию.</p>
+    </div>
+    <div class="reader-start__btns">
+      <button type="button" data-reader-start="continue" hidden></button>
+      <button type="button" class="primary" data-reader-start="begin">Читать по шагам</button>
+    </div>
+  </div>
+
+    <nav class="contents">
+    <b>В этой лекции</b>
+    <ol>
+      <li><a href="#s1"><span class="csec">§1</span>Границы решают точность</a></li>
+      <li><a href="#s2"><span class="csec">§2</span>Правило 1: последняя граница выше хвоста</a></li>
+      <li><a href="#s3"><span class="csec">§3</span>Правило 2: граница на целевом значении</a></li>
+      <li><a href="#s4"><span class="csec">§4</span>Правило 3: гуще там, где запросы</a></li>
+      <li><a href="#s5"><span class="csec">§5</span>Границы выбирают один раз</a></li>
+      <li><a href="#s6"><span class="csec">§6</span>Native histograms: границы по формуле</a></li>
+      <li><a href="#s7"><span class="csec">§7</span>Native histograms на практике</a></li>
+      <li><a href="#s8"><span class="csec">§8</span>Частые ошибки</a></li>
+      <li><a href="#s9"><span class="csec">§9</span>Практика</a></li>
+      <li><a href="#s10"><span class="csec">§10</span>Проверьте себя</a></li>
+      <li><a href="#s11"><span class="csec">§11</span>Шпаргалка</a></li>
+      <li><a href="#s12"><span class="csec">§12</span>Глоссарий</a></li>
+    </ol>
+  </nav>
+
+    <section class="part" id="s1">
+    <h2><span class="sec">§1</span>Границы решают точность</h2>
+    <p class="about">Одни и те же запросы и три набора границ — три разных ответа.</p>
+    <p>Весы с делениями по килограмму покажут «2 кг» и для 1,6, и для 2,4 кг. Весы с делениями по 10 граммам различат их сразу. Корзины гистограммы — те же деления: в лекции 2.8, §6 мы видели, что оценка перцентиля ошибается в пределах ширины корзины. Проверим, насколько велика эта ошибка, на большом наборе. Возьмём 1000 запросов: обычно они идут 50–300 мс, у 3% — долгое ожидание от 2 до 12 секунд. Числа сгенерированы программой с фиксированным началом случайной последовательности, поэтому каждый запуск даёт один и тот же набор:</p>
+    <figure class="code">
+      <figcaption><span>data.py</span><span>1000 длительностей</span></figcaption>
+<pre><span class="k">import</span> random
+
+random.<span class="f">seed</span>(<span class="n">42</span>)
+<span class="c"># 1000 запросов: обычно 50–300 мс, у 3% — долгое ожидание 2–12 с</span>
+durations = [random.<span class="f">lognormvariate</span>(-<span class="n">2.1</span>, <span class="n">0.6</span>) <span class="k">for</span> _ <span class="k">in</span> <span class="f">range</span>(<span class="n">970</span>)] + \
+            [random.<span class="f">uniform</span>(<span class="n">2</span>, <span class="n">12</span>) <span class="k">for</span> _ <span class="k">in</span> <span class="f">range</span>(<span class="n">30</span>)]</pre>
+    </figure>
+    <p>Пропустим этот набор через три гистограммы с разными границами и оценим перцентили функцией <code>histogram_quantile</code> из лекции 2.8:</p>
+    <figure class="code">
+      <figcaption><span>compare.py</span><span>три набора границ</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Histogram
+<span class="k">from</span> data <span class="k">import</span> durations
+<span class="k">from</span> quantile <span class="k">import</span> histogram_quantile, exact
+
+SETS = {
+    <span class="s">&quot;по умолчанию&quot;</span>: Histogram.DEFAULT_BUCKETS[:-<span class="n">1</span>],
+    <span class="s">&quot;крупные&quot;</span>:      (<span class="n">0.5</span>, <span class="n">1</span>, <span class="n">5</span>),
+    <span class="s">&quot;под сервис&quot;</span>:   (<span class="n">0.05</span>, <span class="n">0.1</span>, <span class="n">0.15</span>, <span class="n">0.2</span>, <span class="n">0.3</span>, <span class="n">0.5</span>, <span class="n">1</span>, <span class="n">2</span>, <span class="n">5</span>, <span class="n">10</span>, <span class="n">15</span>),
+}
+
+<span class="k">def</span> <span class="f">buckets_of</span>(bounds):
+    <span class="s">&quot;&quot;</span><span class="s">&quot;Пропустить все длительности через гистограмму с этими границами.&quot;</span><span class="s">&quot;&quot;</span>
+    registry = <span class="f">CollectorRegistry</span>()
+    h = <span class="f">Histogram</span>(<span class="s">&quot;d&quot;</span>, <span class="s">&quot;d&quot;</span>, buckets=bounds, registry=registry)
+    <span class="k">for</span> x <span class="k">in</span> durations:
+        h.<span class="f">observe</span>(x)
+    <span class="k">return</span> [(<span class="f">float</span>(s.labels[<span class="s">&quot;le&quot;</span>]), s.value)
+            <span class="k">for</span> s <span class="k">in</span> <span class="f">list</span>(registry.<span class="f">collect</span>())[<span class="n">0</span>].samples <span class="k">if</span> s.name == <span class="s">&quot;d_bucket&quot;</span>]
+
+<span class="k">if</span> __name__ == <span class="s">&quot;__main__&quot;</span>:
+    <span class="f">print</span>(<span class="s">f&quot;{&#x27;&#x27;:&lt;14}{&#x27;p50&#x27;:&gt;8}{&#x27;p90&#x27;:&gt;8}{&#x27;p99&#x27;:&gt;8}&quot;</span>)
+    <span class="f">print</span>(<span class="s">f&quot;{&#x27;точно&#x27;:&lt;14}&quot;</span> + <span class="s">&quot;&quot;</span>.<span class="f">join</span>(<span class="s">f&quot;{exact(q, durations):&gt;8.3f}&quot;</span> <span class="k">for</span> q <span class="k">in</span> (<span class="n">0.5</span>, <span class="n">0.9</span>, <span class="n">0.99</span>)))
+    <span class="k">for</span> name, bounds <span class="k">in</span> SETS.<span class="f">items</span>():
+        b = <span class="f">buckets_of</span>(bounds)
+        <span class="f">print</span>(<span class="s">f&quot;{name:&lt;14}&quot;</span> + <span class="s">&quot;&quot;</span>.<span class="f">join</span>(<span class="s">f&quot;{histogram_quantile(q, b):&gt;8.3f}&quot;</span> <span class="k">for</span> q <span class="k">in</span> (<span class="n">0.5</span>, <span class="n">0.9</span>, <span class="n">0.99</span>)),
+              <span class="s">f&quot;  корзин: {len(b)}&quot;</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>оценки и точные значения, секунды</span></figcaption><pre>                   p50     p90     p99
+точно            0.125   0.295   8.286
+по умолчанию     0.143   0.355   8.056   корзин: 15
+крупные          0.260   0.468   5.000   корзин: 4
+под сервис       0.129   0.298   8.056   корзин: 12</pre></figure>
+    <div class="walk">
+      <div><code>random.seed(42)</code><span>Фиксирует начало случайной последовательности: при каждом запуске — те же 1000 чисел.</span></div>
+      <div><code>lognormvariate(-2.1, 0.6)</code><span>Типичное распределение длительностей: большинство около 0,12 с, редкие — дольше.</span></div>
+      <div><code>buckets_of(bounds)</code><span>Пропускает все длительности через настоящую гистограмму с заданными границами и возвращает её корзины.</span></div>
+      <div><code>Histogram.DEFAULT_BUCKETS[:-1]</code><span>14 границ библиотеки по умолчанию, без <code>+Inf</code> — его библиотека добавит сама.</span></div>
+    </div>
+    <p>Те же числа рисунком — насколько каждая оценка отличается от точного значения:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Ошибка оценки p90: по умолчанию +20 процентов, крупные +59 процентов, под сервис +1 процент; p99: по умолчанию −3, крупные −40, под сервис −3 процента"><text class="tb" x="10" y="24">p90 — точно 0,295 с</text><text class="t" x="10" y="48">по умолчанию</text><rect class="sc-acc" x="160" y="36" width="100" height="16"/><text class="tm" x="266" y="49">0,355 · +20%</text><text class="t" x="10" y="70">крупные</text><rect class="sc-wrn" x="160" y="58" width="295" height="16"/><text class="tm tw" x="461" y="71">0,468 · +59%</text><text class="t" x="10" y="92">под сервис</text><rect class="sc-acc" x="160" y="80" width="5" height="16"/><text class="tm" x="171" y="93">0,298 · +1%</text><text class="tb" x="10" y="124">p99 — точно 8,286 с</text><text class="t" x="10" y="148">крупные</text><rect class="sc-wrn" x="160" y="136" width="200" height="16"/><text class="tm tw" x="366" y="149">5,000 · −40%, упёрлась в границу</text></svg>
+      <figcaption>Длина полосы — ошибка оценки в процентах от точного значения.</figcaption>
+    </figure>
+    <p>Набор «под сервис» ошибается в p90 на 1%, набор по умолчанию — на 20%, крупные корзины — на 59%. Для p99 у двух наборов ошибка около 3%. Крупные корзины дали 5 секунд при настоящих 8,3: значение ушло выше последней границы, в корзину <code>+Inf</code>. Всё это — одни и те же 1000 запросов. Разница только в границах, и обходится она дёшево: в наборе «под сервис» корзин даже меньше, чем по умолчанию, — 12 против 15.</p>
+    <div class="key"><b>Вывод</b><p>Точность оценки определяют места границ; их число важно меньше. Хорошо выбранные 12 корзин точнее 15 корзин по умолчанию.</p></div>
+    <p class="next">Как выбирать границы? Есть три правила. Первое — про хвост.</p>
+  </section>
+
+  <section class="part" id="s2">
+    <h2><span class="sec">§2</span>Правило 1: последняя граница выше хвоста</h2>
+    <p class="about">Почему значения выше последней границы не оценить.</p>
+    <p>В §1 крупные корзины заканчивались на 5 секундах, а 3% запросов шли до 12. Все они попали в корзину <code>+Inf</code>, у которой нет верхней границы, и оценка p99 упёрлась в 5. Набор «под сервис» заканчивается на 15 секундах — выше самых долгих запросов, и его оценка p99 — 8,056 при настоящих 8,286.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 130" role="img" aria-label="Хвост запросов до 12 секунд: с последней границей 5 — весь хвост в +Inf; с последней границей 15 — хвост внутри корзин 5–10 и 10–15"><text class="t" x="10" y="34">граница 5</text><rect class="sc-acc" x="130" y="20" width="160" height="22"/><rect class="sc-wrn" x="290" y="20" width="330" height="22"/><text class="tm tw tc" x="455" y="36">+Inf: 2–12 с не различить</text><text class="t" x="10" y="80">граница 15</text><rect class="sc-acc" x="130" y="66" width="160" height="22"/><rect class="sc-acc" x="290" y="66" width="110" height="22"/><rect class="sc-acc" x="400" y="66" width="110" height="22"/><rect class="sc-acc" x="510" y="66" width="110" height="22"/><text class="tm tc" x="345" y="82">2–5</text><text class="tm tc" x="455" y="82">5–10</text><text class="tm tc" x="565" y="82">10–15</text><text class="tm" x="130" y="118">0</text><text class="tm tr" x="620" y="118">15 с</text></svg>
+      <figcaption>Хвост медленных запросов при двух последних границах.</figcaption>
+    </figure>
+    <p>Сверху весь хвост лежит в одной оранжевой корзине без верхнего края: внутри неё всё равно, 6 секунд или 12. Снизу хвост разложен по трём корзинам, и по оценке видно, где он. Последнюю границу ставят выше самых долгих запросов сервиса, например на уровне тайм-аута клиента (лекция 1.1, §5). Дольше тайм-аута клиент всё равно не ждёт.</p>
+    <div class="key"><b>Вывод</b><p>Последняя граница — выше самых долгих запросов, например на уровне тайм-аута. Иначе хвост собирается в <code>+Inf</code> и прячется.</p></div>
+    <p class="next">Второе правило касается цели по длительности, которую обещают пользователям.</p>
+  </section>
+
+  <section class="part" id="s3">
+    <h2><span class="sec">§3</span>Правило 2: граница на целевом значении</h2>
+    <p class="about">Как получить долю быстрых запросов точно, без оценки.</p>
+    <p>Пусть команда обещает: «90% запросов быстрее 300 мс». Чтобы проверить обещание, нужна доля запросов не дольше 0,3 секунды. Если граница 0,3 есть, доля считается точно: корзина <code>le="0.3"</code>, делённая на <code>_count</code>. Если её нет, доля оценивается по соседним корзинам. Сравним:</p>
+    <figure class="code">
+      <figcaption><span>target.py</span><span>доля запросов быстрее 300 мс</span></figcaption>
+<pre><span class="k">from</span> compare <span class="k">import</span> buckets_of, SETS
+<span class="k">from</span> data <span class="k">import</span> durations
+
+TARGET = <span class="n">0.3</span>                                    <span class="c"># цель: запросы быстрее 300 мс</span>
+exact_share = <span class="f">sum</span>(d &lt;= TARGET <span class="k">for</span> d <span class="k">in</span> durations) / <span class="f">len</span>(durations)
+<span class="f">print</span>(<span class="s">f&quot;точно: {exact_share:.1%}&quot;</span>)
+
+<span class="k">for</span> name <span class="k">in</span> (<span class="s">&quot;по умолчанию&quot;</span>, <span class="s">&quot;под сервис&quot;</span>):
+    b = <span class="f">dict</span>(<span class="f">buckets_of</span>(SETS[name]))
+    total = b[<span class="f">float</span>(<span class="s">&quot;inf&quot;</span>)]
+    <span class="k">if</span> TARGET <span class="k">in</span> b:
+        <span class="f">print</span>(<span class="s">f&quot;{name}: граница 0.3 есть → {b[TARGET]:.0f} / {total:.0f} = {b[TARGET] / total:.1%}&quot;</span>)
+    <span class="k">else</span>:
+        low = <span class="f">max</span>(le <span class="k">for</span> le <span class="k">in</span> b <span class="k">if</span> le &lt; TARGET); high = <span class="f">min</span>(le <span class="k">for</span> le <span class="k">in</span> b <span class="k">if</span> le &gt; TARGET)
+        est = b[low] + (b[high] - b[low]) * (TARGET - low) / (high - low)
+        <span class="f">print</span>(<span class="s">f&quot;{name}: границы 0.3 нет, между {low} ({b[low]:.0f}) и {high} ({b[high]:.0f}) → оценка {est:.0f} / {total:.0f} = {est / total:.1%}&quot;</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>точно и по корзинам</span></figcaption><pre>точно: 90.3%
+по умолчанию: границы 0.3 нет, между 0.25 (856) и 0.5 (961) → оценка 877 / 1000 = 87.7%
+под сервис: граница 0.3 есть → 903 / 1000 = 90.3%</pre></figure>
+    <div class="walk">
+      <div><code>sum(d &lt;= TARGET …)</code><span>Точная доля по всем 1000 длительностям — для сравнения.</span></div>
+      <div><code>if TARGET in b</code><span>Граница 0,3 есть: доля — корзина, делённая на <code>+Inf</code>.</span></div>
+      <div><code>est = b[low] + …</code><span>Границы нет: число запросов до 0,3 оценивается внутри корзины 0,25–0,5, как в <code>histogram_quantile</code>.</span></div>
+    </div>
+    <p>С границей 0,3 доля — 90,3%, ровно как на самом деле: обещание выполнено. С границами по умолчанию доля оценена в 87,7%: по ней обещание нарушено. Дело в оценке: внутри корзины 0,25–0,5 запросы сгущены у левого края, а оценка считает их равномерными. Одна граница на правильном месте превращает спорный вопрос в точный ответ.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 120" role="img" aria-label="Доля быстрее 300 мс: с границей 0,3 — 90,3 процента, цель 90 процентов выполнена; без границы — оценка 87,7 процента, цель будто нарушена"><line class="sc-arrow-w" x1="520" y1="10" x2="520" y2="100" stroke-dasharray="5 4"/><text class="tm tw" x="526" y="20">цель 90%</text><text class="t" x="10" y="44">граница 0,3</text><rect class="sc-acc" x="140" y="30" width="384" height="20"/><text class="tm" x="530" y="46">90,3%</text><text class="t" x="10" y="84">по умолчанию</text><rect class="sc-wrn" x="140" y="70" width="355" height="20"/><text class="tm tw" x="380" y="112">87,7% — ошибка оценки</text></svg>
+      <figcaption>Длина полосы — доля запросов быстрее 300 мс. Пунктир — обещанные 90%.</figcaption>
+    </figure>
+    <div class="key"><b>Вывод</b><p>Ставьте границу на каждое значение, которое обещано или проверяется: тогда доля считается точно, без интерполяции.</p></div>
+    <p class="next">Третье правило — где сделать корзины гуще.</p>
+  </section>
+
+  <section class="part" id="s4">
+    <h2><span class="sec">§4</span>Правило 3: гуще там, где запросы</h2>
+    <p class="about">Как построить ряд границ, которые растут в одно и то же число раз.</p>
+    <p>Ошибка в 50 мс важна для запроса на 100 мс и не важна для запроса на 10 секунд. Поэтому каждую следующую границу делают больше предыдущей в одно и то же число раз. Тогда относительная точность везде одинаковая. В Python-библиотеке функции для этого нет, она пишется в одну строку:</p>
+    <figure class="code">
+      <figcaption><span>geometric.py</span><span>границы с постоянным множителем</span></figcaption>
+<pre><span class="k">def</span> <span class="f">geometric</span>(start, factor, count):
+    <span class="s">&quot;&quot;</span><span class="s">&quot;Границы, каждая следующая в factor раз больше предыдущей.&quot;</span><span class="s">&quot;&quot;</span>
+    <span class="k">return</span> [<span class="f">round</span>(start * factor ** i, <span class="n">3</span>) <span class="k">for</span> i <span class="k">in</span> <span class="f">range</span>(count)]
+
+<span class="f">print</span>(<span class="f">geometric</span>(<span class="n">0.025</span>, <span class="n">2</span>, <span class="n">10</span>))
+<span class="f">print</span>(<span class="f">geometric</span>(<span class="n">0.05</span>, <span class="n">1.5</span>, <span class="n">14</span>))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>два ряда</span></figcaption><pre>[0.025, 0.05, 0.1, 0.2, 0.4, 0.8, 1.6, 3.2, 6.4, 12.8]
+[0.05, 0.075, 0.113, 0.169, 0.253, 0.38, 0.57, 0.854, 1.281, 1.922, 2.883, 4.325, 6.487, 9.731]</pre></figure>
+    <div class="walk">
+      <div><code>start * factor ** i</code><span>Каждая следующая граница в <code>factor</code> раз больше предыдущей.</span></div>
+      <div><code>round(…, 3)</code><span>Округление до миллисекунд, чтобы границы читались.</span></div>
+    </div>
+    <p>Первый ряд удваивается: 25 мс, 50, 100 … 12,8 с — 10 границ на весь диапазон, грубо. Второй растёт в 1,5 раза: 14 границ, и между 100 и 300 мс их уже четыре. Набор «под сервис» из §1 собран вручную по тому же принципу: густо там, где большинство запросов (50–300 мс), и реже в хвосте. Плюс граница 0,3 на цели и 15 секунд — выше хвоста.</p>
+    <div class="key"><b>Вывод</b><p>Границы ставят с постоянным множителем и сгущают там, где лежит основная масса запросов. Цель и запас по хвосту добавляют отдельно.</p></div>
+    <p class="next">Выбранные границы потом трудно поменять. Разберём почему.</p>
+  </section>
+
+  <section class="part" id="s5">
+    <h2><span class="sec">§5</span>Границы выбирают один раз</h2>
+    <p class="about">Что ломается, если поменять границы в новой версии.</p>
+    <p>В лекции 2.8, §7 корзины экземпляров складывали по одинаковым границам. Допустим, в новой версии сервиса добавили границу 0,25. У старого экземпляра её нет. Попробуем сложить корзины двух экземпляров:</p>
+    <figure class="code">
+      <figcaption><span>mismatch.py</span><span>экземпляры с разными границами</span></figcaption>
+<pre>old = {<span class="n">0.1</span>: <span class="n">40</span>, <span class="n">0.5</span>: <span class="n">90</span>, <span class="n">1.0</span>: <span class="n">96</span>, <span class="f">float</span>(<span class="s">&quot;inf&quot;</span>): <span class="n">100</span>}           <span class="c"># api-1, версия с прежними границами</span>
+new = {<span class="n">0.1</span>: <span class="n">35</span>, <span class="n">0.25</span>: <span class="n">70</span>, <span class="n">0.5</span>: <span class="n">88</span>, <span class="n">1.0</span>: <span class="n">95</span>, <span class="f">float</span>(<span class="s">&quot;inf&quot;</span>): <span class="n">100</span>}  <span class="c"># api-2, границы поменяли</span>
+
+common = <span class="f">sorted</span>(<span class="f">set</span>(old) &amp; <span class="f">set</span>(new))
+only = <span class="f">sorted</span>(<span class="f">set</span>(old) ^ <span class="f">set</span>(new))
+<span class="f">print</span>(<span class="s">&quot;общие границы:&quot;</span>, common)
+<span class="f">print</span>(<span class="s">&quot;есть не у всех:&quot;</span>, only)
+<span class="f">print</span>(<span class="s">&quot;сумма по общим:&quot;</span>, {le: old[le] + new[le] <span class="k">for</span> le <span class="k">in</span> common})</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>что можно сложить</span></figcaption><pre>общие границы: [0.1, 0.5, 1.0, inf]
+есть не у всех: [0.25]
+сумма по общим: {0.1: 75, 0.5: 178, 1.0: 191, inf: 200}</pre></figure>
+    <div class="walk">
+      <div><code>set(old) &amp; set(new)</code><span>Границы, которые есть у обоих.</span></div>
+      <div><code>set(old) ^ set(new)</code><span>Границы, которые есть только у одного.</span></div>
+    </div>
+    <p>Сложить можно только общие границы: 0,1, 0,5, 1 и <code>+Inf</code>. Корзина 0,25 есть только у нового экземпляра, и в общей картине её нет — новая граница пропала. Так же разрывается история: до смены версии ряда <code>le="0.25"</code> не было, после — появился, и сравнить «до» и «после» по нему нельзя. Поэтому границы продумывают заранее, а меняют все экземпляры сразу и с пониманием, что история по новым границам начнётся с нуля.</p>
+    <div class="key key--warn"><b>Вывод</b><p>Корзины складываются только по общим границам. Смена границ в одной версии делает новые корзины бесполезными для сложения и рвёт историю.</p></div>
+    <p class="next">Native histograms решают выбор границ иначе: границы задаёт формула.</p>
+  </section>
+
+  <section class="part" id="s6">
+    <h2><span class="sec">§6</span>Native histograms: границы по формуле</h2>
+    <p class="about">Как устроены границы native histograms и почему их не нужно выбирать.</p>
+    <p>Линейка с делениями — одна для всех измерений, её не размечают под каждый предмет. У native histograms (родных гистограмм) границы тоже общие для всех: их задаёт формула и одно число — <span class="term">схема</span>. По спецификации Prometheus верхняя граница корзины номер <code>i</code> при схеме <code>n</code> — <code>(2**2**-n)**i</code>. Каждая граница больше предыдущей в <code>2**2**-n</code> раз — это и есть постоянный множитель из §4. Посчитаем по этой формуле для двух схем:</p>
+    <figure class="code">
+      <figcaption><span>native.py</span><span>корзины по формуле</span></figcaption>
+<pre><span class="k">import</span> math
+<span class="k">from</span> collections <span class="k">import</span> Counter
+<span class="k">from</span> data <span class="k">import</span> durations
+
+<span class="k">def</span> <span class="f">upper</span>(i, n):
+    <span class="s">&quot;&quot;</span><span class="s">&quot;Верхняя граница корзины i при схеме n (формула из спецификации).&quot;</span><span class="s">&quot;&quot;</span>
+    <span class="k">return</span> (<span class="n">2</span> ** <span class="n">2</span> ** -n) ** i
+
+<span class="k">def</span> <span class="f">index</span>(x, n):
+    <span class="s">&quot;&quot;</span><span class="s">&quot;Номер корзины, в которую попадает x &gt; 0 при схеме n.&quot;</span><span class="s">&quot;&quot;</span>
+    <span class="k">return</span> math.<span class="f">ceil</span>(math.<span class="f">log2</span>(x) * <span class="n">2</span> ** n)
+
+<span class="k">for</span> n <span class="k">in</span> (<span class="n">0</span>, <span class="n">3</span>):
+    <span class="f">print</span>(<span class="s">f&quot;схема {n}: множитель {2 ** 2 ** -n:.4f}&quot;</span>)
+    i = <span class="f">index</span>(<span class="n">0.3</span>, n)
+    <span class="f">print</span>(<span class="s">f&quot;  0.3 попадает в корзину {i}: ({upper(i - 1, n):.4f}, {upper(i, n):.4f}]&quot;</span>)
+    used = <span class="f">Counter</span>(<span class="f">index</span>(x, n) <span class="k">for</span> x <span class="k">in</span> durations)
+    <span class="f">print</span>(<span class="s">f&quot;  непустых корзин для 1000 запросов: {len(used)}&quot;</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>схемы 0 и 3</span></figcaption><pre>схема 0: множитель 2.0000
+  0.3 попадает в корзину -1: (0.2500, 0.5000]
+  непустых корзин для 1000 запросов: 9
+схема 3: множитель 1.0905
+  0.3 попадает в корзину -13: (0.2973, 0.3242]
+  непустых корзин для 1000 запросов: 54</pre></figure>
+    <div class="walk">
+      <div><code>upper(i, n)</code><span>Формула из спецификации: верхняя граница корзины <code>i</code>, включительно.</span></div>
+      <div><code>index(x, n)</code><span>Номер корзины для значения: наименьшее <code>i</code>, при котором граница не меньше <code>x</code>.</span></div>
+      <div><code>Counter(index(x, n) …)</code><span>Сколько разных корзин понадобилось для 1000 длительностей.</span></div>
+    </div>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Строка</th><th>Что получилось на прогоне</th></tr></thead>
+        <tbody>
+          <tr><td>схема 0</td><td>множитель 2: корзина значения 0,3 — от 0,25 до 0,5</td></tr>
+          <tr><td>схема 3</td><td>множитель 1,0905: корзина значения 0,3 — от 0,2973 до 0,3242, ширина около 9%</td></tr>
+          <tr><td>непустые корзины</td><td>схема 0 — 9, схема 3 — 54</td></tr>
+        </tbody>
+      </table></div>
+    <p>Чем больше схема, тем мельче корзины. При схеме 3 соседние границы отличаются примерно на 9%, и ошибка оценки не превышает этой ширины в любом месте шкалы — от миллисекунд до минут. Корзин при этом бесконечно много, но хранятся только непустые: для 1000 наших запросов — 54. Пустые корзины места не занимают.</p>
+    <div class="def">
+      <div class="def__term">Native histogram<i>родная гистограмма</i></div>
+      <dl><dt>Что это</dt><dd>Гистограмма, у которой границы корзин вычисляются по формуле из схемы, а хранятся только непустые корзины.</dd><dt>Что даёт</dt><dd>Границы не нужно выбирать; относительная точность одинакова по всей шкале; любые две такие гистограммы складываются.</dd><dt>Пример</dt><dd>Схема 3: множитель 1,0905, для 1000 запросов — 54 непустые корзины.</dd></dl>
+    </div>
+    <p>Спецификация предлагает задавать наибольший допустимый множитель: так понятнее, чем номер схемы. Библиотека сама подберёт схему: множитель 1,1 — схема 3, 1,5 — схема 1, 2 — схема 0. Допустимые схемы — от −4 (самые крупные корзины) до 8 (самые мелкие).</p>
+    <div class="key"><b>Вывод</b><p>У native histograms границы задаёт формула со схемой, хранятся только непустые корзины. Выбирать границы и бояться их смены не нужно.</p></div>
+    <p class="next">Остаётся вопрос, можно ли ими пользоваться уже сейчас.</p>
+  </section>
+
+  <section class="part" id="s7">
+    <h2><span class="sec">§7</span>Native histograms на практике</h2>
+    <p class="about">Что нужно, чтобы native histograms работали, и при чём здесь Python.</p>
+    <p>Native histograms не передаются обычным текстом <code>/metrics</code> из лекции 2.1: для них нужен двоичный формат protobuf. Поддержка нужна с двух сторон — у Prometheus, который собирает, и у библиотеки, которая создаёт метрики:</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Сторона</th><th>Состояние по спецификации</th></tr></thead>
+        <tbody>
+          <tr><td>Prometheus</td><td>появились в 2.40 как эксперимент; стабильны с 3.8; сбор нужно включить настройкой <code>scrape_native_histograms</code> и протоколом protobuf; с версии 4 сбор будет включён по умолчанию</td></tr>
+          <tr><td>библиотеки</td><td>на 15.06.2026 поддержку дают официальные библиотеки для Go, Java и Rust</td></tr>
+          <tr><td>prometheus-client для Python</td><td>не в списке; в версии 0.26.0 есть только экспериментальный тип данных <code>NativeHistogram</code> в <code>samples.py</code>, класс <code>Histogram</code> создаёт обычные корзины</td></tr>
+        </tbody>
+      </table></div>
+    <p>Последнюю строку проверим в установленной библиотеке:</p>
+    <figure class="code">
+      <figcaption><span>Терминал</span><span>что есть в библиотеке</span></figcaption>
+<pre>grep -n &quot;class NativeHistogram\|experimental&quot; .venv/lib/python3.12/site-packages/prometheus_client/samples.py</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>строки samples.py</span></figcaption><pre>37:# BucketSpan is experimental and subject to change at any time.
+54:# NativeHistogram is experimental and subject to change at any time.
+55:class NativeHistogram(NamedTuple):</pre></figure>
+    <p>Тип помечен как экспериментальный и может измениться в любой момент. Значит, в сервисе на Python гистограммы сегодня — классические, и три правила §2–§4 остаются основным способом добиться точности. Native histograms встретятся там, где сервисы написаны на Go, Java или Rust.</p>
+    <div class="key"><b>Вывод</b><p>Native histograms стабильны в Prometheus с 3.8, но сбор включают явно, а библиотека для Python их пока не создаёт. В Python-сервисе границы выбирают вручную по трём правилам.</p></div>
+  </section>
+
+  <section class="part" id="s8">
+    <h2><span class="sec">§8</span>Частые ошибки</h2>
+    <p class="about">Что делают неправильно и как исправить.</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Что делают</th><th>Что произойдёт</th><th>Как правильно</th></tr></thead>
+        <tbody>
+          <tr><td>оставляют границы по умолчанию, не глядя на длительности</td><td>оценка p90 ошибается на 20%</td><td>подбирать границы под настоящие длительности сервиса</td></tr>
+          <tr><td>заканчивают границы ниже хвоста</td><td>долгие запросы в <code>+Inf</code>, p99 упирается в последнюю границу</td><td>последняя граница — на уровне тайм-аута</td></tr>
+          <tr><td>не ставят границу на обещанное значение</td><td>доля быстрых запросов — оценка, вывод о цели может быть неверным</td><td>граница точно на целевом значении</td></tr>
+          <tr><td>ставят границы через равные промежутки</td><td>мало точности у быстрых запросов, лишние корзины в хвосте</td><td>постоянный множитель, гуще у основной массы</td></tr>
+          <tr><td>меняют границы в одной версии</td><td>новые корзины не складываются со старыми, история рвётся</td><td>продумать заранее, менять везде сразу</td></tr>
+          <tr><td>ждут native histograms от Python-библиотеки</td><td>в 0.26.0 класс <code>Histogram</code> создаёт только классические корзины</td><td>в Python — классические гистограммы с подобранными границами</td></tr>
+        </tbody>
+      </table></div>
+  </section>
+
+  <section class="part" id="s9">
+    <h2><span class="sec">§9</span>Практика</h2>
+    <p class="about">Три задачи. Решение спрятано под задачей.</p>
+    <h3>Задача 1. Сгустите корзины</h3>
+    <p>Ситуация: тот же набор из 1000 запросов, что в §1. Нужно точнее знать p50 и p90.</p>
+    <div class="key"><b>Что нужно сделать</b><p>Сравнить оценки с границами <code>0.05, 0.1, 0.25, 0.5, 1, 5, 15</code> и с более густыми в районе 0,1–0,3 с.</p></div>
+    <details><summary>Решение</summary>
+    <figure class="code">
+      <figcaption><span>task1.py</span><span>два набора</span></figcaption>
+<pre><span class="k">from</span> compare <span class="k">import</span> buckets_of
+<span class="k">from</span> data <span class="k">import</span> durations
+<span class="k">from</span> quantile <span class="k">import</span> histogram_quantile, exact
+
+<span class="k">for</span> name, bounds <span class="k">in</span> ((<span class="s">&quot;с границей 0.25&quot;</span>, (<span class="n">0.05</span>, <span class="n">0.1</span>, <span class="n">0.25</span>, <span class="n">0.5</span>, <span class="n">1</span>, <span class="n">5</span>, <span class="n">15</span>)),
+                     (<span class="s">&quot;гуще у 0.1–0.3&quot;</span>, (<span class="n">0.05</span>, <span class="n">0.08</span>, <span class="n">0.1</span>, <span class="n">0.12</span>, <span class="n">0.15</span>, <span class="n">0.2</span>, <span class="n">0.25</span>, <span class="n">0.3</span>, <span class="n">0.5</span>, <span class="n">1</span>, <span class="n">5</span>, <span class="n">15</span>))):
+    b = <span class="f">buckets_of</span>(bounds)
+    <span class="f">print</span>(<span class="s">f&quot;{name}: p50 {histogram_quantile(0.5, b):.3f}, p90 {histogram_quantile(0.9, b):.3f}  (точно {exact(0.5, durations):.3f} и {exact(0.9, durations):.3f})&quot;</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>оценки</span></figcaption><pre>с границей 0.25: p50 0.143, p90 0.355  (точно 0.125 и 0.295)
+гуще у 0.1–0.3: p50 0.126, p90 0.297  (точно 0.125 и 0.295)</pre></figure>
+    <p>Густые корзины в районе основной массы дают p50 0,126 и p90 0,297 при точных 0,125 и 0,295. С редкими — 0,143 и 0,355.</p>
+    </details>
+
+    <h3>Задача 2. Границы для сервиса</h3>
+    <p>Ситуация:</p>
+    <ul>
+      <li>обычные запросы идут 20–200 мс;</li>
+      <li>обещание: 99% быстрее 500 мс;</li>
+      <li>тайм-аут клиента — 30 секунд.</li>
+    </ul>
+    <div class="key"><b>Что нужно сделать</b><p>Предложить набор границ по трём правилам.</p></div>
+    <details><summary>Решение</summary>
+    <p>Например: <code>0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3, 0.5, 1, 2.5, 5, 10, 30</code>. Густо от 20 до 200 мс; граница 0,5 — на обещании; последняя граница 30 — на тайм-ауте; в хвосте реже. 14 границ — столько же, сколько по умолчанию.</p>
+    </details>
+
+    <h3>Задача 3. Какая схема</h3>
+    <p>Ситуация: в сервисе на Go native histogram с множителем не больше 1,05.</p>
+    <div class="key"><b>Что нужно сделать</b><p>Найти схему и посчитать множитель формулой <code>2**2**-n</code>.</p></div>
+    <details><summary>Решение</summary>
+    <p>По таблице спецификации множителю 1,05 соответствует схема 4. Проверка: <code>2**2**-4</code> = 2<sup>1/16</sup> ≈ 1,0443 — не больше 1,05. Схема 3 дала бы 1,0905 — больше.</p>
+    </details>
+  </section>
+
+  <section class="part" id="s10">
+    <h2><span class="sec">§10</span>Проверьте себя</h2>
+    <p class="about">Вопросы по лекции. Ответ раскрывается щелчком.</p>
+    <details><summary>Почему 12 корзин «под сервис» точнее 15 корзин по умолчанию?</summary><p>Точность определяют места границ: у набора «под сервис» они гуще там, где лежит основная масса запросов.</p></details>
+    <details><summary>Где ставить последнюю границу?</summary><p>Выше самых долгих запросов, например на уровне тайм-аута клиента.</p></details>
+    <details><summary>Как точно узнать долю запросов быстрее 300 мс?</summary><p>Поставить границу 0,3 и разделить эту корзину на <code>_count</code>.</p></details>
+    <details><summary>Почему опасно добавить границу только в новой версии?</summary><p>Корзины складываются только по общим границам, а у старых экземпляров новой границы нет; история ряда начнётся с нуля.</p></details>
+    <details><summary>Почему у native histograms не нужно выбирать границы?</summary><p>Их задаёт формула <code>(2**2**-n)**i</code> со схемой <code>n</code>, а хранятся только непустые корзины.</p></details>
+  </section>
+
+  <section class="part" id="s11">
+    <h2><span class="sec">§11</span>Шпаргалка</h2>
+    <p class="about">Опорные понятия лекции одним списком.</p>
+    <div class="cheat">
+      <div><b>Правило 1</b><code>последняя граница ≥ тайм-аут</code></div>
+      <div><b>Правило 2</b><code>граница на цели</code><code>доля = le / _count</code></div>
+      <div><b>Правило 3</b><code>постоянный множитель</code><code>гуще у основной массы</code></div>
+      <div><b>Смена границ</b><code>складываются только общие</code><code>история заново</code></div>
+      <div><b>Native</b><code>(2**2**-n)**i</code><code>схемы −4…8</code><code>только непустые</code></div>
+      <div><b>На практике</b><code>Prometheus 3.8+, scrape_native_histograms</code><code>Go, Java, Rust</code></div>
+    </div>
+  </section>
+
+  <section class="part" id="s12">
+    <h2><span class="sec">§12</span>Глоссарий</h2>
+    <p class="about">Термины лекции, включая понятия прежних лекций: формулировка, пример и рисунок.</p>
+    <div class="glossary">
+      <article class="gl" id="g-bucket">
+        <div class="gl__text">
+          <h3>Корзина, le<i>bucket</i></h3>
+          <p class="gl__def">Счётчик наблюдений не больше границы <code>le</code>. Корзины накопительные.</p>
+          <p class="gl__ex"><b>Пример</b><code>le="0.3"</code> = 903 из 1000.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.8, §2</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Корзина"><line class="sc-axis" x1="10" y1="110" x2="250" y2="110"/><rect class="sc-acc" x="20" y="90" width="40" height="20"/><rect class="sc-acc" x="75" y="70" width="40" height="40"/><rect class="sc-acc" x="130" y="45" width="40" height="65"/><rect class="sc-acc" x="185" y="25" width="40" height="85"/></svg></figure>
+      </article>
+      <article class="gl" id="g-quantile">
+        <div class="gl__text">
+          <h3>Оценка перцентиля по корзинам<i>histogram_quantile</i></h3>
+          <p class="gl__def">Расчёт перцентиля по корзинам при равномерном распределении внутри корзины. Ошибка — в пределах ширины корзины.</p>
+          <p class="gl__ex"><b>Пример</b>p90: 0,355 с границами по умолчанию, 0,298 «под сервис», точно 0,295.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.8, §6</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Оценка перцентиля"><rect class="sc-box" x="20" y="50" width="220" height="30"/><line class="sc-arrow-w" x1="166" y1="36" x2="166" y2="94"/></svg></figure>
+      </article>
+      <article class="gl" id="g-geometric">
+        <div class="gl__text">
+          <h3>Границы с постоянным множителем</h3>
+          <p class="gl__def">Ряд границ, где каждая больше предыдущей в одно и то же число раз. Даёт одинаковую относительную точность.</p>
+          <p class="gl__ex"><b>Пример</b>множитель 2: 0,025, 0,05, 0,1, 0,2 … 12,8.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.9, §4</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Границы с множителем"><line class="sc-axis" x1="10" y1="80" x2="250" y2="80"/><line class="sc-grid" x1="14" y1="60" x2="14" y2="90"/><line class="sc-grid" x1="18" y1="60" x2="18" y2="90"/><line class="sc-grid" x1="26" y1="60" x2="26" y2="90"/><line class="sc-grid" x1="42" y1="60" x2="42" y2="90"/><line class="sc-grid" x1="74" y1="60" x2="74" y2="90"/><line class="sc-grid" x1="138" y1="60" x2="138" y2="90"/><line class="sc-grid" x1="246" y1="60" x2="246" y2="90"/><text class="t tc" x="130" y="114">каждая ×2</text></svg></figure>
+      </article>
+      <article class="gl" id="g-target">
+        <div class="gl__text">
+          <h3>Граница на целевом значении</h3>
+          <p class="gl__def">Граница корзины, поставленная на обещанное значение длительности. Доля быстрых запросов считается точно.</p>
+          <p class="gl__ex"><b>Пример</b>граница 0,3: 90,3%; без неё оценка 87,7%.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.9, §3</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Граница на цели"><rect class="sc-acc" x="20" y="50" width="160" height="30"/><line class="sc-arrow-w" x1="180" y1="30" x2="180" y2="100"/><text class="tm tc tw" x="180" y="24">0,3</text></svg></figure>
+      </article>
+      <article class="gl" id="g-native">
+        <div class="gl__text">
+          <h3>Native histogram<i>родная гистограмма</i></h3>
+          <p class="gl__def">Гистограмма с границами по формуле <code>(2**2**-n)**i</code> и хранением только непустых корзин. Передаётся в protobuf.</p>
+          <p class="gl__ex"><b>Пример</b>схема 3: множитель 1,0905, 54 непустые корзины на 1000 запросов.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.9, §6</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Native histogram"><rect class="sc-acc" x="20" y="60" width="20" height="40"/><rect class="sc-acc" x="44" y="40" width="22" height="60"/><rect class="sc-acc" x="70" y="30" width="24" height="70"/><rect class="sc-acc" x="98" y="50" width="26" height="50"/><rect class="sc-soft" x="128" y="96" width="28" height="4"/><rect class="sc-acc" x="160" y="80" width="30" height="20"/><text class="t" x="20" y="124">пустые не хранятся</text></svg></figure>
+      </article>
+      <article class="gl" id="g-schema">
+        <div class="gl__text">
+          <h3>Схема<i>schema</i></h3>
+          <p class="gl__def">Число от −4 до 8, которое задаёт множитель между границами native histogram: <code>2**2**-n</code>.</p>
+          <p class="gl__ex"><b>Пример</b>схема 0 — множитель 2, схема 3 — 1,0905.</p>
+          <p class="gl__where"><b>Где</b>лекция 2.9, §6</p>
+        </div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Схема"><text class="tm" x="20" y="40">n = 0 → ×2</text><text class="tm" x="20" y="70">n = 3 → ×1,0905</text><text class="tm" x="20" y="100">n = 8 → ×1,0027</text></svg></figure>
+      </article>
+    </div>
+  </section>
+
+  <section class="part">
+    <h3>Итог лекции</h3>
+    <p>Точность гистограммы определяют места границ: на 1000 запросах 12 корзин «под сервис» оценили p90 с ошибкой 1%, 15 корзин по умолчанию — 20%, крупные корзины — 59%. Границы выбирают по трём правилам: последняя — выше самых долгих запросов, одна — точно на обещанном значении, остальные — с постоянным множителем и гуще у основной массы запросов. Менять границы потом дорого: корзины складываются только по общим границам, а история рвётся. Native histograms снимают выбор границ: их задаёт формула со схемой, хранятся только непустые корзины. Они стабильны в Prometheus с 3.8, но сбор включают явно, а Python-библиотека их пока не создаёт.</p>
+    <h3>Источники</h3>
+    <ul class="sources">
+      <li>Prometheus. Histograms and summaries — prometheus.io/docs/practices/histograms</li>
+      <li>Prometheus. Native Histograms specification — prometheus.io/docs/specs/native_histograms (прочитана по исходнику github.com/prometheus/docs, 13.11.2026)</li>
+      <li>prometheus-client для Python 0.26.0 — prometheus.github.io/client_python</li>
+      <li>Выводы получены запуском на Python 3.12.12 и prometheus-client 0.26.0, macOS, 13.11.2026; 1000 длительностей сгенерированы программой <code>data.py</code></li>
+    </ul>
+  </section>
+
+  <div class="pager">
+    <a href="2-8-histogram.html">← 2.8 Histogram</a>
+    <a href="index.html">К содержанию справочника</a>
+    <span class="pager__soon">2.10 Summary · готовится →</span>
+  </div>
+  <div class="colophon">
+    <span>Лекция 2.9 · Выбор корзин · Метрики и наблюдаемость</span>
+    <span class="author-line">Автор: Макаров Максим Николаевич</span>
+  </div>
+    </main>
+  </div>
+</div>
+<script src="reader.js"></script>
+</body>
+</html>

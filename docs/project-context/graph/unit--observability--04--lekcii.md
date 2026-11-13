@@ -33,6 +33,7 @@ tags:
 - [observability/lekcii/2-6-counter-v-kode.html](../../../observability/lekcii/2-6-counter-v-kode.html)
 - [observability/lekcii/2-7-gauge.html](../../../observability/lekcii/2-7-gauge.html)
 - [observability/lekcii/2-8-histogram.html](../../../observability/lekcii/2-8-histogram.html)
+- [observability/lekcii/2-9-vybor-korzin.html](../../../observability/lekcii/2-9-vybor-korzin.html)
 - [observability/lekcii/counter-model.js](../../../observability/lekcii/counter-model.js)
 - [observability/lekcii/reader.js](../../../observability/lekcii/reader.js)
 

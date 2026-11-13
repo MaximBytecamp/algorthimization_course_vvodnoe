@@ -60,6 +60,7 @@ tags:
 - [[archive/claude-memory/op04-modul-12-intervaly|op04-modul-12-intervaly]]
 - [[archive/claude-memory/op04-mok-intervyu-1|op04-mok-intervyu-1]]
 - [[archive/claude-memory/op04-portfolio-lessons-04-05|op04-portfolio-lessons-04-05]]
+- [[archive/claude-memory/op04-portfolio-lessons-06-10|op04-portfolio-lessons-06-10]]
 - [[archive/claude-memory/op04-praktika-08|op04-praktika-08]]
 - [[archive/claude-memory/op04-stroki-book|op04-stroki-book]]
 - [[archive/claude-memory/op04-test-moduli-9-10|op04-test-moduli-9-10]]
