@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>2.2 Counter: создать и прибавить · Метрики и наблюдаемость</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="book">
+  <div class="book__body">
+    <div class="spine"><span>Часть 2 · Метрики в коде</span></div>
+    <main class="leaf">
+  <div class="running">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Метрики и наблюдаемость</a> · часть 2 · метрики в коде</p>
+    <p class="running__folio">Лекция 2.10</p>
+  </div>
+
+  <header class="chapter-head">
+    <span class="chapter-num">2.10</span>
+    <h1>Summary и выбор типа метрики</h1>
+    <p class="lead">Последний из основных типов метрик — Summary. В лекции проверим запуском, что он делает в библиотеке для Python, почему перцентили, посчитанные в приложении, нельзя объединить, и когда Summary всё же полезен. Затем — два вспомогательных типа, Info и Enum, и правило выбора типа для любой величины.</p>
+  </header>
+  <dl class="passport">
+    <div><dt>Тема</dt><dd>Summary, Info, Enum, выбор типа</dd></div>
+    <div><dt>Библиотека</dt><dd><code>prometheus-client</code> 0.26.0</dd></div>
+    <div><dt>Опирается на</dt><dd>2.2–2.9: Counter, Gauge, Histogram</dd></div>
+    <div><dt>Результат</dt><dd>Выбрать тип метрики для любой величины</dd></div>
+  </dl>
+
+  <div class="reader-start">
+    <div>
+      <b>Режим чтения</b>
+      <p>Лекция откроется по одному разделу: на экране одна мысль, кнопка «Дальше» ведёт к следующей. Стрелки ← → на клавиатуре тоже листают, Esc возвращает всю лекцию.</p>
+    </div>
+    <div class="reader-start__btns">
+      <button type="button" data-reader-start="continue" hidden></button>
+      <button type="button" class="primary" data-reader-start="begin">Читать по шагам</button>
+    </div>
+  </div>
+
+    <nav class="contents">
+    <b>В этой лекции</b>
+    <ol>
+      <li><a href="#s1"><span class="csec">§1</span>Summary в Python</a></li>
+      <li><a href="#s2"><span class="csec">§2</span>Метка quantile занята</a></li>
+      <li><a href="#s3"><span class="csec">§3</span>Перцентили из приложения не складываются</a></li>
+      <li><a href="#s4"><span class="csec">§4</span>Когда Summary в Python полезен</a></li>
+      <li><a href="#s5"><span class="csec">§5</span>Info и Enum</a></li>
+      <li><a href="#s6"><span class="csec">§6</span>Как выбрать тип метрики</a></li>
+      <li><a href="#s7"><span class="csec">§7</span>Частые ошибки</a></li>
+      <li><a href="#s8"><span class="csec">§8</span>Практика</a></li>
+      <li><a href="#s9"><span class="csec">§9</span>Проверьте себя</a></li>
+      <li><a href="#s10"><span class="csec">§10</span>Шпаргалка</a></li>
+      <li><a href="#s11"><span class="csec">§11</span>Глоссарий</a></li>
+    </ol>
+  </nav>
+
+    <section class="part" id="s1">
+    <h2><span class="sec">§1</span>Summary в Python</h2>
+    <p class="about">Что отдаёт Summary в prometheus-client и чего в нём нет.</p>
+    <p>Четвёртый основной тип метрик — <span class="term">Summary</span> («сводка»). В описании Prometheus это тип, который считает перцентили прямо в приложении. Проверим, что он делает в библиотеке для Python. Отдадим ему те же 20 отчётов, что гистограмме в лекции 2.8:</p>
+    <figure class="code">
+      <figcaption><span>summary.py</span><span>те же 20 отчётов</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Summary, generate_latest
+
+registry = <span class="f">CollectorRegistry</span>()
+duration = <span class="f">Summary</span>(<span class="s">&quot;report_duration_seconds&quot;</span>, <span class="s">&quot;Время построения отчёта&quot;</span>, registry=registry)
+
+reports = [<span class="n">0.03</span>, <span class="n">0.04</span>, <span class="n">0.06</span>, <span class="n">0.07</span>, <span class="n">0.08</span>, <span class="n">0.09</span>, <span class="n">0.12</span>, <span class="n">0.13</span>, <span class="n">0.15</span>, <span class="n">0.18</span>,
+           <span class="n">0.2</span>, <span class="n">0.22</span>, <span class="n">0.3</span>, <span class="n">0.35</span>, <span class="n">0.4</span>, <span class="n">0.45</span>, <span class="n">0.7</span>, <span class="n">0.9</span>, <span class="n">1.4</span>, <span class="n">3.0</span>]
+<span class="k">for</span> seconds <span class="k">in</span> reports:
+    duration.<span class="f">observe</span>(seconds)
+
+<span class="f">print</span>(<span class="f">generate_latest</span>(registry).<span class="f">decode</span>())</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>ответ /metrics</span></figcaption><pre># HELP report_duration_seconds Время построения отчёта
+# TYPE report_duration_seconds summary
+report_duration_seconds_count 20.0
+report_duration_seconds_sum 8.870000000000001
+# HELP report_duration_seconds_created Время построения отчёта
+# TYPE report_duration_seconds_created gauge
+report_duration_seconds_created 1.794575221850337e+09</pre></figure>
+    <div class="walk">
+      <div><code>Summary("report_duration_seconds", …)</code><span>Аргументы те же, что у Histogram, но без границ корзин.</span></div>
+      <div><code>duration.observe(seconds)</code><span>Наблюдение передают так же, есть и <code>time()</code>.</span></div>
+    </div>
+    <p>В ответе всего две строки значений: <code>_count</code> — 20 и <code>_sum</code> — 8,87. Корзин и перцентилей нет. Опыт поставлен правильно: Summary в Python-библиотеке хранит только количество и сумму. Сравним с гистограммой из лекции 2.8:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Histogram: 8 корзин, _sum и _count — распределение и среднее; Summary в Python: только _sum и _count — среднее"><rect class="sc-acc" x="10" y="20" width="300" height="110" rx="8"/><text class="tb" x="26" y="44">Histogram</text><rect class="sc-box" x="26" y="66" width="20" height="10"/><rect class="sc-box" x="50" y="62" width="20" height="14"/><rect class="sc-box" x="74" y="58" width="20" height="18"/><rect class="sc-box" x="98" y="54" width="20" height="22"/><rect class="sc-box" x="122" y="52" width="20" height="24"/><text class="tm" x="160" y="72">8 корзин</text><text class="tm" x="26" y="98">_sum · _count</text><text class="t ta" x="26" y="118">распределение и среднее</text><rect class="sc-box" x="330" y="20" width="300" height="110" rx="8"/><text class="tb" x="346" y="44">Summary в Python</text><text class="tm" x="346" y="92">_sum · _count</text><text class="t" x="346" y="118">только среднее</text></svg>
+      <figcaption>Что хранят Histogram и Summary для одних и тех же 20 наблюдений.</figcaption>
+    </figure>
+    <p>Слева — корзины, по которым видно распределение и оценивается перцентиль. Справа — только сумма и количество. Из них получается одно среднее: 8,87 / 20 = 0,44 с. Это то самое число из лекции 2.8, §1, которое не похоже ни на один отчёт.</p>
+    <div class="key"><b>Вывод</b><p>В prometheus-client для Python Summary хранит только <code>_count</code> и <code>_sum</code>. Перцентилей и корзин в нём нет.</p></div>
+    <p class="next">Почему так и что такое «перцентили в приложении», которые обещает описание типа?</p>
+  </section>
+
+  <section class="part" id="s2">
+    <h2><span class="sec">§2</span>Метка quantile занята</h2>
+    <p class="about">Как Summary с перцентилями выглядит в других библиотеках и почему метку quantile нельзя взять себе.</p>
+    <p>В библиотеках для некоторых других языков, например для Go, у Summary есть ещё одна часть. Приложение само считает заданные перцентили по последним наблюдениям и отдаёт их строками с меткой <code>quantile</code>, например <code>report_duration_seconds{quantile="0.95"} 1.4</code>. В Python этой части нет, но метка <code>quantile</code> всё равно зарезервирована. Проверим:</p>
+    <figure class="code">
+      <figcaption><span>summary_label.py</span><span>метка quantile у Summary</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Summary
+
+registry = <span class="f">CollectorRegistry</span>()
+<span class="k">try</span>:
+    <span class="f">Summary</span>(<span class="s">&quot;x_seconds&quot;</span>, <span class="s">&quot;Пример&quot;</span>, [<span class="s">&quot;quantile&quot;</span>], registry=registry)
+<span class="k">except</span> ValueError <span class="k">as</span> error:
+    <span class="f">print</span>(<span class="s">&quot;ValueError:&quot;</span>, error)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>ошибка</span></figcaption><pre>ValueError: Reserved label methe fric name: quantile</pre></figure>
+    <p>Библиотека не дала создать Summary с меткой <code>quantile</code>: имя занято под перцентили, даже если Python их не отдаёт. Текст ошибки напечатан с опечаткой — <code>methe fric</code> вместо <code>metric</code>. Это не искажение при копировании: так написано в самой библиотеке 0.26.0, в файле <code>validation.py</code>, строка 112. Найти её можно командой <code>grep -n "Reserved label" .venv/lib/python3.12/site-packages/prometheus_client/validation.py</code>. Опечатки встречаются и в популярных библиотеках, поэтому текст ошибки ищут по ключевым словам.</p>
+    <div class="key"><b>Вывод</b><p>Метка <code>quantile</code> у Summary зарезервирована под перцентили. В Python их нет, но и своей такой метки завести нельзя.</p></div>
+    <p class="next">Даже там, где Summary отдаёт перцентили, у них есть ограничение, знакомое по лекции 2.8.</p>
+  </section>
+
+  <section class="part" id="s3">
+    <h2><span class="sec">§3</span>Перцентили из приложения не складываются</h2>
+    <p class="about">Почему готовые перцентили экземпляров нельзя объединить.</p>
+    <p>Summary с перцентилями отдаёт уже посчитанный p95 каждого экземпляра. Распределения в ответе нет — только итоговое число. Возьмём три экземпляра из лекции 2.8, §7 и посмотрим, что можно сделать с их готовыми p95:</p>
+    <figure class="code">
+      <figcaption><span>client_quantiles.py</span><span>p95 трёх экземпляров</span></figcaption>
+<pre><span class="k">import</span> math
+
+<span class="k">def</span> <span class="f">exact</span>(q, values):
+    <span class="k">return</span> <span class="f">sorted</span>(values)[math.<span class="f">ceil</span>(q * <span class="f">len</span>(values)) - <span class="n">1</span>]
+
+fast = [<span class="n">0.03</span> + <span class="n">0.003</span> * n <span class="k">for</span> n <span class="k">in</span> <span class="f">range</span>(<span class="n">20</span>)]          <span class="c"># api-1 и api-3</span>
+slow = [<span class="n">0.1</span> * n <span class="k">for</span> n <span class="k">in</span> <span class="f">range</span>(<span class="n">1</span>, <span class="n">21</span>)]                 <span class="c"># api-2</span>
+instances = {<span class="s">&quot;api-1&quot;</span>: fast, <span class="s">&quot;api-2&quot;</span>: slow, <span class="s">&quot;api-3&quot;</span>: fast}
+
+<span class="c"># Так отдаёт Summary с перцентилями: каждый экземпляр считает свой p95 сам</span>
+reported = {name: <span class="f">exact</span>(<span class="n">0.95</span>, values) <span class="k">for</span> name, values <span class="k">in</span> instances.<span class="f">items</span>()}
+<span class="f">print</span>(<span class="s">&quot;p95 от экземпляров:&quot;</span>, {k: <span class="f">round</span>(v, <span class="n">3</span>) <span class="k">for</span> k, v <span class="k">in</span> reported.<span class="f">items</span>()})
+<span class="f">print</span>(<span class="s">&quot;среднее:           &quot;</span>, <span class="f">round</span>(<span class="f">sum</span>(reported.<span class="f">values</span>()) / <span class="n">3</span>, <span class="n">3</span>))
+<span class="f">print</span>(<span class="s">&quot;максимум:          &quot;</span>, <span class="f">round</span>(<span class="f">max</span>(reported.<span class="f">values</span>()), <span class="n">3</span>))
+<span class="f">print</span>(<span class="s">&quot;на самом деле:     &quot;</span>, <span class="f">round</span>(<span class="f">exact</span>(<span class="n">0.95</span>, fast + slow + fast), <span class="n">3</span>))</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>что получается из готовых p95</span></figcaption><pre>p95 от экземпляров: {&#x27;api-1&#x27;: 0.084, &#x27;api-2&#x27;: 1.9, &#x27;api-3&#x27;: 0.084}
+среднее:            0.689
+максимум:           1.9
+на самом деле:      1.7</pre></figure>
+    <div class="walk">
+      <div><code>reported = {…}</code><span>Так получает данные Prometheus при Summary с перцентилями: по одному готовому числу от каждого.</span></div>
+      <div><code>sum(…) / 3</code>, <code>max(…)</code><span>Две попытки получить общий p95 из готовых чисел.</span></div>
+      <div><code>exact(0.95, fast + slow + fast)</code><span>Настоящий общий p95 — для сравнения. Prometheus его посчитать не может: отдельных значений у него нет.</span></div>
+    </div>
+    <p>Среднее готовых p95 — 0,689, максимум — 1,9, а на самом деле 1,7. Ни одна операция над готовыми перцентилями не даёт правильного ответа. Пересчитать тоже нельзя: отдельных значений нет. Гистограмма в той же ситуации отдавала корзины, и сложение корзин дало 2,05 — грубо, но из общего распределения. Поэтому длительность в сервисах из нескольких экземпляров хранят гистограммой.</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th></th><th>Histogram</th><th>Summary с перцентилями</th></tr></thead>
+        <tbody>
+          <tr><td>где считается перцентиль</td><td>при запросе, по корзинам</td><td>в приложении</td></tr>
+          <tr><td>точность</td><td>зависит от границ корзин</td><td>задаётся заранее для каждого перцентиля</td></tr>
+          <tr><td>экземпляры</td><td>корзины складываются</td><td>перцентили не объединить</td></tr>
+          <tr><td>другой перцентиль потом</td><td>можно, по тем же корзинам</td><td>нельзя: считаются только заданные</td></tr>
+        </tbody>
+      </table></div>
+    <div class="key key--warn"><b>Вывод</b><p>Готовые перцентили экземпляров не объединяются: среднее и максимум дают неверный ответ. Если экземпляров несколько, длительность хранят гистограммой.</p></div>
+    <p class="next">Зачем тогда Summary в Python? У него есть одно достоинство — цена.</p>
+  </section>
+
+  <section class="part" id="s4">
+    <h2><span class="sec">§4</span>Когда Summary в Python полезен</h2>
+    <p class="about">Сколько рядов стоят Summary и Histogram и когда хватает среднего.</p>
+    <p>Посчитаем ряды обоих типов с одной меткой <code>route</code> на трёх адресах, как в лекции 2.8, §8:</p>
+    <figure class="code">
+      <figcaption><span>cost.py</span><span>ряды Summary и Histogram</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Histogram, Summary, disable_created_metrics
+
+<span class="f">disable_created_metrics</span>()
+registry = <span class="f">CollectorRegistry</span>()
+s = <span class="f">Summary</span>(<span class="s">&quot;s_seconds&quot;</span>, <span class="s">&quot;summary&quot;</span>, [<span class="s">&quot;route&quot;</span>], registry=registry)
+h = <span class="f">Histogram</span>(<span class="s">&quot;h_seconds&quot;</span>, <span class="s">&quot;histogram&quot;</span>, [<span class="s">&quot;route&quot;</span>], registry=registry)
+<span class="k">for</span> route <span class="k">in</span> (<span class="s">&quot;/orders&quot;</span>, <span class="s">&quot;/orders/{id}&quot;</span>, <span class="s">&quot;/report&quot;</span>):
+    s.<span class="f">labels</span>(route).<span class="f">observe</span>(<span class="n">0.1</span>)
+    h.<span class="f">labels</span>(route).<span class="f">observe</span>(<span class="n">0.1</span>)
+
+<span class="k">for</span> family <span class="k">in</span> registry.<span class="f">collect</span>():
+    <span class="f">print</span>(<span class="s">f&quot;{family.type:&lt;9} рядов: {len(family.samples)}&quot;</span>)</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>число рядов</span></figcaption><pre>summary   рядов: 6
+histogram рядов: 51</pre></figure>
+    <p>Summary — 6 рядов: <code>_count</code> и <code>_sum</code> на адрес. Гистограмма с границами по умолчанию — 51, в восемь с половиной раз больше. Если нужно только среднее за окно, Summary даёт его теми же приростами, что гистограмма в лекции 2.8, §4: Δ<code>_sum</code> / Δ<code>_count</code>. И обходится в 8,5 раза дешевле. Так бывает для величин, где распределение не важно: средний размер ответа в байтах, среднее число строк в отчёте.</p>
+    <div class="key"><b>Вывод</b><p>Summary в Python — дешёвый способ знать среднее за окно. Для длительности, где важны медленные запросы, его не хватает: нужна гистограмма.</p></div>
+    <p class="next">Кроме четырёх основных, в библиотеке есть ещё два типа для особых случаев.</p>
+  </section>
+
+  <section class="part" id="s5">
+    <h2><span class="sec">§5</span>Info и Enum</h2>
+    <p class="about">Как отдать версию приложения и текущее состояние из списка.</p>
+    <p>Иногда нужно отдать текст: версию приложения, номер коммита. Или состояние, одно из нескольких: «ждёт», «выполняется», «упала». Для этого в библиотеке есть <code>Info</code> и <code>Enum</code>. Оба в ответе превращаются в gauge:</p>
+    <figure class="code">
+      <figcaption><span>info_enum.py</span><span>версия и состояние</span></figcaption>
+<pre><span class="k">from</span> prometheus_client <span class="k">import</span> CollectorRegistry, Enum, Info, generate_latest
+
+registry = <span class="f">CollectorRegistry</span>()
+build = <span class="f">Info</span>(<span class="s">&quot;app_build&quot;</span>, <span class="s">&quot;Версия приложения&quot;</span>, registry=registry)
+build.<span class="f">info</span>({<span class="s">&quot;version&quot;</span>: <span class="s">&quot;2.15.0&quot;</span>, <span class="s">&quot;commit&quot;</span>: <span class="s">&quot;8f3c2a1&quot;</span>})
+
+state = <span class="f">Enum</span>(<span class="s">&quot;export_state&quot;</span>, <span class="s">&quot;Состояние выгрузки&quot;</span>, registry=registry,
+             states=[<span class="s">&quot;idle&quot;</span>, <span class="s">&quot;running&quot;</span>, <span class="s">&quot;failed&quot;</span>])
+state.<span class="f">state</span>(<span class="s">&quot;running&quot;</span>)
+
+<span class="f">print</span>(<span class="f">generate_latest</span>(registry).<span class="f">decode</span>())</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>ответ /metrics</span></figcaption><pre># HELP app_build_info Версия приложения
+# TYPE app_build_info gauge
+app_build_info{commit=&quot;8f3c2a1&quot;,version=&quot;2.15.0&quot;} 1.0
+# HELP export_state Состояние выгрузки
+# TYPE export_state gauge
+export_state{export_state=&quot;idle&quot;} 0.0
+export_state{export_state=&quot;running&quot;} 1.0
+export_state{export_state=&quot;failed&quot;} 0.0</pre></figure>
+    <div class="walk">
+      <div><code>Info("app_build", …).info({…})</code><span>Текст передают метками; значение всегда 1. К имени добавляется <code>_info</code>.</span></div>
+      <div><code>Enum(…, states=[…])</code><span>Список возможных состояний задают при создании.</span></div>
+      <div><code>state.state("running")</code><span>Текущее состояние получает 1, остальные — 0.</span></div>
+    </div>
+    <p><code>app_build_info</code> — одна строка, в метках версия и коммит, значение 1. По ней видно, какая версия работает на каждом экземпляре: в лекции 1.6 как раз версия 2.15.0 оказалась подсказкой к сбою. <code>export_state</code> — три строки, по одной на состояние: у <code>running</code> 1, у остальных 0. Так состояние можно показывать на графике и проверять условием «<code>failed</code> равно 1».</p>
+    <div class="key"><b>Вывод</b><p><code>Info</code> отдаёт текст метками со значением 1, <code>Enum</code> — одно текущее состояние из заданного списка. В ответе оба — gauge.</p></div>
+    <p class="next">Типов шесть. Соберём правило выбора.</p>
+  </section>
+
+  <section class="part" id="s6">
+    <h2><span class="sec">§6</span>Как выбрать тип метрики</h2>
+    <p class="about">Пять вопросов, которые приводят к нужному типу.</p>
+    <p>Тип выбирают по вопросу, на который метрика должна отвечать. На схеме — порядок вопросов:</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 300" role="img" aria-label="Дерево выбора: текст о приложении — Info; одно состояние из списка — Enum; события, только растёт — Counter; значение сейчас — Gauge; длительность или размер: нужны медленные или перцентили — Histogram, хватит среднего — Summary"><rect class="sc-box" x="10" y="14" width="330" height="34" rx="6"/><text class="t" x="22" y="36">текст о приложении: версия, коммит?</text><path class="sc-arrow" d="M344 31 L452 31"/><rect class="sc-acc" x="456" y="14" width="174" height="34" rx="6"/><text class="tb tc" x="543" y="36">Info</text><rect class="sc-box" x="10" y="62" width="330" height="34" rx="6"/><text class="t" x="22" y="84">одно состояние из списка?</text><path class="sc-arrow" d="M344 79 L452 79"/><rect class="sc-acc" x="456" y="62" width="174" height="34" rx="6"/><text class="tb tc" x="543" y="84">Enum</text><rect class="sc-box" x="10" y="110" width="330" height="34" rx="6"/><text class="t" x="22" y="132">считаем события, только растёт?</text><path class="sc-arrow" d="M344 127 L452 127"/><rect class="sc-acc" x="456" y="110" width="174" height="34" rx="6"/><text class="tb tc" x="543" y="132">Counter</text><rect class="sc-box" x="10" y="158" width="330" height="34" rx="6"/><text class="t" x="22" y="180">значение «сейчас», растёт и падает?</text><path class="sc-arrow" d="M344 175 L452 175"/><rect class="sc-acc" x="456" y="158" width="174" height="34" rx="6"/><text class="tb tc" x="543" y="180">Gauge</text><rect class="sc-box" x="10" y="206" width="330" height="34" rx="6"/><text class="t" x="22" y="228">длительность или размер: важны медленные?</text><path class="sc-arrow" d="M344 223 L452 223"/><rect class="sc-acc" x="456" y="206" width="174" height="34" rx="6"/><text class="tb tc" x="543" y="228">Histogram</text><rect class="sc-box" x="10" y="254" width="330" height="34" rx="6"/><text class="t" x="22" y="276">хватит среднего?</text><path class="sc-arrow" d="M344 271 L452 271"/><rect class="sc-box" x="456" y="254" width="174" height="34" rx="6"/><text class="tb tc" x="543" y="276">Summary</text></svg>
+      <figcaption>Вопросы задают сверху вниз; первый ответ «да» даёт тип.</figcaption>
+    </figure>
+    <p>Вопросы идут сверху вниз. Текст и состояние отсеиваются первыми, потому что у них нет числа в обычном смысле. Затем — события или состояние: здесь работает правило лекции 2.7, «что значило бы уменьшение». Последние два вопроса — для величин, которые наблюдают много раз: длительностей и размеров. Если важны медленные запросы или перцентили — гистограмма. Если достаточно среднего — Summary, он дешевле. Те же решения в таблице с примерами из лекций:</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Тип</th><th>Вопрос</th><th>Пример из лекций</th></tr></thead>
+        <tbody>
+          <tr><td>Counter</td><td>сколько событий</td><td><code>orders_created_total</code> (1.5), <code>http_requests_total</code> (2.1)</td></tr>
+          <tr><td>Gauge</td><td>сколько сейчас</td><td><code>orders_queue_length</code> (2.7)</td></tr>
+          <tr><td>Histogram</td><td>как распределены значения</td><td><code>report_duration_seconds</code> (2.8)</td></tr>
+          <tr><td>Summary</td><td>какое среднее</td><td>средний размер ответа</td></tr>
+          <tr><td>Info</td><td>какая версия</td><td><code>app_build_info</code> (§5)</td></tr>
+          <tr><td>Enum</td><td>в каком состоянии</td><td><code>export_state</code> (§5)</td></tr>
+        </tbody>
+      </table></div>
+    <div class="key"><b>Вывод</b><p>Тип выбирают по вопросу к метрике. Для длительности в сервисе из нескольких экземпляров — гистограмма.</p></div>
+  </section>
+
+  <section class="part" id="s7">
+    <h2><span class="sec">§7</span>Частые ошибки</h2>
+    <p class="about">Что делают неправильно и как исправить.</p>
+    <div class="table-scroll"><table>
+        <thead><tr><th>Что делают</th><th>Что произойдёт</th><th>Как правильно</th></tr></thead>
+        <tbody>
+          <tr><td>берут Summary в Python ради перцентилей</td><td>в ответе только <code>_count</code> и <code>_sum</code></td><td>для перцентилей — Histogram</td></tr>
+          <tr><td>усредняют p95 экземпляров из Summary</td><td>ответ не совпадает с общим p95</td><td>Histogram и сложение корзин</td></tr>
+          <tr><td>заводят у Summary метку <code>quantile</code></td><td><code>ValueError</code>: метка зарезервирована</td><td>другое имя метки</td></tr>
+          <tr><td>отдают версию строкой счётчика или gauge с числом-версией</td><td>версию не прочитать, «2.15» превращается в число</td><td><code>Info</code> с версией в метке</td></tr>
+          <tr><td>заводят по gauge на каждое состояние вручную</td><td>легко оставить два состояния в 1</td><td><code>Enum</code>: ровно одно состояние равно 1</td></tr>
+          <tr><td>выбирают тип по привычке</td><td>счётчик для «сейчас» или gauge для событий</td><td>вопросы §6 сверху вниз</td></tr>
+        </tbody>
+      </table></div>
+  </section>
+
+  <section class="part" id="s8">
+    <h2><span class="sec">§8</span>Практика</h2>
+    <p class="about">Три задачи. Решение спрятано под задачей.</p>
+    <h3>Задача 1. Выберите тип</h3>
+    <p>Ситуация: в сервисе рассылки нужно измерять:</p>
+    <ul>
+      <li>сколько писем отправлено;</li>
+      <li>сколько писем ждёт в очереди;</li>
+      <li>сколько времени занимает отправка, с вниманием к медленным;</li>
+      <li>средний размер письма в байтах;</li>
+      <li>версию сервиса;</li>
+      <li>состояние соединения с почтовым сервером: «нет», «подключается», «есть».</li>
+    </ul>
+    <div class="key"><b>Что нужно сделать</b><p>Назвать тип для каждой величины по вопросам §6.</p></div>
+    <details><summary>Решение</summary>
+    <p>Отправлено — Counter. Ждёт — Gauge. Время отправки — Histogram: важны медленные. Средний размер — Summary: хватит среднего. Версия — Info. Состояние соединения — Enum.</p>
+    </details>
+
+    <h3>Задача 2. Среднее из Summary за окно</h3>
+    <p>Ситуация: в 12:00 у Summary <code>_count</code> 400 и <code>_sum</code> 20,0; в 12:05 — 520 и 50,0.</p>
+    <div class="key"><b>Что нужно сделать</b><p>Найти среднее за всё время и за эти 5 минут.</p></div>
+    <details><summary>Решение</summary>
+    <p>За всё время: 50 / 520 ≈ 0,096. За окно: (50 − 20) / (520 − 400) = 30 / 120 = 0,25. Прежнее среднее было 20 / 400 = 0,05, новые наблюдения в 5 раз больше, а общее среднее выросло только до 0,096.</p>
+    </details>
+
+    <h3>Задача 3. Смена состояния</h3>
+    <p>Ситуация: <code>Enum export_state</code> из §5 в состоянии <code>running</code>. Выгрузка упала, вызвали <code>state.state("failed")</code>.</p>
+    <div class="key"><b>Что нужно сделать</b><p>Записать три строки значений после вызова.</p></div>
+    <details><summary>Решение</summary>
+    <p><code>export_state{export_state="idle"} 0.0</code>, <code>…="running"} 0.0</code>, <code>…="failed"} 1.0</code>: единица переходит к новому состоянию, прежнее становится 0.</p>
+    </details>
+  </section>
+
+  <section class="part" id="s9">
+    <h2><span class="sec">§9</span>Проверьте себя</h2>
+    <p class="about">Вопросы по лекции. Ответ раскрывается щелчком.</p>
+    <details><summary>Что отдаёт Summary в prometheus-client для Python?</summary><p>Только <code>_count</code> и <code>_sum</code>, и ещё <code>_created</code>.</p></details>
+    <details><summary>Почему готовые p95 экземпляров нельзя объединить?</summary><p>В них нет распределения. Среднее (0,689) и максимум (1,9) не дают настоящего общего p95 (1,7).</p></details>
+    <details><summary>Зачем Summary, если есть Histogram?</summary><p>Он дешевле: 2 ряда на сочетание меток против 17 у гистограммы по умолчанию. Хватает, когда нужно только среднее.</p></details>
+    <details><summary>Какое значение у строки Info?</summary><p>Всегда 1. Сведения записаны в метках.</p></details>
+    <details><summary>Какой тип для длительности в сервисе из трёх экземпляров?</summary><p>Histogram: корзины экземпляров складываются, и по сумме оценивается общий перцентиль.</p></details>
+  </section>
+
+  <section class="part" id="s10">
+    <h2><span class="sec">§10</span>Шпаргалка</h2>
+    <p class="about">Опорные понятия лекции одним списком.</p>
+    <div class="cheat">
+      <div><b>Summary в Python</b><code>_count, _sum</code><code>перцентилей нет</code></div>
+      <div><b>Summary с перцентилями</b><code>считает приложение</code><code>не складываются</code></div>
+      <div><b>Info</b><code>name_info{version="…"} 1</code></div>
+      <div><b>Enum</b><code>одно состояние = 1</code></div>
+      <div><b>Выбор</b><code>текст → Info</code><code>состояние → Enum</code><code>события → Counter</code><code>сейчас → Gauge</code><code>медленные → Histogram</code><code>среднее → Summary</code></div>
+    </div>
+  </section>
+
+  <section class="part" id="s11">
+    <h2><span class="sec">§11</span>Глоссарий</h2>
+    <p class="about">Термины лекции, включая понятия прежних лекций: формулировка, пример и рисунок.</p>
+    <div class="glossary">
+      <article class="gl" id="g-counter">
+        <div class="gl__text"><h3>Counter</h3><p class="gl__def">Метрика, которая только растёт и считает события.</p><p class="gl__ex"><b>Пример</b><code>http_requests_total</code>.</p><p class="gl__where"><b>Где</b>лекция 2.2</p></div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Counter"><line class="sc-axis" x1="10" y1="110" x2="250" y2="110"/><polyline class="sc-plot" points="20,100 70,85 120,70 170,50 230,30"/></svg></figure>
+      </article>
+      <article class="gl" id="g-gauge">
+        <div class="gl__text"><h3>Gauge</h3><p class="gl__def">Метрика с числом, которое растёт и уменьшается: состояние сейчас.</p><p class="gl__ex"><b>Пример</b><code>orders_queue_length</code>.</p><p class="gl__where"><b>Где</b>лекция 2.7</p></div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Gauge"><line class="sc-axis" x1="10" y1="110" x2="250" y2="110"/><polyline class="sc-plot" points="20,90 60,40 100,70 140,30 180,80 230,60"/></svg></figure>
+      </article>
+      <article class="gl" id="g-histogram">
+        <div class="gl__text"><h3>Histogram</h3><p class="gl__def">Метрика, которая раскладывает наблюдения по корзинам и хранит <code>_sum</code> и <code>_count</code>.</p><p class="gl__ex"><b>Пример</b><code>report_duration_seconds_bucket{le="0.5"} 16</code>.</p><p class="gl__where"><b>Где</b>лекции 2.8–2.9</p></div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Histogram"><rect class="sc-acc" x="20" y="80" width="30" height="30"/><rect class="sc-acc" x="60" y="50" width="30" height="60"/><rect class="sc-acc" x="100" y="30" width="30" height="80"/><rect class="sc-acc" x="140" y="70" width="30" height="40"/><line class="sc-axis" x1="10" y1="110" x2="250" y2="110"/></svg></figure>
+      </article>
+      <article class="gl" id="g-summary">
+        <div class="gl__text"><h3>Summary</h3><p class="gl__def">Метрика наблюдений с <code>_sum</code> и <code>_count</code>. В некоторых библиотеках ещё и перцентили, посчитанные в приложении; в Python — нет.</p><p class="gl__ex"><b>Пример</b>20 отчётов: <code>_count</code> 20, <code>_sum</code> 8,87.</p><p class="gl__where"><b>Где</b>лекция 2.10, §1</p></div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Summary"><rect class="sc-box" x="40" y="30" width="180" height="30" rx="6"/><text class="tm tc" x="130" y="50">_sum 8.87</text><rect class="sc-box" x="40" y="70" width="180" height="30" rx="6"/><text class="tm tc" x="130" y="90">_count 20</text></svg></figure>
+      </article>
+      <article class="gl" id="g-info">
+        <div class="gl__text"><h3>Info</h3><p class="gl__def">Метрика с текстовыми сведениями в метках и значением 1.</p><p class="gl__ex"><b>Пример</b><code>app_build_info{version="2.15.0"} 1.0</code>.</p><p class="gl__where"><b>Где</b>лекция 2.10, §5</p></div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Info"><rect class="sc-acc" x="20" y="45" width="220" height="40" rx="6"/><text class="tm tc" x="130" y="70">{version="2.15.0"} 1</text></svg></figure>
+      </article>
+      <article class="gl" id="g-enum">
+        <div class="gl__text"><h3>Enum</h3><p class="gl__def">Метрика текущего состояния из заданного списка: у текущего 1, у остальных 0.</p><p class="gl__ex"><b>Пример</b><code>export_state{export_state="running"} 1.0</code>.</p><p class="gl__where"><b>Где</b>лекция 2.10, §5</p></div>
+        <figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Enum"><rect class="sc-box" x="20" y="45" width="66" height="40" rx="6"/><text class="tm tc" x="53" y="70">idle 0</text><rect class="sc-acc" x="96" y="45" width="70" height="40" rx="6"/><text class="tm tc" x="131" y="70">run 1</text><rect class="sc-box" x="176" y="45" width="66" height="40" rx="6"/><text class="tm tc" x="209" y="70">fail 0</text></svg></figure>
+      </article>
+    </div>
+  </section>
+
+  <section class="part">
+    <h3>Итог лекции</h3>
+    <p>Summary в prometheus-client для Python хранит только <code>_count</code> и <code>_sum</code>: перцентилей в нём нет, а метка <code>quantile</code> зарезервирована. В других библиотеках Summary считает перцентили в приложении, но такие перцентили экземпляров не объединяются: среднее и максимум трёх p95 дают 0,689 и 1,9 при настоящих 1,7. Поэтому для длительности берут Histogram, а Summary в Python — дешёвый способ знать среднее за окно, 2 ряда вместо 17. Для текста о приложении есть Info, для одного состояния из списка — Enum. Тип выбирают вопросами сверху вниз: текст, состояние, события, значение сейчас, распределение или среднее.</p>
+    <h3>Источники</h3>
+    <ul class="sources">
+      <li>Prometheus. Metric types — prometheus.io/docs/concepts/metric_types</li>
+      <li>Prometheus. Histograms and summaries — prometheus.io/docs/practices/histograms</li>
+      <li>prometheus-client для Python 0.26.0: Summary, Info, Enum — prometheus.github.io/client_python; исходный код <code>validation.py</code></li>
+      <li>Выводы получены запуском на Python 3.12.12 и prometheus-client 0.26.0, macOS, 13.11.2026</li>
+    </ul>
+  </section>
+
+  <div class="pager">
+    <a href="2-9-vybor-korzin.html">← 2.9 Выбор корзин</a>
+    <a href="index.html">К содержанию справочника</a>
+    <span class="pager__soon">2.11 Имена и единицы · готовится →</span>
+  </div>
+  <div class="colophon">
+    <span>Лекция 2.10 · Summary · Метрики и наблюдаемость</span>
+    <span class="author-line">Автор: Макаров Максим Николаевич</span>
+  </div>
+    </main>
+  </div>
+</div>
+<script src="reader.js"></script>
+</body>
+</html>
