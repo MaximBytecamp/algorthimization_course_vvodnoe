@@ -132,7 +132,10 @@ upsert по id, ручной запуск и зависимость jobs. По �
 модель qwen3:4b-instruct, Continue `provider: openai` + `/v1` (у provider ollama инструменты только в первом запросе).
 Решение автора: оставить 4B, агент задачу не решил — глава учит проверке и отказу; добавлен §9 «Другие варианты и недостатки».
 Ловушка съёмки: кнопка разрешения команды `accept-tool-call-button-*` в фиксированной полосе (offsetParent = null).
-Следующая — 4.4 «Angular: тот же компонент».
+16.11.2026 глава 4.4 «Angular: тот же компонент» готова и отправлена (13ddde5): `temy/44-angular`, 15 кадров, `shots_44.py`
+(профиль vsc-react, порт 9362, в терминале NG_CLI_ANALYTICS=false), код `tools/code44`, прототип `/private/tmp/proto44/monitoring-ng`.
+Angular 22.2.6: @Service, httpResource (стабилен), без zone.js, Vitest по умолчанию, `ng new --ai-config` создаёт AGENTS.md.
+Главы модуля 4 закончены. Дальше по плану — проект «Дайджест новостей» (Р2) и автоматизация RSS → модель → Telegram (Firebase).
 
 ## Git и GitHub: тест по модулю 3
 
