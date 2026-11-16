@@ -7,7 +7,7 @@
 Сделано: стенд `~/clickhouse-practice` (compose.yaml, образ 26.8.36.3, пользователь
 student/student, seed/reset ≈25 с, пик памяти генерации 459 МБ — хватит 2 ГБ Docker),
 данные детерминированы (контрольные суммы в PLAN.md). Книга `~/clickhouse_theory_makarov`:
-styles.css и book.js из MongoDB; палитра с 16.11.2026 — цвета логотипа ClickHouse (чёрный + лимонный #FAFF69, просьба пользователя: «не жёлтый какой-то»), PLAN.md, `tools/shots.mjs`
+styles.css и book.js из MongoDB; палитра с 16.11.2026 — графит и фиолетово-сиреневый (#5B3DA8, #C4B0FF); янтарь и лимонный логотипа пользователь отклонил («кислотный»), PLAN.md, `tools/shots.mjs`
 (кадры Play UI: `mark` — рамки с номерами, `clip` — обрезка; результат в теневом DOM
 `query-result`), `tools/mark.py` (рамки и обрезка поверх готовых PNG, `--scale 1`
 для картинок не Retina). Кадры 01–05 для главы 0.1 сняты.
