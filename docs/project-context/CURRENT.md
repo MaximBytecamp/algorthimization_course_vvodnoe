@@ -135,7 +135,11 @@ upsert по id, ручной запуск и зависимость jobs. По �
 16.11.2026 глава 4.4 «Angular: тот же компонент» готова и отправлена (13ddde5): `temy/44-angular`, 15 кадров, `shots_44.py`
 (профиль vsc-react, порт 9362, в терминале NG_CLI_ANALYTICS=false), код `tools/code44`, прототип `/private/tmp/proto44/monitoring-ng`.
 Angular 22.2.6: @Service, httpResource (стабилен), без zone.js, Vitest по умолчанию, `ng new --ai-config` создаёт AGENTS.md.
-Главы модуля 4 закончены. Дальше по плану — проект «Дайджест новостей» (Р2) и автоматизация RSS → модель → Telegram (Firebase).
+Главы модуля 4 закончены. 16.11.2026 начат проект П4 «Дайджест новостей» (Р2), подробности — PLAN.md «Модуль 4».
+Хранилище — Google Таблица «Дайджест новостей» + Apps Script (адрес `~/digest-url.txt`, ключ `~/digest-key.txt`, вне Git);
+n8n `tools/code45` (стенд `stand/`, процессы `n8n/sbor.json` — проверен, 15 новостей за 67 с; `n8n/vecher.json` — ждёт токен бота
+в `~/digest-telegram.txt`); страница-эталон `tools/proekt4-digest` — проверена. Окно Chrome с входом в Google: профиль
+`~/firebase-shots-chrome`, порт 9391. Не начаты: главы автоматизации А4 и проекта П4, съёмка. Тесты модулей 1–3 отправлены (844bc66).
 
 ## Git и GitHub: тест по модулю 3
 
