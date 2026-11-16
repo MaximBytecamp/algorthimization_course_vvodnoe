@@ -126,6 +126,13 @@ upsert по id, ручной запуск и зависимость jobs. По �
 обрезка `crop_42.py`. Находки: Lighthouse 13.6 — 94/91 только контраст → 100; карточка на div тоже 100, ловят тесты по роли
 и oxlint jsx-a11y; правило prefer-tag-over-role выключено. Подробности — PLAN.md «Модуль 4». Следующая — 4.3 «Задача для
 ИИ-агента и проверка результата» (агент — расширение VS Code с моделью Ollama).
+16.11.2026 глава 4.3 готова и отправлена (75df3c5): `temy/43-zadacha-agentu`, 17 кадров, `shots_43.py` (профиль VS Code
+`/private/tmp/vsc-agent`, порт 9363, Continue 2.0.0, CONTINUE_GLOBAL_DIR; панель — сырой CDP `tools/webview.py`), код `tools/code43`.
+Стенд: Ollama 0.40.16 нативно из `/private/tmp/ollama-mac` (модели — curl по манифесту реестра, `/private/tmp/gguf/fetch.py`),
+модель qwen3:4b-instruct, Continue `provider: openai` + `/v1` (у provider ollama инструменты только в первом запросе).
+Решение автора: оставить 4B, агент задачу не решил — глава учит проверке и отказу; добавлен §9 «Другие варианты и недостатки».
+Ловушка съёмки: кнопка разрешения команды `accept-tool-call-button-*` в фиксированной полосе (offsetParent = null).
+Следующая — 4.4 «Angular: тот же компонент».
 
 ## Git и GitHub: тест по модулю 3
 
