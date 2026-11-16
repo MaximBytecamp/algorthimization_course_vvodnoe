@@ -139,7 +139,7 @@ Angular 22.2.6: @Service, httpResource (стабилен), без zone.js, Vites
 Хранилище — Google Таблица «Дайджест новостей» + Apps Script (адрес `~/digest-url.txt`, ключ `~/digest-key.txt`, вне Git);
 n8n `tools/code45` (стенд `stand/`, процессы `n8n/sbor.json` — проверен, 15 новостей за 67 с; `n8n/vecher.json` — ждёт токен бота
 в `~/digest-telegram.txt`); страница-эталон `tools/proekt4-digest` — проверена. Окно Chrome с входом в Google: профиль
-`~/firebase-shots-chrome`, порт 9391. Не начаты: главы автоматизации А4 и проекта П4, съёмка. Тесты модулей 1–3 отправлены (844bc66).
+`~/firebase-shots-chrome`, порт 9391. Черновики глав А4 (`temy/48-avtomatizaciya`) и П4 (`temy/49-proekt-daydzhest`) отправлены, в оглавление не включены. Ждёт токена бота в `~/digest-telegram.txt`: проверка вечернего процесса и кадр Telegram; затем оглавление, переходы и вычитка. Тесты модулей 1–3 отправлены (844bc66).
 
 ## Git и GitHub: тест по модулю 3
 
