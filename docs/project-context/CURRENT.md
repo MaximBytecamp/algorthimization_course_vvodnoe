@@ -139,7 +139,11 @@ Angular 22.2.6: @Service, httpResource (стабилен), без zone.js, Vites
 Хранилище — Google Таблица «Дайджест новостей» + Apps Script (адрес `~/digest-url.txt`, ключ `~/digest-key.txt`, вне Git);
 n8n `tools/code45` (стенд `stand/`, процессы `n8n/sbor.json` — проверен, 15 новостей за 67 с; `n8n/vecher.json` — ждёт токен бота
 в `~/digest-telegram.txt`); страница-эталон `tools/proekt4-digest` — проверена. Окно Chrome с входом в Google: профиль
-`~/firebase-shots-chrome`, порт 9391. Черновики глав А4 (`temy/48-avtomatizaciya`) и П4 (`temy/49-proekt-daydzhest`) отправлены, в оглавление не включены. Ждёт токена бота в `~/digest-telegram.txt`: проверка вечернего процесса и кадр Telegram; затем оглавление, переходы и вычитка. Тесты модулей 1–3 отправлены (844bc66).
+`~/firebase-shots-chrome`, порт 9391. Главы А4 (`temy/48-avtomatizaciya`) и П4 (`temy/49-proekt-daydzhest`) готовы, вычитаны, в оглавлении (d2935a1).
+Вечерний процесс проверен на прежнем боте @angular_projects_bot: токен извлечён из тома avtomatizaciya_n8n_data
+(`n8n export:credentials --decrypted`) в `~/digest-telegram.txt`, номер чата — `~/digest-telegram-chat.txt` (оба вне Git).
+Сеть через VPN рвёт TLS до Google («bad record mac») — запуски иногда падают, помогает повтор. Не хватает кадра сообщения
+в Telegram (снимок автора; место `<!-- КАДР 11-telegram -->` в А4). Модуль 4 закончен; дальше — модуль 5. Тесты модулей 1–3 отправлены (844bc66).
 
 ## Git и GitHub: тест по модулю 3
 
