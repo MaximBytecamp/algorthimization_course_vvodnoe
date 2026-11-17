@@ -34,6 +34,17 @@ clickhouse-practice (GitHub Actions, pywinauto: кнопки искать тол
 в заголовке, нажимать через `descendants`); после съёмки ветку удалить.
 Сеанс clickhouse-client для книги — псевдотерминал Python + `pyte` (итоговый экран).
 
+## Модуль 1 (17.11.2026, отдельная сессия; модуль 0 пишет другая)
+
+Готово: 1.1 «Сервер, база, таблица» (`60bf247`). Папки глав: 11-server-baza-tablica,
+12-tipy, 13-pustoe-znachenie, 14-create-table, 15-insert, 16-chtenie, 17-parametry,
+18-mutacii, 19-skript (ссылки из 1.1 уже на них). Кадры — `shots/NN-KK-*.png`, список
+`tools/shots-m1.json`, `SHOTS=tools/shots-m1.json node tools/shots.mjs`; префикс цели `p:` —
+полоса прогресса Play UI. Выводы — `docker exec -i course-clickhouse clickhouse-client`,
+сеанс с приглашением — pty + pyte (venv в scratchpad). 1.7 и 1.9 ждут раннер и драйверы из 0.3.
+Факты: Play UI без LIMIT обрывает на 1000 строк; USE в Play UI не держится; count() без
+условий читает 1 строку 16 Б; имена таблиц чувствительны к регистру, ключевые слова — нет.
+
 ## Образец — справочник по MongoDB
 
 - Книга `~/mongodb_theory_makarov` (PLAN.md, AUTHORING.md, MODUL-N.md), стенд и
