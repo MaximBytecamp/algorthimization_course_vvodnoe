@@ -36,7 +36,7 @@ clickhouse-practice (GitHub Actions, pywinauto: кнопки искать тол
 
 ## Модуль 1 (17.11.2026, отдельная сессия; модуль 0 пишет другая)
 
-Готово: 1.1 «Сервер, база, таблица» (`60bf247`). Папки глав: 11-server-baza-tablica,
+Готово: 1.1 «Сервер, база, таблица» (`60bf247`), 1.2 «Типы данных» (`9eb2564`). Папки глав: 11-server-baza-tablica,
 12-tipy, 13-pustoe-znachenie, 14-create-table, 15-insert, 16-chtenie, 17-parametry,
 18-mutacii, 19-skript (ссылки из 1.1 уже на них). Кадры — `shots/NN-KK-*.png`, список
 `tools/shots-m1.json`, `SHOTS=tools/shots-m1.json node tools/shots.mjs`; префикс цели `p:` —
@@ -44,6 +44,10 @@ clickhouse-practice (GitHub Actions, pywinauto: кнопки искать тол
 сеанс с приглашением — pty + pyte (venv в scratchpad). 1.7 и 1.9 ждут раннер и драйверы из 0.3.
 Факты: Play UI без LIMIT обрывает на 1000 строк; USE в Play UI не держится; count() без
 условий читает 1 строку 16 Б; имена таблиц чувствительны к регистру, ключевые слова — нет.
+Play UI: одиночную строку с многими столбцами показывает столбиком (рамки — `tr:nth-child(k) td`),
+числа прижаты вправо — метку ставить на заголовок столбца. В index.html бывают чужие
+незакоммиченные строки: свою строку класть в индекс через `git apply --cached`.
+В `q.sh` внутри цикла — `</dev/null`, иначе клиент съедает stdin.
 
 ## Образец — справочник по MongoDB
 
