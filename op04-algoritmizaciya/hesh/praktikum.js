@@ -1,52 +1,402 @@
 (() => {
   'use strict';
-  const KEY = 'op04-hesh-praktikum-v3';
-  const letters = [
-    { title: 'Ревью решений', text: 'Коллега прислал четыре алгоритма. В каждом случае показаны условие, действия и результат на небольших данных. Найдите причину ошибки и оставьте короткий комментарий.', list: ['Выберите причину для каждой карточки.', 'Напишите, как исправить алгоритм.', 'Ответы можно пересмотреть до сдачи.'] },
-    { title: 'Сборка алгоритма', text: 'Заявки требуют не названия структуры, а правильного порядка действий. Нажимайте на шаги в порядке выполнения. Нажатие на выбранный шаг возвращает его в набор.', list: ['Соберите три алгоритма из шагов.', 'Два шага в каждом наборе лишние.', 'Промежуточный результат можно очистить.'] },
-    { title: 'Работа с данными', text: 'Выполните четыре коротких задания на данных сервиса. Карточки можно выбирать нажатием. Результат проверяется только после сдачи.', list: ['В паре указывайте индексы исходного списка.', 'В группировке учитывайте все слова.', 'Для LRU смотрите на последнее обращение.'] },
-    { title: 'Отчёт руководителю', text: 'Для новых заявок выберите структуру и объясните выбор. Затем сдайте работу: откроется рецензия по каждому заданию.', list: ['Краткого объяснения достаточно.', 'После сдачи ответы закрываются.', 'Разбор сохранится в этом браузере.'] }
+
+  const KEY = 'op04-hesh-praktikum-v4';
+  const CASES = [
+    {
+      id: 'payments', number: '01', title: 'Повторная оплата',
+      lead: 'Шлюз иногда повторно доставляет одно и то же событие. У каждой оплаты есть уникальный event_id: повторная доставка несёт тот же идентификатор. Один клиент, напротив, может оплатить несколько разных заказов.',
+      tasks: [
+        {
+          id: 'pay-bug', type: 'choice', title: 'Найдите неверный ключ',
+          instruction: 'Коллега пытается отсечь повторы. Какой дефект даст этот фрагмент?',
+          code: `def accept_payments(events):\n    seen_clients = set()\n    accepted = []\n    for event in events:\n        if event["client_id"] in seen_clients:\n            continue\n        seen_clients.add(event["client_id"])\n        accepted.append(event["event_id"])\n    return accepted\n\nevents = [\n    {"event_id": "pay-301", "client_id": "c-18"},\n    {"event_id": "pay-302", "client_id": "c-18"},\n]\nprint(accept_payments(events))`,
+          output: "Вывод Python: ['pay-301'].",
+          options: [
+            ['same-client', 'Две разные оплаты одного клиента будут приняты за повтор.'],
+            ['list-needed', 'Нельзя использовать set для идентификаторов.'],
+            ['sort-needed', 'Перед проверкой надо отсортировать события.']
+          ], answer: 'same-client',
+          explain: 'Для дедупликации нужен event_id: клиент может оплатить два заказа, а повтор доставки сохраняет идентификатор одной оплаты.'
+        },
+        {
+          id: 'pay-duplicate', type: 'multi', title: 'Отметьте повторы доставки',
+          instruction: 'Какие строки журнал уже получил раньше и должен пропустить? Сравнивайте только event_id.',
+          table: { caption: 'Журнал шлюза за минуту', heads: ['Время', 'event_id', 'client_id', 'Сумма'], rows: [
+            ['10:02:11', 'pay-410', 'c-07', '1 290 ₽'], ['10:02:13', 'pay-411', 'c-07', '890 ₽'],
+            ['10:02:16', 'pay-410', 'c-07', '1 290 ₽'], ['10:02:19', 'pay-412', 'c-31', '0 ₽'],
+            ['10:02:22', 'pay-411', 'c-07', '890 ₽']
+          ]},
+          options: [
+            ['r1', '10:02:11 · pay-410'], ['r2', '10:02:13 · pay-411'], ['r3', '10:02:16 · pay-410'],
+            ['r4', '10:02:19 · pay-412'], ['r5', '10:02:22 · pay-411']
+          ], answer: ['r3', 'r5'],
+          explain: 'Повторно пришли pay-410 и pay-411. Нулевая сумма pay-412 не делает событие повтором.'
+        },
+        {
+          id: 'pay-order', type: 'order', title: 'Соберите обработку события',
+          instruction: 'Нажмите только нужные шаги в порядке выполнения для нового события. Пул намеренно перемешан.',
+          steps: [
+            ['record', 'Записать оплату в журнал.'], ['check', 'Проверить event_id в множестве seen.'],
+            ['get', 'Взять event_id из события.'], ['add', 'Добавить event_id в seen.'],
+            ['client', 'Проверить client_id в множестве seen.']
+          ], answer: ['get', 'check', 'add', 'record'],
+          explain: 'Сначала извлекают и проверяют event_id. Только новое событие помечают как увиденное и записывают; повтор останавливается на проверке.'
+        }
+      ]
+    },
+    {
+      id: 'delivery', number: '02', title: 'Сверка поставки',
+      lead: 'Накладная и фактическая приёмка содержат повторяющиеся позиции. Здесь важно не только наличие SKU, но и количество каждой единицы.',
+      tasks: [
+        {
+          id: 'delivery-bug', type: 'choice', title: 'Найдите потерянные количества',
+          instruction: 'Почему такой код не годится для сверки поставки?',
+          code: `def missing_skus(invoice, received):\n    expected = set(invoice)\n    actual = set(received)\n    return expected - actual\n\ninvoice = ["MUG", "MUG", "MUG", "PEN"]\nreceived = ["MUG", "PEN"]\nprint(missing_skus(invoice, received))`,
+          output: 'Вывод Python: set().',
+          options: [
+            ['counts-lost', 'Множества убрали повторы: код не увидит, что двух MUG не хватает.'],
+            ['key-order', 'set возвращает SKU в неправильном порядке.'],
+            ['dict-only', 'Списки нельзя передавать функции.']
+          ], answer: 'counts-lost',
+          explain: 'set отвечает только на вопрос «есть ли SKU». Для накладной нужны частоты: например, Counter или словарь SKU → количество.'
+        },
+        {
+          id: 'delivery-result', type: 'choice', title: 'Сформулируйте итог приёмки',
+          instruction: 'Сначала посчитайте каждую позицию. Какой итог верен?',
+          table: { caption: 'Накладная и фактически принятый товар', heads: ['SKU', 'По накладной', 'Принято'], rows: [
+            ['MUG', '4', '2'], ['PEN', '3', '5'], ['NOTE', '1', '1']
+          ]},
+          options: [
+            ['right', 'Недостача: MUG — 2 шт.; излишек: PEN — 2 шт.'],
+            ['missing-only', 'Недостача: MUG — 1 шт.; излишков нет.'],
+            ['sets', 'Ошибок нет: все три SKU встретились.']
+          ], answer: 'right',
+          explain: 'Недостача и излишек считаются раздельно по разности количеств: MUG 4 − 2, PEN 5 − 3.'
+        },
+        {
+          id: 'delivery-order', type: 'order', title: 'Соберите сверку',
+          instruction: 'Расположите нужные шаги. Лишний шаг оставьте в пуле.',
+          steps: [
+            ['compare', 'Для каждого SKU сравнить ожидаемое и принятое количество.'], ['sets', 'Превратить оба списка в множества.'],
+            ['expected', 'Посчитать частоты SKU в накладной.'], ['report', 'Записать отдельно недостачи и излишки.'],
+            ['actual', 'Посчитать частоты SKU в приёмке.']
+          ], answer: ['expected', 'actual', 'compare', 'report'],
+          explain: 'Два счётчика сохраняют кратность. После сравнения по каждому SKU отчёт разделяет недостачу и излишек.'
+        }
+      ]
+    },
+    {
+      id: 'catalog', number: '03', title: 'Группы каталога',
+      lead: 'Служба контента ищет похожие буквенные метки для ручной проверки. В этой задаче совпадение означает: одинаковые латинские буквы без учёта регистра, дефисов и цифр, но с учётом каждой повторной буквы. Это не означает, что товары взаимозаменяемы.',
+      tasks: [
+        {
+          id: 'catalog-bug', type: 'choice', title: 'Проверьте ключ группы',
+          instruction: 'Какой дефект есть в построении сигнатуры?',
+          code: `def signature(code):\n    letters = (ch.lower() for ch in code if ch.isalpha())\n    return ''.join(sorted(set(letters)))\n\nprint(signature("ABBA-12"))\nprint(signature("AB-12"))`,
+          output: 'Вывод Python: две строки ab и ab.',
+          options: [
+            ['repeat-lost', 'set убирает повторные буквы, хотя они являются частью правила.'],
+            ['case-lost', 'lower() ломает сравнение регистров.'],
+            ['digits-kept', 'isalpha() оставляет цифры в сигнатуре.']
+          ], answer: 'repeat-lost',
+          explain: 'Нужно отсортировать все отобранные буквы, а не set букв: сигнатуры aabb и ab должны различаться.'
+        },
+        {
+          id: 'catalog-group', type: 'multi', title: 'Соберите одну группу',
+          instruction: 'Какие метки попадут в группу с ABBA-12 по описанному правилу?',
+          table: { caption: 'Метки для проверки', heads: ['Метка'], rows: [
+            ['ABBA-12'], ['BAAB-77'], ['AB-12'], ['AABB-45'], ['BABA-99']
+          ]},
+          options: [
+            ['baab', 'BAAB-77'], ['ab', 'AB-12'], ['aabb', 'AABB-45'], ['baba', 'BABA-99']
+          ], answer: ['baab', 'aabb', 'baba'],
+          explain: 'BAAB, AABB и BABA дают aabb, как и исходная метка. AB-12 даёт ab: одной пары букв в ней нет.'
+        },
+        {
+          id: 'catalog-order', type: 'order', title: 'Соберите группировку',
+          instruction: 'Поставьте шаги в порядок для каждой метки. Пул намеренно перемешан.',
+          steps: [
+            ['append', 'Добавить исходную метку в список по этому ключу.'], ['sort', 'Отсортировать все отобранные буквы, сохранив повторы.'],
+            ['filter', 'Оставить латинские буквы и перевести их в нижний регистр.'], ['set', 'Сделать из букв множество.'],
+            ['key', 'Использовать полученную строку как ключ словаря групп.']
+          ], answer: ['filter', 'sort', 'key', 'append'],
+          explain: 'Нормализация создаёт повторяемый ключ. Словарь связывает ключ с группой исходных меток; set здесь разрушил бы правило.'
+        }
+      ]
+    },
+    {
+      id: 'cache', number: '04', title: 'Кэш цен',
+      lead: 'Кэш каталога вмещает три позиции. В LRU чтение существующего ключа делает его самым свежим. Цена 0 ₽ — корректное значение, а не признак отсутствия.',
+      tasks: [
+        {
+          id: 'cache-bug', type: 'choice', title: 'Найдите дефект чтения',
+          instruction: 'Почему чтение цены 0 ₽ не обновит положение ключа?',
+          code: `from collections import OrderedDict\n\ndef read_price(cache, sku):\n    price = cache.get(sku)\n    if price:\n        cache.move_to_end(sku)\n    return price\n\ncache = OrderedDict([("LIME", 0), ("BAG", 890)])\nprint(read_price(cache, "LIME"))\nprint(list(cache))`,
+          output: "Заранее рассчитанный прогон: 0 и ['LIME', 'BAG']; LIME остался самым старым.",
+          options: [
+            ['zero-false', 'Условие if price считает 0 ложным, хотя ключ найден.'],
+            ['ordered-bad', 'OrderedDict нельзя использовать для LRU.'],
+            ['sort-keys', 'После чтения надо отсортировать SKU.']
+          ], answer: 'zero-false',
+          explain: 'Проверять нужно наличие ключа, например if sku in cache. Тогда значение 0 вернётся и ключ переместится в конец.'
+        },
+        {
+          id: 'cache-evict', type: 'choice', title: 'Определите вытеснение',
+          instruction: 'Кто будет вытеснен при добавлении четвёртой позиции?',
+          log: ['Старт, от старого к свежему: [LIME: 0, BAG: 890, CUP: 240]', 'Чтение LIME → [BAG: 890, CUP: 240, LIME: 0]', 'Запись BOOK: 340, вместимость 3'],
+          options: [
+            ['bag', 'BAG'], ['cup', 'CUP'], ['lime', 'LIME'], ['book', 'BOOK']
+          ], answer: 'bag',
+          explain: 'После чтения LIME стала свежей, несмотря на цену 0. Самой давней осталась BAG, её и удаляет LRU.'
+        },
+        {
+          id: 'cache-order', type: 'order', title: 'Соберите чтение из LRU',
+          instruction: 'Соберите ветку для ключа, который уже есть в кэше. Лишний шаг оставьте в пуле.',
+          steps: [
+            ['move', 'Переместить ключ в конец как самый свежий.'], ['test', 'Проверить, есть ли SKU среди ключей кэша.'],
+            ['return', 'Вернуть сохранённую цену, включая 0.'], ['get', 'Получить значение цены по SKU.'],
+            ['truth', 'Проверить, является ли цена истинной.']
+          ], answer: ['test', 'get', 'move', 'return'],
+          explain: 'Проверка наличия ключа не путает 0 с отсутствием. Успешное чтение обновляет порядок, затем возвращает значение.'
+        }
+      ]
+    }
   ];
-  const reviews = [
-    { title: 'Пара с суммой', case: 'В заявке нужны два разных элемента с суммой 10. На входе [5, 8, 3] коллега получил True, хотя подходящей пары нет.', code: 'def pair_exists(nums, target):\n    seen = set(nums)\n    for x in nums:\n        if target - x in seen:\n            return True\n    return False', runs: ['[1, 4, 6], 10 → True · совпадает с условием', '[5, 8, 3], 10 → True · ожидается False'], options: ['Выбрать причину', 'Множество содержит и текущий элемент', 'Нужна сортировка списка', 'Сумма посчитана неверно'], answer: 1, explain: 'Множество создано сразу из всего списка. Число 5 нашло само себя. Нужен пустой seen: проверка, затем добавление текущего числа.' },
-    { title: 'Самая частая буква', case: 'При равной частоте нужна буква, встретившаяся раньше. На строке «аб» функция коллеги вернула «б».', code: 'for ch, count in counts.items():\n    if count >= best_count:\n        best, best_count = ch, count', runs: ['«аааб» → «а» · совпадает с условием', '«аб» → «б» · ожидается «а»'], options: ['Выбрать причину', 'Буквы нельзя считать словарём', 'При равенстве заменяется прежний лидер', 'Нужно сортировать строку'], answer: 2, explain: 'Условие >= заменяет ответ при равной частоте. Условие > сохраняет букву, встретившуюся раньше.' },
-    { title: 'Пропущенные номера', case: 'Нужно вернуть отсутствующие числа от 1 до n включительно. При n = 5 функция потеряла номер 5.', code: 'present = set(nums)\nreturn [v for v in range(1, n) if v not in present]', runs: ['[1, 5, 2], 5 → [3, 4] · совпадает с условием', '[1, 2, 3, 4], 5 → [] · ожидается [5]'], options: ['Выбрать причину', 'Множество теряет число 5', 'Числа должны сортироваться', 'Правая граница диапазона не включена'], answer: 3, explain: 'range(1, n) заканчивается на n − 1. Нужно range(1, n + 1).' },
-    { title: 'Цена из кэша', case: 'Ноль — настоящая цена. Функция должна вернуть запасное значение только при отсутствии ключа.', code: 'def price_or_default(cache, code, default):\n    return cache.get(code) or default', runs: ['{«болт»: 12}, «болт», −1 → 12 · совпадает с условием', '{«гайка»: 0}, «гайка», −1 → −1 · ожидается 0'], options: ['Выбрать причину', 'Словарь не хранит нулевые цены', 'Ноль принят за отсутствие значения', 'Нужна сортировка ключей'], answer: 2, explain: 'Выражение 0 or default возвращает default. Проверять нужно наличие ключа, а затем возвращать его значение.' }
-  ];
-  const builds = [
-    { title: 'Повтор в потоке', case: 'Остановитесь на первом повторе номера заказа.', steps: ['Проверить номер в множестве', 'Если есть — сообщить о повторе', 'Иначе добавить номер', 'Сразу отсортировать все заказы', 'Удалить текущий номер'], answer: [0,1,2], explain: 'Сначала проверка, затем ранний выход или добавление. Множество хранит уже просмотренные номера.' },
-    { title: 'Пара с суммой', case: 'Найдите два разных индекса без сортировки исходного списка.', steps: ['Вычислить дополнение до цели', 'Проверить дополнение в словаре', 'Если найдено — вернуть прежний и текущий индексы', 'Записать текущее число и его индекс', 'Заменить список множеством'], answer: [0,1,2,3], explain: 'Запись текущего числа идёт после поиска. Тогда элемент не может составить пару с самим собой.' },
-    { title: 'Длинная последовательность', case: 'Найдите длину самой длинной цепочки соседних чисел.', steps: ['Сложить числа в множество', 'Для числа без предшественника начать цепочку', 'Продлевать цепочку, пока следующее число есть в множестве', 'Обновить максимальную длину', 'Начинать цепочку от каждого числа'], answer: [0,1,2,3], explain: 'Проверка предшественника позволяет проходить каждую цепочку только от её начала.' }
-  ];
-  const data = [
-    { title: 'Пара покупок', case: 'Цены [4, 7, 6, 1, 5]. Выберите индексы двух покупок на сумму 10.', items: ['0 → 4','1 → 7','2 → 6','3 → 1','4 → 5'], answer: [0,2], explain: 'Индексы 0 и 2: 4 + 6 = 10.' },
-    { title: 'Группа анаграмм', case: 'Выберите все слова из группы «кот».', items: ['кот','ток','кит','кто','окно'], answer: [0,1,3], explain: '«кот», «ток», «кто»: состав и число букв совпадают.' },
-    { title: 'Общие пользователи', case: 'А: [Лена, Оля, Илья, Лена]. Б: [Илья, Лена]. Выберите общих пользователей в порядке первого появления в А.', items: ['Лена','Оля','Илья'], answer: [0,2], explain: 'Лена, Илья. Множество Б ускоряет проверку, отдельное множество не даёт повторить Лену.' },
-    { title: 'Вытеснение LRU', case: 'Кэш на три страницы: открыть А, Б, В; ещё раз открыть А; открыть Г. Кого удалить?', items: ['А','Б','В','Г'], answer: [1], explain: 'Б использовали раньше всех оставшихся страниц. Чтение А обновило её положение.' }
-  ];
-  const report = [
-    { title: 'Список запретов', case: 'По номеру клиента нужно быстро проверить, находится ли он в списке запретов. Дополнительные сведения о клиенте не нужны.', answer: 'set', explain: 'Достаточно множества: хранится только наличие номера.' },
-    { title: 'Журнал обращений', case: 'Для каждого номера клиента нужно хранить число его обращений.', answer: 'dict', explain: 'Нужен словарь «номер клиента → количество обращений».' }
-  ];
-  const blank = () => ({ started: false, opened: 0, page: 0, submitted: false, runs: reviews.map(() => false), reviews: reviews.map(() => ({ type: 0, note: '' })), builds: builds.map(() => []), data: data.map(() => []), report: report.map(() => ({ type: '', note: '' })) });
-  let state;
-  try { state = JSON.parse(localStorage.getItem(KEY)) || blank(); if (!Array.isArray(state.reviews) || state.reviews.length !== reviews.length) state = blank(); } catch (_) { state = blank(); }
+
+  const TASKS = CASES.flatMap(caseItem => caseItem.tasks.map(task => ({ ...task, caseId: caseItem.id, caseTitle: caseItem.title })));
   const $ = id => document.getElementById(id);
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (_) {} };
-  const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const same = (a,b) => a.length === b.length && a.every((x,i) => x === b[i]);
-  const setSame = (a,b) => a.length === b.length && a.every(x => b.includes(x));
-  const block = (title, content, i) => `<article class="item"><h3>${title}</h3>${content}</article>`;
-  function reviewPage(){return `<h2>Письмо 1 · Ревью решений</h2><p class="quiet">Код в каждой карточке короткий. Сначала прочитайте условие и два прогона; затем найдите строку, из-за которой ответы расходятся.</p>${reviews.map((t,i)=>block(t.title,`<div class="case">${t.case}</div><div class="code-head"><span>ФРАГМЕНТ КОЛЛЕГИ · PYTHON</span><span>ЗАДАНИЕ ${i+1}/4</span></div><pre class="code"><code>${esc(t.code)}</code></pre><button class="small-button" data-run="${i}">${state.runs?.[i]?'Скрыть прогоны':'Показать прогоны на данных'}</button>${state.runs?.[i]?`<div class="run"><b>Что вернул алгоритм</b>${t.runs.map(x=>`<div>${esc(x)}</div>`).join('')}</div>`:''}<label for="type-${i}">Где ошибка?</label><select id="type-${i}" data-review="${i}" ${state.submitted?'disabled':''}>${t.options.map((o,n)=>`<option value="${n}" ${state.reviews[i].type===n?'selected':''}>${o}</option>`).join('')}</select><label for="note-${i}">Как исправить?</label><textarea id="note-${i}" data-review-note="${i}" ${state.submitted?'disabled':''} placeholder="Назовите конкретное действие или условие">${esc(state.reviews[i].note)}</textarea>`,i)).join('')}`}
-  function buildPage(){return `<h2>Письмо 2 · Сборка алгоритма</h2><p class="quiet">Нажимайте шаги по порядку. Лишние шаги оставьте в наборе.</p>${builds.map((t,i)=>block(t.title,`<div class="case">${t.case}</div><div class="sequence"><b>Выбрано:</b> ${state.builds[i].map((n,j)=>`<button class="chip active" data-remove="${i}:${j}" ${state.submitted?'disabled':''}>${j+1}. ${t.steps[n]} ×</button>`).join('')||'пока пусто'}</div><div class="chips">${t.steps.map((step,n)=>state.builds[i].includes(n)?'':`<button class="chip" data-add="${i}:${n}" ${state.submitted?'disabled':''}>${step}</button>`).join('')}</div>`,i)).join('')}`}
-  function dataPage(){return `<h2>Письмо 3 · Работа с данными</h2><p class="quiet">Выберите карточки. В третьей задаче нажимайте имена в порядке ответа.</p>${data.map((t,i)=>block(t.title,`<div class="case">${t.case}</div><div class="chips">${t.items.map((x,n)=>`<button class="chip ${state.data[i].includes(n)?'active':''}" data-pick="${i}:${n}" aria-pressed="${state.data[i].includes(n)}" ${state.submitted?'disabled':''}>${esc(x)}</button>`).join('')}</div>${i===2?`<div class="sequence">Порядок ответа: ${state.data[i].map(n=>`<span>${esc(t.items[n])}</span>`).join('')||'пока пусто'}</div>`:''}`,i)).join('')}`}
-  function reportPage(){return `<h2>Письмо 4 · Отчёт руководителю</h2>${report.map((t,i)=>block(t.title,`<div class="case">${t.case}</div><label for="structure-${i}">Структура</label><select id="structure-${i}" data-report="${i}" ${state.submitted?'disabled':''}><option value="">Выберите</option><option value="set" ${state.report[i].type==='set'?'selected':''}>Множество (set)</option><option value="dict" ${state.report[i].type==='dict'?'selected':''}>Словарь (dict)</option><option value="list" ${state.report[i].type==='list'?'selected':''}>Список (list)</option></select><label for="why-${i}">Почему она подходит?</label><textarea id="why-${i}" data-report-note="${i}" ${state.submitted?'disabled':''} placeholder="Что хранится и какая операция нужна">${esc(state.report[i].note)}</textarea>`,i)).join('')}`}
-  function resultPage(){let score=0;const parts=[];reviews.forEach((t,i)=>{const ok=state.reviews[i].type===t.answer;score+=ok?1:0;parts.push([`Ревью · ${t.title}`,ok,t.explain,state.reviews[i].note]);});builds.forEach((t,i)=>{const ok=same(state.builds[i],t.answer);score+=ok?1:0;parts.push([`Сборка · ${t.title}`,ok,t.explain,'']);});data.forEach((t,i)=>{const ok=i===2?same(state.data[i],t.answer):setSame(state.data[i],t.answer);score+=ok?1:0;parts.push([`Данные · ${t.title}`,ok,t.explain,'']);});report.forEach((t,i)=>{const ok=state.report[i].type===t.answer;score+=ok?1:0;parts.push([`Отчёт · ${t.title}`,ok,t.explain,state.report[i].note]);});return `<h2>Рецензия руководителя</h2><p class="score">${score} из ${parts.length}</p><p>Ниже — разбор каждого задания. Письменные комментарии сохранены для обсуждения с преподавателем; автоматически оценён выбор причины или структуры.</p>${parts.map(([title,ok,explain,note])=>`<div class="review"><b>${esc(title)} · ${ok?'верно':'проверьте ещё раз'}</b><p>${esc(explain)}</p>${note?`<p class="quiet">Ваш комментарий: ${esc(note)}</p>`:''}</div>`).join('')}<p class="quiet">Рецензия сохраняется в этом браузере.</p>`}
-  function render(){const done=state.submitted;const page=done?4:state.page;$('intro').hidden=true;$('desk').hidden=false;$('tabs').innerHTML=[...letters.map((t,i)=>`<button data-tab="${i}" aria-current="${page===i}" ${i>state.opened&&!done?'disabled':''}>${i+1}. ${t.title}</button>`),...(done?['<button aria-current="true">Рецензия</button>']:[])].join('');$('letter').innerHTML=done?'<p class="label">ПЯТНИЦА · РЕЦЕНЗИЯ</p><h2>Работа сдана</h2><p>Проверьте разбор справа. Комментарии и варианты ответов остались в этом браузере.</p>':`<p class="label">ПИСЬМО ${page+1} ИЗ 4</p><h2>${letters[page].title}</h2><p>${letters[page].text}</p><ul>${letters[page].list.map(x=>`<li>${x}</li>`).join('')}</ul><p class="quiet">Ответы до сдачи не оцениваются.</p>`;$('work').innerHTML=done?resultPage():[reviewPage,buildPage,dataPage,reportPage][page]()+`<div class="row"><button class="main-button" data-next="${page===3?'submit':'next'}">${page===3?'Сдать работу':'Дальше: письмо '+(page+2)+' →'}</button><span class="quiet">Сохранение автоматическое</span></div>`;save()}
-  $('start').onclick=()=>{state.started=true;render()};
-  $('tabs').onclick=e=>{const b=e.target.closest('[data-tab]');if(b&&!b.disabled&&!state.submitted){state.page=Number(b.dataset.tab);render()}};
-  $('work').addEventListener('input',e=>{const x=e.target;if(x.dataset.reviewNote!==undefined)state.reviews[+x.dataset.reviewNote].note=x.value;if(x.dataset.reportNote!==undefined)state.report[+x.dataset.reportNote].note=x.value;save()});
-  $('work').addEventListener('change',e=>{const x=e.target;if(x.dataset.review!==undefined)state.reviews[+x.dataset.review].type=+x.value;if(x.dataset.report!==undefined)state.report[+x.dataset.report].type=x.value;save()});
-  $('work').onclick=e=>{const b=e.target.closest('button');if(!b||state.submitted)return;if(b.dataset.run!==undefined){if(!state.runs)state.runs=reviews.map(()=>false);state.runs[+b.dataset.run]=!state.runs[+b.dataset.run];render()}else if(b.dataset.add){const[i,n]=b.dataset.add.split(':').map(Number);state.builds[i].push(n);render()}else if(b.dataset.remove){const[i,n]=b.dataset.remove.split(':').map(Number);state.builds[i].splice(n,1);render()}else if(b.dataset.pick){const[i,n]=b.dataset.pick.split(':').map(Number),arr=state.data[i];state.data[i]=arr.includes(n)?arr.filter(x=>x!==n):[...arr,n];render()}else if(b.dataset.next==='next'){state.opened=Math.max(state.opened,state.page+1);state.page++;render();window.scrollTo(0,0)}else if(b.dataset.next==='submit'){if(confirm('Сдать работу и открыть рецензию? После сдачи ответы изменить нельзя.')){state.submitted=true;render();window.scrollTo(0,0)}}};
-  if(state.started||state.opened||state.submitted)render();
+  const esc = value => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+  const blankAnswer = task => task.type === 'order' ? [] : task.type === 'multi' ? [] : '';
+  const emptyState = () => ({ version: 4, started: false, submitted: false, view: 'payments', answers: Object.fromEntries(TASKS.map(task => [task.id, blankAnswer(task)])), reflection: '' });
+
+  let storageUsable = true;
+  let storageMessage = '';
+  function canUseStorage() {
+    try {
+      const probe = `${KEY}:probe`;
+      localStorage.setItem(probe, '1');
+      localStorage.removeItem(probe);
+      return true;
+    } catch (_) { return false; }
+  }
+  storageUsable = canUseStorage();
+
+  function validAnswer(task, answer) {
+    const keys = task.type === 'order' ? task.steps.map(step => step[0]) : task.options.map(option => option[0]);
+    if (task.type === 'choice') return typeof answer === 'string' && (answer === '' || keys.includes(answer));
+    return Array.isArray(answer) && answer.every(value => typeof value === 'string' && keys.includes(value)) && new Set(answer).size === answer.length;
+  }
+  function validState(candidate) {
+    return candidate && typeof candidate === 'object' && candidate.version === 4 && typeof candidate.started === 'boolean' &&
+      typeof candidate.submitted === 'boolean' && typeof candidate.view === 'string' && typeof candidate.reflection === 'string' &&
+      candidate.reflection.length <= 4000 && candidate.answers && typeof candidate.answers === 'object' &&
+      TASKS.every(task => Object.prototype.hasOwnProperty.call(candidate.answers, task.id) && validAnswer(task, candidate.answers[task.id]));
+  }
+  function load() {
+    if (!storageUsable) {
+      storageMessage = 'Автосохранение недоступно в этом браузере: ответы останутся до закрытия страницы.';
+      return emptyState();
+    }
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return emptyState();
+      const parsed = JSON.parse(raw);
+      if (validState(parsed)) return parsed;
+      localStorage.removeItem(KEY);
+      storageMessage = 'Некорректное сохранение v4 сброшено; текущая работа будет сохранена заново.';
+      return emptyState();
+    } catch (_) {
+      storageMessage = 'Не удалось прочитать сохранение v4; начат чистый бланк.';
+      return emptyState();
+    }
+  }
+  let state = load();
+
+  function save() {
+    if (!storageUsable) return false;
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state));
+      return true;
+    } catch (_) {
+      storageUsable = false;
+      storageMessage = 'Автосохранение стало недоступно: не закрывайте страницу до сдачи.';
+      updateStorageStatus();
+      return false;
+    }
+  }
+  function updateStorageStatus() {
+    const target = $('storage-status');
+    if (!target) return;
+    target.textContent = storageUsable ? (storageMessage || 'Ответы автоматически сохранены в этом браузере.') : storageMessage;
+  }
+  function sameSet(first, second) { return first.length === second.length && first.every(value => second.includes(value)); }
+  function complete(task) {
+    const answer = state.answers[task.id];
+    return task.type === 'choice' ? answer !== '' : answer.length > 0;
+  }
+  function correct(task) {
+    const answer = state.answers[task.id];
+    if (task.type === 'order') {
+      const variants = [task.answer];
+      if (task.id === 'delivery-order') variants.push(['actual', 'expected', 'compare', 'report']);
+      if (task.id === 'cache-order') variants.push(['test', 'move', 'get', 'return']);
+      return variants.some(order => answer.join('|') === order.join('|'));
+    }
+    return task.type === 'multi' ? sameSet(answer, task.answer) : answer === task.answer;
+  }
+  function caseComplete(caseItem) { return caseItem.tasks.filter(complete).length; }
+  function answerText(task) {
+    const answer = state.answers[task.id];
+    const pool = task.type === 'order' ? task.steps : task.options;
+    const labels = Object.fromEntries(pool.map(item => [item[0], item[1]]));
+    if (task.type === 'choice') return answer ? labels[answer] : 'Нет ответа';
+    return answer.length ? answer.map(key => labels[key]).join(' → ') : 'Нет ответа';
+  }
+
+  function tableMarkup(table) {
+    return `<table class="data-table"><caption>${esc(table.caption)}</caption><thead><tr>${table.heads.map(head => `<th scope="col">${esc(head)}</th>`).join('')}</tr></thead><tbody>${table.rows.map(row => `<tr>${row.map(cell => `<td>${esc(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  }
+  function choiceMarkup(task, readonly) {
+    const answer = state.answers[task.id];
+    return `<fieldset ${readonly ? 'disabled' : ''}><legend>Выберите один вариант</legend><div class="options">${task.options.map(([key, text]) => `<label class="option"><input type="radio" name="${task.id}" value="${key}" data-choice="${task.id}" ${answer === key ? 'checked' : ''}><span>${esc(text)}</span></label>`).join('')}</div></fieldset>`;
+  }
+  function multiMarkup(task, readonly) {
+    const selected = state.answers[task.id];
+    return `<fieldset ${readonly ? 'disabled' : ''}><legend>Выберите все подходящие варианты</legend><div class="options">${task.options.map(([key, text]) => `<label class="option"><input type="checkbox" value="${key}" data-multi="${task.id}" ${selected.includes(key) ? 'checked' : ''}><span>${esc(text)}</span></label>`).join('')}</div></fieldset>`;
+  }
+  function orderMarkup(task, readonly) {
+    const chosen = state.answers[task.id];
+    const labels = Object.fromEntries(task.steps.map(step => [step[0], step[1]]));
+    const available = task.steps.filter(([key]) => !chosen.includes(key));
+    return `<fieldset><legend>Ваш порядок</legend><div class="options" aria-label="Выбранные шаги">${chosen.length ? chosen.map((key, index) => `<button class="option" type="button" data-order-remove="${task.id}:${key}" aria-pressed="true" ${readonly ? 'disabled' : ''}><span>${index + 1}. ${esc(labels[key])} <span aria-hidden="true">×</span></span></button>`).join('') : '<p class="helper">Пока ни одного шага не выбрано.</p>'}</div><p class="field-label">Пул шагов</p><div class="options">${available.map(([key, text]) => `<button class="option" type="button" data-order-add="${task.id}:${key}" aria-pressed="false" ${readonly ? 'disabled' : ''}>${esc(text)}</button>`).join('') || '<p class="helper">Все шаги перенесены в порядок.</p>'}</div></fieldset>`;
+  }
+  function taskMarkup(task, number, readonly) {
+    const interaction = task.type === 'choice' ? choiceMarkup(task, readonly) : task.type === 'multi' ? multiMarkup(task, readonly) : orderMarkup(task, readonly);
+    return `<article class="task" aria-labelledby="${task.id}-title"><div class="task-title"><h3 id="${task.id}-title">${number}. ${esc(task.title)}</h3><span class="task-points">1 балл</span></div><p class="task-instruction">${esc(task.instruction)}</p>${task.table ? tableMarkup(task.table) : ''}${task.log ? `<div class="log">${task.log.map(line => `<div>${esc(line)}</div>`).join('')}</div>` : ''}${task.code ? `<div class="code-wrap"><div class="code-label">ФРАГМЕНТ PYTHON · НЕ ВЫПОЛНЯЕТСЯ В БРАУЗЕРЕ</div><pre class="code"><code>${esc(task.code)}</code></pre><p class="helper">${esc(task.output)}</p></div>` : ''}${interaction}${readonly ? `<p class="status-line">Ответ: ${esc(answerText(task))}</p>` : ''}</article>`;
+  }
+  function caseMarkup(caseItem, readonly) {
+    const startNumber = CASES.slice(0, CASES.indexOf(caseItem)).reduce((sum, item) => sum + item.tasks.length, 0);
+    return `<header class="case-header"><span class="case-tag">КЕЙС ${caseItem.number} · 3 действия</span><h2>${esc(caseItem.title)}</h2><p>${esc(caseItem.lead)}</p></header>${caseItem.tasks.map((task, index) => taskMarkup(task, startNumber + index + 1, readonly)).join('')}${!readonly && caseItem.id === 'cache' ? reflectionMarkup(false) : ''}${!readonly ? '<div class="answer-actions"><p class="helper">Верность ответов не показывается до сдачи.</p><button id="open-submit" class="button button-primary" type="button">Перейти к сдаче</button></div>' : ''}`;
+  }
+  function reflectionMarkup(readonly) {
+    return `<section class="result-section" aria-labelledby="reflection-title"><h2 id="reflection-title">Итог для преподавателя</h2><p>Одним-двумя предложениями: почему в кэше нельзя проверять цену условием <code>if price</code>? Этот ответ не входит в автоматический балл.</p><label class="field-label" for="reflection">Ваше объяснение</label><textarea id="reflection" maxlength="4000" ${readonly ? 'readonly' : ''} placeholder="Напишите своими словами…">${esc(state.reflection)}</textarea>${readonly ? '<p class="helper">Сохранённый ответ показан без автоматической оценки.</p>' : ''}</section>`;
+  }
+  function resultsMarkup() {
+    const score = TASKS.filter(correct).length;
+    return `<header class="case-header"><span class="case-tag">ИТОГИ</span><h2>Работа сдана</h2><p>Ниже — балл, ваши выбранные ответы и объяснения. Кейсы остаются доступными для чтения.</p></header><div class="result-summary"><div><p class="score">${score} / ${TASKS.length}</p><p class="score-label">автоматически оценённых действий</p></div><p class="helper">Свободное объяснение сохранено отдельно и не влияет на балл.</p></div><section class="result-section" aria-labelledby="review-title"><h2 id="review-title">Разбор</h2>${TASKS.map((task, index) => `<article class="result-item"><h3>${index + 1}. ${esc(task.title)}</h3><p class="${correct(task) ? 'result-ok' : 'result-check'}">${correct(task) ? 'Верно' : 'Стоит повторить'}</p><p class="student-answer">Ваш ответ: ${esc(answerText(task))}</p><p>${esc(task.explain)}</p></article>`).join('')}</section>${reflectionMarkup(true)}<div class="result-actions"><button id="export-report" class="button button-secondary" type="button">Экспортировать текстовый отчёт</button><button id="retry-button" class="button button-primary" type="button">Новая попытка</button></div>`;
+  }
+
+  function renderNav() {
+    const nav = $('case-nav');
+    const sections = CASES.map(caseItem => {
+      const filled = caseComplete(caseItem);
+      const current = state.view === caseItem.id;
+      return `<button type="button" data-view="${caseItem.id}" aria-current="${current ? 'true' : 'false'}"><span class="nav-number">${caseItem.number}</span><span>${esc(caseItem.title)}</span><span class="nav-state">${filled}/3</span></button>`;
+    });
+    if (state.submitted) sections.push(`<button type="button" data-view="results" aria-current="${state.view === 'results' ? 'true' : 'false'}"><span class="nav-number">Σ</span><span>Итоги</span></button>`);
+    nav.innerHTML = sections.join('');
+  }
+  function renderProgress() {
+    const count = TASKS.filter(complete).length;
+    $('progress-text').textContent = `${count} из ${TASKS.length} действий`;
+    $('progress-bar').style.width = `${count / TASKS.length * 100}%`;
+  }
+  function render() {
+    $('intro').hidden = true;
+    $('app').hidden = false;
+    if (state.submitted && state.view !== 'results' && !CASES.some(caseItem => caseItem.id === state.view)) state.view = 'results';
+    renderNav();
+    renderProgress();
+    updateStorageStatus();
+    const current = CASES.find(caseItem => caseItem.id === state.view);
+    $('case-view').innerHTML = state.view === 'results' ? resultsMarkup() : caseMarkup(current || CASES[0], state.submitted);
+  }
+  function openSection(id) {
+    state.view = id;
+    save();
+    render();
+    document.querySelector('.main-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function missingItems() {
+    const items = TASKS.filter(task => !complete(task)).map(task => `${task.caseTitle}: ${task.title}`);
+    if (!state.reflection.trim()) items.push('Кэш цен: итоговое объяснение для преподавателя');
+    return items;
+  }
+  function showSubmitDialog() {
+    const missing = missingItems();
+    $('missing-summary').textContent = missing.length ? `Не заполнено: ${missing.length}. Можно вернуться к любому из этих мест или сдать неполную работу.` : 'Все 12 действий и итоговое объяснение заполнены. После подтверждения ответы станут доступными только для чтения.';
+    $('missing-list').innerHTML = missing.map(item => `<li>${esc(item)}</li>`).join('');
+    $('submit-dialog').showModal();
+  }
+  function exportReport() {
+    const score = TASKS.filter(correct).length;
+    const lines = [
+      'Практикум ОП.04: хеш-структуры', `Баллы: ${score} из ${TASKS.length}`, '',
+      ...TASKS.flatMap((task, index) => [`${index + 1}. ${task.caseTitle} — ${task.title}`, `Ответ: ${answerText(task)}`, `Разбор: ${task.explain}`, '']),
+      'Итоговое объяснение студента:', state.reflection || 'Нет ответа'
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'op04-hesh-praktikum-report.txt';
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  $('start-button').addEventListener('click', () => { state.started = true; save(); render(); });
+  $('case-nav').addEventListener('click', event => {
+    const button = event.target.closest('[data-view]');
+    if (!button) return;
+    openSection(button.dataset.view);
+  });
+  $('case-view').addEventListener('change', event => {
+    const input = event.target;
+    if (input.dataset.choice) state.answers[input.dataset.choice] = input.value;
+    if (input.dataset.multi) {
+      const values = state.answers[input.dataset.multi];
+      state.answers[input.dataset.multi] = input.checked ? [...values, input.value] : values.filter(value => value !== input.value);
+    }
+    save();
+    renderProgress();
+    renderNav();
+  });
+  $('case-view').addEventListener('input', event => {
+    if (event.target.id === 'reflection') { state.reflection = event.target.value.slice(0, 4000); save(); }
+  });
+  $('case-view').addEventListener('click', event => {
+    const add = event.target.closest('[data-order-add]');
+    const remove = event.target.closest('[data-order-remove]');
+    if (add || remove) {
+      const [taskId, key] = (add || remove).dataset[add ? 'orderAdd' : 'orderRemove'].split(':');
+      const values = state.answers[taskId];
+      state.answers[taskId] = add ? [...values, key] : values.filter(value => value !== key);
+      save(); render();
+      return;
+    }
+    if (event.target.closest('#open-submit')) showSubmitDialog();
+    if (event.target.closest('#export-report')) exportReport();
+    if (event.target.closest('#retry-button')) $('retry-dialog').showModal();
+  });
+  $('submit-dialog').addEventListener('close', () => {
+    if ($('submit-dialog').returnValue === 'confirm') {
+      state.submitted = true;
+      state.view = 'results';
+      save();
+      render();
+    }
+  });
+  $('retry-dialog').addEventListener('close', () => {
+    if ($('retry-dialog').returnValue === 'confirm') {
+      state = emptyState();
+      state.started = true;
+      save();
+      render();
+    }
+  });
+
+  if (state.started || state.submitted) render();
 })();
