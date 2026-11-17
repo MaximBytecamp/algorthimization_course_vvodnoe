@@ -46,8 +46,11 @@
 - Навыки `context-search`, `context-audit`, `handoff` — символические ссылки
   `~/.claude/skills/* → ~/.codex/skills/*`, правка действует в обоих инструментах.
   `router` для Claude — отдельный `~/.claude/skills/router/SKILL.md`.
-- Агенты в `~/.claude/agents`: `luna-fast` (Haiku, только чтение), `terra-writer`
-  (Sonnet, тексты), `sol-builder` (Sonnet, код). Основная модель — Opus, effort medium.
+- Агенты в `~/.claude/agents`: `luna-fast` (Sonnet 5, только чтение), `terra-writer`
+  (Sonnet 5, тексты), `sol-builder` (Sonnet 5, код). Основная модель — Opus 5.5,
+  effort medium. 17.11.2026 у подключённого API нет Haiku; прежняя настройка
+  `luna-fast: haiku` была нерабочей. `router` и все три агента закреплены за
+  `claude-sonnet-5`, короткий запрос к этой модели через Claude Code прошёл успешно.
 - `.claude/settings.local.json` проекта: `autoMemoryEnabled: false` (архив встроенной
   памяти уже в `archive/claude-memory`) и хук `SessionStart` (startup, clear, compact),
   который выводит `CURRENT.md` в контекст.
