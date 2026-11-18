@@ -58,3 +58,15 @@ rg -n -i 'слово|другое слово' docs/project-context/archive/claud
 
 Секреты, персональные данные, полные переписки, исходный код и обычный вывод команд
 в память не копируются.
+
+## История по направлениям
+
+Подробные записи, вынесенные из стартового `CURRENT.md` 18.11.2026:
+[ОП.04](history/2026-11-18/op04.md),
+[ООП](history/2026-11-18/oop.md),
+[Git и GitHub](history/2026-11-18/git-github.md),
+[Python](history/2026-11-18/python.md),
+[системное программирование](history/2026-11-18/sysprog.md),
+[Angular и React](history/2026-11-18/angular-react.md),
+[наблюдаемость](history/2026-11-18/observability.md) и
+[настройки проекта](history/2026-11-18/project-setup.md).

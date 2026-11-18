@@ -60,7 +60,8 @@
   плагин Figma выключен, редкие синхронизированные навыки скрыты через
   `skillOverrides` (morning, material-3, google-workspace, import-memory, браузерные,
   computer-use — off; deep-research, skill-creator, claude-api — только имя).
-- Хук `SessionStart` выводит `PREFERENCES.md` и `CURRENT.md` (около 540 слов).
+- Хук `SessionStart` выводит `PREFERENCES.md` и краткий `CURRENT.md`; подробная
+  история находится в `history/2026-11-18/` и открывается только по теме задачи.
 - Строка состояния `~/.claude/statusline.sh`: модель | effort | ctx % (занято/окно) |
   ветка Git. Модель не переключается сама; `opusplan` не включён (см. `DECISIONS.md`).
 - Команды: `/context` — что занимает окно, `/compact` — сжать, `/clear` — новый чат
