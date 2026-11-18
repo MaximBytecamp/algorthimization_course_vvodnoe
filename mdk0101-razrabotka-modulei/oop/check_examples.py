@@ -27,6 +27,12 @@ class Examples(HTMLParser):
             self.ids.add(attrs['id'])
         if tag == 'a' and 'href' in attrs:
             self.links.append(attrs['href'])
+        if tag in ('img', 'script') and attrs.get('src'):
+            self.links.append(attrs['src'])
+        if tag == 'link' and attrs.get('href'):
+            self.links.append(attrs['href'])
+        if tag in ('source', 'img') and attrs.get('srcset'):
+            self.links.extend(part.strip().split()[0] for part in attrs['srcset'].split(',') if part.strip())
         if tag == 'figure':
             self.current = {'run': attrs.get('data-run'), 'class': attrs.get('class', '').split(), 'text': ''}
         elif tag == 'pre':
