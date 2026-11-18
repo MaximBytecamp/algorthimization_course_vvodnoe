@@ -10,6 +10,7 @@ Obsidian как папка проекта.
 - [CONSTRAINTS](CONSTRAINTS.md) — постоянные границы памяти и изменений.
 - [PREFERENCES](PREFERENCES.md) — постоянные правила пользователя: Git, учебный текст, тесты.
 - [Справочник по ClickHouse](clickhouse-spravochnik.md) — черновой план по образцу MongoDB.
+- [Линейные структуры ОП.04](op04-lineynye-book.md) — новая книга занятий 21–25; постепенная разработка с теоретического модуля 0.
 - [BACKLOG](BACKLOG.md) — только согласованные, но ещё не начатые задачи.
 - [EFFICIENCY](EFFICIENCY.md) — команды и настройки для экономии контекста.
 - [MODEL_EVAL](MODEL_EVAL.md) — проверка Terra, Sol и Astra на типичных задачах.

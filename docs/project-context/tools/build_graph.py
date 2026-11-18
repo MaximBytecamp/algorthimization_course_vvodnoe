@@ -43,7 +43,7 @@ DOMAINS = (
     Domain("shared", "Общие материалы", "shared", ("repo-", "git-github-", "vscode-", "pages-", "instructions-", "nabor-", "vychitka-")),
 )
 
-CONTAINERS = {"lessons", "temy", "testy", "tests", "massivy", "stroki", "hesh", "proekty"}
+CONTAINERS = {"lessons", "temy", "testy", "tests", "massivy", "stroki", "hesh", "lineynye", "proekty"}
 SKIP_DIRS = {
     ".git", ".github", ".pytest_cache", ".venv", "__pycache__", "assets",
     "data", "files", "img", "img-full", "lib", "node_modules", "out",

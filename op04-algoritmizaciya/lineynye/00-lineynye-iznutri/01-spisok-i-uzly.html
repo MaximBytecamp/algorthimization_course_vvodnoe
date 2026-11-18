@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>0.1 Список Python и цепочка узлов · Линейные структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../lineynye.css">
+</head>
+<body>
+  <div class="book">
+    <div class="book__body">
+      <div class="spine"><span>Модуль 0 · Линейные структуры изнутри · ОП.04</span></div>
+      <main class="leaf">
+        <div class="running">
+          <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Линейные структуры</a> · модуль 0 · теория</p>
+          <p class="running__folio">Глава 0.1</p>
+        </div>
+
+        <header class="chapter-head">
+          <span class="chapter-num">0.1</span>
+          <h1>Список Python<br>и цепочка узлов</h1>
+          <p class="lead">В этой главе разобрано, как хранится последовательность задач в списке Python и в цепочке узлов. Сравним доступ по индексу с переходами по ссылкам, затем построим и обойдём цепочку.</p>
+        </header>
+
+        <section class="gist" aria-label="Суть за две минуты">
+          <h2>Суть за две минуты</h2>
+          <div class="gist__cards"><p><b>Пронумерованные места.</b> В <code>list</code> позиция элемента задаётся индексом.</p><p><b>Карточки с указателями.</b> Узел цепочки хранит значение и ссылку на следующий узел.</p><p><b>Маршрут по цепочке.</b> От первого узла к третьему ведут два перехода <code>.next</code>.</p></div>
+          <p><b>За этот блок:</b> построить цепочку из трёх узлов и объяснить её обход.</p>
+        </section>
+
+        <nav class="contents">
+          <b>В этой главе</b>
+          <ol>
+            <li><a href="#s1">Два способа хранить очередь</a></li>
+            <li><a href="#s2">Список Python и индекс</a></li>
+            <li><a href="#s3">Узел, head и None</a></li>
+            <li><a href="#s4">Построение и обход цепочки</a></li>
+            <li><a href="#s5">Что запомнить</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="s1"><span class="sec">§1</span>Две записи одной очереди</h2>
+        <p class="purpose"><b>Зачем этот шаг:</b> отделить порядок задач от способа их хранения.</p>
+        <p>В списке дел записаны три задачи: «исправить ошибку», «ответить клиенту», «проверить отчёт». Порядок важен: сначала берут первую задачу, затем вторую. Сохранить этот порядок можно двумя способами.</p>
+        <p>Первый способ — список Python. Он похож на ряд пронумерованных ячеек. Второй — цепочка карточек. На каждой карточке есть текст задачи и отметка, где лежит следующая карточка. Первая карточка доступна через имя <code>head</code> — голову цепочки.</p>
+        <div class="access-layout" aria-label="Два способа представить три задачи">
+          <section class="access-case">
+            <h3>Список <code>tasks</code></h3>
+            <div class="cells-line" aria-label="Список из трёх задач с индексами ноль, один и два"><span class="array-cell"><small>0</small><b>A</b></span><span class="array-cell"><small>1</small><b>B</b></span><span class="array-cell"><small>2</small><b>C</b></span></div>
+            <p class="access-caption">Ячейка уже имеет номер. <code>tasks[2]</code> сразу означает третью ячейку.</p>
+          </section>
+          <section class="access-case">
+            <h3>Цепочка узлов</h3>
+            <div class="nodes-line" aria-label="Голова указывает на узел A, затем B, затем C и None"><code>head</code><span class="node-arrow">→</span><span class="node"><b>A</b><i>→</i></span><span class="node"><b>B</b><i>→</i></span><span class="node"><b>C</b><i>→</i></span><code class="chain-end">None</code></div>
+            <p class="access-caption">Узлы не получают общий индекс. Следующий узел известен только из поля <code>.next</code> текущего.</p>
+          </section>
+        </div>
+        <p>Буквы на схеме — короткие подписи задач. В обеих структурах третьей будет задача C. Путь к ней разный: список использует индекс 2, а цепочка последовательно читает две ссылки <code>.next</code>.</p>
+
+        <details class="simple"><summary>По-простому: карточки с подсказкой</summary><div><p>Карточки лежат в разных местах. На каждой есть подсказка, где искать следующую. Чтобы взять третью, сначала читают подсказку первой, затем второй.</p><div class="simple__flow"><span>Первая карточка</span><span>→</span><span>Подсказка ко второй</span><span>→</span><span>Подсказка к третьей</span></div><p><b>Что есть что:</b> карточка — узел; текст — <code>value</code>; подсказка — <code>next</code>; ссылка на первую — <code>head</code>; «дальше нет» — <code>None</code>.</p></div></details>
+        <p>Теперь разберём, как номер ячейки позволяет получить элемент списка Python.</p>
+
+        <h2 id="s2"><span class="sec">§2</span>Список Python и индекс</h2>
+        <p class="purpose"><b>Зачем этот шаг:</b> понять, почему доступ по индексу не требует обхода списка.</p>
+        <p>В ряду пронумерованных шкафчиков можно сразу подойти к месту с нужным номером. Похожим образом устроен доступ к ячейке списка. CPython — распространённая реализация Python, на которой запускаются примеры книги.</p>
+        <p>В реализации CPython список — динамический массив <em>ссылок</em> на объекты. Его ячейки идут подряд, а номер ячейки позволяет вычислить, где находится нужная ссылка. Поэтому получить элемент по известному индексу — операция <code>O(1)</code>: число действий не растёт вместе с длиной списка.</p>
+        <figure class="code"><figcaption><span>Python 3.12</span><span>пример</span></figcaption><pre>tasks = ['исправить ошибку', 'ответить клиенту', 'проверить отчёт']
+
+print(tasks[2])
+print(len(tasks))</pre></figure>
+        <figure class="code code--out"><figcaption><span>вывод</span><span>запуск примера</span></figcaption><pre>проверить отчёт
+3</pre></figure>
+        <p>Индекс считают с нуля, поэтому у третьего элемента индекс 2. Это не адрес объекта в памяти и не значение <code>id()</code>. Индекс — позиция в данном списке. <code>id(obj)</code> — целое идентификационное значение объекта в текущем запуске Python; его не используют для обхода списка.</p>
+        <p>Слово «динамический» означает, что размер списка может меняться. При нехватке места CPython выделяет более крупный массив и переносит в него ссылки. Это объясняет название «динамический массив».</p>
+
+        <p>На схеме ячейки содержат ссылки. Тексты задач находятся в отдельных объектах.</p>
+        <figure class="reference-map"><figcaption>Ячейки списка и объекты задач</figcaption><div class="reference-row"><code>tasks[0]</code><span>ссылка →</span><span>«исправить ошибку»</span></div><div class="reference-row"><code>tasks[1]</code><span>ссылка →</span><span>«ответить клиенту»</span></div><div class="reference-row is-target"><code>tasks[2]</code><span>ссылка →</span><span>«проверить отчёт»</span></div></figure>
+        <p>Выделена ячейка с индексом 2. При таком обращении первые две ссылки не перебираются. У цепочки узлов устройство другое: переход хранится внутри каждого узла.</p>
+
+        <h2 id="s3"><span class="sec">§3</span>Узел, head и None</h2>
+        <p class="purpose"><b>Зачем этот шаг:</b> определить, из каких объектов состоит цепочка.</p>
+        <p>У карточки задачи два поля: текст и указатель на следующую карточку. Такой элемент цепочки называют узлом.</p>
+        <p>В связном списке каждый <span class="term">узел</span> хранит два поля: <code>value</code> со значением и <code>next</code> со ссылкой на следующий узел. Последнему переходить некуда, поэтому его <code>next</code> равно <code>None</code>. Пустая цепочка тоже записывается как <code>head = None</code>: первого узла нет.</p>
+        <figure class="code"><figcaption><span>Python 3.12</span><span>минимальный узел</span></figcaption><pre>class Node:
+    def __init__(self, value, next_node=None):
+        self.value = value
+        self.next = next_node</pre></figure>
+        <p>Здесь <code>next_node</code> — параметр конструктора, а <code>.next</code> — поле узла. В поле хранится ссылка на другой объект <code>Node</code> либо значение <code>None</code>. Ссылка не обязана быть числовым адресом, и для работы с цепочкой не нужно узнавать её через <code>id()</code>.</p>
+        <div class="margin-note"><b>Стоимость вставки</b><p>Вставить новый узел после известного узла можно за <code>O(1)</code>: достаточно изменить несколько ссылок. Но чтобы вставить после i-го узла, сначала надо дойти до него от <code>head</code>. Этот поиск стоит <code>O(n)</code>. Полная стоимость включает поиск позиции и изменение ссылок.</p></div>
+
+        <p>Ниже показаны поля последнего узла и отдельно — пустая цепочка.</p>
+        <figure class="reference-map"><figcaption>Последний узел и отсутствие первого узла</figcaption><div class="reference-row"><code>third.value</code><span>→</span><span>«проверить отчёт»</span></div><div class="reference-row"><code>third.next</code><span>→</span><code>None</code></div><div class="reference-row"><code>head = None</code><span>→</span><span>цепочка пуста</span></div></figure>
+        <p>У последнего узла значение есть, но ссылка <code>next</code> равна <code>None</code>. В пустой цепочке первого узла вообще нет. Теперь соединим три узла в одну последовательность.</p>
+
+        <h2 id="s4"><span class="sec">§4</span>Построение и обход цепочки</h2>
+        <p class="purpose"><b>Зачем этот шаг:</b> собрать цепочку и прочитать все её значения.</p>
+        <p>Карточки можно связывать с конца: сначала положить последнюю, затем подписать указатель к ней на предыдущей. Так же построим цепочку в коде. У последнего узла поле <code>next</code> равно <code>None</code>. Предыдущему передают ссылку на последний; затем создают голову. Чтобы прочитать цепочку, берут переменную <code>current</code> и на каждом шаге переходят к <code>current.next</code>.</p>
+        <figure class="code"><figcaption><span>Python 3.12</span><span>построение и обход</span></figcaption><pre>third = Node('проверить отчёт')
+second = Node('ответить клиенту', third)
+head = Node('исправить ошибку', second)
+
+current = head
+while current is not None:
+    print(current.value)
+    current = current.next</pre></figure>
+        <figure class="code code--out"><figcaption><span>вывод</span><span>запуск примера</span></figcaption><pre>исправить ошибку
+ответить клиенту
+проверить отчёт</pre></figure>
+        <p>Проверка <code>is not None</code> останавливает цикл до попытки прочитать поле у <code>None</code>. Переменная <code>current</code> меняется, а <code>head</code> остаётся ссылкой на первый узел. Цепочку можно обойти ещё раз, снова начав с <code>head</code>.</p>
+
+        <div class="widget" data-access-demo>
+          <div class="widget__head"><b>Доступ к третьему элементу: список и цепочка</b><span>пошаговая схема</span></div>
+          <div class="widget__body">
+            <p>Нажимайте «Следующий шаг». Схема показывает путь к значению C, то есть к элементу с индексом 2.</p>
+            <div class="access-controls">
+              <button class="access-controls__step" type="button" data-access-next aria-describedby="access-status">Следующий шаг</button>
+              <button type="button" data-access-reset aria-describedby="access-status">Сбросить</button>
+            </div>
+            <p class="access-status" id="access-status" role="status" aria-live="polite">Начало. Нужно получить третий элемент, C.</p>
+            <div class="access-flow">
+              <section aria-label="Доступ в списке Python"><h4>Список <code>tasks</code></h4><div class="access-track"><span class="access-item" data-list-item="0">A</span><span class="access-item" data-list-item="1">B</span><span class="access-item" data-list-item="2">C</span></div><p class="access-note">Индекс 2 ведёт к ячейке C напрямую.</p></section>
+              <section aria-label="Доступ в цепочке узлов"><h4>Цепочка от <code>head</code></h4><div class="access-track"><span class="access-item access-item--node" data-chain-item="0">A</span><span class="access-item access-item--node" data-chain-item="1">B</span><span class="access-item access-item--node" data-chain-item="2">C</span></div><p class="access-note">Нужны переходы: <code>head</code> → A → B → C.</p></section>
+            </div>
+          </div>
+        </div>
+        <p>Оранжевым выделен текущий элемент, светлым — пройденные узлы цепочки. При первом шаге в списке выделяется C, а в цепочке — A. Затем обход цепочки выполняет два перехода по <code>next</code>. Для индекса i число переходов равно i; в худшем случае доступ занимает <code>O(n)</code>, где n — длина цепочки.</p>
+
+        <details class="more"><summary>Углубление: что хранит <code>next</code></summary><div><p>В Python переменная и поле объекта связываются с объектами. Когда <code>second</code> передают как <code>next_node</code>, поле <code>head.next</code> ссылается на тот же объект, что и имя <code>second</code>. Это не индекс 1 и не обещание, что объект лежит рядом в памяти. Цепочка держится на ссылках между объектами.</p></div></details>
+
+        <p>Получается два отдельных действия: найти узел и изменить его ссылки. Их стоимость нужно оценивать отдельно.</p>
+
+        <h2 id="s5"><span class="sec">§5</span>Что запомнить</h2>
+        <ol class="steps"><li><b><code>list</code> в CPython</b> — динамический массив ссылок; доступ по известному индексу занимает <code>O(1)</code>.</li><li><b>Связный список</b> состоит из узлов <code>value</code> и <code>next</code>. <code>head</code> хранит первый узел, конец и пустая цепочка обозначаются <code>None</code>.</li><li><b>Чтобы найти i-й узел</b>, идут от <code>head</code> по <code>.next</code>; это <code>O(n)</code>.</li><li><b>Вставка после известного предшественника</b> занимает <code>O(1)</code>, но поиск предшественника может занять <code>O(n)</code>.</li></ol>
+
+        <details class="more"><summary>Источники главы</summary><div class="sources"><b>Источники главы</b><ol><li>Документация Python: <a href="https://docs.python.org/3/tutorial/datastructures.html#more-on-lists" target="_blank" rel="noopener">More on Lists</a>; сложность операций зависит от реализации.</li><li>Исходный код CPython: <a href="https://github.com/python/cpython/blob/3.12/Objects/listobject.c" target="_blank" rel="noopener">Objects/listobject.c</a> — реализация списка как массива указателей на объекты.</li><li>Все примеры рассчитаны для Python 3.12.</li></ol></div></details>
+        <div class="pager"><a href="../index.html">← Линейные структуры</a><span aria-disabled="true">0.2 Ссылки и изменение цепочки · план</span></div>
+        <div class="colophon"><span>Модуль 0 · Линейные структуры изнутри · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div>
+      </main>
+    </div>
+  </div>
+  <script src="../../massivy/book.js"></script>
+  <script src="../lineynye.js"></script>
+</body>
+</html>
