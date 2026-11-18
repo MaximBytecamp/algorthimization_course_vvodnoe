@@ -19,7 +19,9 @@
     <nav class="contents"><b>В этой главе</b><ol><li><a href="#s1">Контракт узла и головы</a></li><li><a href="#s2">Обход цепочки</a></li><li><a href="#s3">Поиск значения</a></li><li><a href="#s4">Инвариант current</a></li></ol></nav>
 
     <h2 id="s1"><span class="sec">§1</span>Контракт узла и головы</h2>
-    <p>Договоримся о двух именах. Объект <code>Node</code> имеет поля <code>value</code> и <code>next</code>. Переменная <code>head</code> хранит ссылку на первый узел или <code>None</code>, если цепочка пуста. Список в этой главе заканчивается на <code>None</code>: циклические связи здесь не рассматриваются.</p>
+
+<p>В теоретическом модуле операции выполнялись отдельными строками. Здесь из них составляются функции. <span class="term">Контракт</span> функции описывает, что ей передают, что она возвращает и какие данные изменяет. Примеры внутри главы выполняются подряд; класс и исходная цепочка определены заново.</p>
+<p>Договоримся о двух именах. Объект <code>Node</code> имеет поля <code>value</code> и <code>next</code>. Переменная <code>head</code> хранит ссылку на первый узел или <code>None</code>, если цепочка пуста. Список в этой главе заканчивается на <code>None</code>: циклические связи здесь не рассматриваются.</p>
     <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; class Node:
 ...     def __init__(self, value, next_node=None):
 ...         self.value = value
@@ -57,9 +59,14 @@ True
       <p>После строки перехода <code>current</code> указывает на узел 17. Значение 42 уже выведено. На следующем круге цикла будет напечатано 17.</p>
     </div></div>
     <p>Для цепочки из n узлов тело цикла выполняется n раз. Значит, полный обход имеет стоимость O(n).</p>
+<p>Для поиска используется тот же последовательный переход. Отличие — условие завершения: совпадение позволяет закончить раньше конца цепочки.</p>
+
 
     <h2 id="s3"><span class="sec">§3</span>Поиск значения</h2>
-    <p>Поиск использует тот же путь, но останавливается раньше, если найдено нужное значение. Функция возвращает сам узел. Если такого значения нет, она возвращает <code>None</code>.</p>
+
+
+<p>Поиск использует тот же путь, но останавливается раньше, если найдено нужное значение. Функция возвращает сам узел. Если такого значения нет, она возвращает <code>None</code>.</p>
+<p>Параметр <code>head</code> получает ссылку на начало, <code>wanted</code> — искомое значение. Оператор <code>return</code> завершает весь вызов функции и передаёт результат вызывающему коду. Запись <code>found = find(head, 17)</code> сохраняет этот результат в <code>found</code>.</p>
     <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; def find(head, wanted):
 ...     current = head
 ...     while current is not None:
@@ -75,7 +82,9 @@ True
 True
 &gt;&gt;&gt; find(head, 99) is None
 True</pre></figure>
-    <p>Возвращается объект узла со значением 17. Поэтому проверка <code>found is second</code> даёт <code>True</code>: обе переменные ссылаются на один объект. При отсутствии значения функция доходит до <code>None</code> и возвращает его.</p>
+    <p>Возвращается объект узла со значением 17. Поэтому проверка <code>found is second</code> даёт <code>True</code>: обе переменные ссылаются на один объект. При отсутствии значения функция доходит до <code>None</code> и возвращает его. Нижний <code>return None</code> расположен после цикла. Он выполняется только тогда, когда совпадение не завершило функцию раньше.</p>
+<p>Для найденного узла доступно поле <code>value</code>. При результате <code>None</code> такого поля нет. Поэтому перед чтением <code>found.value</code> в общем случае проверяют <code>found is not None</code>.</p>
+
     <div class="widget"><div class="widget__head"><b>Поиск 17: остановка у найденного узла</b><span>return current</span></div><div class="widget__body"><figure class="code ln-program"><figcaption><span>Выполненная строка</span><span>найдено совпадение</span></figcaption><pre><span data-line="0">if current.value == wanted:</span><span data-line="1" class="ln-code-active">    return current</span></pre></figure><div class="ln-diagram ln-static"><svg viewBox="0 0 360 425" role="img" aria-label="current указывает на узел 17, следующий узел 30 не просматривается"><defs><marker id="a3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6z"/></marker></defs><text x="18" y="32" class="ln-name">current</text><path class="ln-link ln-variable" d="M104 27 H320 V240 H45 V285 H76" marker-end="url(#a3)"/><g class="ln-object"><rect x="80" y="80" width="200" height="104"/><path d="M80 132 H280 M158 80 V184"/><text x="94" y="112" class="ln-small">value</text><text x="176" y="112" class="ln-small">next</text><text x="110" y="166" class="ln-value">42</text><circle cx="212" cy="157" r="4"/></g><path class="ln-link" d="M212 157 V220 H180 V256" marker-end="url(#a3)"/><g class="ln-object ln-object--active"><rect x="80" y="260" width="200" height="104"/><path d="M80 312 H280 M158 260 V364"/><text x="94" y="292" class="ln-small">value</text><text x="176" y="292" class="ln-small">next</text><text x="110" y="346" class="ln-value">17</text><circle cx="212" cy="337" r="4"/></g><text x="18" y="408" class="ln-small">17 == wanted: return этого узла</text></svg></div></div></div>
     <p>В лучшем случае искомое значение находится в голове. В худшем случае нужно проверить все узлы. Стоимость поиска — O(n).</p>
 
