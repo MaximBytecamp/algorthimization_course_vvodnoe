@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+
+<html lang="ru"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1" name="viewport"/><meta content="#F2F1E9" name="theme-color"/><title>Модуль 10. Расширенные механизмы · ООП на Python</title><link href="../styles.css" rel="stylesheet"/><link href="../oop.css" rel="stylesheet"/><script defer="" src="../book.js"></script></head>
+<body><div class="book"><div class="book__body"><div class="spine"><span>ООП на Python · Модуль 10</span></div><main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../index.html">Справочник по ООП на Python</a></p><p class="running__folio">Модуль 10</p></div>
+<header class="chapter-head"><span class="chapter-num">10</span><h1>Расширенные<br/>механизмы</h1><p class="lead">Как Python создаёт классы, связывает методы и управляет доступом к атрибутам. Эти инструменты полезны, когда обычного класса уже недостаточно.</p></header>
+<dl class="passport"><div><dt>Нужно до начала</dt><dd>Классы, наследование, property, исключения</dd></div><div><dt>Версия</dt><dd>Python 3.11 и новее</dd></div><div><dt>Основа</dt><dd>Модуль 10 исходного PDF</dd></div><div><dt>Результат</dt><dd>Выбирать механизм по задаче, а не по сложности названия</dd></div></dl>
+<p>Каждый блок «main.py» — отдельная программа. Скопируйте один пример в файл и выполните <code>python main.py</code> или <code>python3 main.py</code> в терминале. На Windows также подходит <code>py main.py</code>. Не соединяйте все примеры в один файл: одинаковые имена классов используются для разных задач.</p>
+<nav class="contents"><b>В этом модуле</b><ol>
+<li><a href="#s1">Класс как объект</a></li>
+<li><a href="#s2">Имена __name__ и __module__</a></li>
+<li><a href="#s3">__dict__ и vars(): где видны атрибуты</a></li>
+<li><a href="#s4">Примесь: небольшое дополнение к классу</a></li>
+<li><a href="#s5">Дескриптор: объект управляет доступом к атрибуту</a></li>
+<li><a href="#s6">Делегирование: передать работу другому объекту</a></li>
+<li><a href="#s7">dataclass: класс данных без повторяющихся методов</a></li>
+<li><a href="#s8">default_factory и __post_init__</a></li>
+<li><a href="#s9">frozen и изменение вложенных коллекций</a></li>
+<li><a href="#s10">Ассоциация и зависимость: связь или разовый вызов</a></li>
+<li><a href="#s11">Связывание: почему метод получает self</a></li>
+<li><a href="#s12">__new__: создание прежде инициализации</a></li>
+<li><a href="#s13">Подкласс неизменяемого типа</a></li>
+<li><a href="#s14">__call__: экземпляр можно вызвать</a></li>
+<li><a href="#s15">Метакласс: настройка создания класса</a></li>
+<li><a href="#s16">Monkey patching: заменить поведение во время работы</a></li>
+<li><a href="#s17">DRY и WET: повторение правил</a></li>
+<li><a href="#s18">__str__ и __repr__: для читателя и для отладки</a></li>
+<li><a href="#s19">__slots__: фиксированный набор полей</a></li>
+<li><a href="#s20">Слоты при наследовании и измерение памяти</a></li>
+<li><a href="#reference">Шпаргалка, ошибки и глоссарий</a></li></ol></nav>
+<section class="part"><h2 id="s1"><span class="sec">§1</span>Класс как объект</h2><p>Экземпляр хранит данные конкретного предмета. Класс описывает устройство таких экземпляров, но сам тоже существует в программе как объект: его можно сохранить в переменную и передать функции.</p><p>Форма для выпечки задаёт вид изделий. Печенье сделали формой, но саму форму тоже изготовили на заводе. В Python обычный экземпляр создают вызовом класса, а обычный класс — механизмом типа <code>type</code>.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Класс как объект</span></figcaption><pre><code class="language-python">class Ticket:
+    pass
+
+factory = Ticket
+ticket = factory()
+print(type(ticket).__name__)
+print(type(Ticket).__name__)
+print(isinstance(Ticket, type))</code></pre></figure>
+<figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>Ticket
+type
+True</pre></figure><p><code>factory</code> — второе имя того же класса, а не копия. Вызов создаёт экземпляр <code>Ticket</code>. У класса <code>Ticket</code> свой тип — <code>type</code>. Это объясняет, почему функции могут принимать классы как обычные значения.</p>
+<details class="simple"><summary>По-простому: кто изготовил форму</summary><p>Сравним механизм с понятной бытовой ситуацией. Схема отделяет участников, чтобы не смешивать их роли.</p><div class="flow scheme"><div class="node"><b>Форма</b>класс Ticket</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Печенье</b>экземпляр ticket</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Завод форм</b>тип type</div></div><p><b>Что есть что.</b> Форма — класс; результат выпечки — экземпляр; изготовитель обычных классов — type. Порядок создания: type → Ticket → ticket.</p></details>
+<p class="next">У класса и файла есть имена, доступные во время работы программы.</p></section>
+<section class="part"><h2 id="s2"><span class="sec">§2</span>Имена __name__ и __module__</h2><p><code>__name__</code> — имя, записанное у класса или функции. Оно помогает вывести понятное сообщение вместо адреса объекта. <code>__module__</code> показывает модуль, в котором определён класс. Это не то же самое, что переменная <code>__name__</code> самого запускаемого файла.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Имена __name__ и __module__</span></figcaption><pre><code class="language-python">class Ticket:
+    pass
+
+Alias = Ticket
+print(Ticket.__name__)
+print(Alias.__name__)
+print(Ticket.__module__)
+print(__name__)</code></pre></figure>
+<figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>Ticket
+Ticket
+__main__
+__main__</pre></figure><p>Переименование ссылки не меняет имя класса: <code>Alias.__name__</code> по-прежнему <code>Ticket</code>. Здесь файл выполняется как программа, поэтому его имя — <code>__main__</code>. При импорте <code>__module__</code> будет именем модуля, где класс определён.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>Ticket.__name__</code></td><td><code>Ticket</code></td></tr><tr><td><code>Alias.__name__</code></td><td><code>Ticket</code></td></tr><tr><td><code>Ticket.__module__ при запуске файла</code></td><td><code>__main__</code></td></tr></tbody></table></div><p>В последней строке показан результат: __main__. Он соответствует выводу программы выше.</p><p class="next">Именованные атрибуты можно также рассмотреть как пространство имён.</p></section>
+<section class="part"><h2 id="s3"><span class="sec">§3</span>__dict__ и vars(): где видны атрибуты</h2><p>У обычного экземпляра пользовательского класса есть словарь атрибутов <code>__dict__</code>. Функция <code>vars(obj)</code> возвращает этот словарь. У класса есть отдельное пространство имён: атрибуты экземпляра и класса не складываются в один ящик.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>__dict__ и vars(): где видны атрибуты</span></figcaption><pre><code class="language-python">class Ticket:
+    category = "support"
+
+    def __init__(self, title):
+        self.title = title
+
+item = Ticket("Принтер")
+print(vars(item))
+print("category" in vars(item))
+print("category" in vars(Ticket))
+print(item.category)</code></pre></figure>
+<figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>{'title': 'Принтер'}
+False
+True
+support</pre></figure><p>В словаре экземпляра есть только <code>title</code>. Когда собственный атрибут <code>category</code> не найден, обычный поиск продолжает работу в классе. У класса <code>__dict__</code> представлен доступным для чтения отображением <code>mappingproxy</code>; менять класс следует через присваивание атрибута. Не у всякого объекта есть <code>__dict__</code>: ниже встретим экземпляры со слотами.</p>
+<details class="simple"><summary>По-простому: личный ящик и общая инструкция</summary><p>Сравним механизм с понятной бытовой ситуацией. Схема отделяет участников, чтобы не смешивать их роли.</p><div class="flow scheme"><div class="node"><b>Личный ящик</b>vars(item): title</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Общая инструкция</b>vars(Ticket): category</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Чтение</b>item.category → класс</div></div><p><b>Что есть что.</b> Личный ящик — атрибуты экземпляра, общая инструкция — атрибуты класса. Это схема обычного поиска; свойства и другие дескрипторы данных могут иметь приоритет над словарём экземпляра.</p></details>
+<p class="next">Повторяющиеся операции над атрибутами можно вынести в примесь.</p></section>
+<section class="part"><h2 id="s4"><span class="sec">§4</span>Примесь: небольшое дополнение к классу</h2><p>Примесь, или mixin, — класс с небольшой повторно используемой возможностью. В Python её обычно подключают множественным наследованием. Отдельного ключевого слова <code>trait</code> нет; названия «примесь» и «миксин» здесь относятся к одному приёму.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Примесь: небольшое дополнение к классу</span></figcaption><pre><code class="language-python">class AsDictMixin:
+    def as_dict(self):
+        return dict(vars(self))
+
+class Ticket(AsDictMixin):
+    def __init__(self, title):
+        self.title = title
+
+item = Ticket("Принтер")
+print(item.as_dict())</code></pre></figure>
+<figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>{'title': 'Принтер'}</pre></figure><p>Примесь добавила <code>as_dict()</code>, но не отвечает за создание заявки. Метод предполагает, что у экземпляра есть словарь атрибутов. Это ограничение нужно знать: со слотами без <code>__dict__</code> такой код не подойдёт. Не стоит превращать примесь в скрытый набор требований к десяткам полей.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>Создание Ticket("Принтер")</code></td><td><code>self.title → Принтер</code></td></tr><tr><td><code>Метод примеси as_dict()</code></td><td><code>{'title': 'Принтер'}</code></td></tr></tbody></table></div><p>В последней строке показан результат: {'title': 'Принтер'}. Он соответствует выводу программы выше.</p><p class="next">Для управления чтением и записью отдельного поля применяется дескриптор.</p></section>
+<section class="part"><h2 id="s5"><span class="sec">§5</span>Дескриптор: объект управляет доступом к атрибуту</h2><p><strong>Дескриптор</strong> — объект, у типа которого определён хотя бы один из методов <code>__get__</code>, <code>__set__</code>, <code>__delete__</code>. Когда такой объект хранится в атрибуте класса, Python может поручить ему чтение и запись этого атрибута. Так одну проверку можно использовать в разных классах.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Дескриптор: объект управляет доступом к атрибуту</span></figcaption><pre><code class="language-python">class Positive:
+    def __set_name__(self, owner, name):
+        self.storage_name = "_" + name
+
+    def __get__(self, obj, owner=None):
+        if obj is None:
+            return self
+        return getattr(obj, self.storage_name)
+
+    def __set__(self, obj, value):
+        if value &lt;= 0:
+            raise ValueError("нужно положительное число")
+        setattr(obj, self.storage_name, value)
+
+class Product:
+    price = Positive()
+
+    def __init__(self, price):
+        self.price = price
+
+item = Product(120)
+print(item.price)
+print(vars(item))
+try:
+    item.price = -5
+except ValueError as error:
+    print(error)
+print(item.price)</code></pre></figure>
+<figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>120
+{'_price': 120}
+нужно положительное число
+120</pre></figure><p><code>__set_name__</code> получает имя поля при создании класса. Присваивание <code>self.price = price</code> вызывает <code>__set__</code>, а чтение — <code>__get__</code>. Значение хранится у конкретного товара под именем <code>_price</code>. Общий объект <code>Positive</code> хранит только правило доступа. Неудачная проверка срабатывает до записи: цена остаётся 120.</p><p>Дескриптор с <code>__set__</code> или <code>__delete__</code> называют дескриптором данных. При обычном поиске атрибута он имеет приоритет над одноимённой записью в словаре экземпляра. Дескриптор только с <code>__get__</code> такого приоритета не имеет. Уже знакомый <code>property</code> — дескриптор данных.</p>
+<details class="simple"><summary>По-простому: контролёр на приёмке</summary><p>Сравним механизм с понятной бытовой ситуацией. Схема отделяет участников, чтобы не смешивать их роли.</p><div class="flow scheme"><div class="node"><b>Покупатель</b>item.price = -5</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Контролёр</b>Positive.__set__</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Склад</b>item._price остаётся 120</div></div><p><b>Что есть что.</b> Контролёр — дескриптор, полка конкретного товара — атрибут экземпляра. Проверка отбрасывает неправильную запись до изменения данных. Прямое изменение внутреннего поля позволяет обойти это правило.</p></details>
+<p class="next">Другой способ распределить ответственность — передать работу помощнику.</p></section>
+<section class="part"><h2 id="s6"><span class="sec">§6</span>Делегирование: передать работу другому объекту</h2><p><strong>Делегирование</strong> означает, что объект принимает запрос, но выполнение поручает своему помощнику. Класс не обязан наследоваться от помощника: достаточно хранить ссылку на него и вызывать нужный метод.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Делегирование: передать работу другому объекту</span></figcaption><pre><code class="language-python">class Formatter:
+    def format(self, text):
+        return text.upper()
+
+class Report:
+    def __init__(self, formatter):
+        self.formatter = formatter
+
+    def render(self, text):
+        return self.formatter.format(text)
+
+report = Report(Formatter())
+print(report.render("готово"))</code></pre></figure>
+<figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>ГОТОВО</pre></figure><p>Пользователь обращается к отчёту, а преобразование текста выполняет <code>Formatter</code>. «Имплементация» означает реализацию договорённости о поведении. В Python не нужно копировать чужой метод в класс, чтобы воспользоваться его работой.</p>
+<details class="simple"><summary>По-простому: передать заказ мастеру</summary><p>Сравним механизм с понятной бытовой ситуацией. Схема отделяет участников, чтобы не смешивать их роли.</p><div class="flow scheme"><div class="node"><b>Клиент</b>report.render("готово")</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Приёмщик</b>объект Report</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Мастер</b>объект Formatter</div></div><p><b>Что есть что.</b> Приёмщик — отчёт, мастер — форматировщик. Ссылка self.formatter соединяет объекты; вызов format передаёт работу помощнику.</p></details>
+<p class="next">Для классов, которые хранят данные, часть методов можно сгенерировать.</p></section>
+<section class="part"><h2 id="s7"><span class="sec">§7</span>dataclass: класс данных без повторяющихся методов</h2><p>Когда класс в основном хранит данные, повторяются инициализация, представление и сравнение. Декоратор <code>@dataclass</code> из стандартной библиотеки создаёт эти методы по объявленным полям. Тип поля записывают после двоеточия.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>dataclass: класс данных без повторяющихся методов</span></figcaption><pre><code class="language-python">from dataclasses import dataclass
+
+@dataclass
+class Point:
+    x: int
+    y: int
+
+first = Point(2, 3)
+second = Point(2, 3)
+print(first)
+print(first == second)
+print(first is second)</code></pre></figure>
+<figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>Point(x=2, y=3)
+True
+False</pre></figure><p>Сгенерированный <code>__init__</code> принимает две координаты. <code>__repr__</code> показывает их. <code>__eq__</code> сравнивает значения полей экземпляров одного класса. <code>==</code> даёт равенство значений, <code>is</code> — проверку одного и того же объекта. Аннотация <code>int</code> сама по себе не проверяет аргументы во время выполнения.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>first == second</code></td><td><code>Поля равны → True</code></td></tr><tr><td><code>first is second</code></td><td><code>Разные экземпляры → False</code></td></tr></tbody></table></div><p>В последней строке показан результат: Разные экземпляры → False. Он соответствует выводу программы выше.</p><p class="next">Для изменяемых полей важно отдельно настроить начальные значения.</p></section>
+<section class="part"><h2 id="s8"><span class="sec">§8</span>default_factory и __post_init__</h2><p>Изменяемому полю нужна новая коллекция для каждого экземпляра. <code>field(default_factory=list)</code> вызывает <code>list()</code> при создании каждой записи. Проверки после сгенерированной инициализации удобно помещать в <code>__post_init__</code>.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>default_factory и __post_init__</span></figcaption><pre><code class="language-python">from dataclasses import dataclass, field
+
+@dataclass
+class Cart:
+    owner: str
+    items: list[str] = field(default_factory=list)
+
+    def __post_init__(self):
+        if not self.owner.strip():
+            raise ValueError("нужно имя владельца")
+
+first = Cart("Ира")
+second = Cart("Олег")
+first.items.append("чай")
+print(first.items)
+print(second.items)
+try:
+    Cart(" ")
+except ValueError as error:
+    print(error)</code></pre></figure>
+<figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>['чай']
+[]
+нужно имя владельца</pre></figure><p>Два списка независимы. Значение <code>items=[]</code> здесь использовать не следует: dataclass отвергает многие изменяемые значения по умолчанию. Фабрика вызывается без аргументов и возвращает новый объект. <code>__post_init__</code> запускается сгенерированным <code>__init__</code>; если написать собственный инициализатор, автоматического вызова не будет.</p>
+<details class="simple"><summary>По-простому: отдельная корзина каждому</summary><p>Сравним механизм с понятной бытовой ситуацией. Схема отделяет участников, чтобы не смешивать их роли.</p><div class="flow scheme"><div class="node"><b>Первый заказ</b>Cart("Ира")</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Новая корзина</b>list() → []</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Второй заказ</b>Cart("Олег") → другая []</div></div><p><b>Что есть что.</b> Фабрика — выдача новой корзины, поле items — корзина одного владельца. Изменение первого списка не затрагивает второй.</p></details>
+<p class="next">После создания экземпляра может понадобиться ограничить изменение его полей.</p></section>
+<section class="part"><h2 id="s9"><span class="sec">§9</span>frozen и изменение вложенных коллекций</h2><p>Параметр <code>frozen=True</code> запрещает обычное присваивание и удаление полей dataclass. Это полезно для значений, которые не должны меняться после создания. Вложенный список при этом не становится кортежем.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>frozen и изменение вложенных коллекций</span></figcaption><pre><code class="language-python">from dataclasses import dataclass, FrozenInstanceError
+
+@dataclass(frozen=True)
+class Bundle:
+    tags: list[str]
+
+bundle = Bundle(["python"])
+bundle.tags.append("oop")
+print(bundle.tags)
+try:
+    bundle.tags = []
+except FrozenInstanceError:
+    print("присваивание запрещено")</code></pre></figure>
+<figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>['python', 'oop']
+присваивание запрещено</pre></figure><p>Поле <code>tags</code> сохранило ссылку на тот же список. Изменилось содержимое этого списка. Для неизменяемой коллекции подойдёт кортеж из неизменяемых значений. Автоматический хеш у frozen dataclass не означает, что любой экземпляр хешируем: список в поле по-прежнему не имеет хеша.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>bundle.tags.append("oop")</code></td><td><code>Список изменён → ['python', 'oop']</code></td></tr><tr><td><code>bundle.tags = []</code></td><td><code>Присваивание поля → FrozenInstanceError</code></td></tr></tbody></table></div><p>В последней строке показан результат: Присваивание поля → FrozenInstanceError. Он соответствует выводу программы выше.</p><p class="next">Хранение и передача ссылок определяют связи между объектами.</p></section>
+<section class="part"><h2 id="s10"><span class="sec">§10</span>Ассоциация и зависимость: связь или разовый вызов</h2><p><strong>Ассоциация</strong> — связь объектов в модели: преподаватель ведёт курс, клиент имеет заказы. Если объект хранит ссылку на другой объект, связь видна прямо в его состоянии. <strong>Зависимость</strong> шире: код пользуется другим типом или объектом, даже если получает его лишь на время вызова.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Ассоциация и зависимость: связь или разовый вызов</span></figcaption><pre><code class="language-python">class Printer:
+    def print_text(self, text):
+        print(text)
+
+class Course:
+    def __init__(self, title, printer):
+        self.title = title
+        self.printer = printer
+
+    def show(self):
+        self.printer.print_text(self.title)
+
+def show_once(printer, text):
+    printer.print_text(text)
+
+printer = Printer()
+course = Course("Python", printer)
+course.show()
+show_once(printer, "Разовый отчёт")</code></pre></figure>
+<figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>Python
+Разовый отчёт</pre></figure><p><code>Course</code> хранит принтер — это устойчивая связь. Функция <code>show_once</code> только использует аргумент. Композиция и агрегация из предыдущего модуля уточняют смысл связи «целое — часть». Эти названия описывают модель и ответственность. Освобождение памяти подчиняется правилам работы со ссылками.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>course.printer</code></td><td><code>Ссылка хранится у Course</code></td></tr><tr><td><code>show_once(printer, text)</code></td><td><code>Объект используется в аргументе вызова</code></td></tr></tbody></table></div><p>В последней строке показан результат: Объект используется в аргументе вызова. Он соответствует выводу программы выше.</p><p class="next">При чтении метода ссылка на получателя сохраняется автоматически.</p></section>
+<section class="part"><h2 id="s11"><span class="sec">§11</span>Связывание: почему метод получает self</h2><p>При чтении обычной функции через экземпляр Python создаёт <strong>связанный метод</strong>: он помнит и функцию, и объект, который нужно передать первым аргументом. Поэтому в объявлении есть <code>self</code>, а при вызове его обычно не пишут.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Связывание: почему метод получает self</span></figcaption><pre><code class="language-python">class Greeter:
+    def hello(self):
+        return "Привет"
+
+person = Greeter()
+method = person.hello
+print(method.__self__ is person)
+print(method.__func__ is Greeter.hello)
+print(method())
+print(Greeter.hello(person))</code></pre></figure>
+<figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>True
+True
+Привет
+Привет</pre></figure><p><code>__self__</code> — получатель, <code>__func__</code> — исходная функция. Два последних вызова дают одинаковый результат. Это конкретный механизм связывания методов. В разговорах об архитектуре «связанностью» также называют зависимость компонентов друг от друга; это другое значение слова.</p>
+<details class="simple"><summary>По-простому: конверт с адресом</summary><p>Сравним механизм с понятной бытовой ситуацией. Схема отделяет участников, чтобы не смешивать их роли.</p><div class="flow scheme"><div class="node"><b>Функция</b>Greeter.hello</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Адрес получателя</b>person</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Готовое отправление</b>person.hello</div></div><p><b>Что есть что.</b> Связанный метод — функция вместе с получателем. Метод не копирует весь объект: он хранит ссылку на него.</p></details>
+<p class="next">Создание самого получателя начинается до инициализации.</p></section>
+<section class="part"><h2 id="s12"><span class="sec">§12</span>__new__: создание прежде инициализации</h2><p>При обычном вызове класса сначала <code>__new__</code> создаёт экземпляр, затем <code>__init__</code> настраивает его. Большинству классов достаточно <code>__init__</code>. Переопределение <code>__new__</code> нужно редко, например для подтипов неизменяемых встроенных значений.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>__new__: создание прежде инициализации</span></figcaption><pre><code class="language-python">class Ticket:
+    def __new__(cls, title):
+        print("1: создание")
+        return super().__new__(cls)
+
+    def __init__(self, title):
+        print("2: инициализация")
+        self.title = title
+
+item = Ticket("Принтер")
+print(item.title)</code></pre></figure>
+<figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>1: создание
+2: инициализация
+Принтер</pre></figure><p><code>__new__</code> получает класс и должен вернуть объект. Если возвращён экземпляр этого класса или его подкласса, обычный механизм вызова класса переходит к инициализации. Если возвращён объект другого типа, этот <code>__init__</code> не вызывается. Результатом <code>__init__</code> должен быть <code>None</code>. Экземпляр уже создан к моменту вызова инициализатора.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>__new__</code></td><td><code>Печатает 1: создание</code></td></tr><tr><td><code>__init__</code></td><td><code>Печатает 2: инициализация</code></td></tr><tr><td><code>item.title</code></td><td><code>Принтер</code></td></tr></tbody></table></div><p>В последней строке показан результат: Принтер. Он соответствует выводу программы выше.</p><p class="next">Подготовка до создания особенно нужна для подтипов неизменяемых значений.</p></section>
+<section class="part"><h2 id="s13"><span class="sec">§13</span>Подкласс неизменяемого типа</h2><p>Строку нельзя изменить после создания. Поэтому подтип строки, который всегда хранит текст без крайних пробелов, должен подготовить значение в <code>__new__</code>, до создания самой строки.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Подкласс неизменяемого типа</span></figcaption><pre><code class="language-python">class CleanText(str):
+    def __new__(cls, value):
+        return super().__new__(cls, value.strip())
+
+text = CleanText("  Python  ")
+print(repr(text))
+print(isinstance(text, str))</code></pre></figure>
+<figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>'Python'
+True</pre></figure><p>Вызов родительского <code>__new__</code> создаёт именно экземпляр <code>CleanText</code> с уже подготовленным содержимым. Присваивание в <code>__init__</code> не смогло бы заменить внутреннее строковое значение.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>Входная строка</code></td><td><code>  Python  </code></td></tr><tr><td><code>value.strip()</code></td><td><code>Python</code></td></tr><tr><td><code>super().__new__</code></td><td><code>Создаёт CleanText со значением Python</code></td></tr></tbody></table></div><p>В последней строке показан результат: Создаёт CleanText со значением Python. Он соответствует выводу программы выше.</p><p class="next">После создания экземпляр тоже может поддерживать вызов со скобками.</p></section>
+<section class="part"><h2 id="s14"><span class="sec">§14</span>__call__: экземпляр можно вызвать</h2><p>Метод <code>__call__</code> позволяет использовать экземпляр как функцию. Это удобно, когда действие должно помнить состояние между вызовами. Если состояния нет, обычная функция обычно проще.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>__call__: экземпляр можно вызвать</span></figcaption><pre><code class="language-python">class Counter:
+    def __init__(self):
+        self.value = 0
+
+    def __call__(self, step=1):
+        self.value += step
+        return self.value
+
+counter = Counter()
+print(counter())
+print(counter(3))
+print(callable(counter))</code></pre></figure>
+<figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>1
+4
+True</pre></figure><p><code>Counter()</code> вызывает класс и создаёт счётчик. Следующие <code>counter()</code> вызывают уже экземпляр и попадают в <code>Counter.__call__</code>. Это два разных действия с одинаковыми круглыми скобками.</p>
+<details class="simple"><summary>По-простому: счётчик на проходной</summary><p>Сравним механизм с понятной бытовой ситуацией. Схема отделяет участников, чтобы не смешивать их роли.</p><div class="flow scheme"><div class="node"><b>Первый проход</b>counter() → 1</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Ещё три</b>counter(3) → 4</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Тот же прибор</b>value хранится в экземпляре</div></div><p><b>Что есть что.</b> Прибор — вызываемый объект, нажатие — __call__, показание — self.value. Отдельный Counter() получил бы независимое состояние.</p></details>
+<p class="next">Процесс создания класса можно настраивать отдельно от вызова его экземпляра.</p></section>
+<section class="part"><h2 id="s15"><span class="sec">§15</span>Метакласс: настройка создания класса</h2><p><strong>Метакласс</strong> — тип класса. Обычный метакласс <code>type</code> создаёт класс из имени, базовых классов и пространства имён. Его подкласс может изменить этот процесс. Это инструмент для библиотек и инфраструктуры, а не обязательная часть каждого проекта с ООП.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Метакласс: настройка создания класса</span></figcaption><pre><code class="language-python">class NamedMeta(type):
+    def __new__(mcls, name, bases, namespace):
+        namespace["kind"] = name.lower()
+        return super().__new__(mcls, name, bases, namespace)
+
+class Ticket(metaclass=NamedMeta):
+    pass
+
+print(Ticket.kind)
+print(type(Ticket).__name__)
+print(type(Ticket()).__name__)</code></pre></figure>
+<figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>ticket
+NamedMeta
+Ticket</pre></figure><p><code>NamedMeta.__new__</code> создаёт класс <code>Ticket</code>, а не заявку. В его пространство имён заранее добавлен <code>kind</code>. Затем вызов <code>Ticket()</code> создаёт обычный экземпляр. Для большинства задач проще декоратор класса или <code>__init_subclass__</code>, чем собственный метакласс.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>NamedMeta</code></td><td><code>Создаёт класс Ticket</code></td></tr><tr><td><code>namespace["kind"]</code></td><td><code>ticket</code></td></tr><tr><td><code>Ticket()</code></td><td><code>Создаёт экземпляр Ticket</code></td></tr></tbody></table></div><p>В последней строке показан результат: Создаёт экземпляр Ticket. Он соответствует выводу программы выше.</p><p class="next">Атрибуты созданного класса могут изменяться и во время работы программы.</p></section>
+<section class="part"><h2 id="s16"><span class="sec">§16</span>Monkey patching: заменить поведение во время работы</h2><p><strong>Monkey patching</strong> — изменение атрибутов существующего класса или модуля во время работы программы. Оно бывает полезно в тестах, но глобальная подмена влияет и на уже созданные экземпляры, если они читают метод из класса.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Monkey patching: заменить поведение во время работы</span></figcaption><pre><code class="language-python">class Service:
+    def status(self):
+        return "исходный ответ"
+
+service = Service()
+original = Service.status
+
+def replacement(self):
+    return "тестовый ответ"
+
+try:
+    Service.status = replacement
+    print(service.status())
+finally:
+    Service.status = original
+print(service.status())</code></pre></figure>
+<figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>тестовый ответ
+исходный ответ</pre></figure><p>Замена выполнена в классе: при следующем чтении <code>service.status</code> находится новая функция и связывается с экземпляром. Блок <code>finally</code> восстанавливает прежнее значение даже при ошибке. Присваивание обычной функции прямо экземпляру не создаёт такое же автоматическое связывание. В прикладном коде передача зависимости обычно яснее глобальной подмены.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>Подмена Service.status</code></td><td><code>тестовый ответ</code></td></tr><tr><td><code>finally: восстановление original</code></td><td><code>исходный ответ</code></td></tr></tbody></table></div><p>В последней строке показан результат: исходный ответ. Он соответствует выводу программы выше.</p><p class="next">При повторном использовании поведения важно сохранять единое место для каждого правила.</p></section>
+<section class="part"><h2 id="s17"><span class="sec">§17</span>DRY и WET: повторение правил</h2><p><strong>DRY</strong> — «не повторяй себя»: одно правило должно иметь одно место изменения. <strong>WET</strong> — ироничное название повторяющегося кода. Совпадение двух строк ещё не означает, что их нужно немедленно объединять: правила могут быть разными по смыслу.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>DRY и WET: повторение правил</span></figcaption><pre><code class="language-python">class Price:
+    def __init__(self, amount):
+        if amount &lt; 0:
+            raise ValueError("цена не может быть отрицательной")
+        self.amount = amount
+
+    def with_tax(self, rate):
+        return round(self.amount * (1 + rate), 2)
+
+first = Price(100)
+second = Price(250)
+print(first.with_tax(0.2))
+print(second.with_tax(0.2))</code></pre></figure>
+<figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>120.0
+300.0</pre></figure><p>Правило расчёта находится в одном методе и применяется к двум ценам. Не стоит выносить ставку налога и скидку в одну переменную только потому, что обе сегодня равны 0,2: это разные знания и меняться они будут независимо. Ни DRY, ни WET не являются возможностями интерпретатора.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>Price(100).with_tax(0.2)</code></td><td><code>100 × 1.2 → 120.0</code></td></tr><tr><td><code>Price(250).with_tax(0.2)</code></td><td><code>250 × 1.2 → 300.0</code></td></tr></tbody></table></div><p>В последней строке показан результат: 250 × 1.2 → 300.0. Он соответствует выводу программы выше.</p><p class="next">Представление объекта также является частью выбранного интерфейса.</p></section>
+<section class="part"><h2 id="s18"><span class="sec">§18</span>__str__ и __repr__: для читателя и для отладки</h2><p><code>__str__</code> задаёт удобное представление для пользователя. <code>__repr__</code> задаёт информативное представление для разработчика. Желательно, чтобы <code>repr</code> был однозначным; если восстановление объекта выражением неуместно, достаточно полезного описания.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>__str__ и __repr__: для читателя и для отладки</span></figcaption><pre><code class="language-python">class Ticket:
+    def __init__(self, title):
+        self.title = title
+
+    def __str__(self):
+        return f"Заявка: {self.title}"
+
+    def __repr__(self):
+        return f"Ticket({self.title!r})"
+
+item = Ticket("Принтер")
+print(item)
+print(repr(item))
+print([item])
+print(f"{item!r}")</code></pre></figure>
+<figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>Заявка: Принтер
+Ticket('Принтер')
+[Ticket('Принтер')]
+Ticket('Принтер')</pre></figure><p><code>print(item)</code> использует строковое представление, а список показывает элементы через <code>repr</code>. Модификатор <code>!r</code> внутри f-строки явно выбирает <code>repr</code>. Если своего <code>__str__</code> нет, стандартная реализация использует <code>__repr__</code>. Оба метода должны возвращать строку. Не помещайте в представления пароли и токены: они попадут в журналы.</p>
+<details class="simple"><summary>По-простому: ценник и складская наклейка</summary><p>Сравним механизм с понятной бытовой ситуацией. Схема отделяет участников, чтобы не смешивать их роли.</p><div class="flow scheme"><div class="node"><b>Ценник</b>str(item): для покупателя</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Наклейка</b>repr(item): для разработчика</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Коробка со списком</b>[item] показывает repr</div></div><p><b>Что есть что.</b> Ценник — __str__, техническая наклейка — __repr__. Это два представления одного объекта, а не два разных объекта.</p></details>
+<p class="next">Способ хранения атрибутов можно настроить через слоты.</p></section>
+<section class="part"><h2 id="s19"><span class="sec">§19</span>__slots__: фиксированный набор полей</h2><p><code>__slots__</code> позволяет выделить места под перечисленные атрибуты вместо обычного словаря экземпляра. Это может уменьшить расход памяти, когда экземпляров очень много. Начинать стоит с обычного класса; оптимизацию выбирают после измерений.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>__slots__: фиксированный набор полей</span></figcaption><pre><code class="language-python">class Point:
+    __slots__ = ("x", "y")
+
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+point = Point(2, 3)
+point.x = 5
+print(point.x, point.y)
+print(hasattr(point, "__dict__"))
+try:
+    point.color = "blue"
+except AttributeError:
+    print("для color нет места")</code></pre></figure>
+<figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>5 3
+False
+для color нет места</pre></figure><p>Слоты не делают поля неизменяемыми: <code>x</code> успешно изменился. Отсутствие <code>__dict__</code> не позволяет добавить произвольное поле. Вариант <code>__slots__ = ("x", "y", "__dict__")</code> снова разрешит дополнительные атрибуты, но вернёт часть затрат. Для слабых ссылок при необходимости добавляют <code>__weakref__</code>.</p>
+<details class="simple"><summary>По-простому: шкаф с подписанными ячейками</summary><p>Сравним механизм с понятной бытовой ситуацией. Схема отделяет участников, чтобы не смешивать их роли.</p><div class="flow scheme"><div class="node"><b>Ячейка x</b>можно заменить содержимое</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Ячейка y</b>можно заменить содержимое</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Место для color</b>не предусмотрено</div></div><p><b>Что есть что.</b> Ячейки — объявленные слоты. Фиксируется набор мест хранения, а не значения внутри них; это не механизм приватности.</p></details>
+<p class="next">В подклассе наличие словаря атрибутов нужно проверять отдельно.</p></section>
+<section class="part"><h2 id="s20"><span class="sec">§20</span>Слоты при наследовании и измерение памяти</h2><p>Если подкласс не объявит собственные слоты, у его экземпляров обычно снова появится словарь. Пустые слоты <code>__slots__ = ()</code> означают, что подклассу не нужны новые поля. Они не убирают словарь, если он уже есть у базового класса.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Слоты при наследовании и измерение памяти</span></figcaption><pre><code class="language-python">class Base:
+    __slots__ = ("x",)
+
+class Flexible(Base):
+    pass
+
+class Fixed(Base):
+    __slots__ = ()
+
+flexible = Flexible()
+flexible.note = "можно"
+fixed = Fixed()
+fixed.x = 7
+print(hasattr(flexible, "__dict__"))
+print(hasattr(fixed, "__dict__"))
+print(fixed.x)</code></pre></figure>
+<figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>True
+False
+7</pre></figure><p>Наследование не отменяет слоты родителя: у <code>Fixed</code> осталось поле <code>x</code>. Некоторые встроенные типы ограничивают слоты подклассов; например, у подтипов <code>tuple</code> непустые слоты не поддерживаются. Общего запрета на наследование от <code>list</code> или <code>dict</code> со слотами нет.</p><p><code>sys.getsizeof(obj)</code> показывает лишь размер самого объекта, а не всей достижимой структуры. Для обычного экземпляра нужно как минимум отдельно учитывать словарь; строки, списки и общие ссылки требуют дополнительного анализа. Поэтому универсальных процентов экономии в этой главе нет. Для dataclass на Python 3.10+ доступно <code>@dataclass(slots=True)</code>.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>Flexible без __slots__</code></td><td><code>Есть __dict__ → True</code></td></tr><tr><td><code>Fixed со слотами ()</code></td><td><code>Нет __dict__ → False</code></td></tr><tr><td><code>fixed.x</code></td><td><code>Унаследованный слот → 7</code></td></tr></tbody></table></div><p>В последней строке показан результат: Унаследованный слот → 7. Он соответствует выводу программы выше.</p></section>
+<h2 id="reference">Шпаргалка</h2><div class="table-scroll"><table><thead><tr><th>Задача</th><th>Подход</th><th>Ограничение</th></tr></thead><tbody>
+<tr><td>Хранить запись данных</td><td><code>@dataclass</code></td><td>Аннотации не проверяют значения автоматически</td></tr>
+<tr><td>Проверять несколько похожих полей</td><td>Дескриптор</td><td>Значения хранить отдельно для каждого экземпляра</td></tr>
+<tr><td>Передать работу помощнику</td><td>Делегирование</td><td>Договориться о методах помощника</td></tr>
+<tr><td>Создать объект неизменяемого типа</td><td><code>__new__</code></td><td>Не путать с инициализацией</td></tr>
+<tr><td>Вызвать экземпляр как функцию</td><td><code>__call__</code></td><td>При отсутствии состояния проще функция</td></tr>
+<tr><td>Настроить создание класса</td><td>Метакласс</td><td>Сначала рассмотреть более простой приём</td></tr>
+<tr><td>Сократить затраты на множество объектов</td><td><code>__slots__</code></td><td>Измерить память с учётом вложенных объектов</td></tr></tbody></table></div>
+<h3>Частые ошибки</h3>
+<ul><li>Хранить значение поля прямо в общем дескрипторе: экземпляры начнут делить одно значение.</li><li>Считать <code>frozen=True</code> глубокой неизменяемостью: вложенная коллекция может остаться изменяемой.</li><li>Подменять метод глобально и не восстанавливать его после теста.</li><li>Выбирать метакласс там, где достаточно функции или декоратора класса.</li><li>Ожидать, что слоты обеспечат приватность или автоматически сохранятся в любом подклассе.</li></ul>
+<h3>Глоссарий</h3><dl class="glossary">
+<dt>Объект класса</dt><dd>Класс как значение программы. <code>type → Ticket → ticket</code>: тип создаёт класс, класс — экземпляр.</dd>
+<dt>Пространство имён</dt><dd>Отображение имён на объекты. <code>vars(item): title → 'Принтер'</code> показывает собственные атрибуты экземпляра.</dd>
+<dt>Примесь, mixin</dt><dd>Класс с небольшой добавочной возможностью. <code>AsDictMixin → Ticket.as_dict()</code>.</dd>
+<dt>Дескриптор</dt><dd>Объект, участвующий в доступе к атрибуту через специальные методы своего типа. <code>item.price = 120 → __set__ → item._price</code>.</dd>
+<dt>Дескриптор данных</dt><dd>Дескриптор с <code>__set__</code> или <code>__delete__</code>. <code>property → приоритет перед словарём экземпляра</code>.</dd>
+<dt>Делегирование</dt><dd>Передача работы помощнику. <code>report.render → formatter.format</code>.</dd>
+<dt>Имплементация</dt><dd>Реализация оговорённого поведения. <code>требование format(text) → тело метода Formatter.format</code>.</dd>
+<dt>Dataclass</dt><dd>Класс, для которого декоратор генерирует методы по полям. <code>x: int, y: int → __init__, __repr__, __eq__</code>.</dd>
+<dt>Фабрика значения</dt><dd>Функция, создающая значение при необходимости. <code>default_factory=list → [] для каждого экземпляра</code>.</dd>
+<dt>Ассоциация</dt><dd>Связь объектов модели. <code>Course → хранит ссылку → Printer</code>.</dd>
+<dt>Зависимость</dt><dd>Использование другого компонента. <code>show_once(printer) → printer.print_text</code>.</dd>
+<dt>Связанный метод</dt><dd>Функция вместе с получателем. <code>person.hello → (Greeter.hello, person)</code>.</dd>
+<dt>Инициализатор</dt><dd>Метод настройки уже созданного экземпляра. <code>__new__ → экземпляр → __init__</code>.</dd>
+<dt>Вызываемый объект</dt><dd>Объект, который можно использовать со скобками вызова. <code>counter(3) → __call__(3)</code>.</dd>
+<dt>Метакласс</dt><dd>Тип класса, управляющий его созданием. <code>NamedMeta → Ticket → item</code>.</dd>
+<dt>Monkey patching</dt><dd>Подмена атрибутов во время работы. <code>Service.status = replacement → следующий вызов получает замену</code>.</dd>
+<dt>DRY / WET</dt><dd>Принцип единственного места для знания и название его дублирования. <code>одно правило налога → один метод → много вызовов</code>.</dd>
+<dt>Строковое и отладочное представление</dt><dd><code>str(item) → 'Заявка: Принтер'</code>; <code>repr(item) → "Ticket('Принтер')"</code>.</dd>
+<dt>Слот</dt><dd>Место хранения объявленного атрибута. <code>__slots__ = ('x', 'y') → x и y без обычного __dict__</code>.</dd>
+</dl>
+<details class="more"><summary>Документация и границы исходника</summary><p>Материал переработан по модулю 10 предоставленного справочника. Тема слотов начинается у границы указанного диапазона 541–740; её завершение также учтено. SOLID и паттерны следующего модуля сюда не включены.</p><ul><li><a href="https://docs.python.org/3/reference/datamodel.html">Модель данных Python</a></li><li><a href="https://docs.python.org/3/howto/descriptor.html">Руководство по дескрипторам</a></li><li><a href="https://docs.python.org/3/library/dataclasses.html">dataclasses</a></li></ul></details>
+<h3>Итог модуля</h3><ul><li>Класс является объектом; создание класса и создание экземпляра — разные процессы.</li><li>Дескриптор управляет доступом к полю, делегирование передаёт работу помощнику.</li><li>Dataclass сокращает повторение, но не заменяет проверки данных и выбор структуры полей.</li><li>Метаклассы, подмены и слоты нужны для конкретной задачи, а не для усложнения обычного класса.</li></ul>
+<div class="pager"><a href="../modul-09/index.html">← Модуль 9. Принципы ООП</a><a href="../index.html">К оглавлению</a></div><div class="colophon"><span>ООП на Python · Модуль 10</span></div>
+</main></div></div></body></html>

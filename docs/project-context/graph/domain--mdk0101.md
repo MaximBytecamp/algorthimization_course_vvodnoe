@@ -23,7 +23,8 @@ tags:
 - [[unit--mdk0101--04--03-praktikum-sborka-proekta]]
 - [[unit--mdk0101--05--04-docstrings-i-dokumentaciya]]
 - [[unit--mdk0101--06--05-praktikum-podpisi]]
-- [[unit--mdk0101--07--tema-02]]
+- [[unit--mdk0101--07--oop]]
+- [[unit--mdk0101--08--tema-02]]
 
 ## Точки входа области
 

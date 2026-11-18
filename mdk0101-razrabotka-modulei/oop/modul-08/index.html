@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="#F2F1E9" name="theme-color"/><title>Модуль 8. Основы объектов и классов · ООП на Python</title><link href="../styles.css" rel="stylesheet"/><link href="../oop.css" rel="stylesheet"/><script defer="" src="../book.js"></script></head><body><div class="book"><div class="book__body"><div class="spine"><span>ООП на Python · Модуль 8</span></div><main class="leaf"><div class="running"><p class="eyebrow"><a href="../index.html">Справочник по ООП на Python</a></p><p class="running__folio">Модуль 8</p></div><header class="chapter-head"><span class="chapter-num">8</span><h1>Основы объектов и классов</h1><p class="lead">Как объединить данные и действия, создать независимые экземпляры и подключить их к операциям Python.</p></header><dl class="passport"><div><dt>Версия</dt><dd>Python 3.11 и новее</dd></div><div><dt>Формат</dt><dd>Объяснение → программа → вывод → разбор</dd></div></dl><p>Каждый блок «main.py» — отдельная программа. Скопируйте его в файл и запустите <code>python main.py</code>, <code>python3 main.py</code> или <code>py main.py</code> на Windows. Не соединяйте примеры: одинаковые имена здесь используются в разных задачах.</p><nav class="contents"><b>В этом модуле</b><ol>
+<li><a href="#s1">Зачем программе объекты</a></li>
+<li><a href="#s2">Объект: состояние, поведение и отдельность</a></li>
+<li><a href="#s3">Класс и экземпляр</a></li>
+<li><a href="#s4">__init__: начальная настройка экземпляра</a></li>
+<li><a href="#s5">self: кому принадлежит действие</a></li>
+<li><a href="#s6">Метод меняет состояние или возвращает результат</a></li>
+<li><a href="#s7">Атрибуты экземпляра и локальные переменные</a></li>
+<li><a href="#s8">Атрибут класса и затенение</a></li>
+<li><a href="#s9">Ловушка общего изменяемого списка</a></li>
+<li><a href="#s10">Магические методы и представление объекта</a></li>
+<li><a href="#s11">Протокол: договорённость об операции</a></li>
+<li><a href="#s12">Перегрузка оператора и NotImplemented</a></li>
+<li><a href="#s13">Контейнер, коллекция и структура данных</a></li>
+<li><a href="#s14">Атрибут по строковому имени</a></li>
+<li><a href="#s15">hasattr: проверка через попытку чтения</a></li>
+<li><a href="#s16">__del__ и управление ресурсами</a></li>
+<li><a href="#s17">cls и classmethod: альтернативное создание</a></li>
+<li><a href="#s18">staticmethod и обычная функция</a></li>
+<li><a href="#s19">Три вида методов рядом</a></li>
+<li><a href="#reference">Шпаргалка и глоссарий</a></li></ol></nav>
+<section class="part"><h2 id="s1"><span class="sec">§1</span>Зачем программе объекты</h2><p>Парадигма — способ организовать программу. При процедурном подходе мы часто передаём данные отдельным функциям. Объектно-ориентированный подход объединяет состояние и действия в объектах. Объект счёта хранит баланс и умеет пополнять его.</p><p>ООП не заменяет функции и не требует изображать весь мир классами. Оно помогает, когда у нескольких сущностей одинаковые правила работы, но собственные данные.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Зачем программе объекты</span></figcaption><pre><code class="language-python">class Account:
+    def __init__(self, balance):
+        self.balance = balance
+
+    def deposit(self, amount):
+        self.balance += amount
+
+account = Account(100)
+account.deposit(50)
+print(account.balance)</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>150</pre></figure>
+<p><code>class</code> начинает описание класса. Вызов <code>Account(100)</code> создаёт счёт, а <code>deposit(50)</code> обращается к действию этого счёта. <code>__init__</code> задаёт начальные значения полей. Параметр <code>self</code> ссылается на экземпляр, данные которого меняет метод.</p>
+<details class="simple"><summary>По-простому: банковская карточка</summary><p>Разделим ситуацию на три части, чтобы увидеть роль каждого участника.</p><div class="flow scheme">
+<div class="node"><b>Счёт</b>Баланс 100</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Пополнение</b>Добавить 50</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Тот же счёт</b>Баланс 150</div>
+</div><p><b>Что есть что.</b> Счёт — объект account, баланс — его состояние, пополнение — метод deposit. Стрелки показывают изменение одного счёта, а не создание нового.</p></details>
+<p class="next">Отдельные объекты могут изменяться независимо друг от друга.</p></section>
+<section class="part"><h2 id="s2"><span class="sec">§2</span>Объект: состояние, поведение и отдельность</h2><p><strong>Состояние</strong> — текущие данные объекта. <strong>Поведение</strong> — доступные действия. Кроме значений важна отдельность: два объекта могут хранить одинаковые данные и всё равно оставаться разными объектами.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Объект: состояние, поведение и отдельность</span></figcaption><pre><code class="language-python">class Lamp:
+    def __init__(self):
+        self.is_on = False
+
+    def turn_on(self):
+        self.is_on = True
+
+first = Lamp()
+second = Lamp()
+first.turn_on()
+print(first.is_on)
+print(second.is_on)
+print(first is second)</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>True
+False
+False</pre></figure>
+<p>Включение первой лампы не изменило вторую. Оператор <code>is</code> проверяет, ссылаются ли имена на один объект, а не сравнивает поля. В Python числа, строки, списки и функции являются объектами. Пользовательские классы добавляют новые типы объектов.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>first.turn_on()</code></td><td><code>first.is_on → True</code></td></tr><tr><td><code>Вторая лампа</code></td><td><code>second.is_on → False</code></td></tr><tr><td><code>Сравнение ссылок</code></td><td><code>first is second → False</code></td></tr></tbody></table></div><p>В последней строке показан результат: first is second → False. Он соответствует выводу программы выше.</p><p class="next">Для группы объектов с одинаковыми действиями нужно общее описание — класс.</p></section>
+<section class="part"><h2 id="s3"><span class="sec">§3</span>Класс и экземпляр</h2><p><strong>Класс</strong> описывает общий тип объектов. <strong>Экземпляр</strong> — конкретный объект этого класса. После имени класса пишут двоеточие, а тело выделяют отступом в четыре пробела. <code>pass</code> — пустая инструкция: она позволяет пока оставить тело без действий.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Класс и экземпляр</span></figcaption><pre><code class="language-python">class Student:
+    pass
+
+first = Student()
+second = Student()
+first.name = "Анна"
+second.name = "Борис"
+print(type(first).__name__)
+print(first.name, second.name)
+print(isinstance(first, Student))</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>Student
+Анна Борис
+True</pre></figure>
+<p>Круглые скобки вызывают класс. Точка обращается к атрибуту — именованному значению, связанному с объектом. Функция <code>type</code> сообщает тип, а <code>isinstance</code> проверяет принадлежность экземпляра классу с учётом наследования. Ни один из этих вызовов не копирует студента.</p>
+<details class="simple"><summary>По-простому: бланк и заполненные карточки</summary><p>Разделим ситуацию на три части, чтобы увидеть роль каждого участника.</p><div class="flow scheme">
+<div class="node"><b>Бланк</b>Student</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Карточка 1</b>name = Анна</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Карточка 2</b>name = Борис</div>
+</div><p><b>Что есть что.</b> Бланк — класс, две заполненные карточки — экземпляры. Обе сделаны по одному описанию, но хранят разные имена.</p></details>
+<p class="next">Начальные значения можно задавать сразу при создании экземпляра.</p></section>
+<section class="part"><h2 id="s4"><span class="sec">§4</span>__init__: начальная настройка экземпляра</h2><p>Инициализатор <code>__init__</code> вызывается при обычном создании экземпляра после того, как объект уже выделен. Он задаёт начальное состояние. Сам объект обычно создаёт специальный метод <code>__new__</code>. Затем запускается инициализация.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>__init__: начальная настройка экземпляра</span></figcaption><pre><code class="language-python">class Book:
+    def __init__(self, title, pages=100):
+        self.title = title
+        self.pages = pages
+
+first = Book("Python", 240)
+second = Book("SQL")
+print(first.title, first.pages)
+print(second.title, second.pages)</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>Python 240
+SQL 100</pre></figure>
+<p>Аргументы вызова <code>Book(...)</code> попадают в инициализатор после <code>self</code>. Параметр <code>pages</code> имеет значение по умолчанию, как у обычной функции. Запись <code>self.title = title</code> сохраняет переданное значение в объекте. Инициализатор не возвращает экземпляр: его результатом должен быть <code>None</code>; обычно <code>return</code> вообще не пишут.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>Book("Python", 240)</code></td><td><code>title → Python, pages → 240</code></td></tr><tr><td><code>Book("SQL")</code></td><td><code>title → SQL, pages → 100</code></td></tr></tbody></table></div><p>В последней строке показан результат: title → SQL, pages → 100. Он соответствует выводу программы выше.</p><p class="next">Первый параметр инициализатора связывает его с полученным экземпляром.</p></section>
+<section class="part"><h2 id="s5"><span class="sec">§5</span>self: кому принадлежит действие</h2><p><code>self</code> — принятое имя первого параметра метода экземпляра. Это ссылка на получателя вызова. Имя не является ключевым словом, но менять его без причины не стоит: все разработчики Python ожидают именно такую запись.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>self: кому принадлежит действие</span></figcaption><pre><code class="language-python">class Person:
+    def __init__(self, name):
+        self.name = name
+
+    def greet(self):
+        return f"Привет, {self.name}!"
+
+anna = Person("Анна")
+print(anna.greet())
+print(Person.greet(anna))</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>Привет, Анна!
+Привет, Анна!</pre></figure>
+<p>При чтении <code>anna.greet</code> Python связывает функцию из класса с получателем <code>anna</code>. Поэтому в первом вызове объект передаётся автоматически, а во втором — явно. Если забыть параметр <code>self</code> в объявлении, число переданных аргументов не совпадёт с объявленным.</p>
+<details class="simple"><summary>По-простому: одна инструкция для разных работников</summary><p>Разделим ситуацию на три части, чтобы увидеть роль каждого участника.</p><div class="flow scheme">
+<div class="node"><b>Вызов</b>anna.greet()</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Получатель</b>self ссылается на anna</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Чтение</b>self.name → Анна</div>
+</div><p><b>Что есть что.</b> Инструкция — тело метода, получатель — конкретный экземпляр. self не обозначает весь класс и не является копией объекта.</p></details>
+<p class="next">Такая передача получателя действует и для остальных методов экземпляра.</p></section>
+<section class="part"><h2 id="s6"><span class="sec">§6</span>Метод меняет состояние или возвращает результат</h2><p>Метод объявляют через <code>def</code> внутри класса. Он может изменить состояние, вернуть вычисленное значение или выполнить оба действия. Полезно различать эти роли: чтение цены не должно неожиданно менять её.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Метод меняет состояние или возвращает результат</span></figcaption><pre><code class="language-python">class Product:
+    def __init__(self, price):
+        self.price = price
+
+    def total(self, count):
+        return self.price * count
+
+    def change_price(self, price):
+        self.price = price
+
+product = Product(80)
+print(product.total(3))
+product.change_price(90)
+print(product.total(3))</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>240
+270</pre></figure>
+<p><code>total</code> только вычисляет результат, а <code>change_price</code> записывает новое состояние. Выражение <code>product.total</code> без скобок получает метод, но не выполняет его. Скобки с аргументами запускают действие. Один метод может вызывать другой через <code>self.имя_метода(...)</code>.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>price = 80, total(3)</code></td><td><code>80 × 3 → 240</code></td></tr><tr><td><code>change_price(90)</code></td><td><code>price → 90</code></td></tr><tr><td><code>total(3)</code></td><td><code>90 × 3 → 270</code></td></tr></tbody></table></div><p>В последней строке показан результат: 90 × 3 → 270. Он соответствует выводу программы выше.</p><p class="next">Значения, которые должны сохраниться после вызова, записывают в атрибуты.</p></section>
+<section class="part"><h2 id="s7"><span class="sec">§7</span>Атрибуты экземпляра и локальные переменные</h2><p>Имя внутри метода без <code>self</code> обычно является локальной переменной. Оно нужно лишь для вычисления. Атрибут <code>self.name</code> остаётся доступным после завершения вызова, пока жив объект и атрибут не удалён.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Атрибуты экземпляра и локальные переменные</span></figcaption><pre><code class="language-python">class User:
+    def __init__(self, name):
+        cleaned = name.strip()
+        self.name = cleaned
+
+user = User("  Анна  ")
+print(user.name)
+print(hasattr(user, "cleaned"))</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>Анна
+False</pre></figure>
+<p>Локальная переменная cleaned не стала полем. Сохранилось значение, записанное через self.name. Функция hasattr попыталась прочитать атрибут cleaned и вернула False после AttributeError.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>Локальное имя</code></td><td><code>cleaned → Анна</code></td></tr><tr><td><code>Сохранённый атрибут</code></td><td><code>user.name → Анна</code></td></tr><tr><td><code>Проверка атрибута cleaned</code></td><td><code>False</code></td></tr></tbody></table></div><p>В последней строке показан результат: False. Он соответствует выводу программы выше.</p><p class="next">Кроме личных атрибутов у экземпляров могут быть общие настройки класса.</p></section>
+<section class="part"><h2 id="s8"><span class="sec">§8</span>Атрибут класса и затенение</h2><p>Значение в теле класса хранится у самого класса. Экземпляр может прочитать его, если собственное значение с таким именем не найдено. Присваивание через экземпляр обычно создаёт его собственный атрибут и затеняет общий.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Атрибут класса и затенение</span></figcaption><pre><code class="language-python">class Student:
+    school = "Лицей"
+
+first = Student()
+second = Student()
+first.school = "Колледж"
+print(first.school)
+print(second.school)
+Student.school = "Гимназия"
+print(first.school)
+print(second.school)</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>Колледж
+Лицей
+Колледж
+Гимназия</pre></figure>
+<p>У первого студента появилось личное <code>school</code>, поэтому изменение класса его не затронуло. Второй продолжает читать общее значение. Это описание обычного поиска: свойства и другие дескрипторы могут менять приоритет. Их устройство разберём позднее.</p>
+<details class="simple"><summary>По-простому: общий стенд и личная записка</summary><p>Разделим ситуацию на три части, чтобы увидеть роль каждого участника.</p><div class="flow scheme">
+<div class="node"><b>Стенд группы</b>Student.school</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Личная записка</b>first.school</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Чтение</b>личная запись важнее общей</div>
+</div><p><b>Что есть что.</b> Стенд — атрибут класса; записка — собственный атрибут экземпляра. Изменение стенда видно только тем, кто ещё читает общее значение.</p></details>
+<p class="next">У общего изменяемого значения есть дополнительная особенность: его содержимое разделяют все получатели.</p></section>
+<section class="part"><h2 id="s9"><span class="sec">§9</span>Ловушка общего изменяемого списка</h2><p>Изменение списка и присваивание нового атрибута — разные действия. Если список хранится у класса, <code>append</code> меняет этот единственный общий список. Для личной коллекции создавайте новый список при инициализации.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Ловушка общего изменяемого списка</span></figcaption><pre><code class="language-python">class BadTeam:
+    members = []
+
+first = BadTeam()
+second = BadTeam()
+first.members.append("Анна")
+print(second.members)
+
+class Team:
+    def __init__(self):
+        self.members = []
+
+first = Team()
+second = Team()
+first.members.append("Анна")
+print(first.members)
+print(second.members)</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>['Анна']
+['Анна']
+[]</pre></figure>
+<p>В первом случае поиск нашёл список класса, и <code>append</code> изменил его. Во втором <code>[]</code> выполняется заново при каждом вызове инициализатора: получились два независимых списка. По той же причине изменяемые значения по умолчанию у параметров требуют осторожности.</p>
+<details class="simple"><summary>По-простому: общая тетрадь против личных</summary><p>Разделим ситуацию на три части, чтобы увидеть роль каждого участника.</p><div class="flow scheme">
+<div class="node"><b>Одна тетрадь</b>BadTeam.members</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Запись Анны</b>видна всем</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Личные тетради</b>self.members = []</div>
+</div><p><b>Что есть что.</b> Тетрадь — список. Для общей коллекции хранение у класса уместно; ошибка возникает, когда общий список приняли за личный.</p></details>
+<p class="next">Собственный тип можно также подключить к встроенным операциям Python.</p></section>
+<section class="part"><h2 id="s10"><span class="sec">§10</span>Магические методы и представление объекта</h2><p>Методы с двумя подчёркиваниями по краям имени подключают класс к встроенным операциям Python. Их называют специальными, или магическими. Названия не придумывают произвольно: интерпретатор ожидает конкретные имена.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Магические методы и представление объекта</span></figcaption><pre><code class="language-python">class Ticket:
+    def __init__(self, title):
+        self.title = title
+
+    def __str__(self):
+        return f"Заявка: {self.title}"
+
+    def __repr__(self):
+        return f"Ticket({self.title!r})"
+
+item = Ticket("Принтер")
+print(item)
+print([item])</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>Заявка: Принтер
+[Ticket('Принтер')]</pre></figure>
+<p><code>print</code> использует строковое представление, а список показывает элементы через отладочное. <code>!r</code> в f-строке выбирает <code>repr</code>, чтобы строковый заголовок был показан с кавычками. Оба метода возвращают строку, а не печатают её. <code>str</code> используется для пользовательского представления, <code>repr</code> — для отладки и представления элементов коллекции.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>print(item)</code></td><td><code>__str__ → Заявка: Принтер</code></td></tr><tr><td><code>print([item])</code></td><td><code>__repr__ → [Ticket('Принтер')]</code></td></tr></tbody></table></div><p>В последней строке показан результат: __repr__ → [Ticket('Принтер')]. Он соответствует выводу программы выше.</p><p class="next">Каждая встроенная операция поддерживается определённой договорённостью о методах.</p></section>
+<section class="part"><h2 id="s11"><span class="sec">§11</span>Протокол: договорённость об операции</h2><p><strong>Протокол</strong> — набор правил, позволяющий объекту участвовать в операции. Для длины нужен <code>__len__</code>, для перебора — подходящее поведение итерации. Наследование от специального родителя для этого не обязательно.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Протокол: договорённость об операции</span></figcaption><pre><code class="language-python">class Shelf:
+    def __init__(self, books):
+        self.books = list(books)
+
+    def __len__(self):
+        return len(self.books)
+
+    def __iter__(self):
+        return iter(self.books)
+
+shelf = Shelf(["Python", "SQL"])
+print(len(shelf))
+print(list(shelf))</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>2
+['Python', 'SQL']</pre></figure>
+<p><code>len(shelf)</code> получает количество, а <code>list(shelf)</code> запрашивает перебор элементов. <code>__iter__</code> возвращает итератор, поэтому здесь используется <code>iter</code> для внутреннего списка. Специальные методы обычно определяют в классе; встроенные операции ищут их через тип объекта. Такой протокол определяется поведением объекта при выполнении операции.</p>
+<details class="simple"><summary>По-простому: подходящий разъём</summary><p>Разделим ситуацию на три части, чтобы увидеть роль каждого участника.</p><div class="flow scheme">
+<div class="node"><b>Запрос</b>len(shelf)</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Разъём</b>Shelf.__len__</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Ответ</b>2</div>
+</div><p><b>Что есть что.</b> Встроенная операция — устройство, специальный метод — совместимый разъём. Одинаковая договорённость позволяет len работать со списком, строкой и нашим классом.</p></details>
+<p class="next">Такие договорённости задают и смысл операторов для нового типа.</p></section>
+<section class="part"><h2 id="s12"><span class="sec">§12</span>Перегрузка оператора и NotImplemented</h2><p>Перегрузка позволяет задать смысл операции для своего типа. Например, складывать две денежные суммы. Если тип второго операнда не поддерживается, верните <code>NotImplemented</code>: это сигнал интерпретатору, а не исключение.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Перегрузка оператора и NotImplemented</span></figcaption><pre><code class="language-python">class Money:
+    def __init__(self, amount):
+        self.amount = amount
+
+    def __add__(self, other):
+        if not isinstance(other, Money):
+            return NotImplemented
+        return Money(self.amount + other.amount)
+
+result = Money(20) + Money(30)
+print(result.amount)
+try:
+    Money(20) + "30"
+except TypeError:
+    print("типы несовместимы")</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>50
+типы несовместимы</pre></figure>
+<p>Для пары сумм создан новый объект, исходные суммы не менялись. Для строки Python может попробовать отражённую операцию правого типа; когда совместимой реализации нет, возникает <code>TypeError</code>. <code>NotImplementedError</code> — другое понятие: это класс исключения. Перегружать операторы стоит только при понятном пользователю смысле.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>Money(20) + Money(30)</code></td><td><code>__add__ → Money(50)</code></td></tr><tr><td><code>Money(20) + "30"</code></td><td><code>NotImplemented → TypeError</code></td></tr></tbody></table></div><p>В последней строке показан результат: NotImplemented → TypeError. Он соответствует выводу программы выше.</p><p class="next">Несколько специальных методов позволяют описать контейнер с элементами.</p></section>
+<section class="part"><h2 id="s13"><span class="sec">§13</span>Контейнер, коллекция и структура данных</h2><p>В обычной речи контейнером называют объект, который хранит другие объекты, а коллекцией — группу элементов. Структура данных определяет организацию хранения и доступ. В стандартном модуле <code>collections.abc</code> термины точнее: <code>Container</code> описывает проверку вхождения, а <code>Collection</code> объединяет её с длиной и перебором.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Контейнер, коллекция и структура данных</span></figcaption><pre><code class="language-python">class Bag:
+    def __init__(self, items):
+        self.items = list(items)
+
+    def __contains__(self, item):
+        return item in self.items
+
+    def __len__(self):
+        return len(self.items)
+
+    def __iter__(self):
+        return iter(self.items)
+
+    def __getitem__(self, index):
+        return self.items[index]
+
+bag = Bag(["ключ", "карта"])
+print("ключ" in bag)
+print(len(bag))
+print(bag[1])</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>True
+2
+карта</pre></figure>
+<p><code>in</code> использует <code>__contains__</code>, длина — <code>__len__</code>, а квадратные скобки — <code>__getitem__</code>. Наш объект передаёт действия внутреннему списку. Наличие <code>__getitem__</code> не делает любой объект полноценным списком: для добавления, удаления и других операций нужны собственные договорённости.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>"ключ" in bag</code></td><td><code>__contains__ → True</code></td></tr><tr><td><code>len(bag)</code></td><td><code>__len__ → 2</code></td></tr><tr><td><code>bag[1]</code></td><td><code>__getitem__ → карта</code></td></tr></tbody></table></div><p>В последней строке показан результат: __getitem__ → карта. Он соответствует выводу программы выше.</p><p class="next">Кроме доступа к элементам полезно управлять атрибутами по их именам.</p></section>
+<section class="part"><h2 id="s14"><span class="sec">§14</span>Атрибут по строковому имени</h2><p>Когда имя поля получено из настройки, вместо записи через точку используют функции <code>getattr</code>, <code>setattr</code> и <code>delattr</code>. Они работают с атрибутами, а не со словарными ключами.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Атрибут по строковому имени</span></figcaption><pre><code class="language-python">class Settings:
+    pass
+
+settings = Settings()
+name = "theme"
+setattr(settings, name, "dark")
+print(getattr(settings, name))
+delattr(settings, name)
+print(getattr(settings, name, "light"))</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>dark
+light</pre></figure>
+<p>Первый вызов записал то же, что <code>settings.theme = "dark"</code>. Третий удалил атрибут. Последний вернул запасное значение, потому что поле больше не найдено. Без третьего аргумента отсутствие поля привело бы к <code>AttributeError</code>. Эти функции могут запускать свойства и дескрипторы, то есть это не гарантированно «пассивное» чтение.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>setattr(settings, "theme", "dark")</code></td><td><code>theme → dark</code></td></tr><tr><td><code>delattr(settings, "theme")</code></td><td><code>Атрибут удалён</code></td></tr><tr><td><code>getattr с запасным значением</code></td><td><code>light</code></td></tr></tbody></table></div><p>В последней строке показан результат: light. Он соответствует выводу программы выше.</p><p class="next">Проверка наличия атрибута также выполняется через попытку чтения.</p></section>
+<section class="part"><h2 id="s15"><span class="sec">§15</span>hasattr: проверка через попытку чтения</h2><p><code>hasattr(obj, name)</code> пытается получить атрибут. Если чтение заканчивается <code>AttributeError</code>, результат — <code>False</code>. Другие исключения не скрываются. Это важно для свойств, которые исполняют код при чтении.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>hasattr: проверка через попытку чтения</span></figcaption><pre><code class="language-python">class User:
+    name = "Анна"
+
+    @property
+    def broken(self):
+        raise RuntimeError("ошибка вычисления")
+
+user = User()
+print(hasattr(user, "name"))
+print(hasattr(user, "email"))
+try:
+    hasattr(user, "broken")
+except RuntimeError as error:
+    print(error)</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>True
+False
+ошибка вычисления</pre></figure>
+<p>Декоратор <code>@property</code> делает метод вычисляемым атрибутом: чтение <code>user.broken</code> вызывает тело метода без круглых скобок. В этом вызове проверка наличия тоже запустила вычисление и не поглотила его ошибку. Это не проверка одной записи в словаре.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>hasattr(user, "name")</code></td><td><code>Чтение успешно → True</code></td></tr><tr><td><code>hasattr(user, "email")</code></td><td><code>AttributeError → False</code></td></tr><tr><td><code>hasattr(user, "broken")</code></td><td><code>RuntimeError → передаётся вызывающему коду</code></td></tr></tbody></table></div><p>В последней строке показан результат: RuntimeError → передаётся вызывающему коду. Он соответствует выводу программы выше.</p><p class="next">Управление ресурсами требует явных действий с понятным временем выполнения.</p></section>
+<section class="part"><h2 id="s16"><span class="sec">§16</span>__del__ и управление ресурсами</h2><p><code>__del__</code> — финализатор: метод, который может быть вызван при завершении жизни объекта. Время его вызова не гарантировано; при завершении интерпретатора вызова может не быть. Инструкция <code>del</code> удаляет ссылку, а не обязательно сам объект.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>__del__ и управление ресурсами</span></figcaption><pre><code class="language-python">class Connection:
+    def close(self):
+        print("соединение закрыто")
+
+connection = Connection()
+alias = connection
+del connection
+print(isinstance(alias, Connection))
+alias.close()</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>True
+соединение закрыто</pre></figure>
+<p>Вторая ссылка сохранила объект. Поэтому критическое освобождение ресурсов не стоит поручать <code>__del__</code>. Для настоящих файлов и соединений используйте контекстный менеджер <code>with</code>, если он поддерживается, или явное закрытие в <code>try/finally</code>. Наш пример моделирует закрытие печатью: реального сетевого соединения здесь нет.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>connection и alias</code></td><td><code>Две ссылки на один объект</code></td></tr><tr><td><code>del connection</code></td><td><code>Ссылка alias сохраняется</code></td></tr><tr><td><code>alias.close()</code></td><td><code>соединение закрыто</code></td></tr></tbody></table></div><p>В последней строке показан результат: соединение закрыто. Он соответствует выводу программы выше.</p><p class="next">Отдельные методы могут работать с самим классом.</p></section>
+<section class="part"><h2 id="s17"><span class="sec">§17</span>cls и classmethod: альтернативное создание</h2><p>Метод с <code>@classmethod</code> получает класс первым аргументом. Первый параметр принято называть <code>cls</code>. Это удобно для альтернативного способа создать объект: например, разобрать строку вместо передачи готового числа.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>cls и classmethod: альтернативное создание</span></figcaption><pre><code class="language-python">class Year:
+    def __init__(self, value):
+        self.value = value
+
+    @classmethod
+    def from_text(cls, text):
+        return cls(int(text.strip()))
+
+class SchoolYear(Year):
+    pass
+
+year = SchoolYear.from_text(" 2026 ")
+print(type(year).__name__)
+print(year.value)</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>SchoolYear
+2026</pre></figure>
+<p><code>SchoolYear</code> — подкласс: он получает поведение <code>Year</code>. При вызове фабрики через него <code>cls</code> равно именно <code>SchoolYear</code>. Поэтому <code>cls(...)</code> создаёт объект нужного типа. Жёсткая запись <code>Year(...)</code> потеряла бы это свойство. В данном примере подкласс использует инициализацию и фабрику базового класса.</p>
+<details class="simple"><summary>По-простому: один рецепт для разных цехов</summary><p>Разделим ситуацию на три части, чтобы увидеть роль каждого участника.</p><div class="flow scheme">
+<div class="node"><b>Заказ</b>SchoolYear.from_text</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Цех</b>cls = SchoolYear</div><span aria-hidden="true" class="arrow">→</span><div class="node"><b>Изделие</b>SchoolYear(2026)</div>
+</div><p><b>Что есть что.</b> Рецепт — тело метода, цех — класс, изделие — экземпляр. cls указывает, какой именно цех получил заказ.</p></details>
+<p class="next">Для действия без данных экземпляра и класса подходит статический метод или функция.</p></section>
+<section class="part"><h2 id="s18"><span class="sec">§18</span>staticmethod и обычная функция</h2><p>При вызове статического метода все аргументы передаются явно. Это обычная функция, размещённая в пространстве имён класса. Размещение оправдано, если операция тесно относится к этому типу; для общей утилиты достаточно функции уровня модуля.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>staticmethod и обычная функция</span></figcaption><pre><code class="language-python">class User:
+    @staticmethod
+    def valid_age(age):
+        return age &gt;= 0
+
+def normalize_name(name):
+    return name.strip().title()
+
+print(User.valid_age(20))
+print(User.valid_age(-1))
+print(normalize_name("  анна  "))</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>True
+False
+Анна</pre></figure>
+<p>У <code>valid_age</code> нет доступа к конкретному пользователю, если его явно не передать. <code>normalize_name</code> вообще не требует класса. Выбор между методом экземпляра, методом класса и статическим методом определяется тем, какие данные нужны действию, а не желанием поместить весь код внутрь <code>class</code>.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>User.valid_age(20)</code></td><td><code>True</code></td></tr><tr><td><code>User.valid_age(-1)</code></td><td><code>False</code></td></tr><tr><td><code>normalize_name("  анна  ")</code></td><td><code>Анна</code></td></tr></tbody></table></div><p>В последней строке показан результат: Анна. Он соответствует выводу программы выше.</p><p class="next">Сравнение трёх способов вызова показывает, какие данные получает каждый метод.</p></section>
+<section class="part"><h2 id="s19"><span class="sec">§19</span>Три вида методов рядом</h2><p>Сравним получателей без дополнительных сущностей. Обычный метод работает с конкретным значением, метод класса — с настройкой самого класса, статический — только со своими аргументами.</p>
+<figure class="code" data-run="python"><figcaption><span>main.py</span><span>Три вида методов рядом</span></figcaption><pre><code class="language-python">class Scale:
+    unit = "см"
+
+    def __init__(self, value):
+        self.value = value
+
+    def show(self):
+        return f"{self.value} {self.unit}"
+
+    @classmethod
+    def unit_name(cls):
+        return cls.unit
+
+    @staticmethod
+    def double(value):
+        return value * 2
+
+print(Scale(5).show())
+print(Scale.unit_name())
+print(Scale.double(5))</code></pre></figure><figure class="code code--out"><figcaption><span>Вывод</span><span>Python 3</span></figcaption><pre>5 см
+см
+10</pre></figure>
+<p><code>show</code> получает <code>self</code>, <code>unit_name</code> — <code>cls</code>, а <code>double</code> не получает скрытого первого аргумента. Связь с классом у последней операции условная: в реальном проекте её вполне можно оставить функцией. Такую операцию можно использовать независимо от класса.</p>
+<p>Сопоставим действия с результатами этого запуска. Таблица показывает, на каком шаге получается каждое значение.</p><div class="table-scroll scheme"><table><caption>Действия и результаты примера</caption><thead><tr><th>Действие или состояние</th><th>Результат</th></tr></thead><tbody><tr><td><code>Scale(5).show()</code></td><td><code>self → экземпляр; результат 5 см</code></td></tr><tr><td><code>Scale.unit_name()</code></td><td><code>cls → Scale; результат см</code></td></tr><tr><td><code>Scale.double(5)</code></td><td><code>Явный аргумент 5; результат 10</code></td></tr></tbody></table></div><p>В последней строке показан результат: Явный аргумент 5; результат 10. Он соответствует выводу программы выше.</p></section>
+<h2 id="reference">Шпаргалка и глоссарий</h2><div class="table-scroll"><table><thead><tr><th>Что нужно</th><th>Запись</th><th>Получатель</th></tr></thead><tbody><tr><td>Настроить экземпляр</td><td><code>__init__(self, ...)</code></td><td>Уже созданный объект</td></tr><tr><td>Личные данные</td><td><code>self.name = name</code></td><td>Экземпляр</td></tr><tr><td>Общие данные</td><td><code>limit = 10</code> в теле класса</td><td>Класс</td></tr><tr><td>Действие объекта</td><td><code>def show(self)</code></td><td>self</td></tr><tr><td>Фабрика</td><td><code>@classmethod</code></td><td>cls</td></tr><tr><td>Утилита в классе</td><td><code>@staticmethod</code></td><td>Только явные аргументы</td></tr><tr><td>Атрибут по имени</td><td><code>getattr(obj, name, default)</code></td><td>obj</td></tr></tbody></table></div>
+<h3>Частые ошибки</h3><ul><li>Хранить личный изменяемый список у класса: создавайте его в <code>__init__</code>.</li><li>Забывать <code>self</code> или записывать поле в локальную переменную вместо атрибута.</li><li>Печатать внутри <code>__str__</code> вместо возврата строки.</li><li>Возвращать строку «NotImplemented» или бросать <code>NotImplementedError</code> вместо сигнала <code>NotImplemented</code>.</li><li>Ожидать гарантированного закрытия ресурсов от <code>__del__</code>.</li></ul>
+<h3>Глоссарий</h3><dl class="glossary">
+<dt>Парадигма</dt><dd>Способ организации программы. <code>данные + отдельные функции → данные и методы объекта</code> — смена подхода, а не обязательная замена всех функций.</dd>
+<dt>Класс</dt><dd>Описание нового типа объектов. <code>class Lamp → Lamp() → экземпляр</code>.</dd><dt>Экземпляр, объект</dt><dd>Конкретная сущность в программе. <code>first = Lamp(), second = Lamp() → два разных объекта</code>.</dd>
+<dt>Состояние и поведение</dt><dd>Текущие данные и действия. <code>balance: 100 → deposit(50) → balance: 150</code>.</dd><dt>Атрибут</dt><dd>Именованное значение у объекта или класса. <code>user.name → 'Анна'</code>.</dd><dt>Локальная переменная</dt><dd>Имя внутри вызова функции. <code>cleaned → self.name</code>: только второе сохраняется в объекте.</dd><dt>Метод и связывание</dt><dd>Функция класса при обращении через получателя. <code>anna.greet() → Person.greet(anna)</code>.</dd><dt>Инициализатор</dt><dd>Настройка созданного объекта. <code>Book('Python') → __init__ → self.title</code>.</dd><dt>self и cls</dt><dd>Принятые имена ссылок на экземпляр и класс. <code>self → year; cls → SchoolYear</code>.</dd><dt>Затенение</dt><dd>Личное значение закрывает общее при обычном поиске. <code>first.school → собственное; second.school → класс</code>.</dd><dt>Специальный, магический метод</dt><dd>Метод с определённым Python именем для встроенной операции. <code>len(obj) → __len__</code>.</dd><dt>Протокол</dt><dd>Договорённость о поддерживаемом поведении. <code>__iter__ → for и list</code>.</dd><dt>Перегрузка оператора</dt><dd>Определение операции для типа. <code>Money(20) + Money(30) → __add__ → Money(50)</code>.</dd><dt>Контейнер / коллекция</dt><dd>Хранение объектов и группа операций над ними. <code>Bag → in, len, перебор</code>.</dd><dt>Структура данных</dt><dd>Организация хранения и доступа. <code>список → позиция → элемент</code>.</dd><dt>Финализатор</dt><dd>Действие при завершении жизни объекта с ограниченными гарантиями. <code>del имя → исчезла ссылка ≠ гарантированно выполнен __del__</code>.</dd><dt>Фабрика</dt><dd>Действие, создающее объект. <code>from_text('2026') → SchoolYear(2026)</code>.</dd><dt>Статический метод / утилитарная функция</dt><dd>Функции без автоматической передачи получателя. <code>User.valid_age(20)</code> размещён в классе; <code>normalize_name('анна')</code> — на уровне модуля.</dd></dl>
+<details class="more"><summary>Документация</summary><ul><li><a href="https://docs.python.org/3/tutorial/classes.html">Классы в учебнике Python</a></li><li><a href="https://docs.python.org/3/reference/datamodel.html">Специальные методы и модель данных</a></li><li><a href="https://docs.python.org/3/library/functions.html">Встроенные функции</a></li></ul></details>
+<h3>Итог модуля</h3><ul><li>Класс описывает поведение, экземпляры хранят собственное состояние.</li><li>Метод получает self, метод класса — cls, статический метод — только явные аргументы.</li><li>Специальные методы подключают объект к операциям Python.</li><li>ООП полезно там, где нужно удержать связанные данные и правила вместе; обычные функции остаются полноценным инструментом.</li></ul>
+<div class="pager">
+<a href="../index.html">К оглавлению</a>
+<a href="../modul-09/index.html">Модуль 9 →</a>
+</div><div class="colophon"><span>ООП на Python · Модуль 8</span></div></main></div></div></body></html>
