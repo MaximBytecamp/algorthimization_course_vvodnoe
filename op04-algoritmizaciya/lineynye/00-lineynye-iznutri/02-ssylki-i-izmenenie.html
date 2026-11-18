@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>0.2 Ссылки и изменение цепочки · Линейные структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../lineynye.css">
+</head>
+<body>
+  <div class="book"><div class="book__body"><div class="spine"><span>Модуль 0 · Линейные структуры изнутри · ОП.04</span></div>
+    <main class="leaf">
+      <div class="running"><p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Линейные структуры</a> · модуль 0 · теория</p><p class="running__folio">Глава 0.2</p></div>
+      <header class="chapter-head"><span class="chapter-num">0.2</span><h1>Ссылки<br>и изменение цепочки</h1><p class="lead">В этой главе показано изменение связного списка через поля <code>next</code>. Схемы разбирают общие ссылки, вставку и исключение узлов по строкам Python.</p></header>
+      <nav class="contents"><b>В этой главе</b><ol><li><a href="#s1">Два имени и один узел</a></li><li><a href="#s2">Как поле next меняет цепочку</a></li><li><a href="#s3">Вставка с сохранением хвоста</a></li><li><a href="#s4">Исключение узла и головы</a></li><li><a href="#s5">Пустая цепочка и один узел</a></li></ol></nav>
+
+      <h2 id="s1"><span class="sec">§1</span>Два имени и один узел</h2>
+      <p><span class="term">Ссылка</span> — это значение, которое позволяет обратиться к объекту. Имя переменной тоже хранит ссылку. Присваивание <code>b = a</code> не создаёт второй узел: оба имени ведут к одному объекту.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; class Node:
+...     def __init__(self, value, next_node=None):
+...         self.value = value
+...         self.next = next_node
+...
+&gt;&gt;&gt; a = Node(17)
+&gt;&gt;&gt; b = a
+&gt;&gt;&gt; b is a
+True
+&gt;&gt;&gt; b.value = 99
+&gt;&gt;&gt; a.value
+99</pre></figure>
+      <p>Оператор <code>is</code> проверяет идентичность: один ли это объект. Ответ <code>True</code> показывает, что <code>a</code> и <code>b</code> — две ссылки на один узел. Поэтому запись в поле через <code>b</code> видна и через <code>a</code>.</p>
+      <p>На схеме две пунктирные стрелки принадлежат именам. Они оканчиваются у одной рамки. Сплошная стрелка из поля <code>next</code> ведёт к <code>None</code>, потому что следующего узла нет.</p>
+      <div class="widget"><div class="widget__head"><b>Два имени, один объект</b><span>b = a</span></div><div class="widget__body"><div class="ln-diagram ln-static"><svg viewBox="0 0 480 300" role="img" aria-label="Имена a и b ссылаются на один узел со значением 99"><defs><marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z"/></marker></defs><text x="72" y="72" class="ln-name">a</text><path d="M88 66 H164" class="ln-link ln-variable" marker-end="url(#a1)"/><text x="72" y="142" class="ln-name">b</text><path d="M88 136 H164" class="ln-link ln-variable" marker-end="url(#a1)"/><g class="ln-object"><rect x="170" y="52" width="190" height="88"/><path d="M265 52 V140"/><text x="217" y="79" class="ln-name">value</text><text x="312" y="79" class="ln-name">next</text><text x="217" y="118" class="ln-value">99</text><circle cx="312" cy="111" r="4"/></g><path d="M316 111 H430" class="ln-link" marker-end="url(#a1)"/><text x="396" y="96" class="ln-name">None</text><text x="170" y="195" style="font:500 16px var(--mono);fill:var(--ink)">a is b → True</text><text x="170" y="225" style="font:500 16px var(--mono);fill:var(--ink)">b.value = 99 меняет это поле</text></svg></div></div><div class="widget__foot">Имена находятся вне узла. Поля <code>value</code> и <code>next</code> принадлежат самому объекту.</div></div>
+      <p>Идентичность важна при работе со списком. Если две ссылки ведут к одному узлу, изменение его <code>next</code> меняет путь для всех, кто приходит к этому узлу. Нового числа и нового хвоста при таком присваивании не появляется.</p>
+
+      <h2 id="s2"><span class="sec">§2</span>Как поле next меняет цепочку</h2>
+      <p>Поле <code>next</code> хранит ссылку на следующий узел. Его можно заменить. Сначала построим короткую цепочку из 42 и 30, затем подготовим отдельный узел 17.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; tail = Node(30)
+&gt;&gt;&gt; head = Node(42, tail)
+&gt;&gt;&gt; middle = Node(17)
+&gt;&gt;&gt; head.next is tail
+True
+&gt;&gt;&gt; middle.next is None
+True</pre></figure>
+      <p>У <code>head</code> поле <code>next</code> уже ведёт к <code>tail</code>. У <code>middle</code> пока нет продолжения. На первом рисунке стрелка из <code>head.next</code> ещё обходит узел 17.</p>
+      <div class="widget"><div class="widget__head"><b>До изменения next</b><span>42 → 30</span></div><div class="widget__body"><div class="ln-diagram ln-static"><svg viewBox="0 0 480 510" role="img" aria-label="Голова указывает на узел 42, поле next этого узла ведёт к узлу 30; узел 17 пока отдельный"><defs><marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z"/></marker></defs><text x="45" y="70" class="ln-name">head</text><path d="M95 64 H150" class="ln-link ln-variable" marker-end="url(#a2)"/><g class="ln-object"><rect x="155" y="50" width="190" height="82"/><path d="M250 50 V132"/><text x="202" y="76" class="ln-name">value</text><text x="297" y="76" class="ln-name">next</text><text x="202" y="114" class="ln-value">42</text><circle cx="297" cy="105" r="4"/></g><path d="M301 105 H405 V210 H250 V228" class="ln-link" marker-end="url(#a2)"/><text x="43" y="251" class="ln-name">tail</text><path d="M86 245 H150" class="ln-link ln-variable" marker-end="url(#a2)"/><g class="ln-object"><rect x="155" y="230" width="190" height="82"/><path d="M250 230 V312"/><text x="202" y="256" class="ln-name">value</text><text x="297" y="256" class="ln-name">next</text><text x="202" y="294" class="ln-value">30</text><circle cx="297" cy="285" r="4"/></g><path d="M301 285 H430" class="ln-link" marker-end="url(#a2)"/><text x="385" y="270" class="ln-name">None</text><text x="30" y="402" class="ln-name">middle</text><path d="M91 396 H150" class="ln-link ln-variable" marker-end="url(#a2)"/><g class="ln-object"><rect x="155" y="380" width="190" height="82"/><path d="M250 380 V462"/><text x="202" y="406" class="ln-name">value</text><text x="297" y="406" class="ln-name">next</text><text x="202" y="444" class="ln-value">17</text><circle cx="297" cy="435" r="4"/></g><text x="366" y="442" class="ln-name">None</text></svg></div></div><div class="widget__foot">Узел 17 существует, но из <code>head</code> до него ещё нет пути.</div></div>
+      <p>Одно присваивание <code>head.next = middle</code> направило бы голову к 17, но прежняя ссылка на 30 была бы потеряна из цепочки. Поэтому вставка выполняется в другом порядке: сначала запоминают хвост в поле нового узла.</p>
+
+      <h2 id="s3"><span class="sec">§3</span>Вставка с сохранением хвоста</h2>
+      <p>Пусть предшествующий узел уже известен: это <code>head</code>. Для вставки после него нужны две строки. Первая сохраняет старое продолжение, вторая заменяет ссылку предшественника.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; middle.next = head.next
+&gt;&gt;&gt; head.next = middle
+&gt;&gt;&gt; head.value, head.next.value, head.next.next.value
+(42, 17, 30)
+&gt;&gt;&gt; head.next.next is tail
+True</pre></figure>
+      <p>В первой строке <code>middle.next</code> получает прежнюю ссылку <code>head.next</code>, то есть ссылку на объект <code>tail</code>. Голова ещё ведёт прямо к 30. Эта строка сохраняет хвост.</p>
+      <div class="widget"><div class="widget__head"><b>Строка 1: сохранить старую связь</b><span>middle.next = head.next</span></div><div class="widget__body"><div class="ln-diagram ln-static"><svg viewBox="0 0 480 510" role="img" aria-label="Узлы 42 и 17 оба ссылаются полем next на тот же узел 30"><defs><marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z"/></marker></defs><text x="38" y="70" class="ln-name">head</text><path d="M95 64 H150" class="ln-link ln-variable" marker-end="url(#a3)"/><g class="ln-object"><rect x="155" y="50" width="190" height="82"/><path d="M250 50 V132"/><text x="202" y="76" class="ln-name">value</text><text x="297" y="76" class="ln-name">next</text><text x="202" y="114" class="ln-value">42</text><circle cx="297" cy="105" r="4"/></g><path d="M301 105 H405 V210 H250 V228" class="ln-link" marker-end="url(#a3)"/><text x="25" y="251" class="ln-name">middle</text><path d="M95 245 H150" class="ln-link ln-variable" marker-end="url(#a3)"/><g class="ln-object ln-object--active"><rect x="155" y="230" width="190" height="82"/><path d="M250 230 V312"/><text x="202" y="256" class="ln-name">value</text><text x="297" y="256" class="ln-name">next</text><text x="202" y="294" class="ln-value">17</text><circle cx="297" cy="285" r="4"/></g><path d="M301 285 H405 V210 H250 V228" class="ln-link" marker-end="url(#a3)"/><text x="43" y="401" class="ln-name">tail</text><path d="M86 395 H150" class="ln-link ln-variable" marker-end="url(#a3)"/><g class="ln-object"><rect x="155" y="380" width="190" height="82"/><path d="M250 380 V462"/><text x="202" y="406" class="ln-name">value</text><text x="297" y="406" class="ln-name">next</text><text x="202" y="444" class="ln-value">30</text><circle cx="297" cy="435" r="4"/></g><text x="366" y="442" class="ln-name">None</text></svg></div></div><div class="widget__foot">Выделено изменённое поле <code>middle.next</code>. Теперь две стрелки приходят к одному хвосту 30.</div></div>
+      <p>Во второй строке меняется только поле <code>head.next</code>. Оно начинает вести к уже подготовленному узлу 17. Его поле <code>next</code> сразу продолжает путь к прежнему хвосту.</p>
+      <div class="widget"><div class="widget__head"><b>Строка 2: включить новый узел</b><span>head.next = middle</span></div><div class="widget__body"><div class="ln-diagram ln-static"><svg viewBox="0 0 480 510" role="img" aria-label="Цепочка после вставки: 42 ссылается на 17, а 17 ссылается на 30"><defs><marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z"/></marker></defs><text x="38" y="70" class="ln-name">head</text><path d="M95 64 H150" class="ln-link ln-variable" marker-end="url(#a4)"/><g class="ln-object"><rect x="155" y="50" width="190" height="82"/><path d="M250 50 V132"/><text x="202" y="76" class="ln-name">value</text><text x="297" y="76" class="ln-name">next</text><text x="202" y="114" class="ln-value">42</text><circle cx="297" cy="105" r="4"/></g><path d="M301 105 H405 V210 H250 V228" class="ln-link" marker-end="url(#a4)"/><text x="25" y="251" class="ln-name">middle</text><path d="M95 245 H150" class="ln-link ln-variable" marker-end="url(#a4)"/><g class="ln-object ln-object--active"><rect x="155" y="230" width="190" height="82"/><path d="M250 230 V312"/><text x="202" y="256" class="ln-name">value</text><text x="297" y="256" class="ln-name">next</text><text x="202" y="294" class="ln-value">17</text><circle cx="297" cy="285" r="4"/></g><path d="M301 285 H405 V390 H250 V408" class="ln-link" marker-end="url(#a4)"/><text x="43" y="431" class="ln-name">tail</text><path d="M86 425 H150" class="ln-link ln-variable" marker-end="url(#a4)"/><g class="ln-object"><rect x="155" y="410" width="190" height="82"/><path d="M250 410 V492"/><text x="202" y="436" class="ln-name">value</text><text x="297" y="436" class="ln-name">next</text><text x="202" y="474" class="ln-value">30</text><circle cx="297" cy="465" r="4"/></g><text x="366" y="472" class="ln-name">None</text></svg></div></div><div class="widget__foot">Хвост 30 остался тем же объектом: это подтверждает проверка <code>head.next.next is tail</code>.</div></div>
+      <p>После известного предшественника вставка меняет два поля и занимает O(1). Если известна только позиция, сначала нужно дойти до предшественника от головы; этот поиск может занять O(n).</p>
+
+      <h2 id="s4"><span class="sec">§4</span>Исключение узла и головы</h2>
+      <p>Чтобы исключить внутренний узел, предшественник должен начать ссылаться на его продолжение. Сначала сохраним исключаемый объект в переменной <code>removed</code>, затем изменим одно поле <code>next</code>.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; removed = head.next
+&gt;&gt;&gt; head.next = removed.next
+&gt;&gt;&gt; removed.next = None
+&gt;&gt;&gt; head.value, head.next.value
+(42, 30)
+&gt;&gt;&gt; removed.value, removed.next is None
+(17, True)</pre></figure>
+      <p>После второй строки путь из <code>head</code> идёт прямо к 30. Третья строка не обязательна для самой цепочки, но отсоединяет сохранённый узел 17: его <code>next</code> становится <code>None</code>.</p>
+      <div class="widget"><div class="widget__head"><b>Исключённый узел больше не стоит на пути</b><span>head.next = removed.next</span></div><div class="widget__body"><div class="ln-diagram ln-static"><svg viewBox="0 0 480 510" role="img" aria-label="Голова ведёт от 42 сразу к 30; переменная removed указывает на отдельный узел 17"><defs><marker id="a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z"/></marker></defs><text x="38" y="70" class="ln-name">head</text><path d="M95 64 H150" class="ln-link ln-variable" marker-end="url(#a5)"/><g class="ln-object"><rect x="155" y="50" width="190" height="82"/><path d="M250 50 V132"/><text x="202" y="76" class="ln-name">value</text><text x="297" y="76" class="ln-name">next</text><text x="202" y="114" class="ln-value">42</text><circle cx="297" cy="105" r="4"/></g><path d="M301 105 H405 V210 H250 V228" class="ln-link" marker-end="url(#a5)"/><text x="43" y="251" class="ln-name">tail</text><path d="M86 245 H150" class="ln-link ln-variable" marker-end="url(#a5)"/><g class="ln-object"><rect x="155" y="230" width="190" height="82"/><path d="M250 230 V312"/><text x="202" y="256" class="ln-name">value</text><text x="297" y="256" class="ln-name">next</text><text x="202" y="294" class="ln-value">30</text><circle cx="297" cy="285" r="4"/></g><text x="366" y="292" class="ln-name">None</text><text x="13" y="401" class="ln-name">removed</text><path d="M95 395 H150" class="ln-link ln-variable" marker-end="url(#a5)"/><g class="ln-object ln-object--active"><rect x="155" y="380" width="190" height="82"/><path d="M250 380 V462"/><text x="202" y="406" class="ln-name">value</text><text x="297" y="406" class="ln-name">next</text><text x="202" y="444" class="ln-value">17</text><circle cx="297" cy="435" r="4"/></g><text x="366" y="442" class="ln-name">None</text></svg></div></div><div class="widget__foot">Переменная <code>removed</code> удерживает ссылку на объект 17. В этом примере тот же объект также доступен через <code>middle</code>. Исключение из цепочки сохраняет объект, пока к нему есть другие ссылки.</div></div>
+      <p>У головы нет предшественника. Чтобы исключить первый узел, достаточно передвинуть саму ссылку <code>head</code> на следующий объект.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; old_head = head
+&gt;&gt;&gt; head = head.next
+&gt;&gt;&gt; old_head.next = None
+&gt;&gt;&gt; head.value
+30
+&gt;&gt;&gt; old_head.value, old_head.next is None
+(42, True)</pre></figure>
+      <p>В присваивании справа сначала читается прежнее поле <code>head.next</code>, затем имя <code>head</code> получает эту ссылку. Отдельная переменная <code>old_head</code> нужна только потому, что мы хотим показать отсоединённый узел.</p>
+
+      <h2 id="s5"><span class="sec">§5</span>Пустая цепочка и один узел</h2>
+      <p>У пустого списка нет первого объекта: <code>head</code> равно <code>None</code>. У списка из одного узла голова указывает на этот узел, а его <code>next</code> равно <code>None</code>. Эти границы проверяют до доступа к полям.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; empty = None
+&gt;&gt;&gt; empty is None
+True
+&gt;&gt;&gt; single = Node(42)
+&gt;&gt;&gt; single.value, single.next is None
+(42, True)
+&gt;&gt;&gt; single = single.next
+&gt;&gt;&gt; single is None
+True</pre></figure>
+      <p>Последнее присваивание исключает единственный узел из списка: голова становится <code>None</code>. Читать <code>empty.next</code> нельзя, потому что объект <code>None</code> не имеет поля <code>next</code>.</p>
+      <div class="widget"><div class="widget__head"><b>Две границы списка</b><span>empty и single</span></div><div class="widget__body"><div class="ln-diagram ln-static"><svg viewBox="0 0 480 330" role="img" aria-label="Пустая голова равна None, а single указывает на единственный узел 42"><defs><marker id="a6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z"/></marker></defs><text x="42" y="72" class="ln-name">empty</text><path d="M105 66 H220" class="ln-link ln-variable" marker-end="url(#a6)"/><text x="238" y="72" class="ln-name">None</text><text x="42" y="176" class="ln-name">single</text><path d="M112 170 H164" class="ln-link ln-variable" marker-end="url(#a6)"/><g class="ln-object"><rect x="170" y="150" width="190" height="82"/><path d="M265 150 V232"/><text x="217" y="176" class="ln-name">value</text><text x="312" y="176" class="ln-name">next</text><text x="217" y="214" class="ln-value">42</text><circle cx="312" cy="205" r="4"/></g><path d="M316 205 H430" class="ln-link" marker-end="url(#a6)"/><text x="382" y="190" class="ln-name">None</text><text x="42" y="292" style="font:500 16px var(--mono);fill:var(--ink)">У обоих вариантов нет следующего узла.</text></svg></div></div><div class="widget__foot">Пустоту проверяют условием <code>head is None</code>. Для одного узла эта проверка ложна, но <code>head.next is None</code> истинно.</div></div>
+      <p>Операция над известной головой или известным предшественником меняет постоянное число ссылок. Главное правило остаётся тем же: прежде чем заменить единственный путь к хвосту, сохраните этот путь в новом поле или в переменной.</p>
+
+      <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>После <code>b = a</code> выполнено <code>b.next = tail</code>. Куда ведёт <code>a.next</code>?</div><ul class="quiz__opts"><li><button type="button">К None, потому что поле меняли через b</button><p class="quiz__why">Имена a и b указывают на один объект. У него одно поле next.</p></li><li data-ok><button type="button">К tail</button><p class="quiz__why">Присваивание меняет поле общего узла. Поэтому результат виден через обе ссылки.</p></li><li><button type="button">К новой копии tail</button><p class="quiz__why">Присваивание ссылки не копирует объект tail.</p></li></ul></div>
+      <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Почему при вставке сначала выполняют <code>middle.next = head.next</code>?</div><ul class="quiz__opts"><li data-ok><button type="button">Чтобы сохранить ссылку на прежний хвост</button><p class="quiz__why">После замены head.next старая ссылка была бы недоступна через голову. Новый узел должен получить её заранее.</p></li><li><button type="button">Чтобы скопировать узел хвоста</button><p class="quiz__why">Копии не создаются: поле получает ссылку на существующий объект.</p></li><li><button type="button">Чтобы сделать head пустым</button><p class="quiz__why">Голова остаётся ссылкой на узел 42. Меняется только его поле next.</p></li></ul></div>
+
+      <div class="sources"><b>Источники главы</b><ol><li>Документация Python: <a href="https://docs.python.org/3/reference/datamodel.html#objects-values-and-types" target="_blank" rel="noopener">Objects, values and types</a>.</li><li>Документация Python: <a href="https://docs.python.org/3/tutorial/classes.html" target="_blank" rel="noopener">A Brief Tour of the Standard Library — Classes</a>.</li><li>Примеры оформлены как сеансы Python 3.12; показан фактический вывод выражений.</li></ol></div>
+      <div class="pager"><a href="01-spisok-i-uzly.html">← 0.1 Список Python и цепочка узлов</a><a href="03-dvusvyaznyy-spisok.html">0.3 Двусвязный список →</a></div>
+      <div class="colophon"><span>Модуль 0 · Линейные структуры изнутри · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div>
+    </main>
+  </div></div>
+  <script src="../../massivy/book.js"></script><script src="../../massivy/algo.js"></script><script src="../lineynye.js"></script>
+</body>
+</html>

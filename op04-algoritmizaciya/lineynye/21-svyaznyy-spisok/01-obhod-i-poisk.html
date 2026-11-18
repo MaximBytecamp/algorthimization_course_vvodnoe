@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>21.1 Обход и поиск · Линейные структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../lineynye.css">
+</head>
+<body>
+  <div class="book"><div class="book__body"><div class="spine"><span>Модуль 21 · Связный список · ОП.04</span></div><main class="leaf">
+    <div class="running"><p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Линейные структуры</a> · модуль 21 · связный список</p><p class="running__folio">Глава 21.1</p></div>
+    <header class="chapter-head"><span class="chapter-num">21.1</span><h1>Обход<br>и поиск</h1><p class="lead">В этой главе разобраны обход и поиск в связном списке. На цепочке 42 → 17 → 30 показано, как переменная <code>current</code> последовательно получает ссылки на узлы.</p></header>
+    <nav class="contents"><b>В этой главе</b><ol><li><a href="#s1">Контракт узла и головы</a></li><li><a href="#s2">Обход цепочки</a></li><li><a href="#s3">Поиск значения</a></li><li><a href="#s4">Инвариант current</a></li></ol></nav>
+
+    <h2 id="s1"><span class="sec">§1</span>Контракт узла и головы</h2>
+    <p>Договоримся о двух именах. Объект <code>Node</code> имеет поля <code>value</code> и <code>next</code>. Переменная <code>head</code> хранит ссылку на первый узел или <code>None</code>, если цепочка пуста. Список в этой главе заканчивается на <code>None</code>: циклические связи здесь не рассматриваются.</p>
+    <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; class Node:
+...     def __init__(self, value, next_node=None):
+...         self.value = value
+...         self.next = next_node
+...
+&gt;&gt;&gt; third = Node(30)
+&gt;&gt;&gt; second = Node(17, third)
+&gt;&gt;&gt; head = Node(42, second)
+&gt;&gt;&gt; head.value, head.next.value, third.next is None
+(42, 17, True)</pre></figure>
+    <p>Узел <code>third</code> завершает цепочку: его <code>next</code> равно <code>None</code>. Переменная <code>head</code> не является отдельным узлом. Она только указывает на объект со значением 42.</p>
+    <p>На схеме пунктирные стрелки идут от переменных. Сплошные стрелки начинаются именно в поле <code>next</code>, поэтому показывают реальные связи между объектами.</p>
+    <div class="widget"><div class="widget__head"><b>Цепочка от head</b><span>42 → 17 → 30</span></div><div class="widget__body"><div class="ln-diagram ln-static"><svg viewBox="0 0 360 610" role="img" aria-label="head указывает на узел 42, затем поля next ведут к узлам 17 и 30"><defs><marker id="a1" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6z"/></marker></defs><text x="18" y="34" class="ln-name">head</text><path class="ln-link ln-variable" d="M72 29 H180 V76" marker-end="url(#a1)"/><g class="ln-object"><rect x="80" y="80" width="200" height="104"/><path d="M80 132 H280 M158 80 V184"/><text x="94" y="112" class="ln-small">value</text><text x="176" y="112" class="ln-small">next</text><text x="110" y="166" class="ln-value">42</text><circle cx="212" cy="157" r="4"/></g><path class="ln-link" d="M212 157 V220 H180 V256" marker-end="url(#a1)"/><g class="ln-object"><rect x="80" y="260" width="200" height="104"/><path d="M80 312 H280 M158 260 V364"/><text x="94" y="292" class="ln-small">value</text><text x="176" y="292" class="ln-small">next</text><text x="110" y="346" class="ln-value">17</text><circle cx="212" cy="337" r="4"/></g><path class="ln-link" d="M212 337 V400 H180 V436" marker-end="url(#a1)"/><g class="ln-object"><rect x="80" y="440" width="200" height="104"/><path d="M80 492 H280 M158 440 V544"/><text x="94" y="472" class="ln-small">value</text><text x="176" y="472" class="ln-small">next</text><text x="110" y="526" class="ln-value">30</text><text x="183" y="526" class="ln-small">None</text></g><text x="18" y="590" class="ln-small">Конец цепочки</text></svg></div></div></div>
+    <p>Из <code>head</code> доступен первый узел. Из его <code>next</code> доступен второй. Поэтому одной ссылки на голову достаточно, чтобы пройти всю цепочку.</p>
+
+    <h2 id="s2"><span class="sec">§2</span>Обход цепочки</h2>
+    <p>Обход читает значения всех узлов по порядку. Переменная <code>current</code> начинает с <code>head</code>. Пока она не равна <code>None</code>, можно прочитать поле <code>value</code> и перейти по <code>next</code>.</p>
+    <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; current = head
+&gt;&gt;&gt; while current is not None:
+...     print(current.value)
+...     current = current.next
+...
+42
+17
+30
+&gt;&gt;&gt; current is None
+True
+&gt;&gt;&gt; head.value
+42</pre></figure>
+    <p>Печать не меняет ссылки. Присваивание <code>current = current.next</code> меняет только переменную <code>current</code>. Голова остаётся у первого узла.</p>
+    <div class="widget"><div class="widget__head"><b>Два последовательных шага обхода</b><span>сначала печать, затем переход</span></div><div class="widget__body">
+      <figure class="code ln-program"><figcaption><span>Шаг 1</span><span>до изменения ссылки current</span></figcaption><pre><span data-line="0">current = head</span><span data-line="1" class="ln-code-active">print(current.value)</span><span data-line="2">current = current.next</span></pre></figure>
+      <div class="ln-diagram ln-static"><svg viewBox="0 0 360 470" role="img" aria-label="До перехода current и head указывают на узел 42, выведено 42"><defs><marker id="a2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6z"/></marker></defs><text x="14" y="30" class="ln-name">head</text><text x="14" y="58" class="ln-name">current</text><path class="ln-link ln-variable" d="M88 25 H180 V76" marker-end="url(#a2)"/><path class="ln-link ln-variable" d="M112 53 H245 V76" marker-end="url(#a2)"/><g class="ln-object ln-object--active"><rect x="80" y="80" width="200" height="104"/><path d="M80 132 H280 M158 80 V184"/><text x="94" y="112" class="ln-small">value</text><text x="176" y="112" class="ln-small">next</text><text x="110" y="166" class="ln-value">42</text><circle cx="212" cy="157" r="4"/></g><path class="ln-link" d="M212 157 V220 H180 V256" marker-end="url(#a2)"/><g class="ln-object"><rect x="80" y="260" width="200" height="104"/><path d="M80 312 H280 M158 260 V364"/><text x="94" y="292" class="ln-small">value</text><text x="176" y="292" class="ln-small">next</text><text x="110" y="346" class="ln-value">17</text><circle cx="212" cy="337" r="4"/></g><path class="ln-link" d="M212 337 V400 H180 V436" marker-end="url(#a2)"/><text x="18" y="458" class="ln-small">print: 42</text></svg></div>
+      <figure class="code ln-program"><figcaption><span>Шаг 2</span><span>после изменения ссылки current</span></figcaption><pre><span data-line="0">current = head</span><span data-line="1">print(current.value)</span><span data-line="2" class="ln-code-active">current = current.next</span></pre></figure>
+      <p>После строки перехода <code>current</code> указывает на узел 17. Значение 42 уже выведено. На следующем круге цикла будет напечатано 17.</p>
+    </div></div>
+    <p>Для цепочки из n узлов тело цикла выполняется n раз. Значит, полный обход имеет стоимость O(n).</p>
+
+    <h2 id="s3"><span class="sec">§3</span>Поиск значения</h2>
+    <p>Поиск использует тот же путь, но останавливается раньше, если найдено нужное значение. Функция возвращает сам узел. Если такого значения нет, она возвращает <code>None</code>.</p>
+    <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; def find(head, wanted):
+...     current = head
+...     while current is not None:
+...         if current.value == wanted:
+...             return current
+...         current = current.next
+...     return None
+...
+&gt;&gt;&gt; found = find(head, 17)
+&gt;&gt;&gt; found.value
+17
+&gt;&gt;&gt; found is second
+True
+&gt;&gt;&gt; find(head, 99) is None
+True</pre></figure>
+    <p>Возвращается объект узла со значением 17. Поэтому проверка <code>found is second</code> даёт <code>True</code>: обе переменные ссылаются на один объект. При отсутствии значения функция доходит до <code>None</code> и возвращает его.</p>
+    <div class="widget"><div class="widget__head"><b>Поиск 17: остановка у найденного узла</b><span>return current</span></div><div class="widget__body"><figure class="code ln-program"><figcaption><span>Выполненная строка</span><span>найдено совпадение</span></figcaption><pre><span data-line="0">if current.value == wanted:</span><span data-line="1" class="ln-code-active">    return current</span></pre></figure><div class="ln-diagram ln-static"><svg viewBox="0 0 360 425" role="img" aria-label="current указывает на узел 17, следующий узел 30 не просматривается"><defs><marker id="a3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6z"/></marker></defs><text x="18" y="32" class="ln-name">current</text><path class="ln-link ln-variable" d="M104 27 H320 V240 H45 V285 H76" marker-end="url(#a3)"/><g class="ln-object"><rect x="80" y="80" width="200" height="104"/><path d="M80 132 H280 M158 80 V184"/><text x="94" y="112" class="ln-small">value</text><text x="176" y="112" class="ln-small">next</text><text x="110" y="166" class="ln-value">42</text><circle cx="212" cy="157" r="4"/></g><path class="ln-link" d="M212 157 V220 H180 V256" marker-end="url(#a3)"/><g class="ln-object ln-object--active"><rect x="80" y="260" width="200" height="104"/><path d="M80 312 H280 M158 260 V364"/><text x="94" y="292" class="ln-small">value</text><text x="176" y="292" class="ln-small">next</text><text x="110" y="346" class="ln-value">17</text><circle cx="212" cy="337" r="4"/></g><text x="18" y="408" class="ln-small">17 == wanted: return этого узла</text></svg></div></div></div>
+    <p>В лучшем случае искомое значение находится в голове. В худшем случае нужно проверить все узлы. Стоимость поиска — O(n).</p>
+
+    <h2 id="s4"><span class="sec">§4</span>Инвариант current</h2>
+    <p>Инвариант цикла — утверждение, верное перед каждой проверкой его условия. Здесь <code>current</code> указывает на первый ещё не обработанный узел. Когда таких узлов нет, переменная равна <code>None</code>.</p>
+    <p>Перед циклом первым необработанным узлом является голова. После печати или проверки значения этот узел становится обработанным. Строка <code>current = current.next</code> переводит переменную к следующему необработанному узлу. Когда последняя ссылка ведёт к <code>None</code>, работа закончена.</p>
+<p>Таблица фиксирует состояние перед проверкой <code>while</code> при обходе. После печати указатель ещё остаётся у обработанного узла; переход восстанавливает инвариант к началу следующей итерации.</p><div class="table-scroll"><table><thead><tr><th>Перед проверкой</th><th>Уже напечатано</th><th>current</th></tr></thead><tbody><tr><td>1</td><td>ничего</td><td>узел 42</td></tr><tr><td>2</td><td>42</td><td>узел 17</td></tr><tr><td>3</td><td>42, 17</td><td>узел 30</td></tr><tr><td>4</td><td>42, 17, 30</td><td>None</td></tr></tbody></table></div><p>В последней строке необработанных узлов нет, поэтому цикл завершается. При поиске совпадение может завершить функцию раньше. Этот же путь от головы позволяет найти место для изменения ссылок.</p>
+    <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Что должна вернуть <code>find(head, 17)</code>?</div><ul class="quiz__opts"><li><button type="button">Число 17</button><p class="quiz__why">Функция возвращает <code>current</code>, то есть объект узла, а не его поле <code>value</code>.</p></li><li data-ok><button type="button">Узел со значением 17</button><p class="quiz__why">Найденный узел можно сравнить с другой ссылкой через <code>is</code> или использовать его поля.</p></li><li><button type="button">Ссылку head</button><p class="quiz__why">Голова указывает на узел 42. Поиск идёт дальше до совпадения.</p></li></ul></div>
+    <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Что меняет строка <code>current = current.next</code>?</div><ul class="quiz__opts"><li><button type="button">Поле next в текущем узле</button><p class="quiz__why">Слева от знака равенства стоит имя переменной, а не поле объекта.</p></li><li data-ok><button type="button">Только ссылку в переменной current</button><p class="quiz__why">Узлы и ссылка <code>head</code> не меняются. Переменная начинает указывать на следующий узел.</p></li><li><button type="button">Значение в следующем узле</button><p class="quiz__why">Поле <code>value</code> в этой строке вообще не используется.</p></li></ul></div>
+    <div class="sources"><b>Источники главы</b><ol><li>Документация Python: <a href="https://docs.python.org/3/tutorial/classes.html" target="_blank" rel="noopener">Classes</a>.</li><li>Примеры оформлены как сеансы Python 3.12; результаты соответствуют показанному коду.</li></ol></div>
+    <div class="pager"><a href="../00-lineynye-iznutri/06-stoimost-i-vybor.html">← 0.6 Стоимость операций и выбор структуры</a><a href="02-vstavka-i-udalenie.html">21.2 Вставка и удаление →</a></div><div class="colophon"><span>Модуль 21 · Связный список: от устройства к операциям · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div>
+  </main></div></div>
+  <script src="../../massivy/book.js"></script><script src="../../massivy/algo.js"></script>
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>0.5 Очередь и дек · Линейные структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../lineynye.css">
+</head>
+<body>
+  <div class="book"><div class="book__body">
+    <div class="spine"><span>Модуль 0 · Линейные структуры изнутри · ОП.04</span></div>
+    <main class="leaf">
+      <div class="running"><p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Линейные структуры</a> · модуль 0 · теория</p><p class="running__folio">Глава 0.5</p></div>
+      <header class="chapter-head">
+        <span class="chapter-num">0.5</span>
+        <h1>Очередь и дек:<br>работа с двумя концами</h1>
+        <p class="lead">В этой главе разобраны очередь и двусторонняя очередь — дек. На <code>collections.deque</code> показаны порядок FIFO, добавление и снятие с обоих концов.</p>
+      </header>
+      <nav class="contents"><b>В этой главе</b><ol>
+        <li><a href="#s1">Правило FIFO</a></li>
+        <li><a href="#s2">Очередь на deque</a></li>
+        <li><a href="#s3">Два конца дека</a></li>
+        <li><a href="#s4">Пустая очередь и list.pop(0)</a></li>
+      </ol></nav>
+
+      <h2 id="s1"><span class="sec">§1</span>Правило FIFO</h2>
+      <p><span class="term">Очередь</span> работает по правилу FIFO: <i>first in, first out</i>, «первым вошёл — первым вышел». Новый элемент приходит в хвост. Следующий на обработку уходит из головы. В отличие от стека, это разные концы последовательности.</p>
+      <p>Пусть заявки получили номера 42, 17 и 30 в таком порядке. В очереди первой обслужат 42, затем 17, затем 30. Номер 30 не может обойти тех, кто пришёл раньше.</p>
+      <div class="widget">
+        <div class="widget__head"><b>Очередь из трёх заявок</b><span>голова слева · хвост справа</span></div>
+        <div class="widget__body">
+          <div class="table-scroll">
+          <svg viewBox="0 0 760 210" role="img" aria-label="Очередь 42, 17, 30: 42 выходит из головы слева, 30 входит в хвост справа." style="min-width:650px;max-width:none;width:100%;height:auto">
+            <defs><marker id="in05" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L8,4.5 L0,9 Z" fill="#2F7D4F"/></marker><marker id="out05" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L8,4.5 L0,9 Z" fill="#B3261E"/></marker></defs>
+            <text x="104" y="35" text-anchor="middle" font-family="Inter, sans-serif" font-size="18" font-weight="700">голова очереди</text><text x="595" y="35" text-anchor="middle" font-family="Inter, sans-serif" font-size="18" font-weight="700">хвост очереди</text>
+            <rect x="145" y="76" width="130" height="58" rx="4" fill="#F8E9E7" stroke="#B3261E" stroke-width="3"/><text x="210" y="112" text-anchor="middle" font-family="Roboto Mono, monospace" font-size="24">42</text>
+            <rect x="275" y="76" width="130" height="58" rx="4" fill="#F1F2EC" stroke="#30312D" stroke-width="2"/><text x="340" y="112" text-anchor="middle" font-family="Roboto Mono, monospace" font-size="24">17</text>
+            <rect x="405" y="76" width="130" height="58" rx="4" fill="#E6F1EA" stroke="#2F7D4F" stroke-width="3"/><text x="470" y="112" text-anchor="middle" font-family="Roboto Mono, monospace" font-size="24">30</text>
+            <path d="M139 105 L45 105" stroke="#B3261E" stroke-width="3" marker-end="url(#out05)"/><text x="25" y="82" font-family="Inter, sans-serif" font-size="16" fill="#B3261E">выход</text><text x="15" y="133" font-family="Roboto Mono, monospace" font-size="15" fill="#B3261E">popleft()</text>
+            <path d="M708 105 L542 105" stroke="#2F7D4F" stroke-width="3" marker-end="url(#in05)"/><text x="631" y="82" font-family="Inter, sans-serif" font-size="16" fill="#2F7D4F">вход</text><text x="611" y="133" font-family="Roboto Mono, monospace" font-size="15" fill="#2F7D4F">append()</text>
+            <text x="340" y="181" text-anchor="middle" font-family="Inter, sans-serif" font-size="17">42 выйдет первым: он раньше всех оказался в очереди.</text>
+          </svg>
+          </div>
+        </div>
+        <div class="widget__foot">Голова и хвост обозначают концы очереди. Эти названия используются при чтении схемы; отдельных переменных в примере нет.</div>
+      </div>
+
+      <h2 id="s2"><span class="sec">§2</span>Очередь на deque</h2>
+      <p>Класс <code>deque</code> находится в модуле <code>collections</code>. Его название читают «дек»; это сокращение от <i>double-ended queue</i>, двусторонняя очередь. Для обычной очереди достаточно двух методов: <code>append</code> добавляет в правый конец, а <code>popleft</code> снимает с левого.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; from collections import deque
+&gt;&gt;&gt; queue = deque()
+&gt;&gt;&gt; queue.append(42)
+&gt;&gt;&gt; queue.append(17)
+&gt;&gt;&gt; queue.append(30)
+&gt;&gt;&gt; list(queue)
+[42, 17, 30]
+&gt;&gt;&gt; queue.popleft()
+42
+&gt;&gt;&gt; list(queue)
+[17, 30]</pre></figure>
+      <p>Порядок в <code>list(queue)</code> читается слева направо: слева находится голова, справа — хвост. Поэтому <code>popleft()</code> вернул 42. После этого головой стала заявка 17.</p>
+      <div class="widget">
+        <div class="widget__head"><b>Строки очереди: состояние до и после</b><span>левый конец — голова</span></div>
+        <div class="widget__body"><div class="table-scroll"><table>
+          <thead><tr><th>Строка</th><th>До выполнения</th><th>Действие</th><th>После выполнения</th></tr></thead>
+          <tbody>
+            <tr><td><code>queue.append(42)</code></td><td><code>deque([])</code></td><td>42 входит в хвост справа</td><td><code>deque([42])</code>; голова и хвост: 42</td></tr>
+            <tr><td><code>queue.append(17)</code></td><td><code>deque([42])</code></td><td>17 входит в хвост справа</td><td><code>deque([42, 17])</code>; голова: 42, хвост: 17</td></tr>
+            <tr><td><code>queue.append(30)</code></td><td><code>deque([42, 17])</code></td><td>30 входит в хвост справа</td><td><code>deque([42, 17, 30])</code>; голова: 42, хвост: 30</td></tr>
+            <tr><td><code>queue.popleft()</code></td><td><code>deque([42, 17, 30])</code>; голова: 42</td><td>42 выходит слева</td><td><code>deque([17, 30])</code>; голова: 17, хвост: 30</td></tr>
+          </tbody>
+        </table></div></div>
+        <div class="widget__foot">Метод возвращает снятую заявку. Здесь результат <code>queue.popleft()</code> равен 42.</div>
+      </div>
+
+      <h2 id="s3"><span class="sec">§3</span>Два конца дека</h2>
+      <p>У дека рабочие оба конца. Кроме <code>append</code> и <code>popleft</code>, есть <code>appendleft</code> для добавления слева и <code>pop</code> для снятия справа. Выбирать метод нужно по смыслу задачи: откуда элемент приходит и откуда должен выйти.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; deck = deque()
+&gt;&gt;&gt; deck.append(42)
+&gt;&gt;&gt; deck.append(17)
+&gt;&gt;&gt; deck.appendleft(30)
+&gt;&gt;&gt; list(deck)
+[30, 42, 17]
+&gt;&gt;&gt; deck.popleft(), deck.pop()
+(30, 17)
+&gt;&gt;&gt; list(deck)
+[42]</pre></figure>
+      <p>В этом примере 30 пришёл слева, поэтому оказался в начале. Затем <code>popleft()</code> снял 30 слева, а <code>pop()</code> снял 17 справа. В деке один и тот же элемент не имеет постоянной роли «первого» или «последнего»: роль определяется текущим положением.</p>
+      <div class="widget">
+        <div class="widget__head"><b>Дек: добавление и снятие с обеих сторон</b><span>каждая строка меняет концы</span></div>
+        <div class="widget__body"><div class="table-scroll"><table>
+          <thead><tr><th>Строка</th><th>До выполнения</th><th>Стрелка</th><th>После выполнения</th></tr></thead>
+          <tbody>
+            <tr><td><code>deck.append(42)</code></td><td><code>[]</code></td><td>42 → правый конец</td><td><code>[42]</code>; левый и правый конец: 42</td></tr>
+            <tr><td><code>deck.append(17)</code></td><td><code>[42]</code></td><td>17 → правый конец</td><td><code>[42, 17]</code>; левый: 42, правый: 17</td></tr>
+            <tr><td><code>deck.appendleft(30)</code></td><td><code>[42, 17]</code></td><td>30 → левый конец</td><td><code>[30, 42, 17]</code>; левый: 30, правый: 17</td></tr>
+            <tr><td><code>deck.popleft()</code></td><td><code>[30, 42, 17]</code></td><td>30 ← левый конец</td><td><code>[42, 17]</code>; левый: 42, правый: 17</td></tr>
+            <tr><td><code>deck.pop()</code></td><td><code>[42, 17]</code></td><td>17 ← правый конец</td><td><code>[42]</code>; левый и правый конец: 42</td></tr>
+          </tbody>
+        </table></div></div>
+        <div class="widget__foot">Стрелка к деку обозначает вход элемента, стрелка от дека — выход. Подписи концов не меняются: слева всегда левый, справа всегда правый.</div>
+      </div>
+
+      <h2 id="s4"><span class="sec">§4</span>Пустая очередь и <code>list.pop(0)</code></h2>
+      <p>У пустой очереди нет головы. Вызов <code>popleft()</code> на пустом деке вызывает <code>IndexError</code>. Перед снятием можно проверить очередь условием <code>if queue:</code>.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; empty_queue = deque()
+&gt;&gt;&gt; bool(empty_queue)
+False
+&gt;&gt;&gt; try:
+...     empty_queue.popleft()
+... except IndexError as error:
+...     print(type(error).__name__, error)
+...
+IndexError pop from an empty deque</pre></figure>
+      <p>Иногда очередь пытаются хранить в списке и снимать первый элемент через <code>items.pop(0)</code>. Результат будет правильным, но способ неудобен для длинной очереди: после удаления первого элемента список сдвигает все остальные к началу. У дека снятие слева — его обычная операция.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; items = [42, 17, 30]
+&gt;&gt;&gt; items.pop(0)
+42
+&gt;&gt;&gt; items
+[17, 30]</pre></figure>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Действие</th><th>Список <code>list</code></th><th>Дек <code>deque</code></th></tr></thead>
+        <tbody>
+          <tr><td>Добавить справа</td><td><code>append(x)</code></td><td><code>append(x)</code></td></tr>
+          <tr><td>Снять слева</td><td><code>pop(0)</code>, O(n)</td><td><code>popleft()</code>, O(1)</td></tr>
+          <tr><td>Снять справа</td><td><code>pop()</code>, амортизированно O(1)</td><td><code>pop()</code>, O(1)</td></tr>
+        </tbody>
+      </table></div>
+      <p>Для очереди с регулярным снятием слева подходит <code>deque</code>: оставшиеся элементы сохраняют свои места. Выбор контейнера зависит от повторяющейся операции: доступ по позиции и работа с концами предъявляют разные требования.</p>
+
+      <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>В очереди <code>deque([42, 17, 30])</code> выполнили <code>popleft()</code>. Что вернёт метод и какая очередь останется?</div><ul class="quiz__opts">
+        <li data-ok><button type="button">Вернёт <code>42</code>; останется <code>deque([17, 30])</code></button><p class="quiz__why">Верно. Голова очереди находится слева, и первым выходит тот, кто пришёл раньше.</p></li>
+        <li><button type="button">Вернёт <code>30</code>; останется <code>deque([42, 17])</code></button><p class="quiz__why">Так работает <code>pop()</code> справа, но не <code>popleft()</code> слева.</p></li>
+        <li><button type="button">Вернёт <code>17</code>; очередь не изменится</button><p class="quiz__why">Средний элемент не снимается операцией очереди. Метод <code>popleft()</code> меняет дек.</p></li>
+      </ul></div>
+      <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Почему для длинной очереди не стоит постоянно вызывать <code>items.pop(0)</code> у списка?</div><ul class="quiz__opts">
+        <li><button type="button">Метод всегда вызывает исключение</button><p class="quiz__why">Метод работает у непустого списка. При удалении первого элемента сдвигаются остальные, поэтому стоимость растёт с длиной списка.</p></li>
+        <li data-ok><button type="button">После снятия первого элемента нужно сдвинуть остальные; это O(n)</button><p class="quiz__why">Верно. Дек поддерживает снятие слева за O(1), поэтому лучше соответствует очереди.</p></li>
+        <li><button type="button">Список изменит порядок на обратный</button><p class="quiz__why">Порядок оставшихся элементов сохранится: после 42 останутся 17 и 30.</p></li>
+      </ul></div>
+
+      <div class="sources"><b>Источники главы</b><ol>
+        <li>Документация Python: <a href="https://docs.python.org/3/library/collections.html#collections.deque" target="_blank" rel="noopener">collections.deque</a>.</li>
+        <li>Python Wiki: <a href="https://wiki.python.org/moin/TimeComplexity" target="_blank" rel="noopener">TimeComplexity</a> — оценки операций <code>list</code> и <code>deque</code>.</li>
+        <li>Примеры REPL соответствуют синтаксису и выводу Python 3.12.</li>
+      </ol></div>
+      <div class="pager"><a href="04-stek.html">← 0.4 Стек</a><a href="06-stoimost-i-vybor.html">0.6 Стоимость и выбор структуры →</a></div>
+      <div class="colophon"><span>Модуль 0 · Линейные структуры изнутри · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div>
+    </main>
+  </div></div>
+  <script src="../../massivy/book.js"></script><script src="../../massivy/algo.js"></script><script src="../lineynye.js"></script>
+</body>
+</html>

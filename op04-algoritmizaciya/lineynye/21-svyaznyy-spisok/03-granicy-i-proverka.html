@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#F1F2EC">
+  <title>21.3 Границы и проверка · Линейные структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css"><link rel="stylesheet" href="../../massivy/algo.css"><link rel="stylesheet" href="../lineynye.css">
+</head>
+<body><div class="book"><div class="book__body"><div class="spine"><span>Модуль 21 · Связный список · ОП.04</span></div><main class="leaf">
+  <div class="running"><p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Линейные структуры</a> · модуль 21 · связный список</p><p class="running__folio">Глава 21.3</p></div>
+  <header class="chapter-head"><span class="chapter-num">21.3</span><h1>Границы<br>и проверка</h1><p class="lead">В этой главе проверяются пустой список, один узел, отсутствие значения и дубликаты. Фиктивная голова объединяет удаление первого и внутреннего узлов в одну операцию.</p></header>
+  <nav class="contents"><b>В этой главе</b><ol><li><a href="#s1">Основа для проверок</a></li><li><a href="#s2">Пустая цепочка и один узел</a></li><li><a href="#s3">Фиктивная голова</a></li><li><a href="#s4">Нет значения и дубликаты</a></li><li><a href="#s5">Ручное прослеживание</a></li></ol></nav>
+
+  <h2 id="s1"><span class="sec">§1</span>Основа для проверок</h2>
+  <p>При проверке связного списка сравнивают порядок значений и ссылки на объекты. Для этого в примерах есть функция <code>values</code>: она возвращает значения в порядке обхода. Она не меняет цепочку.</p>
+  <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; class Node:
+...     def __init__(self, value, next_node=None):
+...         self.value = value
+...         self.next = next_node
+...
+&gt;&gt;&gt; def values(head):
+...     result = []
+...     current = head
+...     while current is not None:
+...         result.append(current.value)
+...         current = current.next
+...     return result
+...
+&gt;&gt;&gt; tail = Node(30)
+&gt;&gt;&gt; head = Node(17, tail)
+&gt;&gt;&gt; values(head)
+[17, 30]</pre></figure>
+  <p>Функция <code>values</code> подходит для проверки порядка значений. При одинаковых значениях нужно дополнительно различать сами объекты. Для этого нужна проверка идентичности через <code>is</code>.</p>
+
+<p>В таблице разобран результат <code>values(head)</code>: поле <code>value</code> читается до перехода по <code>next</code>.</p><div class="table-scroll"><table><thead><tr><th>current</th><th>result после append</th><th>Следующее current</th></tr></thead><tbody><tr><td>узел 17</td><td>[17]</td><td>узел 30</td></tr><tr><td>узел 30</td><td>[17, 30]</td><td>None</td></tr></tbody></table></div><p>После второго перехода возвращается список <code>[17, 30]</code>. Для пустой цепочки цикл пропускается полностью.</p>
+  <h2 id="s2"><span class="sec">§2</span>Пустая цепочка и один узел</h2>
+  <p>У пустого списка <code>head</code> равна <code>None</code>. У списка из одного узла поле <code>head.next</code> равно <code>None</code>. Обе границы нужно обработать до чтения полей узла.</p>
+  <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; def find(head, wanted):
+...     current = head
+...     while current is not None:
+...         if current.value == wanted:
+...             return current
+...         current = current.next
+...     return None
+...
+&gt;&gt;&gt; assert values(None) == []
+&gt;&gt;&gt; assert find(None, 17) is None
+&gt;&gt;&gt; only = Node(17)
+&gt;&gt;&gt; assert values(only) == [17]
+&gt;&gt;&gt; assert find(only, 17) is only
+&gt;&gt;&gt; assert find(only, 30) is None</pre></figure>
+  <p>Успешный <code>assert</code> ничего не печатает. Если условие ложно, Python остановит выполнение с <code>AssertionError</code>. Последняя проверка подтверждает завершение поиска отсутствующего значения в одноэлементной цепочке.</p>
+  <div class="widget"><div class="widget__head"><b>Две граничные формы списка</b><span>проверка до обращения к полям</span></div><div class="widget__body"><div class="ln-diagram ln-static"><svg viewBox="0 0 360 435" role="img" aria-label="Пустая голова равна None, у списка из одного узла head ведёт к значению 17 и next равно None"><defs><marker id="c1" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6z"/></marker></defs><text x="18" y="34" class="ln-name">Пустой список</text><text x="18" y="70" class="ln-name">head = None</text><path class="ln-empty" d="M18 92 H342"/><text x="18" y="144" class="ln-name">Один узел</text><text x="18" y="178" class="ln-name">head</text><path class="ln-link ln-variable" d="M72 173 H180 V220" marker-end="url(#c1)"/><g class="ln-object ln-object--active"><rect x="80" y="224" width="200" height="104"/><path d="M80 276 H280 M158 224 V328"/><text x="94" y="256" class="ln-small">value</text><text x="176" y="256" class="ln-small">next</text><text x="110" y="310" class="ln-value">17</text><text x="183" y="310" class="ln-small">None</text></g><text x="18" y="388" class="ln-small">Перед чтением value:</text><text x="18" y="414" class="ln-small">current is not None</text></svg></div></div></div>
+  <p>Условие цикла <code>current is not None</code> делает обход безопасным в обеих ситуациях. Только внутри цикла известно, что у <code>current</code> можно читать <code>value</code> и <code>next</code>.</p>
+
+  <h2 id="s3"><span class="sec">§3</span>Фиктивная голова</h2>
+  <p>Удаление первого настоящего узла отличается от удаления после предшественника: у головы предшественника нет. <span class="term">Фиктивная голова</span>, или <code>dummy</code>, — служебный узел перед списком. Он не входит в данные. Его поле <code>next</code> указывает на настоящую голову.</p>
+  <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; def remove_first(head, wanted):
+...     dummy = Node(None, head)
+...     previous = dummy
+...     while previous.next is not None:
+...         if previous.next.value == wanted:
+...             previous.next = previous.next.next
+...             break
+...         previous = previous.next
+...     return dummy.next
+...
+&gt;&gt;&gt; first = Node(17, Node(30))
+&gt;&gt;&gt; new_head = remove_first(first, 17)
+&gt;&gt;&gt; values(new_head)
+[30]
+&gt;&gt;&gt; new_head.value
+30</pre></figure>
+  <p>Когда удаляется 17, переменная <code>previous</code> остаётся равной <code>dummy</code>. Строка изменения ссылки выполняется так же, как для узла в середине: <code>previous.next</code> перепрыгивает удаляемый узел. После операции функция возвращает <code>dummy.next</code>, а не сам <code>dummy</code>.</p>
+  <div class="widget"><div class="widget__head"><b>Удаление первой 17 через dummy</b><span>служебный узел не возвращается</span></div><div class="widget__body">
+    <figure class="code ln-program"><figcaption><span>До изменения</span><span>previous указывает на dummy</span></figcaption><pre><span data-line="0">dummy = Node(None, head)</span><span data-line="1">previous = dummy</span><span data-line="2" class="ln-code-active">previous.next = previous.next.next</span><span data-line="3">return dummy.next</span></pre></figure>
+    <div class="ln-diagram ln-static"><svg viewBox="0 0 360 620" role="img" aria-label="Перед изменением dummy.next ведёт к 17, 17.next ведёт к 30"><defs><marker id="c2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6z"/></marker></defs><text x="14" y="34" class="ln-name">previous</text><path class="ln-link ln-variable" d="M102 29 H180 V76" marker-end="url(#c2)"/><g class="ln-object"><rect x="80" y="80" width="200" height="104"/><path d="M80 132 H280 M158 80 V184"/><text x="94" y="112" class="ln-small">value</text><text x="176" y="112" class="ln-small">next</text><text x="102" y="166" class="ln-small">None</text><circle cx="212" cy="157" r="4"/></g><text x="292" y="139" class="ln-small">dummy</text><path class="ln-link" d="M212 157 V220 H180 V256" marker-end="url(#c2)"/><g class="ln-object ln-object--active"><rect x="80" y="260" width="200" height="104"/><path d="M80 312 H280 M158 260 V364"/><text x="94" y="292" class="ln-small">value</text><text x="176" y="292" class="ln-small">next</text><text x="110" y="346" class="ln-value">17</text><circle cx="212" cy="337" r="4"/></g><path class="ln-link" d="M212 337 V400 H180 V436" marker-end="url(#c2)"/><g class="ln-object"><rect x="80" y="440" width="200" height="104"/><path d="M80 492 H280 M158 440 V544"/><text x="94" y="472" class="ln-small">value</text><text x="176" y="472" class="ln-small">next</text><text x="110" y="526" class="ln-value">30</text><text x="183" y="526" class="ln-small">None</text></g><text x="18" y="590" class="ln-small">До: dummy → 17 → 30</text></svg></div>
+    <figure class="code ln-program"><figcaption><span>После изменения</span><span>результат берётся из dummy.next</span></figcaption><pre><span data-line="0">dummy = Node(None, head)</span><span data-line="1">previous = dummy</span><span data-line="2">previous.next = previous.next.next</span><span data-line="3" class="ln-code-active">return dummy.next</span></pre></figure>
+    <p>После присваивания <code>dummy.next</code> ведёт сразу к 30. Узел 17 больше не достижим из результата. Возвращённая ссылка ведёт к узлу со значением 30, поэтому фиктивный узел не становится частью списка.</p>
+  </div></div>
+  <p>Фиктивная голова также работает для пустой цепочки: тогда <code>dummy.next</code> равно <code>None</code>. Единая форма уменьшает число особых случаев в коде.</p>
+
+  <h2 id="s4"><span class="sec">§4</span>Нет значения и дубликаты</h2>
+  <p>Если искомого значения нет, <code>remove_first</code> проходит до конца и возвращает прежнюю голову. Цепочка при этом не должна измениться. Проверим результат и идентичность первой ссылки.</p>
+  <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; unchanged = Node(17, Node(30))
+&gt;&gt;&gt; result = remove_first(unchanged, 99)
+&gt;&gt;&gt; assert result is unchanged
+&gt;&gt;&gt; assert values(result) == [17, 30]
+&gt;&gt;&gt; left = Node(17)
+&gt;&gt;&gt; right = Node(17)
+&gt;&gt;&gt; duplicates = Node(9, left)
+&gt;&gt;&gt; left.next = right
+&gt;&gt;&gt; result = remove_first(duplicates, 17)
+&gt;&gt;&gt; assert result.next is right
+&gt;&gt;&gt; assert values(result) == [9, 17]</pre></figure>
+  <p>Два узла могут хранить одно число, но оставаться разными объектами. Функция удаляет первое совпадение: узел <code>left</code>. Проверка <code>result.next is right</code> важнее одной проверки значений: она подтверждает, что в цепочке остался второй объект 17.</p>
+  <p>Проверка <code>is</code> отвечает на вопрос «это тот же объект?». Проверка <code>==</code> для списков значений отвечает на вопрос «такой ли порядок данных?». Для работы со ссылками обычно нужны оба вида проверки.</p>
+
+<p>У двух совпадающих значений разные имена узлов. Таблица показывает, какой объект должен сохраниться.</p><div class="table-scroll"><table><thead><tr><th>Момент</th><th>Путь от головы</th><th>Объекты 17</th></tr></thead><tbody><tr><td>до удаления</td><td>9 → left → right → None</td><td>left и right</td></tr><tr><td>после удаления</td><td>9 → right → None</td><td>только right доступен от головы</td></tr></tbody></table></div><p>Проверка значений подтверждает порядок <code>[9, 17]</code>. Проверка <code>result.next is right</code> уточняет, какой из двух объектов остался. Тот же разбор можно выполнить вручную на четырёх узлах.</p>
+  <h2 id="s5"><span class="sec">§5</span>Ручное прослеживание</h2>
+  <p>Короткая задача: цепочка содержит 4 → 7 → 7 → 9. Вызов <code>remove_first(head, 7)</code> удаляет только первое значение 7. До раскрытия разбора запишите, на какой узел будет ссылаться <code>head.next</code> в результате.</p>
+  <details><summary>Показать разбор по строкам</summary><p>Сначала <code>dummy.next</code> ведёт к 4, а <code>previous</code> равно <code>dummy</code>. Первый узел после <code>previous</code> содержит 4, поэтому переменная переходит к узлу 4.</p><p>Теперь <code>previous.next</code> — первый узел 7. Условие совпадает. Выполняется <code>previous.next = previous.next.next</code>: поле <code>next</code> узла 4 начинает вести ко второму узлу 7. Первый узел 7 выпадает из цепочки.</p><p>Функция возвращает <code>dummy.next</code>, то есть прежний узел 4. Поэтому <code>head.next</code> в результате указывает на второй узел 7, а значения равны [4, 7, 9].</p></details>
+  <figure class="code"><figcaption><span>Python 3.12</span><span>проверка ответа</span></figcaption><pre>&gt;&gt;&gt; second_seven = Node(7, Node(9))
+&gt;&gt;&gt; head = Node(4, Node(7, second_seven))
+&gt;&gt;&gt; result = remove_first(head, 7)
+&gt;&gt;&gt; assert values(result) == [4, 7, 9]
+&gt;&gt;&gt; assert result.next is second_seven</pre></figure>
+  <p>В этой задаче переход по ссылке меняется у узла 4, хотя удаляется следующий узел. Ручное прослеживание определяет, у какого предшественника нужно изменить поле. Результат проверяется запуском и сравнением ссылок.</p>
+<p>Таблица фиксирует изменения ссылок из ручного разбора. Узлы с одинаковым значением различаются именами.</p><div class="table-scroll"><table><thead><tr><th>Строка</th><th>previous</th><th>Путь от dummy.next</th></tr></thead><tbody><tr><td>previous = dummy</td><td>служебный узел</td><td>4 → первая 7 → вторая 7 → 9</td></tr><tr><td>previous = previous.next</td><td>узел 4</td><td>4 → первая 7 → вторая 7 → 9</td></tr><tr><td>previous.next = previous.next.next</td><td>узел 4</td><td>4 → вторая 7 → 9</td></tr></tbody></table></div><p>Меняется поле у узла 4. Проверка <code>result.next is second_seven</code> подтверждает сохранение второй семёрки, а не только числа 7.</p>  <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Что возвращает <code>remove_first(None, 5)</code>?</div><ul class="quiz__opts"><li data-ok><button type="button">None</button><p class="quiz__why">Созданный <code>dummy</code> хранит <code>next = None</code>. Цикл не выполняется, а функция возвращает <code>dummy.next</code>.</p></li><li><button type="button">Служебный узел dummy</button><p class="quiz__why">Функция возвращает его поле <code>next</code>, а не объект <code>dummy</code>.</p></li><li><button type="button">Ошибка AttributeError</button><p class="quiz__why">Условие <code>previous.next is not None</code> не позволяет читать поле у <code>None</code>.</p></li></ul></div>
+  <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Зачем в тесте дубликатов используется <code>result.next is right</code>?</div><ul class="quiz__opts"><li><button type="button">Чтобы проверить сумму значений</button><p class="quiz__why">Оператор <code>is</code> не сравнивает числа и не вычисляет сумму.</p></li><li data-ok><button type="button">Чтобы подтвердить сохранение второго конкретного узла 17</button><p class="quiz__why">Значения двух узлов одинаковы. Идентичность доказывает, что остался именно объект <code>right</code>.</p></li><li><button type="button">Чтобы создать новую ссылку</button><p class="quiz__why">Проверка <code>is</code> ничего не меняет в цепочке.</p></li></ul></div>
+  <div class="sources"><b>Источники главы</b><ol><li>Документация Python: <a href="https://docs.python.org/3/reference/simple_stmts.html#the-assert-statement" target="_blank" rel="noopener">The assert statement</a>.</li><li>Примеры оформлены как сеансы Python 3.12; результаты соответствуют показанному коду.</li></ol></div>
+  <div class="pager"><a href="02-vstavka-i-udalenie.html">← 21.2 Вставка и удаление</a><span aria-disabled="true">Модуль 22 · задачи на связные списки · план</span></div><div class="colophon"><span>Модуль 21 · Связный список: от устройства к операциям · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div>
+</main></div></div><script src="../../massivy/book.js"></script><script src="../../massivy/algo.js"></script></body>
+</html>

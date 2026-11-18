@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>0.6 Стоимость и выбор структуры · Линейные структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../lineynye.css">
+</head>
+<body>
+  <div class="book"><div class="book__body">
+    <div class="spine"><span>Модуль 0 · Линейные структуры изнутри · ОП.04</span></div>
+    <main class="leaf">
+      <div class="running"><p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Линейные структуры</a> · модуль 0 · теория</p><p class="running__folio">Глава 0.6</p></div>
+      <header class="chapter-head">
+        <span class="chapter-num">0.6</span>
+        <h1>Стоимость операций<br>и выбор структуры</h1>
+        <p class="lead">В этой главе сравниваются доступ по индексу, изменение ссылки и работа с концами. Примеры показывают выбор между <code>list</code>, цепочкой <code>Node</code>, <code>deque</code>, <code>dict</code> и <code>set</code> по нужной операции.</p>
+      </header>
+      <nav class="contents"><b>В этой главе</b><ol>
+        <li><a href="#s1">Сначала назвать операцию</a></li>
+        <li><a href="#s2">Поиск и изменение ссылки</a></li>
+        <li><a href="#s3">Память и расположение данных</a></li>
+        <li><a href="#s4">Три выбора структуры</a></li>
+      </ol></nav>
+
+      <h2 id="s1"><span class="sec">§1</span>Сначала назвать операцию</h2>
+      <p>Вопрос «какая структура быстрее?» поставлен неполно. Быстрой бывает конкретная операция. Сначала нужно сказать, что программа делает чаще: получает элемент по номеру, добавляет в конец, снимает с начала, идёт по ссылке или ищет запись по ключу.</p>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Структура</th><th>Когда подходит</th><th>Основные операции</th><th>Что не является её сильной стороной</th></tr></thead>
+        <tbody>
+          <tr><td><code>list</code></td><td>Нужен порядок и доступ по индексу</td><td><code>items[i]</code> — O(1); <code>append</code> — амортизированно O(1); <code>pop()</code> — амортизированно O(1)</td><td>Удаление или вставка в начале и середине сдвигает элементы: O(n)</td></tr>
+          <tr><td>Цепочка <code>Node</code></td><td>Нужны переходы по ссылкам и изменение после уже известного узла</td><td>изменить известную ссылку <code>next</code> — O(1)</td><td>Добраться до позиции i нужно переходами от головы: O(n)</td></tr>
+          <tr><td><code>deque</code></td><td>Элементы регулярно входят и выходят с концов</td><td><code>append</code>, <code>appendleft</code>, <code>pop</code>, <code>popleft</code> — O(1)</td><td>Доступ к середине по индексу не его основная задача</td></tr>
+          <tr><td><code>set</code></td><td>Нужно много раз отвечать «есть ли такой ключ?»</td><td><code>x in seen</code>, добавить, удалить — в среднем O(1)</td><td>Нет доступа по позиции и нет связанного значения</td></tr>
+          <tr><td><code>dict</code></td><td>По ключу нужно найти связанное значение</td><td><code>data[key]</code>, добавить, удалить ключ — в среднем O(1)</td><td>Поиск значения без ключа требует перебора</td></tr>
+        </tbody>
+      </table></div>
+      <p>Оценка O(1) не означает «мгновенно» и не говорит о точном числе наносекунд. Она означает, что число основных действий не растёт с числом элементов. При линейном обходе или сдвиге число действий растёт пропорционально длине последовательности: такую стоимость обозначают O(n).</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; tasks = [42, 17, 30]
+&gt;&gt;&gt; tasks[1]
+17
+&gt;&gt;&gt; tasks.append(30)
+&gt;&gt;&gt; tasks
+[42, 17, 30, 30]
+&gt;&gt;&gt; 17 in {42, 17, 30}
+True
+&gt;&gt;&gt; {42: 'новая', 17: 'готова'}[17]
+'готова'</pre></figure>
+      <p>У списка запрос <code>tasks[1]</code> сообщает позицию, поэтому ответ получается сразу. У множества запрос — ключ 17. У словаря по ключу 17 найдено связанное с ним состояние. Это разные задачи, хотя все примеры содержат одно и то же число.</p>
+
+      <h2 id="s2"><span class="sec">§2</span>Поиск и изменение ссылки — разные части работы</h2>
+      <p>В связной цепочке изменение ссылки может быть простым, но сначала нужный узел часто нужно найти. Рассмотрим цепочку 42 → 17 → 30. Если уже известен узел 42, можно исключить из цепочки следующий узел 17 одной заменой поля <code>next</code> у предшественника 42.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption>
+<pre>&gt;&gt;&gt; class Node:
+...     def __init__(self, value, next_node=None):
+...         self.value = value
+...         self.next = next_node
+...
+&gt;&gt;&gt; head = Node(42, Node(17, Node(30)))
+&gt;&gt;&gt; previous = head
+&gt;&gt;&gt; previous.next = previous.next.next
+&gt;&gt;&gt; head.value, head.next.value, head.next.next is None
+(42, 30, True)</pre></figure>
+      <p>После замены <code>previous.next</code> первый переход ведёт сразу к 30. У узла 30 поле <code>next</code> равно <code>None</code>, что подтверждает последняя часть результата. Узел 17 стал недоступен через <code>head</code>.</p>
+      <div class="widget">
+        <div class="widget__head"><b>Изменение известной ссылки</b><span>узел 17 исключается из цепочки</span></div>
+        <div class="widget__body">
+          <div class="table-scroll">
+          <svg viewBox="0 0 780 270" role="img" aria-label="До присваивания узлы 42, 17, 30 соединены подряд. После присваивания стрелка next из 42 ведёт к 30." style="min-width:680px;max-width:none;width:100%;height:auto">
+            <defs><marker id="link06" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L8,4.5 L0,9 Z" fill="#30312D"/></marker><marker id="change06" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L8,4.5 L0,9 Z" fill="#B3261E"/></marker></defs>
+            <text x="30" y="35" font-family="Inter, sans-serif" font-size="19" font-weight="700">До строки previous.next = previous.next.next</text>
+            <g font-family="Roboto Mono, monospace" font-size="19"><rect x="90" y="55" width="125" height="48" fill="#F1F2EC" stroke="#30312D" stroke-width="2"/><text x="152" y="86" text-anchor="middle">42</text><rect x="315" y="55" width="125" height="48" fill="#F1F2EC" stroke="#30312D" stroke-width="2"/><text x="377" y="86" text-anchor="middle">17</text><rect x="540" y="55" width="125" height="48" fill="#F1F2EC" stroke="#30312D" stroke-width="2"/><text x="602" y="86" text-anchor="middle">30</text></g>
+            <path d="M216 79 L313 79 M441 79 L538 79" stroke="#30312D" stroke-width="2.5" marker-end="url(#link06)"/><text x="122" y="128" font-family="Roboto Mono, monospace" font-size="15">head, previous</text>
+            <text x="30" y="172" font-family="Inter, sans-serif" font-size="19" font-weight="700">После строки: известная ссылка 42 меняется за O(1)</text>
+            <g font-family="Roboto Mono, monospace" font-size="19"><rect x="90" y="190" width="125" height="48" fill="#F8E9E7" stroke="#B3261E" stroke-width="3"/><text x="152" y="221" text-anchor="middle">42</text><rect x="315" y="190" width="125" height="48" fill="#F8E9E7" stroke="#B3261E" stroke-width="2" stroke-dasharray="6 4"/><text x="377" y="221" text-anchor="middle">17</text><rect x="540" y="190" width="125" height="48" fill="#F1F2EC" stroke="#30312D" stroke-width="2"/><text x="602" y="221" text-anchor="middle">30</text></g>
+            <path d="M216 214 C340 265, 450 265, 538 214" fill="none" stroke="#B3261E" stroke-width="3" marker-end="url(#change06)"/><text x="348" y="265" font-family="Inter, sans-serif" font-size="16" fill="#B3261E">новая ссылка next</text>
+          </svg>
+          </div>
+        </div>
+        <div class="widget__foot">Красная стрелка — новое значение поля <code>next</code>. Узел 17 стал недоступен через <code>head</code>; поиск самого <code>previous</code> в длинной цепочке был бы отдельной операцией O(n).</div>
+      </div>
+      <p>Если ссылка на предшественника неизвестна, программа начинает от <code>head</code> и проходит узлы. Этот поиск в худшем случае занимает O(n). Только после него идёт быстрая замена ссылки. Нельзя называть всю операцию O(1), если поиск входит в её условие.</p>
+
+      <h2 id="s3"><span class="sec">§3</span>Память и расположение данных</h2>
+      <p>Помимо числа действий структуры используют память по-разному. Для всех пяти структур общий рост с числом хранимых элементов обычно описывают как O(n). Постоянные расходы различаются. Список хранит массив ссылок. Каждый узел содержит значение и ссылку <code>next</code>. Дек организован для работы с концами. Словарь и множество содержат служебные ячейки хеш-таблицы.</p>
+      <p>Не стоит выводить точное число байт из этой таблицы. Оно зависит от версии Python, реализации интерпретатора, разрядности, размера объектов и текущего запаса свободных ячеек. Число байт сравнивают на одинаковых данных в конкретной среде; одна оценка O(n) этого сравнения не заменяет.</p>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Особенность</th><th>Что она даёт</th><th>Что учитывать</th></tr></thead>
+        <tbody>
+          <tr><td>В CPython <code>list</code> хранит ссылки рядом</td><td>По индексу можно сразу выбрать ячейку; последовательный проход часто удобен для процессора</td><td>Вставка в середину требует сдвига ссылок</td></tr>
+          <tr><td>Узлы — отдельные объекты</td><td>Известную ссылку можно изменить без сдвига всей последовательности</td><td>У каждого узла есть собственные поля; при обходе переходят по ссылкам</td></tr>
+          <tr><td><code>deque</code> рассчитан на концы</td><td>Добавление и снятие слева и справа не требуют сдвига всей очереди</td><td>Он не заменяет список, когда главное — произвольный индекс</td></tr>
+          <tr><td><code>dict</code> и <code>set</code> — хеш-таблицы</td><td>Ключ обычно находится быстро</td><td>Таблица хранит служебное место для поиска; порядок не выбирают по индексу</td></tr>
+        </tbody>
+      </table></div>
+      <p>Фраза «рядом» относится к внутреннему массиву ссылок списка, а не обязательно к самим объектам-значениям. Фраза «часто удобен для процессора» не является обещанием времени выполнения конкретной программы. Когда стоимость важна на практике, измеряют именно свой код и свою среду после выбора правильной модели.</p>
+
+      <h2 id="s4"><span class="sec">§4</span>Три выбора структуры</h2>
+      <p>Рассмотрим три задачи. В каждом случае сначала названа повторяющаяся операция, затем выбрана структура. Это надёжнее, чем выбирать контейнер по привычке.</p>
+      <div class="widget">
+        <div class="widget__head"><b>Выбор 1: номер задания известен</b><span>доступ по позиции</span></div>
+        <div class="widget__body"><p>В журнале есть задания <code>[42, 17, 30]</code>. Программа много раз получает задание с номером позиции <code>i</code>, например <code>tasks[2]</code>. Подходит <code>list</code>: известный индекс даёт доступ O(1). Цепочка <code>Node</code> здесь заставляла бы каждый раз идти от 42 через ссылки.</p></div>
+        <div class="widget__foot">Не путайте позицию с ключом. Если 42 — уникальный идентификатор, а не индекс, для поиска по нему нужен <code>dict</code> или <code>set</code>.</div>
+      </div>
+      <div class="widget">
+        <div class="widget__head"><b>Выбор 2: известен сосед в цепочке</b><span>изменение ссылки</span></div>
+        <div class="widget__body"><p>Редактор уже держит ссылку на узел перед местом изменения. Нужно убрать следующий узел 17 из фрагмента 42 → 17 → 30. Подходит цепочка <code>Node</code>: заменить одно поле <code>next</code> можно за O(1). Если редактору приходится сначала искать узел 42 от головы, стоимость поиска нужно прибавить.</p></div>
+        <div class="widget__foot">Здесь решает не слово «вставка», а условие «предшественник уже известен».</div>
+      </div>
+      <div class="widget">
+        <div class="widget__head"><b>Выбор 3: заявки и их номера</b><span>очередь плюс поиск по ключу</span></div>
+        <div class="widget__body"><p>Заявки обслуживаются в порядке прихода, поэтому ожидающие номера лежат в <code>deque</code>: новая заявка добавляется через <code>append</code>, следующая снимается через <code>popleft</code>. Одновременно программа должна быстро проверять, встречался ли номер 42, и хранить его статус. Для проверки подходит <code>set</code>, для статуса — <code>dict</code>.</p></div>
+        <div class="widget__foot">Одна программа может использовать несколько структур. <code>deque</code> отвечает за порядок очереди, <code>set</code> и <code>dict</code> — за поиск по ключу.</div>
+      </div>
+      <p>Итак, краткий путь выбора такой: назовите нужную операцию, проверьте её оценку, затем учтите порядок элементов и дополнительную память. Для связного списка нужно отдельно описать путь поиска и изменение полей. Это даёт основу для проверки операций на узлах.</p>
+
+<p>Три разобранных условия сведены в таблицу: в каждом выбор определяется доступной информацией и нужным действием.</p><div class="table-scroll"><table><thead><tr><th>Известно</th><th>Нужно</th><th>Выбор</th></tr></thead><tbody><tr><td>Индекс 2</td><td>прочитать 30</td><td>list: tasks[2]</td></tr><tr><td>Ссылка на узел 42</td><td>исключить следующий 17</td><td>Node: заменить next</td></tr><tr><td>Порядок прихода и номера заявок</td><td>снять первую, проверить номер, получить статус</td><td>deque + set/dict</td></tr></tbody></table></div><p>Совпадение чисел не делает операции одинаковыми. Индекс выбирает позицию, ссылка задаёт объект, ключ используется для поиска записи.</p>      <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Нужно много раз получить элемент по известному индексу <code>i</code>. Что выбрать?</div><ul class="quiz__opts">
+        <li data-ok><button type="button"><code>list</code></button><p class="quiz__why">Верно. Доступ <code>items[i]</code> у списка занимает O(1).</p></li>
+        <li><button type="button">Односвязную цепочку <code>Node</code></button><p class="quiz__why">До позиции i в односвязной цепочке нужно дойти переходами <code>next</code>, это O(n).</p></li>
+        <li><button type="button"><code>set</code></button><p class="quiz__why">У множества нет позиции i. Оно отвечает на вопрос, есть ли ключ.</p></li>
+      </ul></div>
+      <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>В цепочке удаление после известного узла стоит O(1). Почему удаление «элемента с номером 30» может стоить O(n)?</div><ul class="quiz__opts">
+        <li><button type="button">Потому что заменить <code>next</code> нельзя</button><p class="quiz__why">Заменить ссылку можно. Быстрая часть операции как раз состоит в этой замене.</p></li>
+        <li data-ok><button type="button">Сначала может понадобиться пройти цепочку и найти предшественника</button><p class="quiz__why">Верно. Изменение известной ссылки O(1), но поиск нужного места от головы в худшем случае O(n).</p></li>
+        <li><button type="button">Потому что все узлы нужно сдвинуть влево</button><p class="quiz__why">Сдвиг характерен для массива списка. В цепочке меняют ссылки между отдельными узлами.</p></li>
+      </ul></div>
+
+      <div class="sources"><b>Источники главы</b><ol>
+        <li>Документация Python: <a href="https://docs.python.org/3/tutorial/datastructures.html" target="_blank" rel="noopener">Data Structures</a>; <a href="https://docs.python.org/3/library/collections.html#collections.deque" target="_blank" rel="noopener">collections.deque</a>.</li>
+        <li>Python Wiki: <a href="https://wiki.python.org/moin/TimeComplexity" target="_blank" rel="noopener">TimeComplexity</a>.</li>
+        <li>Примеры REPL соответствуют синтаксису и выводу Python 3.12.</li>
+      </ol></div>
+      <div class="pager"><a href="05-ochered-i-dek.html">← 0.5 Очередь и дек</a><a href="../21-svyaznyy-spisok/01-obhod-i-poisk.html">Занятие 21. Обход и поиск →</a></div>
+      <div class="colophon"><span>Модуль 0 · Линейные структуры изнутри · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div>
+    </main>
+  </div></div>
+  <script src="../../massivy/book.js"></script><script src="../../massivy/algo.js"></script><script src="../lineynye.js"></script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#F1F2EC">
+  <title>21.2 Вставка и удаление · Линейные структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css"><link rel="stylesheet" href="../../massivy/algo.css"><link rel="stylesheet" href="../lineynye.css">
+</head>
+<body><div class="book"><div class="book__body"><div class="spine"><span>Модуль 21 · Связный список · ОП.04</span></div><main class="leaf">
+  <div class="running"><p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Линейные структуры</a> · модуль 21 · связный список</p><p class="running__folio">Глава 21.2</p></div>
+  <header class="chapter-head"><span class="chapter-num">21.2</span><h1>Вставка<br>и удаление</h1><p class="lead">В этой главе разобраны вставка и удаление узлов. Примеры показывают операции у головы, изменение после известного узла и поиск предшественника.</p></header>
+  <nav class="contents"><b>В этой главе</b><ol><li><a href="#s1">Цепочка для примеров</a></li><li><a href="#s2">Операции у головы</a></li><li><a href="#s3">Вставка после узла</a></li><li><a href="#s4">Удаление после узла</a></li><li><a href="#s5">Предшественник и стоимость</a></li></ol></nav>
+
+  <h2 id="s1"><span class="sec">§1</span>Цепочка для примеров</h2>
+  <p>Во всех примерах этой главы класс узла определён заново. Построим цепочку 42, 17, 30. Переменная <code>head</code> хранит ссылку на первый узел, а <code>second</code> — второй. В реальной задаче второй узел обычно получают поиском, но здесь он уже известен.</p>
+  <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; class Node:
+...     def __init__(self, value, next_node=None):
+...         self.value = value
+...         self.next = next_node
+...
+&gt;&gt;&gt; third = Node(30)
+&gt;&gt;&gt; second = Node(17, third)
+&gt;&gt;&gt; head = Node(42, second)
+&gt;&gt;&gt; head.value, second.value, second.next.value
+(42, 17, 30)</pre></figure>
+  <p>Каждая операция ниже получает ссылку на место изменения. Поиск позиции и изменение связей выполняются отдельно. В таблице показаны исходные ссылки.</p>
+
+<div class="table-scroll"><table><thead><tr><th>Имя</th><th>value узла</th><th>next</th></tr></thead><tbody><tr><td>head</td><td>42</td><td>ссылка на second</td></tr><tr><td>second</td><td>17</td><td>ссылка на third</td></tr><tr><td>third</td><td>30</td><td>None</td></tr></tbody></table></div><p>Из головы доступны оба последующих узла. Новую голову можно добавить перед всей этой цепочкой.</p>
+  <h2 id="s2"><span class="sec">§2</span>Операции у головы</h2>
+  <p>Чтобы добавить новый первый узел, сначала создают его со ссылкой на старую голову. Затем переменной <code>head</code> присваивают новый узел. Функция возвращает новую голову: это одинаково работает для пустой и непустой цепочки.</p>
+  <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; def push_front(head, value):
+...     return Node(value, head)
+...
+&gt;&gt;&gt; head = push_front(head, 9)
+&gt;&gt;&gt; head.value, head.next.value
+(9, 42)
+&gt;&gt;&gt; empty = push_front(None, 5)
+&gt;&gt;&gt; empty.value, empty.next is None
+(5, True)</pre></figure>
+  <p>При удалении головы новой головой становится <code>head.next</code>. У пустой цепочки удалять нечего, поэтому функция возвращает <code>None</code>.</p>
+  <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; def pop_front(head):
+...     if head is None:
+...         return None
+...     return head.next
+...
+&gt;&gt;&gt; head = pop_front(head)
+&gt;&gt;&gt; head.value
+42
+&gt;&gt;&gt; pop_front(None) is None
+True</pre></figure>
+  <p>Здесь меняется ссылка вне узлов: имя <code>head</code>. Поля <code>next</code> остаются как были. Обе операции у головы выполняют постоянное число действий и имеют стоимость O(1).</p>
+
+<p>В таблице прослеживается только внешняя ссылка <code>head</code>. Узлы 42, 17 и 30 сохраняют свои поля.</p><div class="table-scroll"><table><thead><tr><th>Строка</th><th>Голова</th><th>Доступные значения</th></tr></thead><tbody><tr><td>до операции</td><td>узел 42</td><td>42 → 17 → 30</td></tr><tr><td>head = push_front(head, 9)</td><td>новый узел 9</td><td>9 → 42 → 17 → 30</td></tr><tr><td>head = pop_front(head)</td><td>прежний узел 42</td><td>42 → 17 → 30</td></tr></tbody></table></div><p>Удаление головы восстанавливает исходную цепочку. Вставка в середину требует изменения поля внутри узла.</p>
+  <h2 id="s3"><span class="sec">§3</span>Вставка после известного узла</h2>
+  <p>Пусть нужно вставить 25 после узла <code>second</code>. До изменения <code>second.next</code> ведёт к узлу 30. Сначала новый узел должен запомнить этот старый путь. Лишь после этого поле <code>second.next</code> можно направить на новый узел.</p>
+  <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; def insert_after(node, value):
+...     inserted = Node(value, node.next)
+...     node.next = inserted
+...     return inserted
+...
+&gt;&gt;&gt; inserted = insert_after(second, 25)
+&gt;&gt;&gt; second.next is inserted, inserted.next is third
+(True, True)
+&gt;&gt;&gt; head.next.next.value, head.next.next.next.value
+(25, 30)</pre></figure>
+  <p>Раскадровка показывает две строки отдельно. На первой старая стрелка из <code>second.next</code> сохраняется в поле <code>inserted.next</code>. На второй меняется поле предшественника.</p>
+  <div class="widget"><div class="widget__head"><b>Вставка 25 после узла 17</b><span>до и после изменения ссылки</span></div><div class="widget__body">
+    <figure class="code ln-program"><figcaption><span>Шаг 1</span><span>новый узел запоминает старую ссылку</span></figcaption><pre><span data-line="0" class="ln-code-active">inserted = Node(25, second.next)</span><span data-line="1">second.next = inserted</span></pre></figure>
+    <div class="ln-diagram ln-static"><svg viewBox="0 0 360 620" role="img" aria-label="Новый узел 25 создан, его next ведёт к 30, next узла 17 пока тоже ведёт к 30"><defs><marker id="b1" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6z"/></marker></defs><text x="10" y="34" class="ln-name">second</text><path class="ln-link ln-variable" d="M86 29 H180 V76" marker-end="url(#b1)"/><g class="ln-object"><rect x="80" y="80" width="200" height="104"/><path d="M80 132 H280 M158 80 V184"/><text x="94" y="112" class="ln-small">value</text><text x="176" y="112" class="ln-small">next</text><text x="110" y="166" class="ln-value">17</text><circle cx="212" cy="157" r="4"/></g><path class="ln-link" d="M212 157 H326 V400 H180 V436" marker-end="url(#b1)"/><text x="12" y="228" class="ln-name">inserted</text><path class="ln-link ln-variable" d="M100 223 H180 V256" marker-end="url(#b1)"/><g class="ln-object ln-object--active"><rect x="80" y="260" width="200" height="104"/><path d="M80 312 H280 M158 260 V364"/><text x="94" y="292" class="ln-small">value</text><text x="176" y="292" class="ln-small">next</text><text x="110" y="346" class="ln-value">25</text><circle cx="212" cy="337" r="4"/></g><path class="ln-link" d="M212 337 V400 H180 V436" marker-end="url(#b1)"/><g class="ln-object"><rect x="80" y="440" width="200" height="104"/><path d="M80 492 H280 M158 440 V544"/><text x="94" y="472" class="ln-small">value</text><text x="176" y="472" class="ln-small">next</text><text x="110" y="526" class="ln-value">30</text><text x="183" y="526" class="ln-small">None</text></g><text x="14" y="592" class="ln-small">Две ссылки пока ведут к 30</text></svg></div>
+    <figure class="code ln-program"><figcaption><span>Шаг 2</span><span>поле next узла 17 изменено</span></figcaption><pre><span data-line="0">inserted = Node(25, second.next)</span><span data-line="1" class="ln-code-active">second.next = inserted</span></pre></figure>
+    <div class="ln-diagram ln-static"><svg viewBox="0 0 360 620" role="img" aria-label="После изменения next узла 17 ведёт к 25, next узла 25 ведёт к 30"><defs><marker id="b2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6z"/></marker></defs><text x="10" y="34" class="ln-name">second</text><path class="ln-link ln-variable" d="M86 29 H180 V76" marker-end="url(#b2)"/><g class="ln-object"><rect x="80" y="80" width="200" height="104"/><path d="M80 132 H280 M158 80 V184"/><text x="94" y="112" class="ln-small">value</text><text x="176" y="112" class="ln-small">next</text><text x="110" y="166" class="ln-value">17</text><circle cx="212" cy="157" r="4"/></g><path class="ln-link" d="M212 157 V220 H180 V256" marker-end="url(#b2)"/><g class="ln-object ln-object--active"><rect x="80" y="260" width="200" height="104"/><path d="M80 312 H280 M158 260 V364"/><text x="94" y="292" class="ln-small">value</text><text x="176" y="292" class="ln-small">next</text><text x="110" y="346" class="ln-value">25</text><circle cx="212" cy="337" r="4"/></g><path class="ln-link" d="M212 337 V400 H180 V436" marker-end="url(#b2)"/><g class="ln-object"><rect x="80" y="440" width="200" height="104"/><path d="M80 492 H280 M158 440 V544"/><text x="94" y="472" class="ln-small">value</text><text x="176" y="472" class="ln-small">next</text><text x="110" y="526" class="ln-value">30</text><text x="183" y="526" class="ln-small">None</text></g><text x="14" y="592" class="ln-small">Путь: 17 → 25 → 30</text></svg></div>
+  </div></div>
+  <p>Если сначала заменить <code>second.next</code>, через это поле уже нельзя получить ссылку на узел 30. В нашем примере его ещё удерживает переменная <code>third</code>; в общей операции такой дополнительной ссылки может не быть. Вставка после уже известного узла стоит O(1).</p>
+
+  <h2 id="s4"><span class="sec">§4</span>Удаление после известного узла</h2>
+  <p>Для удаления после узла <code>node</code> нужен узел, который останется перед удаляемым. Его поле <code>next</code> перенаправляют через один узел: на <code>node.next.next</code>. Если следующего узла нет, удалять нечего.</p>
+  <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; def remove_after(node):
+...     if node is None or node.next is None:
+...         return None
+...     removed = node.next
+...     node.next = removed.next
+...     return removed
+...
+&gt;&gt;&gt; removed = remove_after(second)
+&gt;&gt;&gt; removed.value, second.next is third
+(25, True)
+&gt;&gt;&gt; remove_after(third) is None
+True</pre></figure>
+  <p>После проверки границы ссылка на удаляемый объект сохраняется в <code>removed</code>. Затем <code>second.next</code> меняется с узла 25 на узел 30. Переменная <code>removed</code> всё ещё позволяет проверить удалённый узел, но из <code>head</code> к нему пути больше нет.</p>
+  <div class="widget"><div class="widget__head"><b>Удаление 25 после узла 17</b><span>изменяется одна связь</span></div><div class="widget__body"><figure class="code ln-program"><figcaption><span>Выполненная строка</span><span>переход через удаляемый узел</span></figcaption><pre><span data-line="0">removed = second.next</span><span data-line="1" class="ln-code-active">second.next = removed.next</span></pre></figure><div class="ln-diagram ln-static"><svg viewBox="0 0 360 500" role="img" aria-label="После удаления поле next узла 17 ведёт к 30, узел 25 остаётся отдельно в переменной removed"><defs><marker id="b3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6z"/></marker></defs><text x="8" y="30" class="ln-name">second</text><path class="ln-link ln-variable" d="M82 25 H180 V76" marker-end="url(#b3)"/><g class="ln-object"><rect x="80" y="80" width="200" height="104"/><path d="M80 132 H280 M158 80 V184"/><text x="94" y="112" class="ln-small">value</text><text x="176" y="112" class="ln-small">next</text><text x="110" y="166" class="ln-value">17</text><circle cx="212" cy="157" r="4"/></g><path class="ln-link" d="M212 157 V220 H180 V256" marker-end="url(#b3)"/><g class="ln-object"><rect x="80" y="260" width="200" height="104"/><path d="M80 312 H280 M158 260 V364"/><text x="94" y="292" class="ln-small">value</text><text x="176" y="292" class="ln-small">next</text><text x="110" y="346" class="ln-value">30</text><text x="183" y="346" class="ln-small">None</text></g><text x="8" y="404" class="ln-name">removed</text><path class="ln-link ln-variable" d="M93 399 H180 V436" marker-end="url(#b3)"/><g class="ln-object ln-object--active"><rect x="80" y="440" width="200" height="54"/><path d="M158 440 V494"/><text x="94" y="472" class="ln-small">value</text><text x="176" y="472" class="ln-small">25</text></g></svg></div></div></div>
+  <p>Удаление после известного предшественника тоже стоит O(1). Это не означает, что удалить значение в середине всегда можно за O(1): сначала может потребоваться найти предшественника.</p>
+
+  <h2 id="s5"><span class="sec">§5</span>Предшественник и стоимость</h2>
+  <p>В односвязной цепочке у узла нет поля «предыдущий». Чтобы удалить узел со значением 30, нужно идти от <code>head</code> и найти узел, у которого <code>next.value</code> равно 30. Такой узел называют предшественником.</p>
+  <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; def find_predecessor(head, wanted):
+...     current = head
+...     while current is not None and current.next is not None:
+...         if current.next.value == wanted:
+...             return current
+...         current = current.next
+...     return None
+...
+&gt;&gt;&gt; predecessor = find_predecessor(head, 30)
+&gt;&gt;&gt; predecessor is second
+True
+&gt;&gt;&gt; find_predecessor(head, 42) is None
+True</pre></figure>
+  <p>В этом примере число 42 встречается только в голове. Перед ней нет узла, поэтому поиск предшественника возвращает <code>None</code>. Поиск предшественника стоит O(n). Только после него удаление через <code>remove_after</code> занимает O(1). Полная стоимость в худшем случае — O(n), потому что поиск длиннее самой смены ссылки.</p>
+<p>Путь поиска предшественника значения 30 можно проследить по полю следующего узла.</p><div class="table-scroll"><table><thead><tr><th>current</th><th>current.next.value</th><th>Действие</th></tr></thead><tbody><tr><td>head: узел 42</td><td>17</td><td>перейти к second</td></tr><tr><td>second: узел 17</td><td>30</td><td>вернуть second</td></tr></tbody></table></div><p>После возврата <code>second</code> известен узел перед 30. Граничные состояния требуют отдельных проверок: следующий узел может отсутствовать.</p>
+  <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Почему при вставке сначала выполняют <code>Node(value, node.next)</code>?</div><ul class="quiz__opts"><li data-ok><button type="button">Чтобы новый узел сохранил путь к прежнему следующему узлу</button><p class="quiz__why">После замены <code>node.next</code> старую ссылку уже нельзя получить через это поле.</p></li><li><button type="button">Чтобы поменять значение в узле node</button><p class="quiz__why">Значение узла <code>node</code> не меняется. Создаётся новый объект.</p></li><li><button type="button">Чтобы найти голову списка</button><p class="quiz__why">Голова в этой операции не нужна: известен узел, после которого вставляют.</p></li></ul></div>
+  <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Какова стоимость удаления значения, если сначала нужно найти его предшественника?</div><ul class="quiz__opts"><li><button type="button">Всегда O(1)</button><p class="quiz__why">Смена ссылки занимает O(1), но предшественник может быть у конца длинной цепочки.</p></li><li data-ok><button type="button">В худшем случае O(n)</button><p class="quiz__why">Поиск предшественника идёт от головы и может просмотреть почти все узлы.</p></li><li><button type="button">O(n²)</button><p class="quiz__why">Здесь есть один проход до предшественника и постоянное число дальнейших действий.</p></li></ul></div>
+  <div class="sources"><b>Источники главы</b><ol><li>Документация Python: <a href="https://docs.python.org/3/tutorial/classes.html" target="_blank" rel="noopener">Classes</a>.</li><li>Примеры оформлены как сеансы Python 3.12; результаты соответствуют показанному коду.</li></ol></div>
+  <div class="pager"><a href="01-obhod-i-poisk.html">← 21.1 Обход и поиск</a><a href="03-granicy-i-proverka.html">21.3 Границы и проверка →</a></div><div class="colophon"><span>Модуль 21 · Связный список: от устройства к операциям · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div>
+</main></div></div><script src="../../massivy/book.js"></script><script src="../../massivy/algo.js"></script></body>
+</html>
