@@ -53,7 +53,7 @@
     }).join('');
     var step = state.pending ? button('foundation-step', 'Проверить ячейку ' + state.pending.index, 'hash-lab__button--primary') : '';
     container.innerHTML = '<section class="hash-lab" aria-labelledby="hash-foundation-title">' +
-      '<header><p class="hash-lab__eyebrow">Лаборатория · без оценки</p><h3 id="hash-foundation-title">Хэш-таблица: поиск места</h3><p>В этой модели функция <code>k % 8</code> работает только для неотрицательных целых. Это не настоящий <code>hash()</code> Python для всех типов.</p></header>' +
+      '<header><p class="hash-lab__eyebrow">Лаборатория · без оценки</p><h3 id="hash-foundation-title">Хэш-таблица: поиск места</h3><p>В этой модели начальная ячейка вычисляется как <code>k % 8</code>. Допускаются неотрицательные целые числа. В Python <code>dict</code> используются другая хеш-функция и другой порядок пробирования.</p></header>' +
       '<div class="hash-lab__controls"><label>Число <input inputmode="numeric" pattern="[0-9]*" data-role="foundation-input" value="' + escapeHtml(state.input) + '" aria-describedby="foundation-help"></label>' + button('foundation-add', 'Добавить число', 'hash-lab__button--primary') + button('foundation-reset', 'Сбросить') + '</div>' +
       '<p id="foundation-help" class="hash-lab__hint">Быстрые числа: ' + quick + '</p>' +
       '<p class="hash-lab__formula">Начальная ячейка: <strong>' + (state.pending ? state.pending.start : '—') + '</strong> · линейное пробирование по кругу</p>' +
@@ -173,7 +173,7 @@
     container.onchange = function (event) {
       if (!event.target.matches('input[name="hash-payment-key"]')) return;
       reset(event.target.value);
-      state.message = 'Ключ изменён; поток сброшен, чтобы сравнение было честным.';
+      state.message = 'Ключ изменён. Обработайте события заново и сравните результаты.';
       renderPayments(container, state);
     };
     renderPayments(container, state);
@@ -301,7 +301,7 @@
       else {
         var item = state.items.splice(index, 1)[0];
         state.items.push(item);
-        record('hit: ' + key + ' = ' + item.value + '. Нулевая цена сохранена; чтение обновило порядок.');
+        record('hit: ' + key + ' = ' + item.value + '. Чтение обновило порядок.');
       }
     }
     function put(key, value) {
