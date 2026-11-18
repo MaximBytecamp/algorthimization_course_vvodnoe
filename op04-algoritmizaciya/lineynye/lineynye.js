@@ -10,15 +10,15 @@
   let step = 0;
 
   const messages = [
-    'Начало. Нужно получить третий элемент, C.',
-    'Список: известен индекс 2, поэтому выбрана ячейка C. Цепочка: начинаем с head, то есть с узла A.',
-    'Цепочка: прочитали A.next и перешли к узлу B.',
-    'Цепочка: прочитали B.next и пришли к узлу C. Третий элемент найден.'
+    'Начало. Нужно получить третий элемент, 30.',
+    'Список: по индексу 2 получено значение 30. Цепочка: current = head, текущий узел — 42.',
+    'Цепочка: первый переход по next, текущий узел — 17.',
+    'Цепочка: второй переход по next, текущий узел — 30. Третий элемент найден.'
   ];
 
   function paint(items, currentIndex) {
     items.forEach((item, index) => {
-      item.classList.toggle('is-current', index === currentIndex);
+      item.classList.toggle('is-hot', index === currentIndex);
       item.classList.toggle('is-done', currentIndex !== null && index < currentIndex);
     });
   }
