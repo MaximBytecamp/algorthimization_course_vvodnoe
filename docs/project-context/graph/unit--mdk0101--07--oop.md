@@ -17,8 +17,11 @@ tags:
 
 ## Точки входа
 
+- [mdk0101-razrabotka-modulei/oop/AUTHORING.md](../../../mdk0101-razrabotka-modulei/oop/AUTHORING.md)
 - [mdk0101-razrabotka-modulei/oop/index.html](../../../mdk0101-razrabotka-modulei/oop/index.html)
 - [mdk0101-razrabotka-modulei/oop/book.js](../../../mdk0101-razrabotka-modulei/oop/book.js)
+- [mdk0101-razrabotka-modulei/oop/build_catalog.py](../../../mdk0101-razrabotka-modulei/oop/build_catalog.py)
+- [mdk0101-razrabotka-modulei/oop/chapters.json](../../../mdk0101-razrabotka-modulei/oop/chapters.json)
 - [mdk0101-razrabotka-modulei/oop/check_examples.py](../../../mdk0101-razrabotka-modulei/oop/check_examples.py)
 
 _Узел создан автоматически. Факты о состоянии работы храните в тематической заметке или `CURRENT.md`._

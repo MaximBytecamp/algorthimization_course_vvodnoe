@@ -2,6 +2,7 @@
 Запуск: python3 mdk0101-razrabotka-modulei/oop/check_examples.py
 Исполняет только помеченные data-run="python" примеры доверенного учебника.
 """
+import json
 from html.parser import HTMLParser
 from pathlib import Path
 import subprocess
@@ -51,6 +52,29 @@ def main():
         parsed = Examples()
         parsed.feed(path.read_text())
         pages[path] = parsed
+    chapters = json.loads((root / 'chapters.json').read_text(encoding='utf-8'))
+    for chapter in chapters:
+        path = (root / chapter['path']).resolve()
+        if chapter['status'] not in ('ready', 'planned'):
+            print(f'FAIL статус {chapter["number"]}: {chapter["status"]}')
+            failures += 1
+        elif chapter['status'] == 'ready':
+            if path not in pages:
+                print(f'FAIL отсутствует готовая глава {chapter["number"]}')
+                failures += 1
+            else:
+                parsed = pages[path]
+                required = {(root / 'index.html').resolve(), path.parent.parent / 'index.html'}
+                linked = {(path.parent / link.split('#')[0]).resolve() for link in parsed.links if '://' not in link}
+                if not required <= linked:
+                    print(f'FAIL навигация {chapter["number"]}: нет книги или модуля')
+                    failures += 1
+                if not any(fig['run'] == 'python' for fig in parsed.figures):
+                    print(f'FAIL нет примеров {chapter["number"]}')
+                    failures += 1
+        elif path.exists():
+            print(f'FAIL глава {chapter["number"]} существует со статусом planned')
+            failures += 1
     with tempfile.TemporaryDirectory(prefix='oop-examples-') as folder:
         for path, parsed in pages.items():
             local = 0
