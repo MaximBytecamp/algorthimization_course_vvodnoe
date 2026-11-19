@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>22.6 Границы и ошибки · Линейные структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../lineynye.css">
+  <link rel="stylesheet" href="../tasks22.css">
+</head>
+<body>
+<div class="book"><div class="book__body"><div class="spine"><span>Модуль 22 · Задачи на связные списки · ОП.04</span></div><main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../index.html">Линейные структуры</a> · модуль 22</p><p class="running__folio">Глава 22.6</p></div>
+<header class="chapter-head"><span class="chapter-num">22.6</span><h1>Границы и ошибки</h1><p class="lead">Соберём граничные тесты четырёх алгоритмов. Найдём ошибки по состоянию ссылок, исправим функции и проверим их в браузере.</p></header>
+<nav class="contents"><b>В этой главе</b><ol><li><a href="#s1">Граничные входы</a></li><li><a href="#s2">Симптом и причина</a></li><li><a href="#s3">Исправьте функции</a></li><li><a href="#s4">Как объяснить решение</a></li></ol></nav>
+<h2 id="s1"><span class="sec">§1</span>Граничные входы</h2>
+<p>При проверке собранной цепочки одних значений недостаточно: два разных узла могут хранить одну семёрку. Контракт задаёт также объекты, связи и форму ответа.</p><p>Граничный тест — маленький допустимый вход, на котором меняется число итераций или ветка алгоритма. Сначала запишите ожидаемый ответ, затем запускайте функцию.</p><div class="table-scroll"><table><thead><tr><th>Алгоритм</th><th>Минимальные входы</th><th>Что проверить</th></tr></thead><tbody><tr><td>reverse</td><td>0, 1, 2 и 5 узлов</td><td>Те же объекты в обратном порядке; новый хвост ведёт в None.</td></tr><tr><td>merge</td><td>Оба пустые; один пустой; равные значения; длинный остаток</td><td>Каждый исходный узел один раз, левые равные перед правыми.</td></tr><tr><td>middle</td><td>Длины 0–6, одинаковые значения</td><td>Ответ is nodes[n // 2]; все next прежние.</td></tr><tr><td>has_cycle</td><td>Пустой; самоссылка; цикл на голову; цикл после начала</td><td>Булев ответ; поля не меняются. Равные значения без цикла дают False.</td></tr></tbody></table></div><p>Цикл допустим только для has_cycle из этих четырёх функций. Не запускайте на нём остальные функции: конечность — их предусловие, то есть требование к входу.</p><figure class="code"><figcaption><span>Python 3.12</span><span>идентичность сравнивается через is</span></figcaption><pre>&gt;&gt;&gt; a = object()
+&gt;&gt;&gt; b = object()
+&gt;&gt;&gt; a is a, a is b
+(True, False)</pre></figure><p>Два объекта различаются независимо от подписи на схеме. Поэтому сохраните ссылки на узлы до вызова и проверяйте их через is. Теперь свяжем симптомы с конкретными строками.</p>
+<h2 id="s2"><span class="sec">§2</span>Симптом и причина</h2>
+<p>Один и тот же результат на экране может иметь разные причины. Например, короткий вывод после reverse возникает и при потере остатка, и при сохранении старой головы. Сопоставьте состояние ссылок со строкой, которая его изменила.</p><div class="table-scroll"><table><thead><tr><th>Симптом</th><th>Причина</th><th>Минимальный контрпример</th></tr></thead><tbody><tr><td>После разворота виден один узел</td><td>Не сохранён результат или продолжение прочитано после смены next.</td><td>A → B → None. Проверьте new_head и A.next отдельно.</td></tr><tr><td>merge потерял последние узлы</td><td>После while не присоединён остаток.</td><td>[1] и [2, 3]. Должны остаться все три объекта.</td></tr><tr><td>merge замкнул цепочку</td><td>Один общий объект присоединён повторно; вход нарушает контракт.</td><td>Обе головы указывают на один узел A. Такой вход исключён.</td></tr><tr><td>middle падает на одном узле</td><td>У fast.next читается next без проверки.</td><td>A → None: fast.next уже None.</td></tr><tr><td>Цикл найден в конечном списке</td><td>Сравниваются value вместо объектов или проверяется совпадение до движения.</td><td>Три семёрки без цикла должны дать False.</td></tr><tr><td>Проверка цикла не завершается</td><td>Один из указателей не сдвигается или используется обход до None.</td><td>A.next = A. Для Флойда ответ True после первого движения.</td></tr></tbody></table></div><p>В таблице есть допустимые тесты и отдельный пример нарушения контракта merge. Не требуйте от функции обработки запрещённого общего хвоста. Далее исправим четыре ошибки на допустимых входах.</p>
+<h2 id="s3"><span class="sec">§3</span>Исправьте функции</h2>
+<p>В каждой заготовке намеренно изменена одна часть алгоритма. До запуска назовите вход, который обнаружит ошибку. После исправления выполните тесты и объясните изменение поля или рабочей ссылки.</p><p>Песочница загружает Python с cdn.jsdelivr.net по кнопке «Запустить тесты». Первый запуск требует интернета. Код остаётся в локальном хранилище браузера; автоматической отправки преподавателю нет. Зависший запуск прерывается через пять секунд после загрузки Python.</p><p>Сравним порядок двух строк на одном входе A5 → B8 → None. Нажимайте вкладки: таблицы показывают состояние сразу после каждого присваивания.</p>
+<div class="demo" data-demo="reverse-order22"><div class="demo__tabs" role="tablist" aria-label="Порядок изменения next"><button type="button">Ошибка</button><button type="button">Исправление</button></div>
+<div class="demo__pane"><div class="table-scroll"><table><thead><tr><th>Строка</th><th>A.next</th><th>following</th><th>Путь от current</th></tr></thead><tbody><tr><td>Старт: prev = None, current = A</td><td>B</td><td>Не задана</td><td>A → B → None</td></tr><tr><td>current.next = prev</td><td>None</td><td>Не задана</td><td>A → None</td></tr><tr><td>following = current.next</td><td>None</td><td>None</td><td>A → None</td></tr></tbody></table></div><p>Поле A.next уже перезаписано. После чтения following равна None; узел B не попадёт в результат.</p></div>
+<div class="demo__pane"><div class="table-scroll"><table><thead><tr><th>Строка</th><th>A.next</th><th>following</th><th>Путь от current</th></tr></thead><tbody><tr><td>Старт: prev = None, current = A</td><td>B</td><td>Не задана</td><td>A → B → None</td></tr><tr><td>following = current.next</td><td>B</td><td>B</td><td>A → B → None</td></tr><tr><td>current.next = prev</td><td>None</td><td>B</td><td>A → None</td></tr></tbody></table></div><p>Ссылка following сохранила B до изменения A.next. После prev = current и current = following работа продолжится с B.</p></div></div>
+<p>Во втором варианте A.next тоже становится None, но путь к B остаётся в переменной. В каждой песочнице ниже найдите аналогичную причину ошибки и исправьте функцию.</p><h3>Разворот списка</h3><p>Найдите дефект в reverse(head). Полный контракт — в <a href="01-razvorot.html">22.2</a>.</p><div class="sandbox" id="fix-reverse" data-title="reverse(head)"><script type="text/plain" class="sandbox__start">
+class Node:
+    def __init__(self, value, next_node=None):
+        self.value = value
+        self.next = next_node
+
+def reverse(head):
+    prev, current = None, head
+    while current is not None:
+        current.next = prev
+        following = current.next
+        prev = current
+        current = following
+    return prev
+</script><script type="text/plain" class="sandbox__tests">
+def chain(values):
+    nodes = [Node(value) for value in values]
+    for left, right in zip(nodes, nodes[1:]):
+        left.next = right
+    return (nodes[0] if nodes else None), nodes
+
+def objects(head, limit):
+    result = []
+    while head is not None:
+        assert len(result) < limit, "Лишний узел или цикл в результате"
+        result.append(head)
+        head = head.next
+    return result
+
+def same_objects(actual, expected):
+    assert len(actual) == len(expected), "Изменилось число узлов"
+    assert all(a is b for a, b in zip(actual, expected)), "Нарушены идентичность или порядок узлов"
+
+def test_empty():
+    """пустой вход"""
+    assert reverse(None) is None
+
+def test_one():
+    """один исходный объект"""
+    head = Node(8)
+    assert reverse(head) is head and head.next is None
+
+def test_order_and_identity():
+    """те же объекты в обратном порядке"""
+    head, nodes = chain([5, 8, 2])
+    result = reverse(head)
+    same_objects(objects(result, 3), nodes[::-1])
+    assert nodes[0].next is None
+    assert [n.value for n in nodes] == [5, 8, 2]
+
+def test_duplicates():
+    """равные значения не заменяют идентичность"""
+    head, nodes = chain([7, 7])
+    same_objects(objects(reverse(head), 2), nodes[::-1])
+
+def test_double_reverse():
+    """два разворота восстанавливают связи"""
+    head, nodes = chain([1, 2, 3, 4, 5])
+    result = reverse(reverse(head))
+    same_objects(objects(result, 5), nodes)
+</script></div><details class="more"><summary>Сверка после собственной попытки</summary><div><figure class="code"><figcaption><span>Python 3.12</span><span>код для самостоятельного запуска</span></figcaption><pre>def reverse(head):
+    prev = None
+    current = head
+    while current is not None:
+        following = current.next
+        current.next = prev
+        prev = current
+        current = following
+    return prev</pre></figure><p>Перед проверкой while ссылка prev ведёт по уже обработанным узлам в обратном порядке. current держит начало необработанной части. Сначала сохраняем current.next, затем меняем поле, переносим prev и current.</p></div></details><h3>Слияние списков</h3><p>Найдите дефект в merge(left, right). Полный контракт — в <a href="02-sliyanie.html">22.3</a>.</p><div class="sandbox" id="fix-merge" data-title="merge(left, right)"><script type="text/plain" class="sandbox__start">
+class Node:
+    def __init__(self, value, next_node=None):
+        self.value = value
+        self.next = next_node
+
+def merge(left, right):
+    dummy = Node(None)
+    tail = dummy
+    while left is not None and right is not None:
+        if left.value <= right.value:
+            tail.next = left
+            left = left.next
+        else:
+            tail.next = right
+            right = right.next
+        tail = tail.next
+    tail.next = None
+    return dummy.next
+</script><script type="text/plain" class="sandbox__tests">
+def chain(values):
+    nodes = [Node(value) for value in values]
+    for left, right in zip(nodes, nodes[1:]):
+        left.next = right
+    return (nodes[0] if nodes else None), nodes
+
+def objects(head, limit):
+    result = []
+    while head is not None:
+        assert len(result) < limit, "Лишний узел или цикл в результате"
+        result.append(head)
+        head = head.next
+    return result
+
+def same_objects(actual, expected):
+    assert len(actual) == len(expected), "Изменилось число узлов"
+    assert all(a is b for a, b in zip(actual, expected)), "Нарушены идентичность или порядок узлов"
+
+def test_empty():
+    """два пустых входа"""
+    assert merge(None, None) is None
+
+def test_one_empty():
+    """пустой вход с каждой стороны"""
+    for empty_left in (True, False):
+        head, nodes = chain([2, 4])
+        result = merge(None, head) if empty_left else merge(head, None)
+        same_objects(objects(result, 2), nodes)
+
+def test_interleaved():
+    """порядок и оба узла с равным значением"""
+    left, a = chain([1, 4])
+    right, b = chain([2, 4])
+    result = merge(left, right)
+    same_objects(objects(result, 4), [a[0], b[0], a[1], b[1]])
+    assert [n.value for n in a + b] == [1, 4, 2, 4]
+
+def test_remaining_tail():
+    """остаток длиннее одного узла с каждой стороны"""
+    for swap in (False, True):
+        left, a = chain([1])
+        right, b = chain([2, 3, 4])
+        result = merge(right, left) if swap else merge(left, right)
+        same_objects(objects(result, 4), a + b)
+
+def test_all_equal():
+    """все левые равные узлы перед правыми"""
+    left, a = chain([7, 7])
+    right, b = chain([7, 7])
+    same_objects(objects(merge(left, right), 4), a + b)
+</script></div><details class="more"><summary>Сверка после собственной попытки</summary><div><figure class="code"><figcaption><span>Python 3.12</span><span>код для самостоятельного запуска</span></figcaption><pre>def merge(left, right):
+    dummy = Node(None)
+    tail = dummy
+    while left is not None and right is not None:
+        if left.value &lt;= right.value:
+            tail.next = left
+            left = left.next
+        else:
+            tail.next = right
+            right = right.next
+        tail = tail.next
+    tail.next = left if left is not None else right
+    return dummy.next</pre></figure><p>Участок от dummy.next до tail содержит уже выбранные узлы в нужном порядке. left и right держат головы остатков. Связь после tail ещё может вести в остаток: граница готовой части задаётся именно tail.</p></div></details><h3>Правая середина</h3><p>Найдите дефект в middle(head). Полный контракт — в <a href="03-seredina.html">22.4</a>.</p><div class="sandbox" id="fix-middle" data-title="middle(head)"><script type="text/plain" class="sandbox__start">
+class Node:
+    def __init__(self, value, next_node=None):
+        self.value = value
+        self.next = next_node
+
+def middle(head):
+    slow = fast = head
+    while fast is not None:
+        slow = slow.next
+        fast = fast.next.next
+    return slow
+</script><script type="text/plain" class="sandbox__tests">
+def chain(values):
+    nodes = [Node(value) for value in values]
+    for left, right in zip(nodes, nodes[1:]):
+        left.next = right
+    return (nodes[0] if nodes else None), nodes
+
+def objects(head, limit):
+    result = []
+    while head is not None:
+        assert len(result) < limit, "Лишний узел или цикл в результате"
+        result.append(head)
+        head = head.next
+    return result
+
+def same_objects(actual, expected):
+    assert len(actual) == len(expected), "Изменилось число узлов"
+    assert all(a is b for a, b in zip(actual, expected)), "Нарушены идентичность или порядок узлов"
+
+def test_empty():
+    """пустой вход"""
+    assert middle(None) is None
+
+def test_lengths():
+    """длины от 1 до 6, правая середина"""
+    for size in range(1, 7):
+        head, nodes = chain(range(size))
+        assert middle(head) is nodes[size // 2], f"Неверный узел при длине {size}"
+
+def test_unchanged_links():
+    """все исходные связи сохраняются"""
+    head, nodes = chain([4, 1, 9, 2, 8])
+    before = [n.next for n in nodes]
+    assert middle(head) is nodes[2]
+    assert all(n.next is link for n, link in zip(nodes, before))
+
+def test_equal_values():
+    """сравнивается объект, а не значение"""
+    head, nodes = chain([7, 7, 7, 7])
+    assert middle(head) is nodes[2]
+</script></div><details class="more"><summary>Сверка после собственной попытки</summary><div><figure class="code"><figcaption><span>Python 3.12</span><span>код для самостоятельного запуска</span></figcaption><pre>def middle(head):
+    slow = fast = head
+    while fast is not None and fast.next is not None:
+        slow = slow.next
+        fast = fast.next.next
+    return slow</pre></figure><p>После t полных итераций slow находится на позиции t, fast — на позиции 2t или равен None. Перед двойным переходом проверяются fast и fast.next. Остановка даёт slow на позиции n // 2.</p></div></details><h3>Наличие цикла</h3><p>Найдите дефект в has_cycle(head). Полный контракт — в <a href="04-cikl.html">22.5</a>.</p><div class="sandbox" id="fix-cycle" data-title="has_cycle(head)"><script type="text/plain" class="sandbox__start">
+class Node:
+    def __init__(self, value, next_node=None):
+        self.value = value
+        self.next = next_node
+
+def has_cycle(head):
+    slow = fast = head
+    while fast is not None and fast.next is not None:
+        slow = slow.next
+        fast = fast.next.next
+        if slow.value == fast.value:
+            return True
+    return False
+</script><script type="text/plain" class="sandbox__tests">
+def chain(values):
+    nodes = [Node(value) for value in values]
+    for left, right in zip(nodes, nodes[1:]):
+        left.next = right
+    return (nodes[0] if nodes else None), nodes
+
+def objects(head, limit):
+    result = []
+    while head is not None:
+        assert len(result) < limit, "Лишний узел или цикл в результате"
+        result.append(head)
+        head = head.next
+    return result
+
+def same_objects(actual, expected):
+    assert len(actual) == len(expected), "Изменилось число узлов"
+    assert all(a is b for a, b in zip(actual, expected)), "Нарушены идентичность или порядок узлов"
+
+def test_empty():
+    """пустой вход"""
+    assert has_cycle(None) is False
+
+def test_no_cycle():
+    """длины 1–5, в том числе одинаковые значения"""
+    for size in range(1, 6):
+        head, nodes = chain([7] * size)
+        assert has_cycle(head) is False
+
+def test_self_loop():
+    """самоссылка"""
+    head = Node(8)
+    head.next = head
+    assert has_cycle(head) is True
+    assert head.next is head
+
+def test_cycle_entries():
+    """каждый вход в цикл и сохранение связей"""
+    for entry in range(5):
+        head, nodes = chain([7, 7, 9, 4, 5])
+        nodes[-1].next = nodes[entry]
+        before = [n.next for n in nodes]
+        assert has_cycle(head) is True
+        assert all(n.next is link for n, link in zip(nodes, before))
+
+def test_overridden_equality():
+    """__eq__ не определяет встречу"""
+    class EqualNode(Node):
+        def __eq__(self, other):
+            return True
+    a = EqualNode(1)
+    b = EqualNode(2)
+    c = EqualNode(3)
+    a.next, b.next = b, c
+    assert has_cycle(a) is False
+</script></div><details class="more"><summary>Сверка после собственной попытки</summary><div><figure class="code"><figcaption><span>Python 3.12</span><span>код для самостоятельного запуска</span></figcaption><pre>def has_cycle(head):
+    slow = fast = head
+    while fast is not None and fast.next is not None:
+        slow = slow.next
+        fast = fast.next.next
+        if slow is fast:
+            return True
+    return False</pre></figure><p>На каждой полной итерации slow делает один переход, fast — два. Встречу через is проверяем после обоих движений. В конечной цепочке fast достигает конца; внутри цикла разность позиций меняется на один шаг по кругу.</p></div></details><p>Зелёные тесты подтверждают эти случаи. Проверьте также, что исправленная строка соответствует контракту. Затем объясните завершение цикла.</p>
+<h2 id="s4"><span class="sec">§4</span>Как объяснить решение</h2>
+<p>На проверке решения нужно восстановить путь по стрелкам и назвать причину остановки. Возьмите один пример, проговорите значения рабочих ссылок и только затем назовите оценку сложности.</p><div class="table-scroll"><table><thead><tr><th>Алгоритм</th><th>Почему заканчивается</th><th>Стоимость</th></tr></thead><tbody><tr><td>reverse</td><td>После каждой итерации необработанных узлов на один меньше.</td><td>O(n) времени, O(1) памяти.</td></tr><tr><td>merge</td><td>Каждый выбор сокращает один остаток; затем второй присоединяется целиком.</td><td>O(n + m) в худшем случае, O(1) памяти.</td></tr><tr><td>middle</td><td>fast за один шаг цикла проходит две ссылки к концу конечной цепочки.</td><td>O(n) времени, O(1) памяти.</td></tr><tr><td>has_cycle</td><td>fast достигает конца либо догоняет slow в конечном кольце.</td><td>O(n) времени, O(1) памяти; n — число достижимых узлов.</td></tr></tbody></table></div><div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Для A7 → B7 → C7 → None has_cycle вернула True. Какой тест лучше отличит сравнение значений от сравнения объектов?</div><ul class="quiz__opts"><li data-ok><button type="button">Сохранить три разных объекта и ожидать False</button><p class="quiz__why">Совпали только value. Ни один объект повторно не посещается.</p></li><li><button type="button">Проверить только пустой вход</button><p class="quiz__why">На пустом входе ошибочное сравнение может вообще не выполняться.</p></li><li><button type="button">Заменить все семёрки разными числами</button><p class="quiz__why">Так ошибка скроется: значения перестанут совпадать.</p></li></ul></div><p>После исправления ошибок переходите к двум самостоятельным решениям. Запишите контракт и ожидаемые ответы до первого запуска.</p>
+<div class="sources"><b>Источники главы</b><ol><li>КТП ОП.04, занятие 22: практика — две задачи из набора «разворот, слияние, цикл, середина».</li><li>Документация Python: <a href="https://docs.python.org/3/reference/expressions.html#is-not" target="_blank" rel="noopener">идентичность объектов</a>.</li><li>Задачи LeetCode: <a href="https://leetcode.com/problems/reverse-linked-list/" target="_blank" rel="noopener">206</a>, <a href="https://leetcode.com/problems/merge-two-sorted-lists/" target="_blank" rel="noopener">21</a>, <a href="https://leetcode.com/problems/middle-of-the-linked-list/" target="_blank" rel="noopener">876</a>, <a href="https://leetcode.com/problems/linked-list-cycle/" target="_blank" rel="noopener">141</a>. Контракты пустого входа и равенства уточнены в этой книге.</li></ol></div>
+<div class="pager"><a href="04-cikl.html">← 22.5 Как обнаружить цикл</a><a href="06-praktika-i-dz.html">22.7 Практика и домашнее задание →</a></div>
+<div class="colophon"><span>Модуль 22 · Задачи на связные списки · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div>
+</main></div></div><script src="../../massivy/book.js"></script><script src="../../massivy/algo.js"></script><script src="../lineynye.js"></script><script src="../tasks22.js"></script>
+</body></html>

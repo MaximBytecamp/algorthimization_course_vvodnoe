@@ -22,5 +22,8 @@ tags:
 - [op04-algoritmizaciya/lineynye/22-zadachi-na-spiski/02-sliyanie.html](../../../op04-algoritmizaciya/lineynye/22-zadachi-na-spiski/02-sliyanie.html)
 - [op04-algoritmizaciya/lineynye/22-zadachi-na-spiski/03-seredina.html](../../../op04-algoritmizaciya/lineynye/22-zadachi-na-spiski/03-seredina.html)
 - [op04-algoritmizaciya/lineynye/22-zadachi-na-spiski/04-cikl.html](../../../op04-algoritmizaciya/lineynye/22-zadachi-na-spiski/04-cikl.html)
+- [op04-algoritmizaciya/lineynye/22-zadachi-na-spiski/05-granicy-i-oshibki.html](../../../op04-algoritmizaciya/lineynye/22-zadachi-na-spiski/05-granicy-i-oshibki.html)
+- [op04-algoritmizaciya/lineynye/22-zadachi-na-spiski/06-praktika-i-dz.html](../../../op04-algoritmizaciya/lineynye/22-zadachi-na-spiski/06-praktika-i-dz.html)
+- [op04-algoritmizaciya/lineynye/22-zadachi-na-spiski/07-mok-intervyu.html](../../../op04-algoritmizaciya/lineynye/22-zadachi-na-spiski/07-mok-intervyu.html)
 
 _Узел создан автоматически. Факты о состоянии работы храните в тематической заметке или `CURRENT.md`._
