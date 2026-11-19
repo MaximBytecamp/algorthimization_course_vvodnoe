@@ -40,7 +40,8 @@
 &gt;&gt;&gt; empty = push_front(None, 5)
 &gt;&gt;&gt; empty.value, empty.next is None
 (5, True)</pre></figure>
-  <p>При удалении головы новой головой становится <code>head.next</code>. У пустой цепочки удалять нечего, поэтому функция возвращает <code>None</code>.</p>
+  <p>При удалении головы новой головой становится <code>head.next</code>. Функция возвращает начало получившейся цепочки. Присваивание <code>head = pop_front(head)</code> сохраняет эту ссылку у вызывающего кода. Без присваивания внешняя переменная останется у прежнего первого узла.</p>
+  <p>Если в цепочке был один узел, его <code>next</code> равно <code>None</code>. После удаления голова станет <code>None</code>: список пуст. При изначально пустой цепочке функция тоже возвращает <code>None</code>.</p>
   <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; def pop_front(head):
 ...     if head is None:
 ...         return None
@@ -77,8 +78,31 @@ True</pre></figure>
   </div></div>
   <p>Если сначала заменить <code>second.next</code>, через это поле уже нельзя получить ссылку на узел 30. В нашем примере его ещё удерживает переменная <code>third</code>; в общей операции такой дополнительной ссылки может не быть. Вставка после уже известного узла стоит O(1).</p>
 
+  <p>Проверим порядок присваиваний на отдельном примере. После узла 10 нужно вставить новый узел 20. Прежнее продолжение начинается с 30. Здесь <code>previous</code> — предшественник, <code>new</code> — отдельный новый узел с <code>next = None</code>.</p>
+  <figure class="code"><figcaption><span>Два варианта Python</span><span>каждый начинается с 10 → 30</span></figcaption><pre># Вариант А
+new.next = previous.next
+previous.next = new
+
+# Вариант Б
+previous.next = new
+new.next = previous.next</pre></figure>
+  <div class="quiz"><div class="quiz__q"><b>Найдите ошибку</b>Какой вариант создаст цепочку 10 → 20 → 30 → None?</div><ul class="quiz__opts"><li data-ok><button type="button">Только вариант А</button><p class="quiz__why">Сначала new.next получает прежнюю ссылку на 30. Затем previous.next направляется на 20. Обе связи сохраняются.</p></li><li><button type="button">Только вариант Б</button><p class="quiz__why">В первой строке previous.next уже становится ссылкой на new. Вторая строка записывает эту же ссылку в new.next: узел 20 ссылается на себя.</p></li><li><button type="button">Оба варианта</button><p class="quiz__why">После первого присваивания правая часть следующей строки может измениться. В варианте Б previous.next уже не ведёт к 30.</p></li></ul></div>
+  <details class="more"><summary>Проследить оба варианта по строкам</summary><div class="more__body">
+    <p>В каждом варианте исходные ссылки одинаковы. В таблице указано, на какой узел ведёт каждое поле после очередной строки.</p>
+    <div class="table-scroll"><table><thead><tr><th>Состояние</th><th>previous.next</th><th>new.next</th><th>Путь от 10</th></tr></thead><tbody><tr><td>До изменений</td><td>узел 30</td><td>None</td><td>10 → 30 → None</td></tr><tr><td>А: new.next = previous.next</td><td>узел 30</td><td>узел 30</td><td>10 → 30 → None</td></tr><tr><td>А: previous.next = new</td><td>узел 20</td><td>узел 30</td><td>10 → 20 → 30 → None</td></tr><tr><td>Б: previous.next = new</td><td>узел 20</td><td>None</td><td>10 → 20 → None</td></tr><tr><td>Б: new.next = previous.next</td><td>узел 20</td><td>узел 20</td><td>10 → 20 → 20 → …</td></tr></tbody></table></div>
+    <p>В варианте Б повторяется один и тот же объект 20. Обход с условием <code>current is not None</code> не закончится. Узел 30 недоступен из головы; отдельная сохранённая ссылка на него может оставаться.</p>
+  </div></details>
+  <p>Перед заменой поля нужно определить, понадобится ли его прежняя ссылка. При удалении её используют, чтобы получить продолжение после исключаемого узла.</p>
   <h2 id="s4"><span class="sec">§4</span>Удаление после известного узла</h2>
-  <p>Для удаления после узла <code>node</code> нужен узел, который останется перед удаляемым. Его поле <code>next</code> перенаправляют через один узел: на <code>node.next.next</code>. Если следующего узла нет, удалять нечего.</p>
+  <p>При удалении меняют путь по цепочке. Предшественник получает ссылку на узел после удаляемого. Поэтому обход от головы пропускает исключённый объект. Если на него ссылается отдельная переменная, через неё по-прежнему доступны его поля.</p>
+  <p>Для удаления после узла <code>node</code> его поле <code>next</code> перенаправляют на <code>node.next.next</code>. Если следующего узла нет, удалять нечего.</p>
+  <p>Разберём запись <code>previous.next = previous.next.next</code> на цепочке 10 → 20 → 30. Переменная <code>previous</code> ссылается на 10. Сначала вычисляется вся правая часть, затем изменяется поле слева.</p>
+  <div class="table-scroll"><table><thead><tr><th>Часть действия</th><th>Результат</th></tr></thead><tbody><tr><td><code>previous.next</code> справа</td><td>ссылка на узел 20</td></tr><tr><td>ещё одно <code>.next</code> справа</td><td>ссылка из узла 20 на узел 30</td></tr><tr><td>запись в <code>previous.next</code> слева</td><td>поле next узла 10 теперь ведёт к 30</td></tr></tbody></table></div>
+  <p>Получается путь 10 → 30 → None. Поле <code>next</code> узла 20 сохраняет ссылку на 30. Ту же операцию можно записать с промежуточными переменными:</p>
+  <figure class="code"><figcaption><span>Python</span><span>развёрнутая запись удаления</span></figcaption><pre>removed = previous.next
+following = removed.next
+previous.next = following</pre></figure>
+  <p>Переменная <code>removed</code> сохраняет исключаемый узел, <code>following</code> — продолжение после него. В функции ниже продолжение читается сразу через <code>removed.next</code>.</p>
 <p><code>remove_after</code> возвращает исключённый узел. Если узла для удаления нет, результат — <code>None</code>. В условии с <code>or</code> Python проверяет части слева направо: при истинном <code>node is None</code> чтение <code>node.next</code> пропускается.</p>
 
   <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; def remove_after(node):
@@ -93,6 +117,7 @@ True</pre></figure>
 (25, True)
 &gt;&gt;&gt; remove_after(third) is None
 True</pre></figure>
+  <div class="quiz"><div class="quiz__q"><b>Предскажите состояние</b>После <code>removed = remove_after(second)</code> узел 25 исключён из пути от головы. Куда ведёт его собственное поле <code>removed.next</code>?</div><ul class="quiz__opts"><li data-ok><button type="button">К узлу 30</button><p class="quiz__why">Функция меняет поле next предшественника. Присваивания removed.next = None в ней нет, поэтому исключённый узел сохраняет ссылку на 30.</p></li><li><button type="button">К None</button><p class="quiz__why">Для такого результата нужно отдельно выполнить removed.next = None. Исключение из цепочки само по себе поля узла не очищает.</p></li><li><button type="button">Узел 25 уже недоступен из любой переменной</button><p class="quiz__why">Функция возвращает исключённый объект. Переменные removed и inserted сохраняют ссылки на него, поэтому его поля доступны.</p></li></ul></div>
   <p>После проверки границы ссылка на удаляемый объект сохраняется в <code>removed</code>. Затем <code>second.next</code> меняется с узла 25 на узел 30. Переменная <code>removed</code> всё ещё позволяет проверить удалённый узел, но из <code>head</code> к нему пути больше нет.</p>
 <p>В этой функции поле <code>removed.next</code> сохраняется. Из удалённого узла ещё можно перейти к 30. В главе 0.2 это поле дополнительно обнулялось для полного отсоединения; для исключения из пути от головы достаточно изменить ссылку предшественника.</p>
 
