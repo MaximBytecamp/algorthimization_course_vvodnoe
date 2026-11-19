@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>22.2 Слияние упорядоченных списков · Линейные структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../lineynye.css">
+  <link rel="stylesheet" href="../tasks22.css">
+</head>
+<body>
+<div class="book"><div class="book__body"><div class="spine"><span>Модуль 22 · Задачи на связные списки · ОП.04</span></div><main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../index.html">Линейные структуры</a> · модуль 22</p><p class="running__folio">Глава 22.2</p></div>
+<header class="chapter-head"><span class="chapter-num">22.2</span><h1>Слияние упорядоченных списков</h1><p class="lead">Объединим две упорядоченные цепочки без копирования полезных узлов. Разберём роль dummy, продвижение хвоста и присоединение оставшейся части.</p></header>
+<nav class="contents"><b>В этой главе</b><ol><li><a href="#s1">Выбирать из двух голов</a></li><li><a href="#s2">Собирать за хвостом</a></li><li><a href="#s3">Проверить связи</a></li><li><a href="#s4">Остатки и задача</a></li></ol></nav>
+<p>В развороте каждый узел переносился в начало готовой части. При слиянии узлы добавляются в конец, а их порядок определяется сравнением значений.</p>
+<h2 id="s1"><span class="sec">§1</span>Выбирать из двух голов</h2>
+<p>Два устройства записали события в порядке времени. Одна цепочка содержит 1 → 4, другая — 2 → 4. Нужно получить общий порядок 1 → 2 → 4 → 4, сохранив оба события с отметкой 4.</p>
+<p><span class="term">Слияние</span> соединяет две уже упорядоченные последовательности в одну. В каждом исходном списке следующий элемент не меньше текущего. Поэтому самый маленький из оставшихся элементов находится у одной из двух голов. Достаточно сравнить их, взять меньший и сдвинуть только эту голову.</p>
+<p>Функция <code>merge(left, right)</code> принимает две конечные цепочки, упорядоченные по неубыванию. Значения должны допускать сравнение <code>&lt;=</code>. Цепочки не должны содержать общих узлов: алгоритм перестраивает их связи на месте. Он возвращает голову результата и не создаёт копии полезных узлов.</p>
+<p>Построим две цепочки. Имена B и D различают узлы с одинаковым значением 4.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>сеанс с выводом</span></figcaption><pre>&gt;&gt;&gt; class Node:
+...     def __init__(self, value, next_node=None):
+...         self.value = value
+...         self.next = next_node
+...
+&gt;&gt;&gt; b = Node(4)
+&gt;&gt;&gt; a = Node(1, b)
+&gt;&gt;&gt; d = Node(4)
+&gt;&gt;&gt; c = Node(2, d)
+&gt;&gt;&gt; left, right = a, c
+&gt;&gt;&gt; b.value == d.value, b is d
+(True, False)</pre></figure>
+<p>Равенство значений не делает объекты одинаковыми. При слиянии должны сохраниться и B, и D. Если значения равны, будем сначала брать узел из левой цепочки.</p>
+<p>В таблице перечислены исходные поля. Две головы ведут к разным наборам объектов.</p><div class="table-scroll"><table><thead><tr><th>Объект</th><th>value</th><th>next</th><th>Исходная цепочка</th></tr></thead><tbody><tr><td>A</td><td>1</td><td>B</td><td>Левая</td></tr><tr><td>B</td><td>4</td><td>None</td><td>Левая</td></tr><tr><td>C</td><td>2</td><td>D</td><td>Правая</td></tr><tr><td>D</td><td>4</td><td>None</td><td>Правая</td></tr></tbody></table></div><p>Сравнение голов выберет A1 перед C2. После этого левой головой для выбора станет B4. Для сохранения выбранных узлов заведём отдельный хвост результата.</p>
+<h2 id="s2"><span class="sec">§2</span>Собирать результат за хвостом</h2>
+<p>Для результата заведём служебный узел <code>dummy</code>, как при удалении в модуле 21. Полезные узлы будут начинаться с <code>dummy.next</code>. Ссылка <code>tail</code> отмечает последний уже выбранный узел; сначала это сам <code>dummy</code>.</p>
+<p>Строка <code>tail.next = left</code> присоединяет выбранный узел к результату. Затем <code>left = left.next</code> сдвигает левую рабочую ссылку. После выбора из любой стороны <code>tail = tail.next</code> переводит хвост на присоединённый узел.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>сеанс с выводом</span></figcaption><pre>&gt;&gt;&gt; def merge(left, right):
+...     dummy = Node(None)
+...     tail = dummy
+...     while left is not None and right is not None:
+...         if left.value &lt;= right.value:
+...             tail.next = left
+...             left = left.next
+...         else:
+...             tail.next = right
+...             right = right.next
+...         tail = tail.next
+...     tail.next = left if left is not None else right
+...     return dummy.next
+...</pre></figure>
+<p>Условие цикла требует два непустых остатка. Когда один закончился, сравнивать больше нечего. Последняя строка присоединения берёт весь второй остаток: <code>left</code>, если он не равен <code>None</code>, иначе <code>right</code>. При двух пустых остатках записывается <code>None</code>.</p>
+<p>Посмотрите, как хвост переходит с dummy на A, затем на C и B. Выбранный узел пока хранит прежнее <code>next</code>; эта связь меняется, когда к нему присоединяют следующий выбранный узел.</p>
+<div class="widget" data-task22="merge"><div class="widget__head"><span>Слияние A1 → B4 и C2 → D4</span><span data-step class="ln-step"></span></div><div class="widget__body"><p>Буквы обозначают конкретные объекты Node. Сплошные стрелки выходят из поля next, пунктирные — от переменных. Тире у переменной означает, что её присваивание ещё не выполнено.</p><div class="ln-diagram" data-chain-diagram></div><figure class="code ln-program"><figcaption><span>Тело функции</span><span>выполненная строка выделена</span></figcaption><pre><span data-line="0">dummy = Node(None)</span><span data-line="1">tail = dummy</span><span data-line="2">while left is not None and right is not None:</span><span data-line="3">    if left.value &lt;= right.value:</span><span data-line="4">        tail.next = left</span><span data-line="5">        left = left.next</span><span data-line="6">    else:
+        tail.next = right</span><span data-line="7">        right = right.next</span><span data-line="8">    tail = tail.next</span><span data-line="9">tail.next = left if left is not None else right</span><span data-line="10">return dummy.next</span></pre></figure><p data-status aria-live="polite"></p><div class="widget__controls"><button class="btn" type="button" data-prev>← Назад</button><button class="btn" type="button" data-next>Вперёд →</button><button class="btn" type="button" data-reset>Сбросить</button></div></div></div>
+<p>После выбора A поле <code>A.next</code> ещё ведёт к B. При выборе C строка <code>tail.next = right</code> меняет <code>A.next</code>: теперь A ведёт к C. Узел B не теряется, потому что на него указывает <code>left</code>. Выбранная часть заканчивается у <code>tail</code>, а его прежнее продолжение ещё не обязано быть окончательным.</p>
+<p>Следующая таблица отделяет выбранную часть от остатков. Она не утверждает, что поле <code>tail.next</code> уже очищено.</p>
+<div class="table-scroll"><table><thead><tr><th>Сравнение</th><th>Выбранная часть до tail</th><th>left</th><th>right</th></tr></thead><tbody><tr><td>1 ≤ 2</td><td>A1</td><td>B4</td><td>C2</td></tr><tr><td>4 > 2</td><td>A1 → C2</td><td>B4</td><td>D4</td></tr><tr><td>4 ≤ 4</td><td>A1 → C2 → B4</td><td>None</td><td>D4</td></tr><tr><td>Цикл завершён</td><td>Присоединить D4 после B4</td><td>None</td><td>D4</td></tr></tbody></table></div>
+<p>На каждой итерации выбирается минимальная из двух голов. Все элементы оставшихся частей не меньше уже выбранного хвоста. Так сохраняется порядок результата, а один из остатков сокращается на узел. Проверим порядок конкретных объектов после вызова.</p>
+<h2 id="s3"><span class="sec">§3</span>Проверить идентичность узлов</h2>
+<p>Вызовем слияние и сравним конкретные объекты. Служебный узел в результат не входит.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>сеанс с выводом</span></figcaption><pre>&gt;&gt;&gt; result = merge(left, right)
+&gt;&gt;&gt; result is a, a.next is c, c.next is b, b.next is d
+(True, True, True, True)
+&gt;&gt;&gt; d.next is None
+True
+&gt;&gt;&gt; left is a, right is c
+(True, True)</pre></figure>
+<p>Внешние имена <code>left</code> и <code>right</code> всё ещё указывают на A и C. Однако их пути уже изменились: A теперь ведёт к C, а C — к B. Поэтому после вызова исходные списки нельзя считать независимыми. Для дальнейшей работы используют <code>result</code>.</p>
+<p>Сравним пути от внешних имён. Эти имена не перемещались, но поля доступных через них объектов изменились.</p><div class="table-scroll"><table><thead><tr><th>Внешнее имя</th><th>До merge</th><th>После merge</th></tr></thead><tbody><tr><td>left</td><td>A1 → B4 → None</td><td>A1 → C2 → B4 → D4 → None</td></tr><tr><td>right</td><td>C2 → D4 → None</td><td>C2 → B4 → D4 → None</td></tr><tr><td>result</td><td>Ещё не задано</td><td>A1 → C2 → B4 → D4 → None</td></tr></tbody></table></div><p>Пути от left и right теперь пересекаются. Повторно передавать их как независимые входы слияния нельзя: это нарушит условие отсутствия общих узлов.</p>
+<div class="quiz"><div class="quiz__q"><b>Предскажите результат</b>В начале есть A1 → B4 и C2 → D4. Уже выбран A, затем выполнено <code>tail.next = right</code> для C. Что хранит <code>A.next</code>?</div><ul class="quiz__opts"><li><button type="button">Ссылку на B4</button><p class="quiz__why">Раньше A.next вела к B, но присоединение C переписало это поле. Ссылка left по-прежнему сохраняет B.</p></li><li data-ok><button type="button">Ссылку на C2</button><p class="quiz__why">tail указывал на A, а right — на C. Присваивание изменило поле A.next.</p></li><li><button type="button">Значение 2</button><p class="quiz__why">Полю next передана ссылка right. Значение узла не копируется.</p></li></ul></div><details class="more"><summary>Почему спискам нельзя иметь общий хвост</summary><div>
+<p>Пусть обе входные головы указывают на один узел 5. Из левого входа он выбирается первым. После завершения цикла правый остаток — тот же узел, а хвост результата уже у него. Присоединение остатка создаёт самоссылку.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>сеанс с выводом</span></figcaption><pre>&gt;&gt;&gt; shared = Node(5)
+&gt;&gt;&gt; bad = merge(shared, shared)
+&gt;&gt;&gt; bad is shared, shared.next is shared
+(True, True)
+&gt;&gt;&gt; shared.next = None</pre></figure>
+<p>Здесь намеренно нарушен контракт. Проверка ограничена чтением одной ссылки; обход до <code>None</code> завис бы. Для корректного слияния нужны независимые цепочки. Алгоритм не выполняет отдельную проверку пересечения.</p></div></details><p>Для допустимых независимых входов осталось проверить завершение одного из остатков и пустые цепочки.</p><h2 id="s4"><span class="sec">§4</span>Остатки, стоимость и задача</h2>
+<p>Проверим пустые входы, дубликаты и остаток длиннее одного узла. Вспомогательные функции собирают и читают только конечные цепочки.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>сеанс с выводом</span></figcaption><pre>&gt;&gt;&gt; def from_values(values):
+...     head = None
+...     for value in reversed(values):
+...         head = Node(value, head)
+...     return head
+...
+&gt;&gt;&gt; def to_values(head):
+...     result = []
+...     while head is not None:
+...         result.append(head.value)
+...         head = head.next
+...     return result
+...
+&gt;&gt;&gt; merge(None, None) is None
+True
+&gt;&gt;&gt; only = Node(6)
+&gt;&gt;&gt; merge(None, only) is only, merge(only, None) is only
+(True, True)
+&gt;&gt;&gt; to_values(merge(from_values([1, 4]), from_values([2, 4])))
+[1, 2, 4, 4]
+&gt;&gt;&gt; to_values(merge(from_values([1]), from_values([2, 3, 5])))
+[1, 2, 3, 5]
+&gt;&gt;&gt; to_values(merge(from_values([3, 3]), from_values([1])))
+[1, 3, 3]</pre></figure>
+<p>Если длины равны n и m, время в худшем случае O(n + m): каждый выбор сокращает один остаток. Готовый остаток присоединяется одной записью ссылки, без повторного обхода. Дополнительная память O(1): один dummy и несколько рабочих ссылок. Полезные узлы уже существовали во входных списках.</p>
+<p>Граничные случаи различаются тем, выполняется ли сравнение и какой остаток присоединяется после цикла.</p><div class="table-scroll"><table><thead><tr><th>Левый вход</th><th>Правый вход</th><th>Что делает алгоритм</th></tr></thead><tbody><tr><td>None</td><td>None</td><td>Присоединяет None; возвращает None</td></tr><tr><td>None</td><td>Узел 6</td><td>Возвращает тот же узел 6</td></tr><tr><td>1</td><td>2 → 3 → 5</td><td>Выбирает 1; присоединяет весь правый остаток</td></tr><tr><td>3 → 3</td><td>1</td><td>Выбирает 1; присоединяет весь левый остаток</td></tr></tbody></table></div><p>Пустые входы обрабатываются тем же кодом, потому что служебный узел даёт место для первого присоединения.</p>
+<h3>Задача: объединить два журнала</h3>
+<p>Напишите <code>merge(left, right)</code> с тем же контрактом. Для 1 → 3 → 5 и 2 → 3 → 6 получите 1 → 2 → 3 → 3 → 5 → 6. При равенстве выбирайте левый узел первым. До кода нарисуйте изменение поля у хвоста, когда после 1 выбирается 2.</p>
+<p>Проверьте два пустых входа, один пустой, по одному узлу, дубликаты и длинный остаток. Сохраните ссылки на две тройки и через <code>is</code> подтвердите их порядок в результате. Циклы и общие узлы не входят в допустимый вход.</p>
+<ul><li>Сравниваются только головы непустых остатков.</li><li>Выбранный узел присоединяется через поле хвоста.</li><li>Хвост результата и головы остатков — разные роли.</li></ul>
+<p>В слиянии две рабочие ссылки идут по разным цепочкам. Далее две ссылки будут идти по одной цепочке, но с разной скоростью.</p>
+
+<div class="sources"><b>Источники главы</b><ol><li>КТП ОП.04, занятие 22: разворот, слияние, середина и цикл.</li><li>Документация Python: <a href="https://docs.python.org/3/reference/expressions.html#is-not" target="_blank" rel="noopener">сравнение идентичности</a> и <a href="https://docs.python.org/3/reference/expressions.html#boolean-operations" target="_blank" rel="noopener">булевы операции</a>.</li><li>Примеры в главе выполняются сверху вниз в одном сеансе Python 3; данные примеров заданы в коде.</li></ol></div>
+<div class="pager"><a href="01-razvorot.html">← 22.1 Разворот списка</a><a href="03-seredina.html">22.3 Середина: два указателя →</a></div>
+<div class="colophon"><span>Модуль 22 · Задачи на связные списки · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div>
+</main></div></div><script src="../../massivy/book.js"></script><script src="../../massivy/algo.js"></script><script src="../lineynye.js"></script><script src="../tasks22.js"></script>
+</body></html>

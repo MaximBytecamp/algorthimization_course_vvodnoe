@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>22.1 Разворот списка · Линейные структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../lineynye.css">
+  <link rel="stylesheet" href="../tasks22.css">
+</head>
+<body>
+<div class="book"><div class="book__body"><div class="spine"><span>Модуль 22 · Задачи на связные списки · ОП.04</span></div><main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../index.html">Линейные структуры</a> · модуль 22</p><p class="running__folio">Глава 22.1</p></div>
+<header class="chapter-head"><span class="chapter-num">22.1</span><h1>Разворот списка</h1><p class="lead">Развернём направления next, сохранив сами узлы. Разберём, зачем нужны три рабочие ссылки и почему результат вызова становится новой головой.</p></header>
+<nav class="contents"><b>В этой главе</b><ol><li><a href="#s1">Что разворачивается</a></li><li><a href="#s2">Сохранить продолжение</a></li><li><a href="#s3">Новая голова</a></li><li><a href="#s4">Границы и задача</a></li></ol></nav>
+<p>В модуле 21 менялось одно поле при вставке или удалении. Теперь изменение повторяется для каждого узла, поэтому особенно важен порядок присваиваний.</p>
+<h2 id="s1"><span class="sec">§1</span>Что разворачивается</h2>
+<p>Журнал хранит события цепочкой 42 → 17 → 30. Теперь их нужно читать от последнего к первому. У односвязного списка нет перехода назад. Чтобы новый обход шёл 30 → 17 → 42, нужно изменить поля <code>next</code>. Значения останутся в своих узлах.</p>
+<p>Функция <code>reverse(head)</code> принимает голову конечной цепочки и возвращает новую голову. Она использует существующие узлы и меняет их связи. Пустой список даёт <code>None</code>, один узел остаётся собой. Вход с циклом не подходит: у него нет последнего узла.</p>
+<p>Создадим три именованных объекта. После разворота эти имена позволят проверить идентичность узлов.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>сеанс с выводом</span></figcaption><pre>&gt;&gt;&gt; class Node:
+...     def __init__(self, value, next_node=None):
+...         self.value = value
+...         self.next = next_node
+...
+&gt;&gt;&gt; c = Node(30)
+&gt;&gt;&gt; b = Node(17, c)
+&gt;&gt;&gt; a = Node(42, b)
+&gt;&gt;&gt; head = a
+&gt;&gt;&gt; head is a, a.next is b, b.next is c
+(True, True, True)</pre></figure>
+<p>Здесь <code>a</code> и <code>head</code> указывают на один объект 42. Разворот не создаёт его копию. Меняется путь между теми же тремя объектами.</p>
+<p>Таблица фиксирует исходные поля узлов. По ней можно восстановить путь от головы до None.</p><div class="table-scroll"><table><thead><tr><th>Объект</th><th>value</th><th>next до разворота</th></tr></thead><tbody><tr><td>A (a)</td><td>42</td><td>B</td></tr><tr><td>B (b)</td><td>17</td><td>C</td></tr><tr><td>C (c)</td><td>30</td><td>None</td></tr></tbody></table></div><p>Ссылка head ведёт к A. Повернув A.next, мы изменим первый переход. Чтобы продолжить работу с B и C, потребуется отдельная ссылка на остаток.</p>
+<h2 id="s2"><span class="sec">§2</span>Сохранить продолжение и повернуть одну связь</h2>
+<p>Разделим работу на уже развёрнутую часть и оставшуюся цепочку. Переменная <code>prev</code> хранит начало готовой части, <code>current</code> — первый ещё не обработанный узел. В начале готовой части нет, поэтому <code>prev = None</code>.</p>
+<p>Перед изменением <code>current.next</code> сохраним прежнее продолжение в <code>following</code>. Затем направим <code>current.next</code> на готовую часть. После этого текущий узел становится её новой головой, а работа продолжается с сохранённого <code>following</code>.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>сеанс с выводом</span></figcaption><pre>&gt;&gt;&gt; def reverse(head):
+...     prev = None
+...     current = head
+...     while current is not None:
+...         following = current.next
+...         current.next = prev
+...         prev = current
+...         current = following
+...     return prev
+...</pre></figure>
+<p>Четыре строки тела цикла решают разные задачи: сохранить путь, повернуть стрелку, обновить готовую часть, перейти дальше. Подставим исходные узлы в пошаговый разбор. При первом повороте у A поле <code>next</code> становится <code>None</code>, но узел B доступен через <code>following</code>.</p>
+<div class="widget" data-task22="reverse"><div class="widget__head"><span>Разворот 42 → 17 → 30</span><span data-step class="ln-step"></span></div><div class="widget__body"><p>Буквы обозначают конкретные объекты Node. Сплошные стрелки выходят из поля next, пунктирные — от переменных. Тире у переменной означает, что её присваивание ещё не выполнено.</p><div class="ln-diagram" data-chain-diagram></div><figure class="code ln-program"><figcaption><span>Тело функции</span><span>выполненная строка выделена</span></figcaption><pre><span data-line="0">prev = None</span><span data-line="1">current = head</span><span data-line="2">while current is not None:</span><span data-line="3">    following = current.next</span><span data-line="4">    current.next = prev</span><span data-line="5">    prev = current</span><span data-line="6">    current = following</span><span data-line="7">return prev</span></pre></figure><p data-status aria-live="polite"></p><div class="widget__controls"><button class="btn" type="button" data-prev>← Назад</button><button class="btn" type="button" data-next>Вперёд →</button><button class="btn" type="button" data-reset>Сбросить</button></div></div></div>
+<p>После первой итерации готовая часть — A → None, а оставшаяся — B → C → None. После второй готовая часть начинается с B и ведёт к A. В конце <code>current</code> равна <code>None</code>, а <code>prev</code> указывает на C. Функция возвращает <code>prev</code>.</p>
+<p>Перед каждой проверкой цикла <code>prev</code> ведёт по обработанным узлам в обратном порядке, а <code>current</code> — по необработанным в исходном. Это <span class="term">инвариант</span>: утверждение, которое остаётся верным от итерации к итерации. На каждом шаге необработанных узлов становится на один меньше.</p>
+<div class="table-scroll"><table><thead><tr><th>После итерации</th><th>Путь от prev</th><th>Путь от current</th></tr></thead><tbody><tr><td>0</td><td>None</td><td>A42 → B17 → C30 → None</td></tr><tr><td>1</td><td>A42 → None</td><td>B17 → C30 → None</td></tr><tr><td>2</td><td>B17 → A42 → None</td><td>C30 → None</td></tr><tr><td>3</td><td>C30 → B17 → A42 → None</td><td>None</td></tr></tbody></table></div>
+<p>Таблица показывает состояние после всех четырёх присваиваний. Ссылки <code>prev</code> и <code>current</code> не обозначают одно и то же: одна держит готовую часть, другая — остаток. Теперь сохраним возвращённую голову и проверим внешние ссылки.</p>
+<h2 id="s3"><span class="sec">§3</span>Новая голова и прежние имена</h2>
+<p>Сохраним результат отдельно и проверим объекты. Внешняя переменная <code>head</code> пока остаётся на A: присваивания локальной переменной функции не меняют её.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>сеанс с выводом</span></figcaption><pre>&gt;&gt;&gt; new_head = reverse(head)
+&gt;&gt;&gt; new_head is c, c.next is b, b.next is a
+(True, True, True)
+&gt;&gt;&gt; head is a, head.next is None
+(True, True)
+&gt;&gt;&gt; head = new_head
+&gt;&gt;&gt; head.value, head.next.value, head.next.next.value
+(30, 17, 42)</pre></figure>
+<p>Если вызвать <code>reverse(head)</code> и отбросить возвращённую ссылку, внешний <code>head</code> останется на старом первом узле. Его <code>next</code> уже равен <code>None</code>, поэтому оттуда виден лишь один узел. Обычная запись вызова — <code>head = reverse(head)</code>.</p>
+<p>Сравним внешние ссылки до присваивания новой головы и после него.</p><div class="table-scroll"><table><thead><tr><th>Момент</th><th>head</th><th>new_head</th><th>Путь от head</th></tr></thead><tbody><tr><td>До вызова</td><td>A</td><td>Ещё не задана</td><td>A → B → C → None</td></tr><tr><td>После new_head = reverse(head)</td><td>A</td><td>C</td><td>A → None</td></tr><tr><td>После head = new_head</td><td>C</td><td>C</td><td>C → B → A → None</td></tr></tbody></table></div><p>Возвращённая ссылка даёт доступ ко всей развёрнутой цепочке. Старая голова теперь является последним узлом.</p>
+<div class="quiz"><div class="quiz__q"><b>Предскажите результат</b>Функция начала разворот A42 → B17 → C30. Выполнены только <code>following = current.next</code> и <code>current.next = prev</code> первой итерации. Где находится B?</div><ul class="quiz__opts"><li data-ok><button type="button">В following; current всё ещё на A</button><p class="quiz__why">following сохранила ссылку на B до изменения A.next. Строка current = following ещё не выполнялась.</p></li><li><button type="button">В current; following уже на C</button><p class="quiz__why">Ни одна из выполненных строк не перемещает current.</p></li><li><button type="button">B стал недоступен</button><p class="quiz__why">Изменение A.next разрывает один путь, но following сохраняет другой.</p></li></ul></div><details class="more"><summary>Почему обратный порядок строк теряет остаток</summary><div>
+<p>В ошибочном фрагменте сначала меняют поле, а потом пытаются прочитать из него прежнее продолжение. Следующий запуск ограничен первой итерацией.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>сеанс с выводом</span></figcaption><pre>&gt;&gt;&gt; x = Node(42, Node(17, Node(30)))
+&gt;&gt;&gt; prev, current = None, x
+&gt;&gt;&gt; current.next = prev
+&gt;&gt;&gt; following = current.next
+&gt;&gt;&gt; following is None, x.next is None
+(True, True)</pre></figure>
+<p>После <code>current.next = prev</code> поле уже хранит <code>None</code>. Прочитать прежнюю ссылку на узел 17 из него нельзя. Поэтому сохранение <code>following</code> стоит до поворота стрелки.</p></div></details><p>Порядок ссылок проверен на трёх узлах. Проверим также пустой вход и короткие цепочки.</p><h2 id="s4"><span class="sec">§4</span>Границы, стоимость и задача</h2>
+<p>Добавим функции для сборки конечной цепочки и чтения её значений. Сборка идёт с конца: каждый новый узел ставится перед уже построенной частью. Чтение двигает только локальную переменную <code>head</code>; связи не меняет.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>сеанс с выводом</span></figcaption><pre>&gt;&gt;&gt; def from_values(values):
+...     head = None
+...     for value in reversed(values):
+...         head = Node(value, head)
+...     return head
+...
+&gt;&gt;&gt; def to_values(head):
+...     result = []
+...     while head is not None:
+...         result.append(head.value)
+...         head = head.next
+...     return result
+...
+&gt;&gt;&gt; reverse(None) is None
+True
+&gt;&gt;&gt; only = Node(8)
+&gt;&gt;&gt; reverse(only) is only, only.next is None
+(True, True)
+&gt;&gt;&gt; to_values(reverse(from_values([1, 2])))
+[2, 1]
+&gt;&gt;&gt; sample = from_values([1, 2, 3, 4, 5])
+&gt;&gt;&gt; sample = reverse(sample)
+&gt;&gt;&gt; to_values(sample)
+[5, 4, 3, 2, 1]
+&gt;&gt;&gt; sample = reverse(sample)
+&gt;&gt;&gt; to_values(sample)
+[1, 2, 3, 4, 5]</pre></figure>
+<p>Два разворота возвращают исходный порядок. Каждый из n узлов обрабатывается один раз: время O(n). Дополнительная память O(1), потому что число рабочих ссылок не зависит от длины списка. Вспомогательный <code>to_values</code> создаёт массив для проверки, но сам алгоритм разворота его не использует.</p>
+<p>Для каждого граничного входа проверим форму результата и ссылки.</p><div class="table-scroll"><table><thead><tr><th>Вход</th><th>Результат</th><th>Что проверяем</th></tr></thead><tbody><tr><td>None</td><td>None</td><td>Цикл пропущен</td></tr><tr><td>Один узел 8</td><td>Тот же узел 8</td><td>next остаётся None</td></tr><tr><td>1 → 2</td><td>2 → 1</td><td>Новая голова — прежний второй узел</td></tr><tr><td>1 → 2 → 3 → 4 → 5</td><td>5 → 4 → 3 → 2 → 1</td><td>Все узлы обработаны</td></tr></tbody></table></div><p>Такие проверки покрывают отсутствие итераций, одну итерацию и повторение тела цикла. Примените их к самостоятельному решению.</p>
+<h3>Задача: вернуть события в обратном порядке</h3>
+<p>Реализуйте <code>reverse(head)</code> для конечного односвязного списка. Значения оставьте в своих узлах; меняйте только <code>next</code>. Верните голову результата. До кода нарисуйте первый поворот в цепочке 5 → 8 → 2 и подпишите ссылку, которая сохраняет остаток.</p>
+<p>Проверьте пустой вход, один узел, два узла и нечётную длину. Для 5 → 8 → 2 ожидается 2 → 8 → 5. Сохраните ссылки на исходные узлы и подтвердите через <code>is</code>, что результат содержит эти объекты.</p>
+<ul><li>Путь к остатку сохраняется до изменения поля.</li><li>Каждый шаг переносит один узел в готовую часть.</li><li>Новая голова возвращается и сохраняется вызывающим кодом.</li></ul>
+<p>Разворот собирает одну цепочку из одной исходной. Следующий алгоритм собирает одну цепочку из двух, выбирая меньшую из доступных голов.</p>
+
+<div class="sources"><b>Источники главы</b><ol><li>КТП ОП.04, занятие 22: разворот, слияние, середина и цикл.</li><li>Документация Python: <a href="https://docs.python.org/3/reference/expressions.html#is-not" target="_blank" rel="noopener">сравнение идентичности</a> и <a href="https://docs.python.org/3/reference/expressions.html#boolean-operations" target="_blank" rel="noopener">булевы операции</a>.</li><li>Примеры в главе выполняются сверху вниз в одном сеансе Python 3; данные примеров заданы в коде.</li></ol></div>
+<div class="pager"><a href="../21-svyaznyy-spisok/03-granicy-i-proverka.html">← 21.3 Границы и проверка</a><a href="02-sliyanie.html">22.2 Слияние упорядоченных списков →</a></div>
+<div class="colophon"><span>Модуль 22 · Задачи на связные списки · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div>
+</main></div></div><script src="../../massivy/book.js"></script><script src="../../massivy/algo.js"></script><script src="../lineynye.js"></script><script src="../tasks22.js"></script>
+</body></html>

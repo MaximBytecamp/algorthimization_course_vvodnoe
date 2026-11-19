@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>22.4 Как обнаружить цикл · Линейные структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../lineynye.css">
+  <link rel="stylesheet" href="../tasks22.css">
+</head>
+<body>
+<div class="book"><div class="book__body"><div class="spine"><span>Модуль 22 · Задачи на связные списки · ОП.04</span></div><main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../index.html">Линейные структуры</a> · модуль 22</p><p class="running__folio">Глава 22.4</p></div>
+<header class="chapter-head"><span class="chapter-num">22.4</span><h1>Как обнаружить цикл</h1><p class="lead">Обнаружим замкнутую цепочку без бесконечного обхода и без хранения всех посещённых узлов. Для встречи указателей важен один объект, а не одинаковые числа.</p></header>
+<nav class="contents"><b>В этой главе</b><ol><li><a href="#s1">Когда нет конца</a></li><li><a href="#s2">Встреча двух ссылок</a></li><li><a href="#s3">Почему они встретятся</a></li><li><a href="#s4">Границы и практикум</a></li></ol></nav>
+<p>Поиск середины останавливался у конца списка. Теперь разберём вход, на котором конца нет: ссылка next возвращает нас к уже посещённому узлу.</p>
+<h2 id="s1"><span class="sec">§1</span>Когда обход не приходит к None</h2>
+<p>При ошибке в связывании поле next последнего созданного узла может вести к прежнему узлу цепочки. Тогда обход снова и снова посещает те же объекты. Такая замкнутая часть называется <span class="term">циклом</span>. Перед запуском операций, которые ожидают конец списка, полезно проверить его наличие.</p>
+<p>Функция <code>has_cycle(head)</code> возвращает <code>True</code>, если из головы достижим цикл, иначе <code>False</code>. Она только читает ссылки и не размыкает цикл. Предполагается конечное число узлов: у каждого поле <code>next</code> ведёт на другой узел или равно None. Пока работает проверка, другие части программы связи не меняют.</p>
+<p>Построим A7 → B7 → C9 → B7. Две семёрки нужны специально: одинаковые значения не доказывают возвращение в тот же объект.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>сеанс с выводом</span></figcaption><pre>&gt;&gt;&gt; class Node:
+...     def __init__(self, value, next_node=None):
+...         self.value = value
+...         self.next = next_node
+...
+&gt;&gt;&gt; a = Node(7)
+&gt;&gt;&gt; b = Node(7)
+&gt;&gt;&gt; c = Node(9)
+&gt;&gt;&gt; a.next = b
+&gt;&gt;&gt; b.next = c
+&gt;&gt;&gt; c.next = b
+&gt;&gt;&gt; a.value == b.value, a is b
+(True, False)
+&gt;&gt;&gt; c.next is b
+True</pre></figure>
+<p>Из A сначала попадаем в B, затем в C, затем опять в B. Узел A не входит в цикл. До None этот путь не дойдёт. Поэтому здесь нельзя вызывать обычный <code>to_values</code> или печатать всю цепочку циклом «пока не None».</p>
+<p>Таблица показывает, почему конец недостижим. У каждого из трёх объектов есть продолжение.</p><div class="table-scroll"><table><thead><tr><th>Объект</th><th>value</th><th>next</th></tr></thead><tbody><tr><td>A</td><td>7</td><td>B</td></tr><tr><td>B</td><td>7</td><td>C</td></tr><tr><td>C</td><td>9</td><td>B</td></tr></tbody></table></div><p>После первого посещения C снова выбирается B. Для обнаружения этого повторения будем сравнивать объекты, на которые указывают две переменные.</p>
+<h2 id="s2"><span class="sec">§2</span>Встреча медленной и быстрой ссылок</h2>
+<p>Начнём slow и fast с головы, как при поиске середины. На каждой итерации slow делает один переход, fast — два. Если после перемещения они ссылаются на один объект, обнаружен цикл. Проверять встречу до первого движения нельзя: в начале обе ссылки совпадают у любого непустого списка.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>сеанс с выводом</span></figcaption><pre>&gt;&gt;&gt; def has_cycle(head):
+...     slow = fast = head
+...     while fast is not None and fast.next is not None:
+...         slow = slow.next
+...         fast = fast.next.next
+...         if slow is fast:
+...             return True
+...     return False
+...</pre></figure>
+<p>В условии встречи используется <code>is</code>: он сравнивает идентичность объектов. Сравнение <code>slow.value == fast.value</code> ошибочно: одинаковые значения могут храниться в разных узлах конечного списка. Даже <code>slow == fast</code> лучше не использовать: поведение <code>==</code> может быть переопределено в классе.</p>
+<p>На схеме цикл замкнут сплошной стрелкой из C.next в B. Проследите два полных движения, а затем проверку встречи. Поля узлов всё время остаются прежними.</p>
+<div class="widget" data-task22="cycle"><div class="widget__head"><span>A7 → B7 → C9 → B7</span><span data-step class="ln-step"></span></div><div class="widget__body"><p>Буквы обозначают конкретные объекты Node. Сплошные стрелки выходят из поля next, пунктирные — от переменных. Тире у переменной означает, что её присваивание ещё не выполнено.</p><div class="ln-diagram" data-chain-diagram></div><figure class="code ln-program"><figcaption><span>Тело функции</span><span>выполненная строка выделена</span></figcaption><pre><span data-line="0">slow = fast = head</span><span data-line="1">while fast is not None and fast.next is not None:</span><span data-line="2">    slow = slow.next</span><span data-line="3">    fast = fast.next.next</span><span data-line="4">    if slow is fast:</span><span data-line="5">        return True</span><span data-line="6">return False</span></pre></figure><p data-status aria-live="polite"></p><div class="widget__controls"><button class="btn" type="button" data-prev>← Назад</button><button class="btn" type="button" data-next>Вперёд →</button><button class="btn" type="button" data-reset>Сбросить</button></div></div></div>
+<p>После первого движения slow у B7, fast у C9: объекты различны. После второго slow у C9, fast проходит C → B → C и тоже оказывается у C9. Встреча произошла внутри цикла. Это не означает, что C — его начало: вход в цикл здесь находится у B.</p>
+<p>Таблица фиксирует ссылки после полных движений. Проверка встречи выполняется после обоих присваиваний slow и fast.</p>
+<div class="table-scroll"><table><thead><tr><th>Итерация</th><th>slow</th><th>fast</th><th>Проверка</th></tr></thead><tbody><tr><td>Старт</td><td>A7</td><td>A7</td><td>Ещё не проверяем</td></tr><tr><td>1</td><td>B7</td><td>C9</td><td>Разные объекты</td></tr><tr><td>2</td><td>C9</td><td>C9</td><td>Один объект: True</td></tr></tbody></table></div>
+<p>Результат отвечает только на вопрос о наличии цикла. Поиск его входа, длины или размыкание — другие задачи; этот алгоритм их не выполняет. Далее обоснуем, почему встреча произойдёт при любой длине цикла.</p>
+<h2 id="s3"><span class="sec">§3</span>Почему встреча неизбежна</h2>
+<p>Если цикла нет, fast доходит до None или последнего узла. Условие завершает цикл, функция возвращает False. Если цикл есть, обе ссылки рано или поздно попадут в него: за пределами цикла путь не разветвляется.</p>
+<p>Внутри цикла fast за одну итерацию проходит на один переход больше, чем slow. Поэтому расстояние между ними по кругу каждый раз меняется на единицу. Например, в кольце из четырёх узлов отставание fast от slow проходит состояния 3, 2, 1, 0. Нулевое расстояние означает встречу.</p>
+<p>На кольце длины k любое начальное расстояние от 0 до k − 1 за не более чем k движений дойдёт до нуля. Так обнаружение цикла не требует сохранять все посещённые узлы. Этот способ называют <span class="term">алгоритмом Флойда</span> или методом медленного и быстрого указателей.</p>
+<p>Для кольца из четырёх узлов зафиксируем пример отставания fast от slow. Расстояние измеряется по направлению next от fast до slow.</p><div class="table-scroll"><table><thead><tr><th>Полных движений внутри кольца</th><th>Отставание fast от slow</th></tr></thead><tbody><tr><td>0</td><td>3 перехода</td></tr><tr><td>1</td><td>2 перехода</td></tr><tr><td>2</td><td>1 переход</td></tr><tr><td>3</td><td>0: один объект</td></tr></tbody></table></div><p>Обе ссылки движутся, но fast сокращает это расстояние на единицу. Когда оно равно нулю, условие slow is fast даёт True.</p>
+<p>Проверим построенный пример и намеренно создадим ложную подсказку для сравнения значений: три одинаковые семёрки, но без цикла.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>сеанс с выводом</span></figcaption><pre>&gt;&gt;&gt; has_cycle(a)
+True
+&gt;&gt;&gt; c.next is b
+True
+&gt;&gt;&gt; plain = Node(7, Node(7, Node(7)))
+&gt;&gt;&gt; slow, fast = plain.next, plain.next.next
+&gt;&gt;&gt; slow.value == fast.value, slow is fast
+(True, False)
+&gt;&gt;&gt; has_cycle(plain)
+False</pre></figure>
+<p>Первая проверка на a вернула True и сохранила замыкание C.next → B. На обычной цепочке одинаковые значения дали равенство чисел, но ссылки различались. Правильная функция вернула False.</p>
+<div class="quiz"><div class="quiz__q"><b>Предскажите результат</b>У A7 → B7 → C7 → None после первого полного движения slow находится у B, fast у C. Что должна сделать has_cycle?</div><ul class="quiz__opts"><li><button type="button">Вернуть True: значения совпали</button><p class="quiz__why">Совпадение чисел не является встречей указателей. Узлы B и C разные.</p></li><li data-ok><button type="button">Продолжить: объекты различны</button><p class="quiz__why">Проверка slow is fast ложна. Следующее условие цикла обнаружит fast.next = None, и функция вернёт False.</p></li><li><button type="button">Вернуть True: ссылки совпали в начале</button><p class="quiz__why">Начальное совпадение есть у любой головы. Встреча проверяется только после движения.</p></li></ul></div><details class="more"><summary>Самоссылка и цикл после длинного начала</summary><div>
+<p>Самый короткий цикл состоит из одного узла, ссылающегося на себя. Он тоже обнаруживается после движения. У второго примера начало длиннее: 1 → 2 → 3 → 4 → 5 → 3. Проверки только читают ссылки.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>сеанс с выводом</span></figcaption><pre>&gt;&gt;&gt; loop = Node(8)
+&gt;&gt;&gt; loop.next = loop
+&gt;&gt;&gt; has_cycle(loop)
+True
+&gt;&gt;&gt; fifth = Node(5)
+&gt;&gt;&gt; fourth = Node(4, fifth)
+&gt;&gt;&gt; third = Node(3, fourth)
+&gt;&gt;&gt; second = Node(2, third)
+&gt;&gt;&gt; first = Node(1, second)
+&gt;&gt;&gt; fifth.next = third
+&gt;&gt;&gt; has_cycle(first)
+True
+&gt;&gt;&gt; fifth.next is third
+True</pre></figure>
+<p>Функция не зависит от длины начального пути и положения входа. Однако она сообщает только True или False: возвращённое значение не является ссылкой на узел встречи.</p></div></details><p>Проверка цикла обоснована. Применим её к коротким входам и сформулируем требования практикума.</p><h2 id="s4"><span class="sec">§4</span>Границы, стоимость и практикум</h2>
+<p>Проверим границы отдельно: пустой список, один обычный узел, два узла без цикла и замыкание на голову. В циклических случаях проверяем ссылки напрямую, без обхода до None.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>сеанс с выводом</span></figcaption><pre>&gt;&gt;&gt; has_cycle(None)
+False
+&gt;&gt;&gt; only = Node(4)
+&gt;&gt;&gt; has_cycle(only)
+False
+&gt;&gt;&gt; pair = Node(1, Node(2))
+&gt;&gt;&gt; has_cycle(pair)
+False
+&gt;&gt;&gt; pair.next.next = pair
+&gt;&gt;&gt; has_cycle(pair)
+True
+&gt;&gt;&gt; pair.next.next is pair
+True</pre></figure>
+<p>Пусть до цикла μ узлов, а внутри него k. Время обнаружения O(μ + k): после входа обеих ссылок в цикл для встречи достаточно не более k движений. Для конечной цепочки из n узлов время O(n). Дополнительная память в обоих случаях O(1).</p>
+<h3>Задача: проверить корректность цепочки</h3>
+<p>Реализуйте <code>has_cycle(head)</code>, не меняя поля узлов и не собирая набор посещённых объектов. До кода нарисуйте два движения для A7 → B7 → C9 → B7. Отдельно объясните, почему сравнение значений даст ложный ответ на трёх семёрках без цикла.</p>
+<p>Проверьте пустой список, один обычный узел, самоссылку, нечётную конечную цепочку, цикл на голову и цикл после незамкнутого начала. Ожидается False только для входов, где достижимо None.</p>
+<h3>Практикум занятия 22: выберите две задачи</h3>
+<p>По КТП на практике решаются две задачи из четырёх. Выберите любые две главы модуля: разворот, слияние, середина или цикл. Сначала зафиксируйте контракт и нарисуйте движение ссылок на небольшом примере. Затем напишите функцию и проверьте её запуском.</p>
+<p>Таблица поможет выбрать граничные случаи. Проверка циклического входа относится к has_cycle: у остальных трёх функций цикл исключён контрактом, поэтому запускать их на нём не нужно.</p>
+<div class="table-scroll"><table><thead><tr><th>Задача</th><th>Основной пример</th><th>Обязательные границы</th></tr></thead><tbody><tr><td>Разворот</td><td>5 → 8 → 2 становится 2 → 8 → 5</td><td>0/1 узел, два узла, нечётная длина; те же объекты</td></tr><tr><td>Слияние</td><td>1 → 3 → 5 и 2 → 3 → 6</td><td>Оба пустые, один пустой, по одному узлу, равные значения, остаток</td></tr><tr><td>Середина</td><td>Длины 4 и 5: узел на позиции 2</td><td>0/1 узел, чётная и нечётная длины; связи не изменены</td></tr><tr><td>Цикл</td><td>A → B → C → B даёт True</td><td>0/1 узел, самоссылка, нечётный список без цикла, цикл на голову</td></tr></tbody></table></div>
+<p>К решению приложите входные данные и фактический вывод проверок. Для изменяющих алгоритмов покажите нужные поля до и после. Для середины и цикла подтвердите, что исходные связи сохранились. Используйте <code>is</code>, когда требуется проверить конкретный узел.</p>
+<details class="more"><summary>Контрольные вопросы после двух решений</summary><div><ol>
+<li>Какие переменные хранят ссылки, а какие строки меняют поля узлов?</li>
+<li>Какая ссылка сохраняет ещё не обработанную часть?</li>
+<li>Что возвращает функция и где сохраняется её результат?</li>
+<li>Почему цикл завершается на допустимом входе?</li>
+<li>Сколько переходов выполняется и сколько дополнительных объектов создаётся?</li>
+</ol></div></details>
+<ul><li>Цикл — повторное попадание в тот же объект, не в то же значение.</li><li>Встреча проверяется после движения указателей.</li><li>Наличие цикла определяется без изменения связей.</li></ul>
+<p>Модуль 22 завершает работу с алгоритмами связного списка. Следующий модуль о стеке остаётся в плане книги.</p>
+
+<div class="sources"><b>Источники главы</b><ol><li>КТП ОП.04, занятие 22: разворот, слияние, середина и цикл.</li><li>Документация Python: <a href="https://docs.python.org/3/reference/expressions.html#is-not" target="_blank" rel="noopener">сравнение идентичности</a> и <a href="https://docs.python.org/3/reference/expressions.html#boolean-operations" target="_blank" rel="noopener">булевы операции</a>.</li><li>Примеры в главе выполняются сверху вниз в одном сеансе Python 3; данные примеров заданы в коде.</li></ol></div>
+<div class="pager"><a href="03-seredina.html">← 22.3 Середина: два указателя</a><span aria-disabled="true">Модуль 23 · стек · план</span></div>
+<div class="colophon"><span>Модуль 22 · Задачи на связные списки · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div>
+</main></div></div><script src="../../massivy/book.js"></script><script src="../../massivy/algo.js"></script><script src="../lineynye.js"></script><script src="../tasks22.js"></script>
+</body></html>

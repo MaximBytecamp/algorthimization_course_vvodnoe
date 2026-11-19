@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>22.3 Середина: два указателя · Линейные структуры</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../lineynye.css">
+  <link rel="stylesheet" href="../tasks22.css">
+</head>
+<body>
+<div class="book"><div class="book__body"><div class="spine"><span>Модуль 22 · Задачи на связные списки · ОП.04</span></div><main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../index.html">Линейные структуры</a> · модуль 22</p><p class="running__folio">Глава 22.3</p></div>
+<header class="chapter-head"><span class="chapter-num">22.3</span><h1>Середина: два указателя</h1><p class="lead">Найдём середину одним проходом без предварительного подсчёта узлов. Медленная ссылка делает один переход, быстрая — два.</p></header>
+<nav class="contents"><b>В этой главе</b><ol><li><a href="#s1">Середина без длины</a></li><li><a href="#s2">Один и два перехода</a></li><li><a href="#s3">Почему это середина</a></li><li><a href="#s4">Проверки и задача</a></li></ol></nav>
+<p>Разворот и слияние перестраивали поля next. Поиск середины только читает ссылки: исходная цепочка остаётся неизменной.</p>
+<h2 id="s1"><span class="sec">§1</span>Середина без подсчёта длины</h2>
+<p>Цепочку заданий нужно разделить около середины. Можно сначала обойти её и посчитать узлы, затем пройти ещё половину. Есть другой способ: двигать две ссылки одновременно. Медленная проходит один переход, быстрая — два. Пока быстрая доходит до конца, медленная проходит примерно половину цепочки.</p>
+<p><span class="term">Указатель</span> в таком алгоритме — переменная со ссылкой на узел. Числовой адрес памяти в коде не используется. Имена <code>slow</code> и <code>fast</code> обозначают медленную и быструю ссылки. Оба указателя начинают с головы.</p>
+<p>Функция <code>middle(head)</code> возвращает сам узел середины. Для чётной длины выберем правый из двух центральных узлов: у 10 → 20 → 30 → 40 это узел 30. Пустому списку соответствует <code>None</code>. Вход должен быть конечным, без цикла. Поля узлов функция не меняет.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>сеанс с выводом</span></figcaption><pre>&gt;&gt;&gt; class Node:
+...     def __init__(self, value, next_node=None):
+...         self.value = value
+...         self.next = next_node
+...
+&gt;&gt;&gt; d = Node(40)
+&gt;&gt;&gt; c = Node(30, d)
+&gt;&gt;&gt; b = Node(20, c)
+&gt;&gt;&gt; a = Node(10, b)
+&gt;&gt;&gt; head = a
+&gt;&gt;&gt; slow = fast = head
+&gt;&gt;&gt; slow is a, fast is a
+(True, True)</pre></figure>
+<p>Цепочка уже существует. Запись <code>slow = fast = head</code> сохраняет одну и ту же ссылку в двух переменных. Новых узлов это присваивание не создаёт.</p>
+<p>До начала поиска ссылки и поля имеют следующие значения. Столбец next описывает путь, а две рабочие переменные пока находятся у его начала.</p><div class="table-scroll"><table><thead><tr><th>Объект</th><th>value</th><th>next</th><th>Рабочие ссылки в начале</th></tr></thead><tbody><tr><td>A</td><td>10</td><td>B</td><td>slow и fast</td></tr><tr><td>B</td><td>20</td><td>C</td><td>—</td></tr><tr><td>C</td><td>30</td><td>D</td><td>—</td></tr><tr><td>D</td><td>40</td><td>None</td><td>—</td></tr></tbody></table></div><p>Чтобы получить середину C, slow должна пройти два перехода. За те же две итерации fast пройдёт четыре и достигнет None.</p>
+<h2 id="s2"><span class="sec">§2</span>Один переход и два перехода</h2>
+<p>Быстрая ссылка должна иметь возможность прочитать два поля <code>next</code>. Первое чтение требует, чтобы <code>fast</code> не была <code>None</code>. Второе — чтобы её следующий узел существовал. Сам результат второго чтения уже может оказаться <code>None</code>.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>сеанс с выводом</span></figcaption><pre>&gt;&gt;&gt; def middle(head):
+...     slow = fast = head
+...     while fast is not None and fast.next is not None:
+...         slow = slow.next
+...         fast = fast.next.next
+...     return slow
+...</pre></figure>
+<p>Оператор <code>and</code> проверяет части слева направо. Если <code>fast is not None</code> ложно, правая часть не вычисляется. Это <span class="term">короткое замыкание</span>: оно защищает чтение <code>fast.next</code>. Пустая голова безопасно пропускает цикл.</p>
+<p>На схеме не меняется ни одна сплошная стрелка: двигаются только переменные. Выполните по отдельности шаг slow и шаг fast, чтобы увидеть промежуточное состояние.</p>
+<div class="widget" data-task22="middle"><div class="widget__head"><span>Правая середина 10 → 20 → 30 → 40</span><span data-step class="ln-step"></span></div><div class="widget__body"><p>Буквы обозначают конкретные объекты Node. Сплошные стрелки выходят из поля next, пунктирные — от переменных. Тире у переменной означает, что её присваивание ещё не выполнено.</p><div class="ln-diagram" data-chain-diagram></div><figure class="code ln-program"><figcaption><span>Тело функции</span><span>выполненная строка выделена</span></figcaption><pre><span data-line="0">slow = fast = head</span><span data-line="1">while fast is not None and fast.next is not None:</span><span data-line="2">    slow = slow.next</span><span data-line="3">    fast = fast.next.next</span><span data-line="4">return slow</span></pre></figure><p data-status aria-live="polite"></p><div class="widget__controls"><button class="btn" type="button" data-prev>← Назад</button><button class="btn" type="button" data-next>Вперёд →</button><button class="btn" type="button" data-reset>Сбросить</button></div></div></div>
+<p>После первой полной итерации slow у B20, fast у C30. После второй slow у C30, fast равна None. Условие ложно, поэтому возвращается C. Нельзя проверять завершение сразу после шага slow: условие цикла выполняется перед всей следующей итерацией.</p>
+<p>Покажем положение ссылок после полных итераций для нечётной и чётной длины. В таблице позиции считаются от нуля: у головы позиция 0.</p>
+<div class="table-scroll"><table><thead><tr><th>Длина</th><th>Начало</th><th>После 1 итерации</th><th>После 2 итераций</th><th>Возврат</th></tr></thead><tbody><tr><td>5: 10 → 20 → 30 → 40 → 50</td><td>slow 0, fast 0</td><td>slow 1, fast 2</td><td>slow 2, fast 4</td><td>Узел 30: fast.next = None</td></tr><tr><td>4: 10 → 20 → 30 → 40</td><td>slow 0, fast 0</td><td>slow 1, fast 2</td><td>slow 2, fast None</td><td>Узел 30: fast = None</td></tr></tbody></table></div>
+<p>При нечётной длине fast останавливается на последнем узле. При чётной — уходит за последний узел и становится None. В обоих случаях slow достигает нужной середины. Обоснуем её положение через число пройденных переходов.</p>
+<h2 id="s3"><span class="sec">§3</span>Почему получается середина</h2>
+<p>После k полных итераций slow прошла k переходов, fast — 2k. Пока у fast есть следующий узел, разрешена ещё одна итерация. Для пяти узлов выполняются две итерации: slow находится на позиции 2. Для четырёх — тоже две: позиция 2 является правой серединой.</p>
+<p>Для цепочки из пяти узлов проверим соотношение пройденных расстояний на каждой итерации.</p><div class="table-scroll"><table><thead><tr><th>Полных итераций k</th><th>Переходов slow</th><th>Переходов fast</th></tr></thead><tbody><tr><td>0</td><td>0</td><td>0</td></tr><tr><td>1</td><td>1</td><td>2</td></tr><tr><td>2</td><td>2</td><td>4</td></tr></tbody></table></div><p>При k = 2 быстрая ссылка стоит на пятом узле. Продолжения у него нет, а slow стоит на третьем — середине.</p>
+<p>Это соотношение расстояний объясняет алгоритм. Мы не знаем длину заранее, но конец цепочки останавливает fast в нужный момент. Проверим возвращённый объект и неизменность исходных связей.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>сеанс с выводом</span></figcaption><pre>&gt;&gt;&gt; result = middle(head)
+&gt;&gt;&gt; result is c, result.value
+(True, 30)
+&gt;&gt;&gt; head is a, a.next is b, b.next is c, c.next is d
+(True, True, True, True)
+&gt;&gt;&gt; middle(None) is None
+True
+&gt;&gt;&gt; only = Node(9)
+&gt;&gt;&gt; middle(only) is only
+True
+&gt;&gt;&gt; pair = Node(5, Node(8))
+&gt;&gt;&gt; middle(pair) is pair.next
+True</pre></figure><div class="quiz"><div class="quiz__q"><b>Предскажите результат</b>Для 10 → 20 → 30 → 40 → 50 выполнена одна полная итерация middle. Где находятся slow и fast?</div><ul class="quiz__opts"><li><button type="button">slow у 20, fast у 40</button><p class="quiz__why">fast начинает с 10. Два перехода от 10 ведут к 30.</p></li><li><button type="button">slow у 30, fast у 30</button><p class="quiz__why">slow делает один переход и оказывается у 20. fast делает два и оказывается у 30.</p></li><li data-ok><button type="button">slow у 20, fast у 30</button><p class="quiz__why">От головы slow прошла один переход, fast — два. Связи узлов не изменились.</p></li></ul></div><details class="more"><summary>Как получить левую середину при чётной длине</summary><div>
+<p>Если контракт требует левый центральный узел, измените старт fast: поставьте её на второй узел. Пустой вход обработайте отдельно. Тогда fast исчерпает путь на одну итерацию раньше для чётной длины.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>сеанс с выводом</span></figcaption><pre>&gt;&gt;&gt; def middle_left(head):
+...     if head is None:
+...         return None
+...     slow, fast = head, head.next
+...     while fast is not None and fast.next is not None:
+...         slow = slow.next
+...         fast = fast.next.next
+...     return slow
+...
+&gt;&gt;&gt; middle_left(head) is b, middle(head) is c
+(True, True)
+&gt;&gt;&gt; middle_left(None) is None
+True</pre></figure>
+<p>Обе функции правильны при своих договорах. Ошибка возникает, когда код выбирает правую середину, а условие задачи ожидает левую. Поэтому правило чётной длины фиксируют до написания цикла.</p></div></details><p>С принятой правой серединой проверим ещё несколько длин цепочки.</p><h2 id="s4"><span class="sec">§4</span>Проверки и задача</h2>
+<p>Проверим нечётные длины и ещё один чётный случай. Для этого определим <code>from_values</code> для сборки цепочки и <code>to_values</code> для чтения значений. Они работают только с конечными цепочками.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>сеанс с выводом</span></figcaption><pre>&gt;&gt;&gt; def from_values(values):
+...     head = None
+...     for value in reversed(values):
+...         head = Node(value, head)
+...     return head
+...
+&gt;&gt;&gt; def to_values(head):
+...     result = []
+...     while head is not None:
+...         result.append(head.value)
+...         head = head.next
+...     return result
+...
+&gt;&gt;&gt; to_values(middle(from_values([1, 2, 3])))
+[2, 3]
+&gt;&gt;&gt; middle(from_values([1, 2, 3, 4, 5])).value
+3
+&gt;&gt;&gt; middle(from_values([1, 2, 3, 4, 5, 6])).value
+4</pre></figure>
+<p>Первый вывод — [2, 3]: функция возвращает узел 2 вместе с неизменённым продолжением цепочки. Она не выделяет отдельный список из одного элемента. Если нужно только значение, читают поле <code>value</code>, предварительно проверив результат на <code>None</code>.</p>
+<p>Цикл выполняется около n/2 раз. Каждая итерация делает постоянное число переходов, поэтому время O(n), дополнительная память O(1). При входе с циклом fast не достигнет конца; для такого входа требуется отдельная проверка наличия цикла.</p>
+<h3>Задача: найти центральное задание</h3>
+<p>Напишите <code>middle(head)</code>, возвращающую правую середину конечного списка. До кода нарисуйте положения slow и fast после каждой полной итерации для цепочек длиной 4 и 5. Все поля <code>next</code> должны сохраниться.</p>
+<p>Проверьте длины 0, 1, 2, 3, 4 и 5. Для чётных длин ожидаются позиции n/2, для нечётных — целая часть n/2, при счёте от нуля. Сравнивайте результат с заранее сохранённой ссылкой через <code>is</code>. В цепочке могут быть одинаковые числа.</p>
+<p>Ожидаемые позиции для коротких цепочек можно перечислить заранее. Это даёт проверку выбора правой середины.</p><div class="table-scroll"><table><thead><tr><th>Число узлов</th><th>Позиция результата от нуля</th><th>Положение fast при остановке</th></tr></thead><tbody><tr><td>0</td><td>None</td><td>None</td></tr><tr><td>1</td><td>0</td><td>Последний узел</td></tr><tr><td>2</td><td>1</td><td>None</td></tr><tr><td>3</td><td>1</td><td>Последний узел</td></tr><tr><td>4</td><td>2</td><td>None</td></tr><tr><td>5</td><td>2</td><td>Последний узел</td></tr></tbody></table></div><p>Чётная длина завершает движение fast за концом, нечётная — на последнем узле. Эта разница определяет проверку перед двойным переходом.</p>
+<ul><li>slow идёт на один узел, fast — на два.</li><li>Условие защищает оба чтения перед двойным переходом.</li><li>Для чётной длины выбор середины определяется контрактом и стартом.</li></ul>
+<p>Две скорости полезны не только для середины. Если конец недостижим из-за замкнутых ссылок, быстрая ссылка начнёт догонять медленную внутри цикла.</p>
+
+<div class="sources"><b>Источники главы</b><ol><li>КТП ОП.04, занятие 22: разворот, слияние, середина и цикл.</li><li>Документация Python: <a href="https://docs.python.org/3/reference/expressions.html#is-not" target="_blank" rel="noopener">сравнение идентичности</a> и <a href="https://docs.python.org/3/reference/expressions.html#boolean-operations" target="_blank" rel="noopener">булевы операции</a>.</li><li>Примеры в главе выполняются сверху вниз в одном сеансе Python 3; данные примеров заданы в коде.</li></ol></div>
+<div class="pager"><a href="02-sliyanie.html">← 22.2 Слияние упорядоченных списков</a><a href="04-cikl.html">22.4 Как обнаружить цикл →</a></div>
+<div class="colophon"><span>Модуль 22 · Задачи на связные списки · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div>
+</main></div></div><script src="../../massivy/book.js"></script><script src="../../massivy/algo.js"></script><script src="../lineynye.js"></script><script src="../tasks22.js"></script>
+</body></html>
