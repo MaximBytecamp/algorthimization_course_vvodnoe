@@ -1,0 +1,101 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#F1F2EC"><title>23.5 Границы и ошибки · Линейные структуры</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="../../massivy/styles.css"><link rel="stylesheet" href="../../massivy/algo.css"><link rel="stylesheet" href="../lineynye.css"><link rel="stylesheet" href="../stack23.css"></head><body><div class="book"><div class="book__body"><div class="spine"><span>Модуль 23 · Стек и скобки · ОП.04</span></div><main class="leaf"><div class="running"><p class="eyebrow"><a href="../index.html">Линейные структуры</a> · модуль 23</p><p class="running__folio">Глава 23.5</p></div><header class="chapter-head"><span class="chapter-num">23.5</span><h1>Границы и ошибки</h1><p class="lead">В этой главе разобраны короткие входы, которые обнаруживают ошибки стека. Исправим две функции и проверим порядок операндов и деление.</p></header><nav class="contents"><b>В этой главе</b><ol><li><a href="#s1">Матрица границ</a></li><li><a href="#s2">Забытый остаток скобок</a></li><li><a href="#s3">Символ вместо действия</a></li><li><a href="#s4">Ошибки вычислителя</a></li></ol></nav>
+<h2 id="s1"><span class="sec">§1</span>Матрица границ</h2><p>Перед сборкой всей конструкции проверяют отдельное крепление. Короткий контрпример тоже выделяет одну причину ошибки. Контрпример — вход, на котором заявленное решение даёт неверный результат.</p><div class="table-scroll"><table><thead><tr><th>Задача</th><th>Вход</th><th>Ожидается</th><th>Что проверяется</th></tr></thead><tbody><tr><td>Скобки</td><td>пустая строка</td><td>True</td><td>Начальное состояние</td></tr><tr><td>Скобки</td><td>)(</td><td>False</td><td>Закрытие без вершины</td></tr><tr><td>Скобки</td><td>([)]</td><td>False</td><td>Тип верхней скобки</td></tr><tr><td>Скобки</td><td>(()</td><td>False</td><td>Остаток после прохода</td></tr><tr><td>ОПЗ</td><td>1 +</td><td>ValueError</td><td>Нехватка аргументов</td></tr><tr><td>ОПЗ</td><td>1 2</td><td>ValueError</td><td>Лишний результат</td></tr><tr><td>ОПЗ</td><td>-7 3 /</td><td>-2</td><td>Усечение к нулю</td></tr><tr><td>История</td><td>add ab → undo</td><td>пустая строка</td><td>Отмена целого действия</td></tr></tbody></table></div><p>Ошибка бывает на входе, во время прохода и после последнего шага. Поэтому одной проверки пустоты перед pop недостаточно. Начнём с последней проверки скобок.</p>
+<h2 id="s2"><span class="sec">§2</span>Забытый остаток скобок</h2><p>Если после упаковки осталась открытая коробка, работа не завершена. Ошибочная функция ниже возвращает True после прохода независимо от остатка. На входе (() совпавшая пара снимется, одна ( останется.</p><figure class="code"><figcaption><span>Python 3</span><span>код и вывод запуска</span></figcaption><pre>&gt;&gt;&gt; def is_balanced(text):
+...     stack = []
+...     for char in text:
+...         if char in &#x27;([{&#x27;:
+...             stack.append(char)
+...         elif not stack or stack.pop() != {&#x27;)&#x27;:&#x27;(&#x27;, &#x27;]&#x27;:&#x27;[&#x27;, &#x27;}&#x27;:&#x27;{&#x27;}[char]:
+...             return False
+...     return True  # Что осталось в стеке?
+...</pre></figure><div class="table-scroll"><table><thead><tr><th>После символа</th><th>Стек</th><th>Вывод</th></tr></thead><tbody><tr><td>(</td><td>[ ( ]</td><td>Есть незакрытая скобка</td></tr><tr><td>((</td><td>[ (, ( ]</td><td>Два открытия</td></tr><tr><td>(()</td><td>[ ( ]</td><td>Нужен False</td></tr></tbody></table></div><p>Таблица показывает остаток после каждого префикса строки ((). После последнего символа стек остаётся непустым.</p><p>Исправьте завершающий return в песочнице. Тесты включают незакрытое открытие, раннее закрытие и пересечение типов.</p><div class="sandbox" id="fix-brackets" data-title="is_balanced(text)"><script type="text/plain" class="sandbox__start">
+def is_balanced(text):
+    stack = []
+    for char in text:
+        if char in '([{':
+            stack.append(char)
+        elif not stack or stack.pop() != {')':'(', ']':'[', '}':'{'}[char]:
+            return False
+    return True  # Что осталось в стеке?
+</script><script type="text/plain" class="sandbox__tests">
+def test_empty():
+    """пустая строка"""
+    assert is_balanced('') is True
+
+def test_nested():
+    """вложенные и соседние пары"""
+    assert is_balanced('{[()]}()') is True
+
+def test_crossed():
+    """равных счётчиков недостаточно"""
+    assert is_balanced('([)]') is False
+
+def test_early_close():
+    """закрытие до открытия"""
+    assert is_balanced(')(') is False
+
+def test_unclosed():
+    """остаток в стеке"""
+    assert is_balanced('(()') is False
+
+def test_many():
+    """все три типа и длинная вложенность"""
+    for text in ['()', '[]', '{}', '([]{})', '('*500 + ')'*500]:
+        assert is_balanced(text) is True
+    assert is_balanced('{]') is False
+</script></div><details class="more"><summary>Сверить исправление</summary><div><p>Последняя строка должна быть <code>return not stack</code>. Она проверяет отсутствие незакрытых скобок.</p></div></details><p>Следующая ошибка тоже связана с содержимым одного элемента. Для отмены элементом должно быть целое добавление.</p>
+<h2 id="s3"><span class="sec">§3</span>Символ вместо действия</h2><p>Если наклейка содержит два символа, снять один символ означает частично повредить наклейку. В контракте undo требуется удалить добавление целиком. Переменная text без истории теряет границы добавлений.</p><figure class="code"><figcaption><span>Python 3</span><span>код и вывод запуска</span></figcaption><pre>&gt;&gt;&gt; def apply_actions(actions):
+...     text = &#x27;&#x27;
+...     for action in actions:
+...         if action[0] == &#x27;add&#x27;:
+...             text += action[1]
+...         elif text:
+...             text = text[:-1]  # Отменяется символ или действие?
+...     return text
+...</pre></figure><div class="table-scroll"><table><thead><tr><th>Действия</th><th>Ошибочная строка</th><th>Правильный результат</th></tr></thead><tbody><tr><td>add ab → undo</td><td>a</td><td>пустая строка</td></tr><tr><td>add a → add пусто → undo</td><td>пустая строка</td><td>a</td></tr></tbody></table></div><p>Замените хранение цельной строки стеком фрагментов. Пустая строка является действием: отмена должна снять её, сохранив предыдущее добавление.</p><div class="sandbox" id="fix-undo" data-title="apply_actions(actions)"><script type="text/plain" class="sandbox__start">
+def apply_actions(actions):
+    text = ''
+    for action in actions:
+        if action[0] == 'add':
+            text += action[1]
+        elif text:
+            text = text[:-1]  # Отменяется символ или действие?
+    return text
+</script><script type="text/plain" class="sandbox__tests">
+def test_empty():
+    """пустая история"""
+    assert apply_actions([]) == ''
+
+def test_lifo():
+    """отменяется последнее добавление целиком"""
+    assert apply_actions([('add', 'при'), ('add', 'вет'), ('undo',)]) == 'при'
+
+def test_extra_undo():
+    """лишняя отмена безопасна"""
+    assert apply_actions([('undo',), ('add', 'a'), ('undo',), ('undo',)]) == ''
+
+def test_new_after_undo():
+    """новое добавление после отмены"""
+    assert apply_actions([('add', 'a'), ('add', 'b'), ('undo',), ('add', 'c')]) == 'ac'
+
+def test_empty_chunk():
+    """пустой фрагмент тоже действие"""
+    assert apply_actions([('add', 'a'), ('add', ''), ('undo',)]) == 'a'
+
+def test_unchanged():
+    """исходный список действий сохраняется"""
+    actions = [('add', 'ab'), ('add', 'в'), ('undo',)]
+    saved = actions[:]
+    assert apply_actions(actions) == 'ab'
+    assert actions == saved
+</script></div><details class="more"><summary>Сверить исправление</summary><div><figure class="code"><figcaption><span>Python 3</span><span>код и вывод запуска</span></figcaption><pre>&gt;&gt;&gt; def apply_actions(actions):
+...     chunks = []
+...     for action in actions:
+...         if action[0] == &#x27;add&#x27;:
+...             chunks.append(action[1])
+...         elif chunks:
+...             chunks.pop()
+...     return &#x27;&#x27;.join(chunks)
+...</pre></figure></div></details><p>В числовой задаче содержимое уже выбрано правильно. Ошибка может скрываться в порядке снятия или арифметике.</p>
+<h2 id="s4"><span class="sec">§4</span>Ошибки вычислителя</h2><p>Карточки 8 и 3 различимы по месту в выражении. Присваивание left = stack.pop() меняет их роли. Сложение и умножение перестановку скрывают; вычитание и деление обнаруживают.</p><div class="table-scroll"><table><thead><tr><th>Ошибочная строка или шаг</th><th>Контрпример</th><th>Исправление</th></tr></thead><tbody><tr><td>left снимается первым</td><td>8 3 - → -5</td><td>Сначала right, затем left</td></tr><tr><td>value = left // right</td><td>-7 3 / → -3</td><td>Модуль частного и отдельный знак</td></tr><tr><td>int(left / right)</td><td>Числа с десятками цифр</td><td>Не переводить через float</td></tr><tr><td>Вернуть stack[-1] без проверки</td><td>1 2 → 2</td><td>Требовать len(stack) == 1</td></tr><tr><td>Делить до проверки right</td><td>5 0 /</td><td>Выдать ZeroDivisionError по контракту</td></tr></tbody></table></div><p>При ошибке входной список tokens остаётся прежним: функция меняет только свой локальный stack. Уже выполненные арифметические операции наружу не записываются.</p><div class="widget quiz"><div class="widget__head"><b>Проверьте себя</b></div><p class="quiz__q">Какой тест обнаружит перестановку операндов?</p><ul class="quiz__opts"><li><button type="button">2 3 +</button><div class="quiz__why">Сверьте порядок обработки и состояние вершины. Вычитание меняется при перестановке. 8 - 3 равно 5, 3 - 8 равно -5.</div></li><li data-ok><button type="button">8 3 -</button><div class="quiz__why">Вычитание меняется при перестановке. 8 - 3 равно 5, 3 - 8 равно -5.</div></li><li><button type="button">2 3 *</button><div class="quiz__why">Сверьте порядок обработки и состояние вершины. Вычитание меняется при перестановке. 8 - 3 равно 5, 3 - 8 равно -5.</div></li></ul></div><p>Контрпримеры готовы. В практике нужно реализовать функции и объяснить, какое свойство сохраняет каждый шаг.</p>
+<div class="sources"><b>Источники главы</b><ol><li>КТП ОП.04, занятие 23: LIFO, операции, стек вызовов, скобки, undo и постфиксная запись.</li><li>Документация Python: <a href="https://docs.python.org/3/tutorial/datastructures.html#using-lists-as-stacks" target="_blank" rel="noopener">списки как стеки</a>, <a href="https://docs.python.org/3/library/stdtypes.html#numeric-types-int-float-complex" target="_blank" rel="noopener">целые числа и деление</a>.</li><li>Все значения примеров заданы в тексте; фрагменты с &gt;&gt;&gt; выполняются в Python 3 после определения соответствующих функций.</li></ol></div><div class="pager"><a href="03-obratnaya-polskaya-zapis.html">← 23.4 Обратная польская запись</a><a href="05-praktika-i-dz.html">23.6 Практика и домашнее задание →</a></div><div class="colophon"><span>Модуль 23 · Стек и скобки · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div></main></div></div><script src="../../massivy/book.js"></script><script src="../../massivy/algo.js"></script><script src="../stack23.js"></script></body></html>
