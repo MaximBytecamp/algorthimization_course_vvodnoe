@@ -37,6 +37,7 @@ DOMAINS = (
     Domain("mdk0101", "МДК.01.01 · Разработка модулей", "mdk0101-razrabotka-modulei", ("mdk0101-",)),
     Domain("mdk0111", "МДК.01.11 · ADO.NET", "mdk0111-ado-net", ("mdk0111-",)),
     Domain("mdk0401", "МДК.04.01 · Базы данных", "mdk0401-razrabotka-i-zashchita-baz-dannyh", ("mdk0401-", "mongodb-")),
+    Domain("project-management", "Управление программными проектами", "upravlenie-programmnymi-proektami", ("project-management",)),
     Domain("angular-react", "Angular и React", "angular-react", ("angular-react-", "react-")),
     Domain("sysprog", "Системное программирование", "sistemnoe-programmirovanie", ("mdk0104-",)),
     Domain("standards", "Стандартизация и документирование", "standartizaciya-sertifikaciya-i-dokumentovedenie", ("ssd-", "api-standard-")),
