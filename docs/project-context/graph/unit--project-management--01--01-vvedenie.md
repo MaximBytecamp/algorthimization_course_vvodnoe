@@ -18,5 +18,6 @@ tags:
 ## Точки входа
 
 - [upravlenie-programmnymi-proektami/lessons/01-vvedenie/index.html](../../../upravlenie-programmnymi-proektami/lessons/01-vvedenie/index.html)
+- [upravlenie-programmnymi-proektami/lessons/01-vvedenie/visual-lecture.js](../../../upravlenie-programmnymi-proektami/lessons/01-vvedenie/visual-lecture.js)
 
 _Узел создан автоматически. Факты о состоянии работы храните в тематической заметке или `CURRENT.md`._
