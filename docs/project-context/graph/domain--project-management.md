@@ -18,6 +18,7 @@ tags:
 ## Модули и разделы
 
 - [[unit--project-management--01--01-vvedenie]]
+- [[unit--project-management--02--02-bitrix24]]
 
 ## Точки входа области
 
