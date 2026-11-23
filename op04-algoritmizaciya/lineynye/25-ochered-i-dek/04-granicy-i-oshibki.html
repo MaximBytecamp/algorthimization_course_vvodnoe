@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+
+<html lang="ru"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1" name="viewport"/><meta content="#F1F2EC" name="theme-color"/><title>25.5 Границы и ошибки · Линейные структуры</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&amp;family=Pixelify+Sans:wght@500;600;700&amp;family=Roboto+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/><link href="../../massivy/styles.css" rel="stylesheet"/><link href="../../massivy/algo.css" rel="stylesheet"/><link href="../lineynye.css" rel="stylesheet"/><link href="queue25.css" rel="stylesheet"/></head>
+<body><div class="book"><div class="book__body"><div class="spine"><span>Модуль 25 · Очередь и дек · ОП.04</span></div><main class="leaf"><div class="running"><p class="eyebrow"><a href="../index.html">Линейные структуры</a> · модуль 25</p><p class="running__folio">Глава 25.5</p></div><header class="chapter-head"><span class="chapter-num">25.5</span><h1>Границы и ошибки</h1><p class="lead">Проверим места, где легко нарушить порядок: пустая очередь, заполненный буфер, равные максимумы и команда после закрытия.</p></header><nav class="contents"><b>В этой главе</b><ol><li><a href="#s1">Матрица границ</a></li><li><a href="#s2">Ошибка порядка снятия</a></li><li><a href="#s3">Устаревший максимум остаётся</a></li><li><a href="#s4">Не смешивать контракты</a></li></ol></nav>
+<h2 id="s1"><span class="sec">§1</span>Матрица границ</h2>
+<p>Сначала запишем ожидаемое поведение. Результат на границе зависит от контракта: пустой run допустим, пустой pop ошибочен, а слишком короткий поток ещё не даёт полного окна.</p><div class="table-scroll"><table><thead><tr><th>Случай</th><th>Ожидается</th><th>Какую ошибку ловит</th></tr></thead><tbody><tr><td>process_tasks([])</td><td>([], [])</td><td>Лишний обязательный элемент</td></tr><tr><td>run на пустом ожидании</td><td>([], [])</td><td>Снятие без проверки</td></tr><tr><td>add A, close, add B</td><td>ValueError</td><td>Приём после закрытия</td></tr><tr><td>RingQueue(1): push A, push B</td><td>OverflowError</td><td>Тихая потеря A</td></tr><tr><td>max_window([2, 2, 1], 2)</td><td>[2, 2]</td><td>Удаление по значению без возраста</td></tr><tr><td>max_window([3], 1)</td><td>[3]</td><td>Неверный момент первого ответа</td></tr><tr><td>max_window([], 1)</td><td>ValueError</td><td>Нет допустимого окна</td></tr></tbody></table></div><p>Проверяйте состояние после неудачной операции буфера. OverflowError должен оставить прежнее содержимое; IndexError не должен менять head и size. Сам факт исключения ещё не доказывает корректность состояния.</p>
+<p>Начнём с ошибки, которая видна уже на двух задачах.</p><h2 id="s2"><span class="sec">§2</span>Ошибка порядка снятия</h2>
+<p>В обработчике заменили popleft на pop. На единственной задаче различие не видно. Поэтому минимальный полезный пример содержит две заявки.</p><figure class="code"><figcaption>Python · реализация</figcaption><pre><code>pending.append("A")
+pending.append("B")
+completed.append(pending.pop())  # Ошибка: снят конец вместо начала.</code></pre></figure><div class="table-scroll"><table><thead><tr><th>Состояние</th><th>Ошибка: pop</th><th>Нужно: popleft</th></tr></thead><tbody><tr><td>Ожидали A, B</td><td>Выполнена B; осталась A</td><td>Выполнена A; осталась B</td></tr></tbody></table></div><p>Исправьте только место снятия, сохранив протокол команд. Затем запустите все проверки: исправление FIFO не должно сломать пустой run и close.</p><div class="sandbox" data-title="process_tasks" id="fix-fifo"><script class="sandbox__start" type="text/plain">
+from collections import deque
+
+
+def process_tasks(commands):
+    pending = deque()
+    completed = []
+    closed = False
+    for command in commands:
+        if closed:
+            raise ValueError("команды после close")
+        if not isinstance(command, tuple) or not command:
+            raise ValueError("неверная команда")
+        if len(command) == 2 and command[0] == "add" and isinstance(command[1], str):
+            pending.append(command[1])
+        elif command == ("run",):
+            if pending:
+                completed.append(pending.pop())
+        elif command == ("close",):
+            closed = True
+            while pending:
+                completed.append(pending.pop())
+        else:
+            raise ValueError("неверная команда")
+    return completed, list(pending)
+</script><script class="sandbox__tests" type="text/plain">
+def test_fifo():
+    assert process_tasks([("add", "A"), ("add", "B"), ("run",), ("add", "C")]) == (["A"], ["B", "C"])
+
+def test_empty():
+    assert process_tasks([]) == ([], [])
+    assert process_tasks([("run",), ("run",)]) == ([], [])
+
+def test_close():
+    assert process_tasks([("add", "A"), ("add", "B"), ("close",)]) == (["A", "B"], [])
+    assert process_tasks([("close",)]) == ([], [])
+
+def test_duplicates_and_empty_id():
+    assert process_tasks([("add", ""), ("add", "A"), ("add", "A"), ("close",)]) == (["", "A", "A"], [])
+
+def test_errors():
+    for commands in [[("bad",)], [("add",)], [("run", 1)], [("add", 7)], [()], ["run"], [("close",), ("add", "A")], [("close",), ("run",)], [("close",), ("close",)]]:
+        try:
+            process_tasks(commands)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(commands)
+
+def test_unchanged_and_iterable():
+    commands = [("add", "A"), ("run",), ("add", "B")]
+    saved = commands[:]
+    assert process_tasks(iter(commands)) == (["A"], ["B"])
+    assert commands == saved
+</script></div><p>В этой песочнице намеренно ошибочная реализация. Тест с двумя задачами должен её отвергнуть. Затем верните popleft в обоих местах снятия.</p>
+<p>Для окна требуется другая проверка: момент устаревания индекса.</p><h2 id="s3"><span class="sec">§3</span>Устаревший максимум остаётся</h2>
+<p>Следующая ошибка возникает на левой границе. Удаление по условию index &lt; i − k запаздывает на один шаг: индекс i − k уже не входит в окно.</p><div class="table-scroll"><table><thead><tr><th>Шаг</th><th>Окно</th><th>Верный максимум</th><th>При ошибочной границе</th></tr></thead><tbody><tr><td>i = 1, k = 2</td><td>[8, 1]</td><td>8</td><td>8</td></tr><tr><td>i = 2, k = 2</td><td>[1, 2]</td><td>2</td><td>8</td></tr></tbody></table></div><p>Исправьте сравнение возраста. Повторите проверку на убывающем массиве: там старые большие значения не снимаются с конца и ошибка видна особенно хорошо.</p><div class="sandbox" data-title="max_window" id="fix-age"><script class="sandbox__start" type="text/plain">
+from collections import deque
+
+
+def max_window(nums, k):
+    if not 1 <= k <= len(nums):
+        raise ValueError("неверная ширина окна")
+    candidates = deque()
+    answer = []
+    for i, value in enumerate(nums):
+        while candidates and candidates[0] < i - k:
+            candidates.popleft()
+        while candidates and nums[candidates[-1]] <= value:
+            candidates.pop()
+        candidates.append(i)
+        if i >= k - 1:
+            answer.append(nums[candidates[0]])
+    return answer
+</script><script class="sandbox__tests" type="text/plain">
+def test_example():
+    assert max_window([4, 1, 3, 5, 2, 5], 3) == [4, 5, 5, 5]
+
+def test_widths():
+    assert max_window([3, -1, 2], 1) == [3, -1, 2]
+    assert max_window([3, -1, 2], 3) == [3]
+
+def test_equal():
+    assert max_window([5, 5, 5, 5], 2) == [5, 5, 5]
+
+def test_order_and_negatives():
+    assert max_window([1, 2, 3, 4], 2) == [2, 3, 4]
+    assert max_window([4, 3, 2, 1], 2) == [4, 3, 2]
+    assert max_window([-4, -2, -5], 2) == [-2, -2]
+
+def test_invalid():
+    for nums, k in [([], 1), ([], 0), ([1], 0), ([1], -1), ([1], 2)]:
+        try:
+            max_window(nums, k)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError((nums, k))
+
+def test_reference_and_unchanged():
+    for nums in [[2, 1, 2, 3, 1], [8, 1, 2, 3], [2, 2, 1, 2], [-1]]:
+        saved = nums[:]
+        for k in range(1, len(nums) + 1):
+            assert max_window(nums, k) == [max(nums[i:i+k]) for i in range(len(nums)-k+1)]
+        assert nums == saved
+</script></div><p>Сравнение ≤ в первом while означает «уже вне окна». Сравнение ≤ во втором означает «не сильнее нового». Одинаковый знак используется по разным причинам.</p>
+<p>После исправления границы проверим, какие замены структуры сохраняют контракт.</p><h2 id="s4"><span class="sec">§4</span>Не смешивать контракты</h2>
+<p>Частая попытка ограничить память — заменить deque на deque(maxlen=k). Но автоматическое вытеснение ограничивает число кандидатов без проверки возраста. В деке кандидатов может быть намного меньше k элементов.</p><div class="table-scroll"><table><thead><tr><th>Изменение</th><th>Почему недостаточно</th><th>Что делать</th></tr></thead><tbody><tr><td>deque(maxlen=k) вместо удаления старых</td><td>Число кандидатов не равно возрасту</td><td>Проверять индекс начала</td></tr><tr><td>Хранить только значения</td><td>Равные значения теряют привязку к позиции</td><td>Хранить индексы или пары</td></tr><tr><td>На close очистить pending</td><td>Задачи пропали без выполнения</td><td>Снять остаток по FIFO</td></tr><tr><td>Считать None свободным местом</td><td>Нельзя хранить None как данные</td><td>Проверять size</td></tr></tbody></table></div><p>На этапе отладки проверяйте инварианты после каждого шага. Для дека индексы возрастают, значения убывают, первый индекс не старше левой границы. Такая полная проверка занимает O(k) на шаг и не входит в линейную рабочую версию.</p><details class="more"><summary>Почему тесты не доказывают O(n)</summary><div><p>Медленный пересчёт max по каждому окну тоже даст правильные ответы. Для оценки стоимости нужно показать код и посчитать операции. Тесты проверяют результаты, а объяснение инварианта и стоимости — устройство решения.</p></div></details><p>Теперь перенесём эти проверки в самостоятельную работу. Базовая задача остаётся обработчиком очереди, а для максимума окна предоставлен каркас.</p>
+<div class="sources"><b>Источники главы</b><ol><li>КТП ОП.04, занятие 25: FIFO, deque, обработчик задач, идея кольцевого буфера и максимум окна. Обязательное ядро — очередь; монотонный дек разбирается с каркасом.</li><li><a href="https://docs.python.org/3/library/collections.html#collections.deque" rel="noopener" target="_blank">Документация Python: collections.deque</a>.</li><li><a href="https://docs.python.org/3/tutorial/datastructures.html#using-lists-as-queues" rel="noopener" target="_blank">Документация Python: списки как очереди</a>.</li></ol></div><div class="pager"><a href="03-maksimum-okna.html">← назад</a><a href="05-praktika-i-dz.html">25.6 Практика и домашнее задание →</a></div><div class="colophon"><span>Модуль 25 · Очередь и дек · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div></main></div></div><script src="../../massivy/book.js"></script><script src="../../massivy/algo.js"></script><script src="queue25.js"></script></body></html>

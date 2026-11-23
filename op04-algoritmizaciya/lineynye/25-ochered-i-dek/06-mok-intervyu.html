@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+
+<html lang="ru"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1" name="viewport"/><meta content="#F1F2EC" name="theme-color"/><title>25.7 Мок-интервью по очереди и деку · Линейные структуры</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&amp;family=Pixelify+Sans:wght@500;600;700&amp;family=Roboto+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/><link href="../../massivy/styles.css" rel="stylesheet"/><link href="../../massivy/algo.css" rel="stylesheet"/><link href="../lineynye.css" rel="stylesheet"/><link href="queue25.css" rel="stylesheet"/></head>
+<body><div class="book"><div class="book__body"><div class="spine"><span>Модуль 25 · Очередь и дек · ОП.04</span></div><main class="leaf"><div class="running"><p class="eyebrow"><a href="../index.html">Линейные структуры</a> · модуль 25</p><p class="running__folio">Глава 25.7</p></div><header class="chapter-head"><span class="chapter-num">25.7</span><h1>Мок-интервью по очереди и деку</h1><p class="lead">Три билета помогают проверить порядок решения: контракт, примеры, инвариант, код и стоимость. Потоковый билет развивает базовый максимум окна.</p></header><nav class="contents"><b>В этой главе</b><ol><li><a href="#s1">Порядок тренировки</a></li><li><a href="#s2">Обратная связь по процессу</a></li></ol></nav>
+<h2 id="s1"><span class="sec">§1</span>Порядок тренировки</h2>
+<p>Выберите билет на 25 минут. Этапы открываются последовательно; для повторения можно раскрыть все. Таймер общий для текущей тренировки. Сброс этапов и сброс кода в песочнице — разные действия.</p><p>Это открытая тренировка занятия 25. Контрольное мок-интервью № 26 использует отдельные задачи и здесь не проводится.</p><div class="mockset"><div class="mock-board"><button class="btn" data-mock="task-tasks" type="button">Обработчик задач</button><button class="btn" data-mock="task-window" type="button">Максимум окна</button><button class="btn" data-mock="task-stream" type="button">Максимум потока · развитие</button></div><div class="mock" data-name="Обработчик задач" id="task-tasks"><div class="mock__head"><b>Обработчик задач</b><span>25 минут · семь этапов</span></div><section class="mock__stage" data-min="2" data-title="Условие"><p>Команды — кортежи add со строкой, run и close. Close выполняет остаток; любая следующая команда — ValueError. Пустой run допустим. Вернуть выполненные и ожидающие списки; вход не менять.</p><p>Перескажите вход и результат. Назовите, какой элемент нужно обрабатывать первым.</p></section><section class="mock__stage" data-min="3" data-title="Уточнения"><p>Уточните пустой run, повторные имена, конец потока без close и команду после close.</p><details class="more"><summary>Ответы интервьюера</summary><div><p>Команды — кортежи add со строкой, run и close. Close выполняет остаток; любая следующая команда — ValueError. Пустой run допустим. Вернуть выполненные и ожидающие списки; вход не менять.</p></div></details></section><section class="mock__stage" data-min="3" data-title="Примеры"><p>Сначала предскажите результат, затем раскройте ответы.</p><div class="mock-ex"><div class="table-scroll"><table><thead><tr><th>Вход</th><th>Ответ</th></tr></thead><tbody><tr><td>[]</td><td><span class="mock-ex__ans"><code>([], [])</code></span></td></tr><tr><td>add A, add B, run</td><td><span class="mock-ex__ans"><code>(['A'], ['B'])</code></span></td></tr><tr><td>add A, close</td><td><span class="mock-ex__ans"><code>(['A'], [])</code></span></td></tr></tbody></table></div><button class="btn mock-ex__show" type="button">Показать ответы</button></div></section><section class="mock__stage" data-min="4" data-title="План и инвариант"><p>Опишите состояние структуры после шага и основания удаления элемента.</p><details class="more"><summary>Сверить план</summary><div><p>Ожидающие находятся в deque по приходу. Run снимает из начала, close снимает весь остаток. Закрытие проверяется до обработки следующей команды.</p></div></details><div class="widget" data-queue25="tasks"></div><p>Схема показывает эталонный ход. Ваш код исполняется только в песочнице. В первой попытке оставьте её в исходном состоянии.</p></section><section class="mock__stage" data-min="7" data-title="Код"><p>Реализуйте функцию по контракту. Перед запуском проверьте операцию снятия и граничное условие.</p><div class="sandbox" data-title="process_tasks" id="interview-tasks"><script class="sandbox__start" type="text/plain">
+from collections import deque
+
+def process_tasks(commands):
+    raise NotImplementedError
+</script><script class="sandbox__tests" type="text/plain">
+def test_fifo():
+    assert process_tasks([("add", "A"), ("add", "B"), ("run",), ("add", "C")]) == (["A"], ["B", "C"])
+
+def test_empty():
+    assert process_tasks([]) == ([], [])
+    assert process_tasks([("run",), ("run",)]) == ([], [])
+
+def test_close():
+    assert process_tasks([("add", "A"), ("add", "B"), ("close",)]) == (["A", "B"], [])
+    assert process_tasks([("close",)]) == ([], [])
+
+def test_duplicates_and_empty_id():
+    assert process_tasks([("add", ""), ("add", "A"), ("add", "A"), ("close",)]) == (["", "A", "A"], [])
+
+def test_errors():
+    for commands in [[("bad",)], [("add",)], [("run", 1)], [("add", 7)], [()], ["run"], [("close",), ("add", "A")], [("close",), ("run",)], [("close",), ("close",)]]:
+        try:
+            process_tasks(commands)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(commands)
+
+def test_unchanged_and_iterable():
+    commands = [("add", "A"), ("run",), ("add", "B")]
+    saved = commands[:]
+    assert process_tasks(iter(commands)) == (["A"], ["B"])
+    assert commands == saved
+</script></div></section><section class="mock__stage" data-min="3" data-title="Проверки"><p>Запустите тесты и добавьте свой контрпример. Объясните, какое допущение он проверяет.</p><details class="more"><summary>Сверить границы</summary><div><p>Команды — кортежи add со строкой, run и close. Close выполняет остаток; любая следующая команда — ValueError. Пустой run допустим. Вернуть выполненные и ожидающие списки; вход не менять.</p></div></details></section><section class="mock__stage" data-min="3" data-title="Стоимость и обратная связь"><p>Посчитайте добавления и снятия. Отделите рабочую память от памяти результата.</p><details class="more"><summary>Сверить стоимость</summary><div><p>При m командах время O(m): каждая задача добавляется и снимается не больше одного раза. Ожидание занимает O(q); с журналом результата общая память до O(m).</p></div></details></section></div><div class="mock" data-name="Максимум окна" id="task-window"><div class="mock__head"><b>Максимум окна</b><span>25 минут · семь этапов</span></div><section class="mock__stage" data-min="2" data-title="Условие"><p>Список целых и целое k. Допустимо 1 ≤ k ≤ n; иначе ValueError. Вернуть значения максимумов; вход не менять.</p><p>Перескажите вход и результат. Назовите, какой элемент нужно обрабатывать первым.</p></section><section class="mock__stage" data-min="3" data-title="Уточнения"><p>Уточните значения или индексы в ответе, неверное k, равенства и допустимость изменения входа.</p><details class="more"><summary>Ответы интервьюера</summary><div><p>Список целых и целое k. Допустимо 1 ≤ k ≤ n; иначе ValueError. Вернуть значения максимумов; вход не менять.</p></div></details></section><section class="mock__stage" data-min="3" data-title="Примеры"><p>Сначала предскажите результат, затем раскройте ответы.</p><div class="mock-ex"><div class="table-scroll"><table><thead><tr><th>Вход</th><th>Ответ</th></tr></thead><tbody><tr><td>[4, 1, 3, 5], k = 3</td><td><span class="mock-ex__ans"><code>[4, 5]</code></span></td></tr><tr><td>[2, 2, 1], k = 2</td><td><span class="mock-ex__ans"><code>[2, 2]</code></span></td></tr><tr><td>[3], k = 1</td><td><span class="mock-ex__ans"><code>[3]</code></span></td></tr></tbody></table></div><button class="btn mock-ex__show" type="button">Показать ответы</button></div></section><section class="mock__stage" data-min="4" data-title="План и инвариант"><p>Опишите состояние структуры после шага и основания удаления элемента.</p><details class="more"><summary>Сверить план</summary><div><p>Индексы возрастают, значения строго убывают при снятии по ≤. Устаревшие уходят из начала, вытесненные с конца. Первый кандидат — максимум.</p></div></details><div class="widget" data-queue25="window"></div><p>Схема показывает эталонный ход. Ваш код исполняется только в песочнице. В первой попытке оставьте её в исходном состоянии.</p></section><section class="mock__stage" data-min="7" data-title="Код"><p>Реализуйте функцию по контракту. Перед запуском проверьте операцию снятия и граничное условие.</p><div class="sandbox" data-title="max_window" id="interview-window"><script class="sandbox__start" type="text/plain">
+from collections import deque
+
+def max_window(nums, k):
+    if not 1 <= k <= len(nums):
+        raise ValueError("неверная ширина окна")
+    candidates = deque()
+    answer = []
+    for i, value in enumerate(nums):
+        # 1. Удалите индексы вне текущего окна.
+        # 2. Удалите с конца кандидатов не сильнее value.
+        # 3. Добавьте i и запишите максимум полного окна.
+        raise NotImplementedError
+    return answer
+</script><script class="sandbox__tests" type="text/plain">
+def test_example():
+    assert max_window([4, 1, 3, 5, 2, 5], 3) == [4, 5, 5, 5]
+
+def test_widths():
+    assert max_window([3, -1, 2], 1) == [3, -1, 2]
+    assert max_window([3, -1, 2], 3) == [3]
+
+def test_equal():
+    assert max_window([5, 5, 5, 5], 2) == [5, 5, 5]
+
+def test_order_and_negatives():
+    assert max_window([1, 2, 3, 4], 2) == [2, 3, 4]
+    assert max_window([4, 3, 2, 1], 2) == [4, 3, 2]
+    assert max_window([-4, -2, -5], 2) == [-2, -2]
+
+def test_invalid():
+    for nums, k in [([], 1), ([], 0), ([1], 0), ([1], -1), ([1], 2)]:
+        try:
+            max_window(nums, k)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError((nums, k))
+
+def test_reference_and_unchanged():
+    for nums in [[2, 1, 2, 3, 1], [8, 1, 2, 3], [2, 2, 1, 2], [-1]]:
+        saved = nums[:]
+        for k in range(1, len(nums) + 1):
+            assert max_window(nums, k) == [max(nums[i:i+k]) for i in range(len(nums)-k+1)]
+        assert nums == saved
+</script></div></section><section class="mock__stage" data-min="3" data-title="Проверки"><p>Запустите тесты и добавьте свой контрпример. Объясните, какое допущение он проверяет.</p><details class="more"><summary>Сверить границы</summary><div><p>Список целых и целое k. Допустимо 1 ≤ k ≤ n; иначе ValueError. Вернуть значения максимумов; вход не менять.</p></div></details></section><section class="mock__stage" data-min="3" data-title="Стоимость и обратная связь"><p>Посчитайте добавления и снятия. Отделите рабочую память от памяти результата.</p><details class="more"><summary>Сверить стоимость</summary><div><p>Каждый индекс добавляется один раз и снимается не более одного раза. Время O(n), рабочий дек O(k), список ответа O(n − k + 1).</p></div></details></section></div><div class="mock" data-name="Максимум потока · развитие" id="task-stream"><div class="mock__head"><b>Максимум потока · развитие</b><span>25 минут · семь этапов</span></div><section class="mock__stage" data-min="2" data-title="Условие"><p>Итерируемый поток целых, положительное целое k. Выдавать максимумы по одному. Поток короче k даёт пустую выдачу. При k &lt; 1 — ValueError при начале перебора.</p><p>Перескажите вход и результат. Назовите, какой элемент нужно обрабатывать первым.</p></section><section class="mock__stage" data-min="3" data-title="Уточнения"><p>Уточните неизвестную длину, короткий поток, момент ошибки ширины и хранение результата.</p><details class="more"><summary>Ответы интервьюера</summary><div><p>Итерируемый поток целых, положительное целое k. Выдавать максимумы по одному. Поток короче k даёт пустую выдачу. При k &lt; 1 — ValueError при начале перебора.</p></div></details></section><section class="mock__stage" data-min="3" data-title="Примеры"><p>Сначала предскажите результат, затем раскройте ответы.</p><div class="mock-ex"><div class="table-scroll"><table><thead><tr><th>Вход</th><th>Ответ</th></tr></thead><tbody><tr><td>Поток 4, 1, 3, 5; k = 3</td><td><span class="mock-ex__ans"><code>4, 5</code></span></td></tr><tr><td>Поток 1, 2; k = 3</td><td><span class="mock-ex__ans"><code>Нет значений</code></span></td></tr><tr><td>Пустой поток; k = 1</td><td><span class="mock-ex__ans"><code>Нет значений</code></span></td></tr></tbody></table></div><button class="btn mock-ex__show" type="button">Показать ответы</button></div></section><section class="mock__stage" data-min="4" data-title="План и инвариант"><p>Опишите состояние структуры после шага и основания удаления элемента.</p><details class="more"><summary>Сверить план</summary><div><p>Дек хранит пары индекс/значение. Возраст проверяется по индексу; сила по значению. Полное окно выдаётся через yield, весь вход и ответ не накапливаются.</p></div></details><div class="table-scroll"><table><thead><tr><th>Прочитано, k = 3</th><th>Пары (индекс, значение)</th><th>Выдача</th></tr></thead><tbody><tr><td>4</td><td>(0, 4)</td><td>—</td></tr><tr><td>4, 1</td><td>(0, 4), (1, 1)</td><td>—</td></tr><tr><td>4, 1, 3</td><td>(0, 4), (2, 3)</td><td>4</td></tr><tr><td>4, 1, 3, 5</td><td>(3, 5)</td><td>5</td></tr></tbody></table></div><p>Таблица показывает эталонные пары после добавления. Значение хранится вместе с индексом, поэтому полного массива не требуется.</p></section><section class="mock__stage" data-min="7" data-title="Код"><p>Реализуйте функцию по контракту. Перед запуском проверьте операцию снятия и граничное условие.</p><div class="sandbox" data-title="iter_max_window" id="interview-stream"><script class="sandbox__start" type="text/plain">
+from collections import deque
+
+def iter_max_window(values, k):
+    raise NotImplementedError
+</script><script class="sandbox__tests" type="text/plain">
+def test_stream_example():
+    assert list(iter_max_window(iter([4, 1, 3, 5, 2, 5]), 3)) == [4, 5, 5, 5]
+
+def test_short_stream():
+    assert list(iter_max_window(iter([]), 3)) == []
+    assert list(iter_max_window(iter([1, 2]), 3)) == []
+
+def test_stream_width_one():
+    assert list(iter_max_window(iter([0, -1, 0]), 1)) == [0, -1, 0]
+
+def test_stream_invalid():
+    for k in [0, -1]:
+        try:
+            list(iter_max_window(iter([1]), k))
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(k)
+
+def test_consumption():
+    seen = []
+    def source():
+        for x in [4, 1, 3, 5, 2]:
+            seen.append(x)
+            yield x
+    result = iter_max_window(source(), 3)
+    assert next(result) == 4
+    assert seen == [4, 1, 3]
+    assert next(result) == 5
+    assert seen == [4, 1, 3, 5]
+
+def test_stream_reference():
+    for nums in [[], [1], [2, 2, 1, 3], [-3, -1, -2]]:
+        for k in range(1, 6):
+            assert list(iter_max_window(iter(nums), k)) == [max(nums[i:i+k]) for i in range(max(0, len(nums)-k+1))]
+</script></div></section><section class="mock__stage" data-min="3" data-title="Проверки"><p>Запустите тесты и добавьте свой контрпример. Объясните, какое допущение он проверяет.</p><details class="more"><summary>Сверить границы</summary><div><p>Итерируемый поток целых, положительное целое k. Выдавать максимумы по одному. Поток короче k даёт пустую выдачу. При k &lt; 1 — ValueError при начале перебора.</p></div></details></section><section class="mock__stage" data-min="3" data-title="Стоимость и обратная связь"><p>Посчитайте добавления и снятия. Отделите рабочую память от памяти результата.</p><details class="more"><summary>Сверить стоимость</summary><div><p>Для n прочитанных элементов время O(n), рабочая память O(k). Сбор всех ответов в list дополнительно занимает O(n) памяти.</p></div></details></section></div></div>
+<h2 id="s2"><span class="sec">§2</span>Обратная связь по процессу</h2>
+<p>После попытки отметьте одну сильную сторону и одну ошибку. Запишите контрпример и минимальное исправление. Повторите тот этап, где возникла ошибка, а затем весь набор тестов.</p><div class="table-scroll"><table><thead><tr><th>Что проверить</th><th>Признак готовности</th></tr></thead><tbody><tr><td>Контракт</td><td>Отличает пустую очередь, конец входа и close</td></tr><tr><td>Порядок</td><td>Объясняет FIFO и два повода снятия из дека</td></tr><tr><td>Границы</td><td>Проверяет равенства, k = 1, устаревший максимум</td></tr><tr><td>Стоимость</td><td>Обосновывает O(n) числом операций, не видом циклов</td></tr><tr><td>Память</td><td>Различает потоковый алгоритм и накопление результата</td></tr></tbody></table></div><p>После модуля можно переходить к контрольному занятию 26: хеш-структуры, связные списки, стек, очередь и дек. Материал контрольного занятия пока не включён в эту книгу.</p>
+<div class="sources"><b>Источники главы</b><ol><li>КТП ОП.04, занятие 25: FIFO, deque, обработчик задач, идея кольцевого буфера и максимум окна. Обязательное ядро — очередь; монотонный дек разбирается с каркасом.</li><li><a href="https://docs.python.org/3/library/collections.html#collections.deque" rel="noopener" target="_blank">Документация Python: collections.deque</a>.</li><li><a href="https://docs.python.org/3/tutorial/datastructures.html#using-lists-as-queues" rel="noopener" target="_blank">Документация Python: списки как очереди</a>.</li></ol></div><div class="pager"><a href="05-praktika-i-dz.html">← назад</a><a href="../index.html">К каталогу книги →</a></div><div class="colophon"><span>Модуль 25 · Очередь и дек · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div></main></div></div><script src="../../massivy/book.js"></script><script src="../../massivy/algo.js"></script><script src="queue25.js"></script></body></html>

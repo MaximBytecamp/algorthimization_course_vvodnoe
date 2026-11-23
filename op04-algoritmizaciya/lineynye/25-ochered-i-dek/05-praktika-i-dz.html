@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+
+<html lang="ru"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1" name="viewport"/><meta content="#F1F2EC" name="theme-color"/><title>25.6 Практика и домашнее задание · Линейные структуры</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&amp;family=Pixelify+Sans:wght@500;600;700&amp;family=Roboto+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/><link href="../../massivy/styles.css" rel="stylesheet"/><link href="../../massivy/algo.css" rel="stylesheet"/><link href="../lineynye.css" rel="stylesheet"/><link href="queue25.css" rel="stylesheet"/></head>
+<body><div class="book"><div class="book__body"><div class="spine"><span>Модуль 25 · Очередь и дек · ОП.04</span></div><main class="leaf"><div class="running"><p class="eyebrow"><a href="../index.html">Линейные структуры</a> · модуль 25</p><p class="running__folio">Глава 25.6</p></div><header class="chapter-head"><span class="chapter-num">25.6</span><h1>Практика и домашнее задание</h1><p class="lead">На паре реализуем очередь задач и дополним каркас максимума окна. Дома переведём поиск максимума на поток, не сохраняя весь вход.</p></header><nav class="contents"><b>В этой главе</b><ol><li><a href="#s1">Маршрут работы на 90 минут</a></li><li><a href="#s2">Базовое ядро: обработчик задач</a></li><li><a href="#s3">Каркас: максимум каждого окна</a></li><li><a href="#s4">Домашняя работа: вход становится потоком</a></li><li><a href="#s5">Что сдавать и как оценивать</a></li></ol></nav>
+<h2 id="s1"><span class="sec">§1</span>Маршрут работы на 90 минут</h2>
+<p>Сначала зафиксируйте вход, результат и границы. Вручную воспроизведите очередь после команд. После собственной попытки реализуйте обработчик; к максимуму окна переходите с готовой трассой кандидатов.</p><div class="table-scroll"><table><thead><tr><th>Этап</th><th>Минуты</th><th>Результат</th></tr></thead><tbody><tr><td>Контракт и пример</td><td>0–10</td><td>Ожидающие и выполненные после каждой команды</td></tr><tr><td>Разбор принципа и демонстрация</td><td>10–35</td><td>FIFO, границы, дек кандидатов</td></tr><tr><td>Реализация по каркасу</td><td>35–65</td><td>Обработчик и максимум окна</td></tr><tr><td>Ошибка и потоковый контракт</td><td>65–75</td><td>Контрпример и план изменения</td></tr><tr><td>Повторные проверки и review</td><td>75–85</td><td>Все проверки и собственный граничный тест</td></tr><tr><td>Сохранение работы</td><td>85–90</td><td>Файлы и объяснение стоимости</td></tr></tbody></table></div><p>Скачайте <a download="" href="lesson_25.zip">стартовый архив lesson_25.zip</a>. В нём заготовки, публичные тесты и описание контрактов; решений нет. Команда <code>python check.py</code> проверяет обработчик и максимум окна. До реализации ожидаются ошибки NotImplementedError.</p><p>Песочницы загружают Python через Pyodide по кнопке. Для первой загрузки нужна сеть; локальный архив работает без неё. Браузер сохраняет код локально, но для сдачи нужен отдельный файл.</p>
+<p>Начните с функции обработки команд.</p><h2 id="s2"><span class="sec">§2</span>Базовое ядро: обработчик задач</h2>
+<p>Реализуйте <code>process_tasks(commands)</code>. Add принимает строковое имя, run выполняет самую раннюю задачу, close выполняет остаток и запрещает последующие команды. Пустой run ничего не меняет. Возвращается пара списков: выполненные и ожидающие.</p><div class="table-scroll"><table><thead><tr><th>Команды</th><th>Выполнены</th><th>Ожидают</th></tr></thead><tbody><tr><td>add A, add B, run, add C</td><td>A</td><td>B, C</td></tr><tr><td>add A, close</td><td>A</td><td>—</td></tr><tr><td>run</td><td>—</td><td>—</td></tr></tbody></table></div><div class="sandbox" data-title="process_tasks" id="practice-tasks"><script class="sandbox__start" type="text/plain">
+from collections import deque
+
+def process_tasks(commands):
+    raise NotImplementedError
+</script><script class="sandbox__tests" type="text/plain">
+def test_fifo():
+    assert process_tasks([("add", "A"), ("add", "B"), ("run",), ("add", "C")]) == (["A"], ["B", "C"])
+
+def test_empty():
+    assert process_tasks([]) == ([], [])
+    assert process_tasks([("run",), ("run",)]) == ([], [])
+
+def test_close():
+    assert process_tasks([("add", "A"), ("add", "B"), ("close",)]) == (["A", "B"], [])
+    assert process_tasks([("close",)]) == ([], [])
+
+def test_duplicates_and_empty_id():
+    assert process_tasks([("add", ""), ("add", "A"), ("add", "A"), ("close",)]) == (["", "A", "A"], [])
+
+def test_errors():
+    for commands in [[("bad",)], [("add",)], [("run", 1)], [("add", 7)], [()], ["run"], [("close",), ("add", "A")], [("close",), ("run",)], [("close",), ("close",)]]:
+        try:
+            process_tasks(commands)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(commands)
+
+def test_unchanged_and_iterable():
+    commands = [("add", "A"), ("run",), ("add", "B")]
+    saved = commands[:]
+    assert process_tasks(iter(commands)) == (["A"], ["B"])
+    assert commands == saved
+</script></div><p>Повторяющиеся имена и пустая строка допустимы. Ошибочная форма команды даёт ValueError. Для самостоятельного теста выберите минимум две задачи: одна задача не различает FIFO и LIFO.</p>
+<p>После проверок FIFO дополните обработку кандидатов окна.</p><h2 id="s3"><span class="sec">§3</span>Каркас: максимум каждого окна</h2>
+<p>Дополните <code>max_window(nums, k)</code>. Вход — список целых и целая ширина 1 ≤ k ≤ n. Верните список значений максимумов; исходный список не меняйте. На неверной ширине выдайте ValueError.</p><div class="table-scroll"><table><thead><tr><th>Вход</th><th>Ответ</th></tr></thead><tbody><tr><td>[4, 1, 3, 5, 2, 5], k = 3</td><td>[4, 5, 5, 5]</td></tr><tr><td>[3, -1, 2], k = 1</td><td>[3, -1, 2]</td></tr><tr><td>[3, -1, 2], k = 3</td><td>[3]</td></tr><tr><td>[5, 5, 5], k = 2</td><td>[5, 5]</td></tr></tbody></table></div><div class="sandbox" data-title="max_window" id="practice-window"><script class="sandbox__start" type="text/plain">
+from collections import deque
+
+def max_window(nums, k):
+    if not 1 <= k <= len(nums):
+        raise ValueError("неверная ширина окна")
+    candidates = deque()
+    answer = []
+    for i, value in enumerate(nums):
+        # 1. Удалите индексы вне текущего окна.
+        # 2. Удалите с конца кандидатов не сильнее value.
+        # 3. Добавьте i и запишите максимум полного окна.
+        raise NotImplementedError
+    return answer
+</script><script class="sandbox__tests" type="text/plain">
+def test_example():
+    assert max_window([4, 1, 3, 5, 2, 5], 3) == [4, 5, 5, 5]
+
+def test_widths():
+    assert max_window([3, -1, 2], 1) == [3, -1, 2]
+    assert max_window([3, -1, 2], 3) == [3]
+
+def test_equal():
+    assert max_window([5, 5, 5, 5], 2) == [5, 5, 5]
+
+def test_order_and_negatives():
+    assert max_window([1, 2, 3, 4], 2) == [2, 3, 4]
+    assert max_window([4, 3, 2, 1], 2) == [4, 3, 2]
+    assert max_window([-4, -2, -5], 2) == [-2, -2]
+
+def test_invalid():
+    for nums, k in [([], 1), ([], 0), ([1], 0), ([1], -1), ([1], 2)]:
+        try:
+            max_window(nums, k)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError((nums, k))
+
+def test_reference_and_unchanged():
+    for nums in [[2, 1, 2, 3, 1], [8, 1, 2, 3], [2, 2, 1, 2], [-1]]:
+        saved = nums[:]
+        for k in range(1, len(nums) + 1):
+            assert max_window(nums, k) == [max(nums[i:i+k]) for i in range(len(nums)-k+1)]
+        assert nums == saved
+</script></div><p>Покажите в трассе два повода снятия: устарел индекс и появился не меньший кандидат. Объясните, почему списки значений окна и кандидатов могут иметь разную длину. Базовый результат пары — корректная очередь; дек доводится по каркасу и проверкам.</p>
+<p>Когда версия для массива работает, измените способ получения значений.</p><h2 id="s4"><span class="sec">§4</span>Домашняя работа: вход становится потоком</h2>
+<p>После рабочей базовой версии измените условие: значения приходят по одному, весь вход хранить нельзя. Реализуйте генератор <code>iter_max_window(values, k)</code>. Генератор выдаёт результаты по одному через yield. Список результатов внутри функции не создаётся.</p><p>Values — конечный итерируемый объект целых. K — положительное целое; при k &lt; 1 возникает ValueError во время начала перебора. Если поток короче k, полных окон нет: генератор не выдаёт значений. Это отличается от контракта max_window, где длина известна заранее.</p><div class="table-scroll"><table><thead><tr><th>Массив</th><th>Поток</th><th>Зачем меняется</th></tr></thead><tbody><tr><td>В деке индекс i</td><td>В деке пара (i, value)</td><td>Старое значение нельзя читать из полного массива</td></tr><tr><td>len(nums) известна</td><td>Длина заранее неизвестна</td><td>Слишком короткий поток даёт пустую выдачу</td></tr><tr><td>answer.append(...)</td><td>yield ...</td><td>Не накапливаем результат</td></tr></tbody></table></div><div class="sandbox" data-title="iter_max_window" id="home-stream"><script class="sandbox__start" type="text/plain">
+from collections import deque
+
+def iter_max_window(values, k):
+    raise NotImplementedError
+</script><script class="sandbox__tests" type="text/plain">
+def test_stream_example():
+    assert list(iter_max_window(iter([4, 1, 3, 5, 2, 5]), 3)) == [4, 5, 5, 5]
+
+def test_short_stream():
+    assert list(iter_max_window(iter([]), 3)) == []
+    assert list(iter_max_window(iter([1, 2]), 3)) == []
+
+def test_stream_width_one():
+    assert list(iter_max_window(iter([0, -1, 0]), 1)) == [0, -1, 0]
+
+def test_stream_invalid():
+    for k in [0, -1]:
+        try:
+            list(iter_max_window(iter([1]), k))
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(k)
+
+def test_consumption():
+    seen = []
+    def source():
+        for x in [4, 1, 3, 5, 2]:
+            seen.append(x)
+            yield x
+    result = iter_max_window(source(), 3)
+    assert next(result) == 4
+    assert seen == [4, 1, 3]
+    assert next(result) == 5
+    assert seen == [4, 1, 3, 5]
+
+def test_stream_reference():
+    for nums in [[], [1], [2, 2, 1, 3], [-3, -1, -2]]:
+        for k in range(1, 6):
+            assert list(iter_max_window(iter(nums), k)) == [max(nums[i:i+k]) for i in range(max(0, len(nums)-k+1))]
+</script></div><p>Запустите <code>python check.py --stream</code>. Проверка test_consumption проверяет чтение по мере запроса: для первого ответа при k = 3 должны быть прочитаны ровно три значения. Рабочая память — O(k), если потребитель тоже не накапливает все ответы.</p><details class="more"><summary>Дополнительно: кольцевой буфер</summary><div><p>Дополните RingQueue из архива. Проверьте ёмкость 1, None, заполнение, несколько оборотов и сохранность состояния после ошибки. Команда <code>python check.py --extra</code> добавляет эти проверки. Эта задача не заменяет обязательную очередь.</p></div></details>
+<h2 id="s5"><span class="sec">§5</span>Что сдавать и как оценивать</h2>
+<p>Сохраните работу в <code>portfolio/lesson_25/</code>: solution.py, tests.py, complexity_note.md и результат запуска. В tests.py добавьте свой граничный сценарий. В complexity_note.md запишите инварианты, стоимость и различия контрактов массива и потока.</p><div class="table-scroll"><table><thead><tr><th>Критерий</th><th>Баллы</th><th>Подтверждение</th></tr></thead><tbody><tr><td>Контракт</td><td>2</td><td>Ошибки команд, close и ширина окна</td></tr><tr><td>Корректность</td><td>4</td><td>FIFO и максимум по каркасу; результаты тестов</td></tr><tr><td>Границы</td><td>2</td><td>Свой тест и исправленный контрпример</td></tr><tr><td>Объяснение</td><td>2</td><td>Число добавлений и снятий, рабочая память и результат</td></tr></tbody></table></div><p>Сохраните initial_attempt.txt до правок по внешнему совету. Если использовали ИИ, добавьте ai_usage_note.md с запросом, изменением и результатом повторных тестов. Тесты запускайте после исправления, а стоимость объясняйте по своему коду.</p><p>Следующая глава — тренировка по этапам. Она не заменяет отдельное контрольное мок-интервью № 26.</p>
+<div class="sources"><b>Источники главы</b><ol><li>КТП ОП.04, занятие 25: FIFO, deque, обработчик задач, идея кольцевого буфера и максимум окна. Обязательное ядро — очередь; монотонный дек разбирается с каркасом.</li><li><a href="https://docs.python.org/3/library/collections.html#collections.deque" rel="noopener" target="_blank">Документация Python: collections.deque</a>.</li><li><a href="https://docs.python.org/3/tutorial/datastructures.html#using-lists-as-queues" rel="noopener" target="_blank">Документация Python: списки как очереди</a>.</li></ol></div><div class="pager"><a href="04-granicy-i-oshibki.html">← назад</a><a href="06-mok-intervyu.html">25.7 Мок-интервью по очереди и деку →</a></div><div class="colophon"><span>Модуль 25 · Очередь и дек · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div></main></div></div><script src="../../massivy/book.js"></script><script src="../../massivy/algo.js"></script><script src="queue25.js"></script></body></html>
