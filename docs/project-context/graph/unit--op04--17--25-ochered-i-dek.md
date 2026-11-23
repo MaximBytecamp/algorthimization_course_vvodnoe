@@ -25,5 +25,6 @@ tags:
 - [op04-algoritmizaciya/lineynye/25-ochered-i-dek/05-praktika-i-dz.html](../../../op04-algoritmizaciya/lineynye/25-ochered-i-dek/05-praktika-i-dz.html)
 - [op04-algoritmizaciya/lineynye/25-ochered-i-dek/06-mok-intervyu.html](../../../op04-algoritmizaciya/lineynye/25-ochered-i-dek/06-mok-intervyu.html)
 - [op04-algoritmizaciya/lineynye/25-ochered-i-dek/queue25.js](../../../op04-algoritmizaciya/lineynye/25-ochered-i-dek/queue25.js)
+- [op04-algoritmizaciya/lineynye/25-ochered-i-dek/traces25.js](../../../op04-algoritmizaciya/lineynye/25-ochered-i-dek/traces25.js)
 
 _Узел создан автоматически. Факты о состоянии работы храните в тематической заметке или `CURRENT.md`._
