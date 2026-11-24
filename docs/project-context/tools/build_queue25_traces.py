@@ -101,7 +101,7 @@ def explanation(line, event, value, is_yield):
     return 'Сейчас выполняется подсвеченная строка. Изменение состояния появится на следующем шаге.'
 
 
-def record(code, call, arr, arr_name, ptrs):
+def record(code, call, arr, arr_name, ptrs, describe=explanation):
     filename = '<queue25-trace>'
     namespace = {}
     exec(compile(code, filename, 'exec'), namespace)
@@ -126,7 +126,7 @@ def record(code, call, arr, arr_name, ptrs):
             'arr': arr,
             'ret': repr(value) if event == 'return' else None,
             'err': None,
-            'say': explanation(lines[frame.f_lineno - 1], event, value, is_yield),
+            'say': describe(lines[frame.f_lineno - 1], event, value, is_yield),
         })
         return trace
 

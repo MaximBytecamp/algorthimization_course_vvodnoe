@@ -25,5 +25,6 @@ tags:
 - [op04-algoritmizaciya/lineynye/24-monotonnyy-stek/05-praktika-i-dz.html](../../../op04-algoritmizaciya/lineynye/24-monotonnyy-stek/05-praktika-i-dz.html)
 - [op04-algoritmizaciya/lineynye/24-monotonnyy-stek/06-mok-intervyu.html](../../../op04-algoritmizaciya/lineynye/24-monotonnyy-stek/06-mok-intervyu.html)
 - [op04-algoritmizaciya/lineynye/24-monotonnyy-stek/monostack24.js](../../../op04-algoritmizaciya/lineynye/24-monotonnyy-stek/monostack24.js)
+- [op04-algoritmizaciya/lineynye/24-monotonnyy-stek/traces24.js](../../../op04-algoritmizaciya/lineynye/24-monotonnyy-stek/traces24.js)
 
 _Узел создан автоматически. Факты о состоянии работы храните в тематической заметке или `CURRENT.md`._
