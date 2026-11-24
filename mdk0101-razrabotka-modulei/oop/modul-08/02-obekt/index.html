@@ -64,7 +64,41 @@ func main() {
     fmt.Println(first.Name)
     fmt.Println(first == second)
 }</pre></figure><figure class="code code--out"><figcaption><span>Вывод</span></figcaption><pre>Анна
-true</pre></figure><details class="simple"><summary>По-простому: два указателя на одну карточку</summary><p><strong>Что есть что.</strong> Указатели <code>first</code> и <code>second</code> — два способа обратиться к одному читателю; равенство указателей проверяет, один ли у них адрес.</p></details></section></div><div data-lang="rust"><section class="part"><h2>Состояние значения в Rust</h2><p>Значение Rust имеет тип и данные. Переменная изменяется только если объявлена через <code>mut</code>. Простая структура может быть скопирована, но коллекция <code>Vec</code> владеет своими данными и перемещается, если не вызвать <code>clone</code>.</p><figure class="code" data-run="rust"><figcaption><span>main.rs</span><span>Два независимых состояния</span></figcaption><pre>#[derive(Clone, Debug)]
+true</pre></figure><details class="simple"><summary>По-простому: два указателя на одну карточку</summary><p><strong>Что есть что.</strong> Указатели <code>first</code> и <code>second</code> — два способа обратиться к одному читателю; равенство указателей проверяет, один ли у них адрес.</p></details><p>Общий адрес объясняет связь между двумя указателями. Для сравнения создадим два отдельных значения и изменим только одно из них.</p></section><section class="part"><h2>Два равных значения</h2><p>Значения структур сравнивают по полям, если их поля сравнимы. Два читателя могут содержать одинаковое имя и при этом находиться по разным адресам. В этом опыте мы изменим второго читателя и увидим, что первый не меняется.</p><figure class="code" data-run="go"><figcaption><span>main.go</span><span>Две независимые структуры</span></figcaption><pre>package main
+
+import "fmt"
+type Reader struct { Name string }
+
+func main() {
+    first := Reader{Name: "Аня"}
+    second := Reader{Name: "Аня"}
+    second.Name = "Анна"
+    fmt.Println(first.Name)
+    fmt.Println(second.Name)
+    fmt.Println(first == second)
+}</pre></figure><figure class="code code--out"><figcaption><span>Вывод</span></figcaption><pre>Аня
+Анна
+false</pre></figure><p>Каждый литерал <code>Reader{...}</code> создаёт своё значение. Равенство структур после изменения стало ложным, потому что значения поля <code>Name</code> различаются. Дальше нужно отделить изменение значения от присваивания нового значения имени.</p></section><section class="part"><h2>Переприсваивание имени</h2><p>Строка в Go неизменяема. Операция соединения создаёт новую строку, а присваивание связывает с ней указанную переменную. Предыдущее значение сохраняется через другое имя.</p><figure class="code" data-run="go"><figcaption><span>main.go</span><span>Новое значение строки</span></figcaption><pre>package main
+
+import "fmt"
+func main() {
+    text := "склад"
+    oldText := text
+    text = text + " № 2"
+    fmt.Println(oldText)
+    fmt.Println(text)
+}</pre></figure><figure class="code code--out"><figcaption><span>Вывод</span></figcaption><pre>склад
+склад № 2</pre></figure><p>Здесь не меняется содержимое старой строки. Меняется значение переменной <code>text</code>. Это другое действие, чем изменение поля через указатель.</p></section><section class="part"><h2>Тип задаёт операции</h2><p>Тип структуры определяет набор её полей, а методы с receiver описывают операции над значением. В примере <code>Borrow</code> доступен для <code>Reader</code>, поскольку метод объявлен для этого типа.</p><figure class="code" data-run="go"><figcaption><span>main.go</span><span>Тип Reader и метод Borrow</span></figcaption><pre>package main
+
+import "fmt"
+type Reader struct { Books []string }
+func (r *Reader) Borrow(title string) { r.Books = append(r.Books, title) }
+
+func main() {
+    reader := Reader{}
+    reader.Borrow("Go")
+    fmt.Println(reader.Books)
+}</pre></figure><p>Точечная запись выбирает метод для конкретного значения. Внутри <code>Borrow</code> receiver <code>r</code> даёт доступ к тому же читателю.</p></section></div><div data-lang="rust"><section class="part"><h2>Состояние значения в Rust</h2><p>Значение Rust имеет тип и данные. Переменная изменяется только если объявлена через <code>mut</code>. Простая структура может быть скопирована, но коллекция <code>Vec</code> владеет своими данными и перемещается, если не вызвать <code>clone</code>.</p><figure class="code" data-run="rust"><figcaption><span>main.rs</span><span>Два независимых состояния</span></figcaption><pre>#[derive(Clone, Debug)]
 struct Reader { books: Vec&lt;String&gt; }
 
 fn main() {
@@ -81,4 +115,33 @@ fn main() {
     let second = &amp;reader;
     println!("{}", first.name);
     println!("{}", second.name);
-}</pre></figure><details class="simple"><summary>По-простому: два места для чтения одной карточки</summary><p><strong>Что есть что.</strong> <code>&amp;reader</code> — ссылка на один билет; Rust проверяет, чтобы одновременный доступ не создал противоречивых изменений.</p></details></section></div><div class="pager"><a href="../01-paradigma-oop/index.html">← 8.1. Введение. Парадигма ООП</a><a href="../03-klassy-i-ekzemplyary/index.html">8.3. Классы и экземпляры класса →</a></div><p><a href="../index.html">Модуль 8</a> · <a href="../../index.html">Все модули</a></p><div class="colophon"><span>ООП на Python · 8.2. Объект: состояние и поведение</span></div></main></div></div></body></html>
+}</pre></figure><details class="simple"><summary>По-простому: два места для чтения одной карточки</summary><p><strong>Что есть что.</strong> <code>&amp;reader</code> — ссылка на один билет; Rust проверяет, чтобы одновременный доступ не создал противоречивых изменений.</p></details><p>Ссылки для чтения относятся к одному значению. Теперь сравним их с двумя самостоятельными значениями, которые содержат одинаковые данные.</p></section><section class="part"><h2>Два самостоятельных значения</h2><p>Два вызова конструктора создают разные значения. Для структуры с вектором используем <code>clone</code>, когда нужно получить отдельную копию данных, а не передать владение.</p><figure class="code" data-run="rust"><figcaption><span>main.rs</span><span>Копия данных через clone</span></figcaption><pre>#[derive(Clone, Debug)]
+struct Reader { name: String }
+
+fn main() {
+    let first = Reader { name: "Аня".to_string() };
+    let mut second = first.clone();
+    second.name = "Анна".to_string();
+    println!("{}", first.name);
+    println!("{}", second.name);
+}</pre></figure><figure class="code code--out"><figcaption><span>Вывод</span></figcaption><pre>Аня
+Анна</pre></figure><p><code>clone</code> явно создаёт второе значение. После изменения поля второго читателя первый сохраняет исходное имя. Далее рассмотрим присваивание строки: у него другой результат, чем у изменения поля.</p></section><section class="part"><h2>Новое значение вместо старого</h2><p>Тип <code>String</code> хранит изменяемую строку. В этом примере оператор <code>+</code> создаёт результат, а присваивание заменяет значение переменной <code>text</code>. Значение в <code>old_text</code> остаётся прежним.</p><figure class="code" data-run="rust"><figcaption><span>main.rs</span><span>Переприсваивание строки</span></figcaption><pre>fn main() {
+    let text = String::from("склад");
+    let old_text = text.clone();
+    let text = text + " № 2";
+    println!("{}", old_text);
+    println!("{}", text);
+}</pre></figure><figure class="code code--out"><figcaption><span>Вывод</span></figcaption><pre>склад
+склад № 2</pre></figure><p>Вторая строка <code>let text</code> затеняет прежнее имя новым значением. Изменение объекта в Rust записывают отдельно: для него требуется изменяемая переменная и метод с <code>&amp;mut self</code>.</p></section><section class="part"><h2>Тип и доступные методы</h2><p>Блок <code>impl Reader</code> связывает методы с типом <code>Reader</code>. Метод <code>borrow</code> получает изменяемую ссылку на экземпляр, поэтому доступен только у переменной, объявленной через <code>mut</code>.</p><figure class="code" data-run="rust"><figcaption><span>main.rs</span><span>Тип Reader и метод borrow</span></figcaption><pre>struct Reader { books: Vec&lt;String&gt; }
+
+impl Reader {
+    fn borrow(&amp;mut self, title: &amp;str) {
+        self.books.push(title.to_string());
+    }
+}
+
+fn main() {
+    let mut reader = Reader { books: vec![] };
+    reader.borrow("Rust");
+    println!("{:?}", reader.books);
+}</pre></figure><p>Тип сообщает, какие поля есть у значения, а <code>impl</code> — какие операции оно поддерживает. Это завершает путь от данных объекта к его поведению.</p></section></div><div class="pager"><a href="../01-paradigma-oop/index.html">← 8.1. Введение. Парадигма ООП</a><a href="../03-klassy-i-ekzemplyary/index.html">8.3. Классы и экземпляры класса →</a></div><p><a href="../index.html">Модуль 8</a> · <a href="../../index.html">Все модули</a></p><div class="colophon"><span>ООП на Python · 8.2. Объект: состояние и поведение</span></div></main></div></div></body></html>
