@@ -20,7 +20,6 @@ tags:
 - [op04-algoritmizaciya/lessons/05-voprosy-testy-invarianty/index.html](../../../op04-algoritmizaciya/lessons/05-voprosy-testy-invarianty/index.html)
 - [op04-algoritmizaciya/lessons/05-voprosy-testy-invarianty/09-keysy.html](../../../op04-algoritmizaciya/lessons/05-voprosy-testy-invarianty/09-keysy.html)
 - [op04-algoritmizaciya/lessons/05-voprosy-testy-invarianty/10-trenazher.html](../../../op04-algoritmizaciya/lessons/05-voprosy-testy-invarianty/10-trenazher.html)
-- [op04-algoritmizaciya/lessons/05-voprosy-testy-invarianty/11-ii-varianty.html](../../../op04-algoritmizaciya/lessons/05-voprosy-testy-invarianty/11-ii-varianty.html)
 - [op04-algoritmizaciya/lessons/05-voprosy-testy-invarianty/book.js](../../../op04-algoritmizaciya/lessons/05-voprosy-testy-invarianty/book.js)
 - [op04-algoritmizaciya/lessons/05-voprosy-testy-invarianty/lekciya.html](../../../op04-algoritmizaciya/lessons/05-voprosy-testy-invarianty/lekciya.html)
 - [op04-algoritmizaciya/lessons/05-voprosy-testy-invarianty/LESSON_PLAN.md](../../../op04-algoritmizaciya/lessons/05-voprosy-testy-invarianty/LESSON_PLAN.md)
