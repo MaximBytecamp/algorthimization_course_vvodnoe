@@ -41,7 +41,7 @@
 2.9 Выбор корзин и native histograms ✎ · 2.10 Summary и выбор типа метрики ✎ · 2.11 Имена, единицы,
 кардинальность ★ · 2.12 Метрики веб-сервиса на FastAPI ✎
 
-### Часть 3. Prometheus · 11 лекций
+### Часть 3. Prometheus · 12 лекций
 
 Ядро всего стека метрик: сбор, хранение, обнаружение целей. Дальше на него опираются Thanos,
 VictoriaMetrics и Mimir.
@@ -49,7 +49,7 @@ VictoriaMetrics и Mimir.
 3.1 Архитектура и первый запуск: `prometheus.yml`, target, `up` ★ · 3.2 Scrape и pull-модель ★ ·
 3.3 Метки job и instance, служебные ряды ★ · 3.4 Relabeling до и после опроса ★ · 3.5 Service discovery:
 file, Docker ★✎ · 3.6 Exporters: node_exporter, blackbox, свой ★✎ · 3.7 TSDB: head, WAL, блоки ★ ·
-3.8 Retention, компакция, размер базы ★✎ · 3.9 Пропуски и устаревание рядов ★ ·
+3.8 Retention, компакция, размер базы ★✎ · 3.9 Пропуски и устаревание рядов ★ · 3.10 Pushgateway ✎ ·
 3.11 Лимиты и защита от кардинальности ★ · 3.12 Мониторинг Kubernetes: Prometheus Operator,
 ServiceMonitor, kube-state-metrics ✎
 

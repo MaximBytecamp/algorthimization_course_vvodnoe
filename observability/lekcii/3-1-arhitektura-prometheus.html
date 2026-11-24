@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F1E9">
+  <title>3.1 Архитектура и первый запуск · Метрики и наблюдаемость</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,0..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="book">
+  <div class="book__body">
+    <div class="spine"><span>Часть 3 · Prometheus</span></div>
+    <main class="leaf">
+  <div class="running">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none;color:inherit">Метрики и наблюдаемость</a> · часть 3 · Prometheus</p>
+    <p class="running__folio">Лекция 3.1</p>
+  </div>
+
+  <header class="chapter-head">
+    <span class="chapter-num">3.1</span>
+    <h1>Архитектура и первый запуск</h1>
+    <p class="lead">Программа уже отдаёт метрики на <code>/metrics</code>. Теперь отдельный Prometheus должен регулярно забирать этот ответ и сохранять его в своей базе. В лекции — из каких частей состоит этот путь, что записывают в <code>prometheus.yml</code>, как запустить первый экземпляр и что означают <code>target</code> и <code>up</code>.</p>
+  </header>
+  <dl class="passport">
+    <div><dt>Тема</dt><dd>Prometheus</dd></div>
+    <div><dt>Стенд</dt><dd><code>telemetry-lab</code> и Prometheus 3.5.0</dd></div>
+    <div><dt>Опирается на</dt><dd>лекции 2.1 и 2.12: endpoint <code>/metrics</code></dd></div>
+    <div><dt>Результат</dt><dd>Запустить Prometheus и объяснить значение <code>up</code></dd></div>
+  </dl>
+
+  <div class="reader-start">
+    <div>
+      <b>Режим чтения</b>
+      <p>Лекция откроется по одному разделу: на экране одна мысль, кнопка «Дальше» ведёт к следующей. Стрелки ← → листают разделы, Esc возвращает всю лекцию.</p>
+    </div>
+    <div class="reader-start__btns">
+      <button type="button" data-reader-start="continue" hidden></button>
+      <button type="button" class="primary" data-reader-start="begin">Читать по шагам</button>
+    </div>
+  </div>
+
+  <nav class="contents">
+    <b>В этой лекции</b>
+    <ol>
+      <li><a href="#s1"><span class="csec">§1</span>Два процесса и один путь данных</a></li>
+      <li><a href="#s2"><span class="csec">§2</span>Что запускается</a></li>
+      <li><a href="#s3"><span class="csec">§3</span>Конфигурация prometheus.yml</a></li>
+      <li><a href="#s4"><span class="csec">§4</span>Первый запуск через Docker Compose</a></li>
+      <li><a href="#s5"><span class="csec">§5</span>Target и job</a></li>
+      <li><a href="#s6"><span class="csec">§6</span>Страница Targets</a></li>
+      <li><a href="#s7"><span class="csec">§7</span>Ряд up</a></li>
+      <li><a href="#s8"><span class="csec">§8</span>Что записывает Prometheus</a></li>
+      <li><a href="#s9"><span class="csec">§9</span>Если target недоступен</a></li>
+      <li><a href="#s10"><span class="csec">§10</span>Практика</a></li>
+      <li><a href="#s11"><span class="csec">§11</span>Проверьте себя</a></li>
+      <li><a href="#s12"><span class="csec">§12</span>Шпаргалка</a></li>
+      <li><a href="#s13"><span class="csec">§13</span>Глоссарий</a></li>
+    </ol>
+  </nav>
+
+  <section class="part" id="s1">
+    <h2><span class="sec">§1</span>Два процесса и один путь данных</h2>
+    <p class="about">Почему приложение и Prometheus запускаются как разные программы.</p>
+    <p>На складе есть касса и журнал. Касса знает, сколько заказов обработано. Журналист приходит через равные промежутки, переписывает показания и уносит журнал в архив. Касса и журналист выполняют разные работы.</p>
+    <p>В системе наблюдаемости касса — сервис <code>telemetry-lab</code>. Он отдаёт метрики по адресу <code>/metrics</code>. Журналист — Prometheus. Он обращается к адресу, разбирает текст и сохраняет отсчёты.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Сервис telemetry-lab отдаёт метрики на /metrics, Prometheus забирает ответ каждые 5 секунд и сохраняет отсчёты"><rect class="sc-acc" x="18" y="42" width="170" height="78" rx="10"/><text class="tb tc" x="103" y="72">telemetry-lab</text><text class="t tc" x="103" y="94">/metrics</text><path class="sc-arrow" d="M196 81 L300 81"/><path class="sc-arrow" d="M292 85 L300 81 L292 77"/><text class="t ta tc" x="248" y="64">HTTP</text><rect class="sc-box" x="306" y="42" width="150" height="78" rx="10"/><text class="tb tc" x="381" y="72">Prometheus</text><text class="t tc" x="381" y="94">scrape · 5 с</text><path class="sc-arrow" d="M464 81 L568 81"/><path class="sc-arrow" d="M560 85 L568 81 L560 77"/><rect class="sc-soft" x="490" y="102" width="120" height="34" rx="8"/><text class="t tc" x="550" y="124">TSDB</text><text class="t tc" x="381" y="154">ответ разбирается и сохраняется</text></svg>
+      <figcaption>Путь одного опроса: сервис отдаёт текст, Prometheus сохраняет отсчёты во внешнем хранилище.</figcaption>
+    </figure>
+    <p class="next">На схеме показан путь ответа: сервис отдаёт текст, Prometheus принимает его и передаёт отсчёты во внутреннее хранилище. Сам запрос отправляет Prometheus к endpoint. Число 5 секунд — интервал из конфигурации этой лекции. Дальше разберём, какие два процесса и контейнера нужно запустить.</p>
+  </section>
+
+  <section class="part" id="s2">
+    <h2><span class="sec">§2</span>Что запускается</h2>
+    <p class="about">Состав первого опыта: приложение, Prometheus и Docker Compose.</p>
+    <p>Сначала сервис должен уже отдавать данные. В стенде он запускается отдельной командой Uvicorn на порту 8015. Затем Compose запускает контейнер Prometheus и подставляет ему файл конфигурации.</p>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Компонент</th><th>Где работает</th><th>Задача</th></tr></thead>
+      <tbody>
+        <tr><td><code>telemetry-lab</code></td><td>Python-процесс</td><td>отдаёт HTTP-ответ <code>/metrics</code></td></tr>
+        <tr><td><code>prometheus</code></td><td>Docker-контейнер</td><td>опрашивает target и хранит отсчёты</td></tr>
+        <tr><td><code>prometheus.yml</code></td><td>файл стенда</td><td>описывает интервал и адрес target</td></tr>
+        <tr><td>порт <code>9095</code></td><td>локальный компьютер</td><td>открывает веб-интерфейс Prometheus</td></tr>
+      </tbody>
+    </table></div>
+    <p>Контейнеру нужен адрес компьютера, на котором работает API. В конфигурации стенда это <code>host.docker.internal:8015</code>. Сам Prometheus доступен с компьютера по адресу <code>http://127.0.0.1:9095</code>.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Компьютер запускает Python API на порту 8015 и контейнер Prometheus, наружу опубликован порт 9095"><rect class="sc-box" x="18" y="20" width="604" height="110" rx="12"/><text class="t tc" x="320" y="42">компьютер</text><rect class="sc-acc" x="42" y="58" width="190" height="48" rx="8"/><text class="tb tc" x="137" y="79">Python API</text><text class="t tc" x="137" y="97">127.0.0.1:8015</text><path class="sc-arrow" d="M238 82 L360 82"/><path class="sc-arrow" d="M352 86 L360 82 L352 78"/><rect class="sc-acc" x="368" y="58" width="190" height="48" rx="8"/><text class="tb tc" x="463" y="79">Prometheus</text><text class="t tc" x="463" y="97">контейнер · :9090</text><text class="t ta" x="290" y="122">наружу: 127.0.0.1:9095</text></svg>
+      <figcaption>Compose публикует интерфейс контейнера на локальном порту 9095.</figcaption>
+    </figure>
+    <p class="next">Таблица разделяет роли. API поставляет числа, а Prometheus собирает и хранит их. Теперь опишем этот маршрут в YAML.</p>
+  </section>
+
+  <section class="part" id="s3">
+    <h2><span class="sec">§3</span>Конфигурация prometheus.yml</h2>
+    <p class="about">Три настройки, с которых начинается первый scrape.</p>
+    <p>Файл конфигурации — это инструкция запуска Prometheus. В первом опыте в нём достаточно интервала и одного задания сбора. Термин <span class="term">scrape</span> означает один опрос target и разбор полученного ответа.</p>
+    <figure class="code">
+      <figcaption><span>prometheus.yml</span><span>конфигурация первого опыта</span></figcaption>
+<pre><span class="n">global:</span>
+  <span class="n">scrape_interval:</span> <span class="s">5s</span>
+<span class="n">scrape_configs:</span>
+  - <span class="n">job_name:</span> <span class="s">telemetry-lab</span>
+    <span class="n">static_configs:</span>
+      - <span class="n">targets:</span> [<span class="s">'host.docker.internal:8015'</span>]</pre>
+    </figure>
+    <div class="walk">
+      <div><code>global.scrape_interval</code><span>Пауза между плановыми опросами. Здесь Prometheus создаёт новый scrape каждые 5 секунд.</span></div>
+      <div><code>job_name</code><span>Имя задания. Оно попадёт в метку <code>job</code> у собранных рядов.</span></div>
+      <div><code>static_configs.targets</code><span>Список адресов, заданный прямо в файле. В первом опыте адрес один.</span></div>
+    </div>
+    <div class="def">
+      <div class="def__term">Target<i>цель опроса</i></div>
+      <dl><dt>Что это</dt><dd>Адрес программы, у которого Prometheus запрашивает метрики.</dd><dt>Пример</dt><dd><code>host.docker.internal:8015</code> — имя компьютера из контейнера и порт API.</dd><dt>Что не входит</dt><dd>Target — это адрес, а не имя задания и не отдельная метрика.</dd></dl>
+    </div>
+    <p>В YAML адрес находится внутри задания <code>telemetry-lab</code>. Поэтому после запуска один адрес станет одним target, а собранные ряды получат метку <code>job="telemetry-lab"</code>. Следующий шаг — передать этот файл контейнеру.</p>
+  </section>
+
+  <section class="part" id="s4">
+    <h2><span class="sec">§4</span>Первый запуск через Docker Compose</h2>
+    <p class="about">Как конфигурация попадает внутрь контейнера.</p>
+    <p>Compose описывает контейнер Prometheus и подключает файл с компьютера внутрь контейнера. Подключённый файл называют томом: контейнер читает его как <code>/etc/prometheus/prometheus.yml</code>, а исходник остаётся в папке проекта.</p>
+    <figure class="code">
+      <figcaption><span>compose.yaml</span><span>сервис Prometheus</span></figcaption>
+<pre><span class="n">services:</span>
+  <span class="n">prometheus:</span>
+    <span class="n">image:</span> <span class="s">prom/prometheus:v3.5.0</span>
+    <span class="n">ports:</span> [<span class="s">'127.0.0.1:9095:9090'</span>]
+    <span class="n">volumes:</span>
+      - <span class="s">'./prometheus.yml:/etc/prometheus/prometheus.yml:ro'</span></pre>
+    </figure>
+    <p>Левая часть записи порта — адрес компьютера, правая — порт внутри контейнера. Поэтому браузер открывает 9095, а Prometheus внутри слушает 9090. Флаг <code>:ro</code> подключает файл только для чтения.</p>
+    <figure class="code">
+      <figcaption><span>Терминал</span><span>запуск из observability/lab</span></figcaption>
+<pre>python -m uvicorn app:app --host 0.0.0.0 --port 8015
+docker compose up -d
+curl -s http://127.0.0.1:8015/metrics | head -5
+curl -s http://127.0.0.1:9095/-/ready</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Вывод</span><span>API и Prometheus запущены</span></figcaption><pre># /metrics
+# HELP lab_http_requests_total Completed products requests.
+# TYPE lab_http_requests_total counter
+lab_http_requests_total{route="/products",status="200"} 0
+
+Prometheus Server is Ready.</pre></figure>
+    <p>Первый запрос проверяет источник, второй — готовность Prometheus принимать работу. Строки <code>HELP</code> и <code>TYPE</code> принадлежат ответу API, а сообщение <code>Prometheus Server is Ready.</code> — его служебному endpoint.</p>
+    <p class="next">Оба процесса запущены. Теперь посмотрим, как Prometheus показывает найденный адрес.</p>
+  </section>
+
+  <section class="part" id="s5">
+    <h2><span class="sec">§5</span>Target и job</h2>
+    <p class="about">Как адрес из YAML превращается в объект сбора.</p>
+    <p>В почтовом отделении адрес получателя и название маршрута — разные поля. Адрес указывает, куда ехать, а маршрут объединяет похожие отправления. В Prometheus target — адрес, а job — имя группы, к которой этот адрес относится.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="Задание telemetry-lab содержит target host.docker.internal:8015 и создаёт метку job telemetry-lab"><rect class="sc-box" x="18" y="36" width="190" height="76" rx="10"/><text class="tb tc" x="113" y="66">job</text><text class="t tc" x="113" y="88">telemetry-lab</text><path class="sc-arrow" d="M216 74 L304 74"/><path class="sc-arrow" d="M296 78 L304 74 L296 70"/><rect class="sc-acc" x="310" y="36" width="300" height="76" rx="10"/><text class="tb tc" x="460" y="66">target</text><text class="t tc" x="460" y="88">host.docker.internal:8015</text><text class="t ta tc" x="320" y="136">один job может содержать несколько target</text></svg>
+      <figcaption>В конфигурации имя задания и адрес target занимают разные роли.</figcaption>
+    </figure>
+    <p>Сейчас в задании один target. Если позже в список добавить второй адрес, оба target будут относиться к job <code>telemetry-lab</code>. Это разделение пригодится в запросах: по <code>job</code> можно выбрать группу, а по <code>instance</code> — конкретный адрес.</p>
+    <p class="next">Связь с target видно в веб-интерфейсе. Откроем страницу Targets.</p>
+  </section>
+
+  <section class="part" id="s6">
+    <h2><span class="sec">§6</span>Страница Targets</h2>
+    <p class="about">Где проверить, что Prometheus нашёл цель и опросил её.</p>
+    <p>Откройте <code>http://127.0.0.1:9095/targets</code>. В разделе задания <code>telemetry-lab</code> появится одна строка. Её состояние зависит от последнего опроса.</p>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Поле в Targets</th><th>Значение в первом опыте</th></tr></thead>
+      <tbody><tr><td>Job</td><td><code>telemetry-lab</code></td></tr><tr><td>Endpoint</td><td><code>host.docker.internal:8015</code></td></tr><tr><td>State</td><td><code>UP</code></td></tr><tr><td>Last scrape</td><td>время последнего успешного опроса</td></tr></tbody>
+    </table></div>
+    <p>В строке видны четыре связанных значения: job <code>telemetry-lab</code>, endpoint с адресом API, состояние <code>UP</code> и время последнего scrape. Состояние <code>UP</code> означает, что последний опрос endpoint завершился успешно. Оно не означает, что каждый маршрут приложения исправен.</p>
+    <div class="table-scroll"><table><thead><tr><th>Поле</th><th>Что показывает</th></tr></thead><tbody><tr><td>Endpoint</td><td>адрес, который опрашивается</td></tr><tr><td>State</td><td>результат последнего scrape</td></tr><tr><td>Last scrape</td><td>когда закончился последний опрос</td></tr><tr><td>Scrape duration</td><td>сколько длился последний опрос</td></tr></tbody></table></div>
+    <p>Targets отвечает на вопрос о связи Prometheus с endpoint. Для поиска результата в базе нужен язык запросов PromQL. Начнём с самого короткого ряда — <code>up</code>.</p>
+  </section>
+
+  <section class="part" id="s7">
+    <h2><span class="sec">§7</span>Ряд up</h2>
+    <p class="about">Число, которое Prometheus создаёт для каждого target.</p>
+    <p>Индикатор на панели связи показывает результат последней попытки дозвониться. Значение 1 означает «ответ получен», значение 0 — «опрос завершился ошибкой». В Prometheus таким индикатором служит ряд <code>up</code>.</p>
+    <figure class="code">
+      <figcaption><span>Prometheus expression</span><span>запрос к базе</span></figcaption>
+<pre>up{job="telemetry-lab"}</pre>
+    </figure>
+    <figure class="code code--out"><figcaption><span>Результат</span><span>после успешного scrape</span></figcaption><pre>up{instance="host.docker.internal:8015", job="telemetry-lab"} 1</pre></figure>
+    <div class="def">
+      <div class="def__term">up<i>служебный ряд target</i></div>
+      <dl><dt><code>1</code></dt><dd>Последний scrape target завершился успешно.</dd><dt><code>0</code></dt><dd>Prometheus не получил корректный ответ от target.</dd><dt>Метки</dt><dd><code>job</code> — имя задания, <code>instance</code> — адрес конкретного target.</dd></dl>
+    </div>
+    <figure class="scene">
+      <svg viewBox="0 0 640 150" role="img" aria-label="При успешном опросе target up равен 1 и содержит метки job telemetry-lab и instance host.docker.internal:8015"><rect class="sc-acc" x="20" y="32" width="200" height="82" rx="10"/><text class="tb tc" x="120" y="62">scrape</text><text class="t tc" x="120" y="84">ответ получен</text><path class="sc-arrow" d="M228 73 L320 73"/><path class="sc-arrow" d="M312 77 L320 73 L312 69"/><rect class="sc-box" x="326" y="32" width="290" height="82" rx="10"/><text class="tb tc" x="471" y="61">up = 1</text><text class="t tc" x="471" y="82">job + instance</text><text class="t ta tc" x="320" y="138">служебный ряд создаётся для target</text></svg>
+      <figcaption>После успешного scrape Prometheus записывает <code>up=1</code> с метками задания и адреса.</figcaption>
+    </figure>
+    <p><code>up</code> описывает доступность опрашиваемого endpoint. Он не проверяет содержание всех метрик и не сообщает, что бизнес-операция завершилась правильно. Эти вопросы потребуют других рядов.</p>
+    <p class="next">Ряд <code>up</code> появился автоматически. Посмотрим, где лежат остальные отсчёты.</p>
+  </section>
+
+  <section class="part" id="s8">
+    <h2><span class="sec">§8</span>Что записывает Prometheus</h2>
+    <p class="about">Как ответ <code>/metrics</code> превращается в ряды с метками.</p>
+    <p>Endpoint возвращает текст. Prometheus разбирает в нём имя метрики, метки и число, добавляет служебные метки <code>job</code> и <code>instance</code>, затем записывает отсчёт со временем. Один ответ может дать много рядов.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="Ответ /metrics превращается в ряды http_requests_total и process_resident_memory_bytes с метками job и instance и временем"><rect class="sc-box" x="18" y="36" width="170" height="94" rx="10"/><text class="tb tc" x="103" y="66">/metrics</text><text class="t tc" x="103" y="88">имя · метки · число</text><path class="sc-arrow" d="M196 83 L286 83"/><path class="sc-arrow" d="M278 87 L286 83 L278 79"/><rect class="sc-acc" x="292" y="18" width="320" height="50" rx="8"/><text class="t tc" x="452" y="40">lab_http_requests_total{job,instance} 20</text><rect class="sc-acc" x="292" y="82" width="320" height="50" rx="8"/><text class="t tc" x="452" y="104">process_resident_memory_bytes{job,instance}</text><text class="t ta tc" x="320" y="158">каждый отсчёт получает время записи</text></svg>
+      <figcaption>Prometheus добавляет контекст target и сохраняет каждый полученный отсчёт во времени.</figcaption>
+    </figure>
+    <p class="next">Запрос к Prometheus показывает сохранённые отсчёты. Дальше разберём, как устроен сам цикл scrape.</p>
+  </section>
+
+  <section class="part" id="s9">
+    <h2><span class="sec">§9</span>Если target недоступен</h2>
+    <p class="about">Что меняется, когда последний опрос не получил ответ.</p>
+    <p>Если касса закрыта, журналист записывает результат попытки в отдельную колонку. Старое число продаж не превращается в новое число. Так Prometheus разделяет значение метрики и состояние связи с target.</p>
+    <figure class="scene">
+      <svg viewBox="0 0 640 170" role="img" aria-label="При работающем API up равен 1, при остановленном API up становится 0, а значение прикладной метрики больше не обновляется"><text class="tm" x="18" y="32">работает</text><rect class="sc-acc" x="120" y="14" width="140" height="42" rx="8"/><text class="tb tc" x="190" y="40">up = 1</text><rect class="sc-box" x="290" y="14" width="300" height="42" rx="8"/><text class="t tc" x="440" y="40">http_requests_total обновляется</text><text class="tm" x="18" y="108">остановлен</text><rect class="sc-wrn" x="120" y="90" width="140" height="42" rx="8"/><text class="tb tc tw" x="190" y="116">up = 0</text><rect class="sc-soft" x="290" y="90" width="300" height="42" rx="8"/><text class="t tc" x="440" y="116">нового отсчёта нет</text><text class="t ta" x="120" y="158">состояние scrape и прикладные данные читаются отдельно</text></svg>
+      <figcaption><code>up</code> показывает результат связи; прикладной ряд обновляется только при успешном ответе target.</figcaption>
+    </figure>
+    <p>При остановленном API запрос к <code>up{job="telemetry-lab"}</code> после неудачного scrape даст 0. Запрос к прикладной метрике не создаст новое значение. Разбор пропусков и устаревших рядов будет отдельной темой после знакомства с циклом scrape.</p>
+    <p class="next">Первый запуск закончен: Prometheus нашёл target, получил ответ и записал служебный ряд. Закрепим действия в короткой практике.</p>
+  </section>
+
+  <section class="part" id="s10">
+    <h2><span class="sec">§10</span>Практика</h2>
+    <p class="about">Проверка первого запуска без изменения конфигурации.</p>
+    <h3>Задача 1. Найдите target</h3>
+    <p>Запустите API и Prometheus из папки <code>observability/lab</code>. Откройте Targets и выпишите job, endpoint и состояние строки.</p>
+    <div class="key"><b>Что нужно получить</b><p>Одна строка задания <code>telemetry-lab</code>, endpoint <code>host.docker.internal:8015</code> и состояние <code>UP</code>.</p></div>
+    <details><summary>Проверка</summary><p>Откройте <code>http://127.0.0.1:9095/targets</code>. Если состояние DOWN, сначала проверьте, что API запущен на 8015 и контейнер может обратиться к <code>host.docker.internal</code>.</p></details>
+    <h3>Задача 2. Проверьте ряд</h3>
+    <p>В поле запроса Prometheus выполните <code>up{job="telemetry-lab"}</code>. Затем выполните <code>up</code> без фильтра и сравните результат.</p>
+    <div class="key"><b>Что нужно получить</b><p>Первый запрос возвращает target задания <code>telemetry-lab</code> со значением 1. Второй может показать несколько служебных рядов, если Prometheus собирает собственные метрики или дополнительные задания.</p></div>
+    <details><summary>Проверка</summary><p>У первого ряда должны быть метки <code>job="telemetry-lab"</code> и <code>instance="host.docker.internal:8015"</code>. Число 1 означает успешный последний scrape.</p></details>
+  </section>
+
+  <section class="part" id="s11">
+    <h2><span class="sec">§11</span>Проверьте себя</h2>
+    <p class="about">Вопросы по первому запуску. Ответ раскрывается щелчком.</p>
+    <details><summary>Чем target отличается от job?</summary><p>Target — конкретный адрес, который опрашивается. Job — имя группы, в которую этот адрес включён. Один job может содержать несколько target.</p></details>
+    <details><summary>Что означает <code>up = 1</code>?</summary><p>Последний scrape target завершился успешно. Это не проверка каждой бизнес-операции и не гарантия правильности всех прикладных метрик.</p></details>
+    <details><summary>Почему браузер открывает 9095, если Prometheus внутри слушает 9090?</summary><p>Compose публикует порт контейнера: запись <code>127.0.0.1:9095:9090</code> связывает локальный 9095 с портом 9090 внутри контейнера.</p></details>
+    <details><summary>Что произойдёт, если API остановить?</summary><p>После неудачного scrape ряд <code>up{job="telemetry-lab"}</code> примет значение 0. Прикладные ряды перестанут получать новые отсчёты.</p></details>
+  </section>
+
+  <section class="part" id="s12">
+    <h2><span class="sec">§12</span>Шпаргалка</h2>
+    <p class="about">Опорные понятия первого запуска.</p>
+    <div class="cheat">
+      <div><b>Путь данных</b><code>/metrics → scrape → TSDB</code><code>API → Prometheus</code></div>
+      <div><b>Конфигурация</b><code>global.scrape_interval</code><code>scrape_configs</code><code>targets</code></div>
+      <div><b>Метки</b><code>job = группа</code><code>instance = адрес</code></div>
+      <div><b>Состояние</b><code>up = 1 · последний scrape успешен</code><code>up = 0 · ошибка scrape</code></div>
+      <div><b>Порты стенда</b><code>API :8015</code><code>Prometheus :9095</code></div>
+    </div>
+  </section>
+
+  <section class="part" id="s13">
+    <h2><span class="sec">§13</span>Глоссарий</h2>
+    <p class="about">Термины лекции: формулировка и пример.</p>
+    <div class="glossary">
+      <article class="gl" id="g-prometheus"><div class="gl__text"><h3>Prometheus<i>система сбора</i></h3><p class="gl__def">Программа, которая по расписанию запрашивает метрики у target и хранит отсчёты в своей базе.</p><p class="gl__ex"><b>Пример</b>контейнер Prometheus опрашивает <code>telemetry-lab</code> каждые 5 секунд.</p><p class="gl__where"><b>Где</b>лекция 3.1, §1</p></div><figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Prometheus собирает метрики"><rect class="sc-box" x="10" y="45" width="90" height="40" rx="8"/><text class="t tc" x="55" y="70">target</text><path class="sc-arrow" d="M104 65 L150 65"/><path class="sc-arrow" d="M142 69 L150 65 L142 61"/><rect class="sc-acc" x="156" y="30" width="94" height="70" rx="8"/><text class="t tc" x="203" y="61">Prometheus</text><text class="t tc" x="203" y="79">TSDB</text></svg></figure></article>
+      <article class="gl" id="g-scrape"><div class="gl__text"><h3>Scrape<i>опрос</i></h3><p class="gl__def">Один запрос Prometheus к target, разбор ответа и запись полученных отсчётов.</p><p class="gl__ex"><b>Пример</b>в этой лекции новый scrape выполняется каждые 5 секунд.</p><p class="gl__where"><b>Где</b>лекция 3.1, §3</p></div><figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Scrape"><text class="tb tc" x="130" y="38">каждые 5 с</text><rect class="sc-acc" x="18" y="55" width="96" height="40" rx="8"/><text class="t tc" x="66" y="80">/metrics</text><path class="sc-arrow" d="M118 75 L148 75"/><path class="sc-arrow" d="M140 79 L148 75 L140 71"/><rect class="sc-box" x="154" y="55" width="88" height="40" rx="8"/><text class="t tc" x="198" y="80">запись</text></svg></figure></article>
+      <article class="gl" id="g-up"><div class="gl__text"><h3>up<i>состояние target</i></h3><p class="gl__def">Служебный ряд со значением 1 или 0, который показывает результат последнего scrape.</p><p class="gl__ex"><b>Пример</b><code>up{job="telemetry-lab"} 1</code> после успешного опроса.</p><p class="gl__where"><b>Где</b>лекция 3.1, §7</p></div><figure class="gl__pic"><svg viewBox="0 0 260 130" role="img" aria-label="Ряд up равен единице"><rect class="sc-acc" x="30" y="42" width="200" height="48" rx="8"/><text class="tb tc" x="130" y="72">up = 1</text><text class="t tc" x="130" y="112">scrape успешен</text></svg></figure></article>
+    </div>
+  </section>
+
+  <div class="pager"><a href="2-12-fastapi.html">← 2.12 Метрики веб-сервиса на FastAPI</a><a href="index.html">К содержанию справочника</a><span class="pager__soon">3.2 Scrape и pull-модель · готовится →</span></div>
+  <div class="colophon"><span>Метрики и наблюдаемость · часть 3 · Prometheus</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div>
+    </main>
+  </div>
+</div>
+<script src="reader.js"></script>
+</body>
+</html>
