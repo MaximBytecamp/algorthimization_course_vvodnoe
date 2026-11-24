@@ -21,6 +21,7 @@ tags:
 - [[unit--project-management--02--02-bitrix24]]
 - [[unit--project-management--03--03-trebovaniya]]
 - [[unit--project-management--04--04-plan-rabot]]
+- [[unit--project-management--05--05-crm-zapusk]]
 
 ## Точки входа области
 
