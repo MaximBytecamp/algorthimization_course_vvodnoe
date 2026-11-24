@@ -95,15 +95,3 @@ python3 gaps.py 'http_requests_total{job="orders",status="200"}' 18:49:00 18:52:
 ```
 
 Проверка пропавшего target — запрос `absent(up{job="orders"})`.
-
-**4.7. Pushgateway.** Pushgateway на http://localhost:9111, задача отправляет метрики в конце работы:
-
-```sh
-docker compose up -d --build pushgateway api
-PROM_CONFIG=prometheus-push.yml docker compose up -d prometheus
-docker compose run --rm --no-deps api python nightly_report.py
-curl -s localhost:9111/metrics | grep -E '^(report_|push_)'
-curl -X DELETE localhost:9111/metrics/job/nightly_report      # удалить группу
-```
-
-Возраст последнего успеха: `time() - report_last_success_timestamp_seconds{job="nightly_report"}`.

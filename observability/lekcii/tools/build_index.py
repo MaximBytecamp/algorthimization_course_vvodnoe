@@ -28,12 +28,8 @@ for f in BOOK.glob('*-*-*.html'):
     if pm:
         ready[f'{pm.group(1)}.{pm.group(2)}'] = f.name
 
-external_ready = {
-    '3.10': '../modul-04-sbor/07-pushgateway.html',
-}
-
 total = sum(len(p[3]) for p in parts)
-done = sum(1 for p in parts for n, _ in p[3] if n in ready or n in external_ready)
+done = sum(1 for p in parts for n, _ in p[3] if n in ready)
 
 def md(text):
     text = html.escape(text, quote=False)
@@ -45,8 +41,6 @@ for num, title, about, lectures in parts:
     for n, t in lectures:
         if n in ready:
             rows.append(f'        <li><a href="{ready[n]}"><span class="csec">{n}</span>{md(t)}</a></li>')
-        elif n in external_ready:
-            rows.append(f'        <li><a href="{external_ready[n]}"><span class="csec">{n}</span>{md(t)}</a></li>')
         else:
             rows.append(f'        <li class="soon"><span class="csec">{n}</span>{md(t)}<i>готовится</i></li>')
     blocks.append(f'''  <section class="toc-part" id="part-{num}">

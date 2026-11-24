@@ -26,7 +26,6 @@ CHAPTERS = [
     ("04-limity", "4.4", "Лимиты опроса"),
     ("05-tsdb", "4.5", "TSDB: head, WAL, блоки и retention"),
     ("06-propuski", "4.6", "Пропуски и устаревшие ряды"),
-    ("07-pushgateway", "4.7", "Pushgateway и пакетные задачи"),
     ("08-federaciya", "4.8", "Федерация и remote_write"),
     ("09-praktika", "4.9", "Практика"),
     ("10-itogi", "4.10", "Итоги модуля: главное коротко"),
@@ -156,7 +155,7 @@ def main():
     (HERE / "index.html").write_text(page(
         cover,
         title="Сбор и хранение · Метрики и наблюдаемость",
-        description="Модуль 4 справочника «Метрики и наблюдаемость»: exporters, service discovery, relabeling, лимиты, TSDB, пропуски, Pushgateway, федерация и remote_write.",
+        description="Модуль 4 справочника «Метрики и наблюдаемость»: exporters, service discovery, relabeling, лимиты, TSDB, пропуски, федерация и remote_write.",
         folio=f"{len(CHAPTERS)} глав",
         cover=True,
     ), encoding="utf-8")

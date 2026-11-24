@@ -25,7 +25,6 @@ tags:
 - [observability/modul-04-sbor/04-limity.html](../../../observability/modul-04-sbor/04-limity.html)
 - [observability/modul-04-sbor/05-tsdb.html](../../../observability/modul-04-sbor/05-tsdb.html)
 - [observability/modul-04-sbor/06-propuski.html](../../../observability/modul-04-sbor/06-propuski.html)
-- [observability/modul-04-sbor/07-pushgateway.html](../../../observability/modul-04-sbor/07-pushgateway.html)
 
 ## Связанная память
 
