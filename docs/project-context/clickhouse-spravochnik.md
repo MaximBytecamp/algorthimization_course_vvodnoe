@@ -3,6 +3,8 @@
 Статус (10.11.2026): пользователь доверил решения автору. Принято: SQL основной,
 4 языка только в 0.3, 1.7, 4.3 и главах-скриптах; Play UI + clickhouse-client
 (DBeaver по желанию); данные shop + web + iot. Полная карта — `~/clickhouse_theory_makarov/PLAN.md`.
+25.11.2026: справочник добавлен карточкой в раздел «Материалы курса» дисциплины
+`mdk0401-razrabotka-i-zashchita-baz-dannyh/index.html`; опубликованная ссылка проверена HTTP 200.
 
 Сделано: стенд `~/clickhouse-practice` (compose.yaml, образ 26.8.36.3, пользователь
 student/student, seed/reset ≈25 с, пик памяти генерации 459 МБ — хватит 2 ГБ Docker),
