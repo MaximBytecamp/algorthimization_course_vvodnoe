@@ -22,6 +22,7 @@ tags:
 - [[unit--project-management--03--03-trebovaniya]]
 - [[unit--project-management--04--04-plan-rabot]]
 - [[unit--project-management--05--05-crm-zapusk]]
+- [[unit--project-management--06--06-rabochee-prostranstvo]]
 
 ## Точки входа области
 
