@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>0.1 Порядок, ключ и отсортированная последовательность · ОП.04</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../sortirovki.css">
+</head>
+<body>
+  <div class="book"><div class="book__body">
+    <div class="spine"><span>Модуль 0 · Упорядочивание изнутри · ОП.04</span></div>
+    <main class="leaf">
+      <div class="running">
+        <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Сортировка, бинарный поиск и heap</a> · модуль 0 · теория</p>
+        <p class="running__folio">Глава 0.1</p>
+      </div>
+      <header class="chapter-head">
+        <span class="chapter-num">0.1</span>
+        <h1>Порядок, ключ<br>и отсортированная<br>последовательность</h1>
+        <p class="lead">Сортировка работает не с «красивым списком», а с правилом сравнения. На заказах показано, как выбрать ключ, проверить порядок и понять, когда две записи равны для сортировки.</p>
+      </header>
+      <nav class="contents"><b>В этой главе</b><ol>
+        <li><a href="#s1">Порядок — это договор</a></li>
+        <li><a href="#s2">Ключ извлекает нужную часть записи</a></li>
+        <li><a href="#s3">Как Python сортирует по key</a></li>
+        <li><a href="#s4">Равные ключи и следующий вопрос</a></li>
+      </ol></nav>
+
+      <h2 id="s1"><span class="sec">§1</span>Порядок — это договор</h2>
+      <p>В журнале доставки три заказа записаны в момент поступления. Курьеру нужен порядок по времени выезда. Номер заказа остаётся частью записи, но не определяет место в маршруте. Слово «отсортировать» требует уточнения: по номеру, времени, сумме или городу.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>исходные данные</span></figcaption><pre>&gt;&gt;&gt; orders = [
+...     {"id": "B", "time": "12:40", "total": 1900},
+...     {"id": "A", "time": "13:10", "total": 700},
+...     {"id": "C", "time": "14:05", "total": 1200},
+... ]
+&gt;&gt;&gt; [order["id"] for order in orders]
+['B', 'A', 'C']</pre></figure>
+      <p>Здесь порядок хранения — B, затем A, затем C. Он может совпасть с временем, но это не гарантировано. Для алгоритма нужен критерий: функция, которая каждой записи сопоставляет сравнимое значение. Такой критерий называют <span class="term">ключом</span>.</p>
+      <div class="widget"><div class="widget__head"><b>Одна запись — несколько возможных порядков</b><span>сначала назовите ключ</span></div><div class="widget__body"><div class="order-demo">
+        <div class="order-demo__row"><span class="order-demo__label">по <code>id</code></span><span class="order-demo__card"><b>A</b>13:10 · 700 ₽</span><span class="order-demo__card"><b>B</b>12:40 · 1900 ₽</span><span class="order-demo__card"><b>C</b>14:05 · 1200 ₽</span></div>
+        <div class="order-demo__row"><span class="order-demo__label">по <code>time</code></span><span class="order-demo__card is-key"><b>B</b>12:40 · 1900 ₽</span><span class="order-demo__card is-key"><b>A</b>13:10 · 700 ₽</span><span class="order-demo__card is-key"><b>C</b>14:05 · 1200 ₽</span></div>
+        <div class="order-demo__row"><span class="order-demo__label">по <code>total</code></span><span class="order-demo__card"><b>A</b>13:10 · 700 ₽</span><span class="order-demo__card"><b>C</b>14:05 · 1200 ₽</span><span class="order-demo__card"><b>B</b>12:40 · 1900 ₽</span></div>
+      </div></div><div class="widget__foot">Данные одни и те же. Меняется только ответ на вопрос: «какое поле определяет место записи?»</div></div>
+      <p>Последовательность называют отсортированной по возрастанию, если для каждой соседней пары ключ слева не больше ключа справа. Для времён это означает <code>12:40 ≤ 13:10 ≤ 14:05</code>. Не нужно сравнивать каждую запись со всеми остальными: достаточно проверить соседние пары.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>проверяем порядок времён</span></figcaption><pre>&gt;&gt;&gt; times = ["12:40", "13:10", "14:05"]
+&gt;&gt;&gt; all(times[i] &lt;= times[i + 1] for i in range(len(times) - 1))
+True
+&gt;&gt;&gt; all(times[i] &lt;= times[i + 1] for i in range(len(times) - 1))
+True</pre></figure>
+      <p>У строк одинакового формата <code>ЧЧ:ММ</code> лексикографический порядок совпадает с порядком времени. Если формат не задан, его сначала приводят к надёжному виду — например, к числу минут. Алгоритм не должен полагаться на случайное удобство входных строк.</p>
+
+      <h2 id="s2"><span class="sec">§2</span>Ключ извлекает нужную часть записи</h2>
+      <p>Сама запись может быть словарём, объектом или кортежем. Сравнивать целый словарь не требуется: ключ извлекает одно значение, по которому строится порядок. Для выезда курьера нужен <code>time</code>.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>ключ для одной записи</span></figcaption><pre>&gt;&gt;&gt; def departure_time(order):
+...     return order["time"]
+...
+&gt;&gt;&gt; departure_time(orders[0])
+'12:40'
+&gt;&gt;&gt; [departure_time(order) for order in orders]
+['12:40', '13:10', '14:05']</pre></figure>
+      <p>У хорошего ключа один ясный смысл. Функция не меняет заказ и не печатает результат. Она только отвечает, какое значение использовать в сравнении. Благодаря этому чтение кода разделяется на два шага: сначала выбираем ключ, затем выбираем направление — по возрастанию или убыванию.</p>
+      <div class="table-scroll"><table><thead><tr><th>Задача</th><th>Ключ</th><th>Первой окажется</th></tr></thead><tbody>
+        <tr><td>Выдать курьерам по времени</td><td><code>order["time"]</code></td><td>самая ранняя доставка</td></tr>
+        <tr><td>Показать дорогие заказы</td><td><code>order["total"]</code>, <code>reverse=True</code></td><td>самый дорогой заказ</td></tr>
+        <tr><td>Собрать список по номеру</td><td><code>order["id"]</code></td><td>заказ с меньшим номером</td></tr>
+      </tbody></table></div>
+      <p>Если условие говорит «сначала срочные, а среди них — по времени», одного поля недостаточно. Для нескольких уровней порядка в Python используют кортеж ключей. В заданиях раздела этот приём задаст порядок записей с одинаковым первым ключом.</p>
+
+      <h2 id="s3"><span class="sec">§3</span>Как Python сортирует по <code>key</code></h2>
+      <p>Функция <code>sorted</code> создаёт новый список. Она получает исходные записи, вычисляет ключ для каждой и располагает записи по ключам. Исходный <code>orders</code> не меняется.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>вывод запуска</span></figcaption><pre>&gt;&gt;&gt; by_total = sorted(orders, key=lambda order: order["total"])
+&gt;&gt;&gt; [order["id"] for order in by_total]
+['A', 'C', 'B']
+&gt;&gt;&gt; [order["id"] for order in orders]
+['B', 'A', 'C']
+&gt;&gt;&gt; by_total[0]["total"]
+700</pre></figure>
+      <p>Выражение <code>lambda order: order["total"]</code> — короткая функция ключа. Она получает один заказ и возвращает его сумму. Список <code>by_total</code> содержит те же словари в другом порядке. Исходный <code>orders</code> сохраняет порядок B, A, C.</p>
+      <p>Схема разделяет исходный список и результат. На жёлтых карточках показаны ключи, по которым расположились заказы.</p>
+      <div class="widget"><div class="widget__head"><b>Сортировка по сумме создаёт новый список</b><span><code>key=total</code></span></div><div class="widget__body"><div class="order-demo">
+        <div class="order-demo__row"><span class="order-demo__label">orders</span><span class="order-demo__card"><b>B</b>1900 ₽</span><span class="order-demo__card"><b>A</b>700 ₽</span><span class="order-demo__card"><b>C</b>1200 ₽</span></div>
+        <div class="order-demo__row"><span class="order-demo__label">by_total</span><span class="order-demo__card is-key"><b>A</b>700 ₽</span><span class="order-demo__card is-key"><b>C</b>1200 ₽</span><span class="order-demo__card is-key"><b>B</b>1900 ₽</span></div>
+      </div></div><div class="widget__foot">В <code>orders</code> первым остаётся B. В <code>by_total</code> первым стоит A: его ключ 700 меньше 1200 и 1900.</div></div>
+      <p>Метод <code>list.sort</code> упорядочивает существующий список и возвращает <code>None</code>. Его выбирают, когда исходный порядок больше не понадобится. Запись <code>orders = orders.sort(...)</code> заменит список значением <code>None</code>.</p>
+      <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Что вернёт выражение <code>sorted(orders, key=lambda order: order["time"])[0]["id"]</code>?</div><ul class="quiz__opts">
+        <li><button type="button">A</button><p class="quiz__why">A — второй по времени заказ: 13:10.</p></li>
+        <li data-ok><button type="button">B</button><p class="quiz__why">У B время 12:40. Это наименьший ключ, поэтому после сортировки B стоит первым.</p></li>
+        <li><button type="button">C</button><p class="quiz__why">C имеет самое позднее время: 14:05.</p></li>
+      </ul></div>
+      <p>Этот вызов определяет порядок трёх разных сумм. Отдельное правило потребуется, когда у нескольких записей окажется одинаковый ключ.</p>
+
+      <h2 id="s4"><span class="sec">§4</span>Равные ключи и следующий вопрос</h2>
+      <p>Два заказа могут иметь одинаковое время. Тогда ключи равны, но записи различаются. Сортировка всё равно корректна: соседние ключи не нарушают условие <code>≤</code>. Нужно отдельно решить, какой порядок равных записей ожидается.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>два равных ключа</span></figcaption><pre>&gt;&gt;&gt; queue = [
+...     {"id": "B", "time": "12:40"},
+...     {"id": "D", "time": "12:40"},
+...     {"id": "A", "time": "13:10"},
+... ]
+&gt;&gt;&gt; [order["id"] for order in sorted(queue, key=lambda order: order["time"])]
+['B', 'D', 'A']</pre></figure>
+      <p>В Python равные элементы сохраняют относительный порядок: B остаётся перед D. Такое свойство называется <span class="term">стабильностью</span>. Если условие требует другой порядок равных записей, ключ времени дополняют вторым ключом.</p>
+      <p>На схеме у B и D один ключ — 12:40. Их расположение друг относительно друга не изменилось после сортировки.</p>
+      <div class="widget"><div class="widget__head"><b>Равные ключи в стабильной сортировке</b><span><code>time</code> = 12:40</span></div><div class="widget__body"><div class="order-demo">
+        <div class="order-demo__row"><span class="order-demo__label">до сортировки</span><span class="order-demo__card"><b>B</b>12:40</span><span class="order-demo__card"><b>D</b>12:40</span><span class="order-demo__card"><b>A</b>13:10</span></div>
+        <div class="order-demo__row"><span class="order-demo__label">после сортировки</span><span class="order-demo__card is-key"><b>B</b>12:40</span><span class="order-demo__card is-key"><b>D</b>12:40</span><span class="order-demo__card is-key"><b>A</b>13:10</span></div>
+      </div></div><div class="widget__foot">B и D имеют равные ключи. Python сохранил их исходный порядок: B перед D.</div></div>
+      <p>Теперь можно формулировать задачу точно: назвать данные, ключ, направление и правило для равных ключей. Это подготовка не только к сортировке. Бинарный поиск требует уже упорядоченных ключей, а heap выбирает следующий элемент по приоритету — то есть тоже по ключу.</p>
+      <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Какое утверждение верно для списка, отсортированного по ключу <code>key</code>?</div><ul class="quiz__opts">
+        <li><button type="button">Каждая запись меньше всех записей справа целиком</button><p class="quiz__why">Порядок определяют значения ключа. Остальные поля записей могут различаться.</p></li>
+        <li data-ok><button type="button">Для соседних записей ключ слева не больше ключа справа</button><p class="quiz__why">Это условие порядка по возрастанию. Оно допускает равные ключи.</p></li>
+        <li><button type="button">В списке не должно быть одинаковых ключей</button><p class="quiz__why">Равные ключи допустимы. Для них нужно только понимать ожидаемый порядок записей.</p></li>
+      </ul></div>
+      <div class="sources"><b>Источники главы</b><ol>
+        <li>Документация Python: <a href="https://docs.python.org/3/howto/sorting.html" target="_blank" rel="noopener">Sorting HOW TO</a>.</li>
+        <li>Документация Python: <a href="https://docs.python.org/3/library/functions.html#sorted" target="_blank" rel="noopener">built-in function sorted</a> и <a href="https://docs.python.org/3/library/stdtypes.html#list.sort" target="_blank" rel="noopener">list.sort</a>.</li>
+        <li>Примеры и вывод проверены запуском на Python 3.12.</li>
+      </ol></div>
+      <div class="pager"><a href="../index.html">← Сортировка, бинарный поиск и heap</a><span>0.2 Стабильность, память и цена сортировки →</span></div>
+      <div class="colophon"><span>Модуль 0 · Упорядочивание изнутри · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div>
+    </main>
+  </div></div>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+</body>
+</html>
