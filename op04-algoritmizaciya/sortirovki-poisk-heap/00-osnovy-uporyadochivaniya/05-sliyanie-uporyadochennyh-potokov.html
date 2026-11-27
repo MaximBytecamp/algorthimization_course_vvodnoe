@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#F1F2EC"><title>0.5 Слияние упорядоченных потоков · ОП.04</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="../../massivy/styles.css"><link rel="stylesheet" href="../../massivy/algo.css"><link rel="stylesheet" href="../sortirovki.css"></head>
+<body><div class="book"><div class="book__body"><div class="spine"><span>Модуль 0 · Упорядочивание изнутри · ОП.04</span></div><main class="leaf">
+<div class="running"><p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Сортировка, бинарный поиск и heap</a> · модуль 0 · теория</p><p class="running__folio">Глава 0.5</p></div>
+<header class="chapter-head"><span class="chapter-num">0.5</span><h1>Слияние<br>упорядоченных<br>потоков</h1><p class="lead">Два отсортированных списка можно объединить без новой сортировки. Достаточно сравнивать только первые ещё не перенесённые элементы и двигать соответствующий указатель.</p></header>
+<nav class="contents"><b>В этой главе</b><ol><li><a href="#s1">Две очереди с общим порядком</a></li><li><a href="#s2">Указатели выбирают следующий элемент</a></li><li><a href="#s3">Шаги слияния</a></li><li><a href="#s4">Хвост добавляется без сравнений</a></li></ol></nav>
+
+<h2 id="s1"><span class="sec">§1</span>Две очереди с общим порядком</h2>
+<p>У диспетчера есть две очереди событий. Каждая уже отсортирована по времени. Нужно получить одну общую очередь, сохранив порядок всех событий. Перебирать все элементы и запускать сортировку можно, но порядок уже известен внутри каждой очереди.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>два упорядоченных потока</span></figcaption><pre>&gt;&gt;&gt; left = [2, 8, 15]
+&gt;&gt;&gt; right = [3, 7, 12, 20]
+&gt;&gt;&gt; all(left[i] &lt;= left[i + 1] for i in range(len(left) - 1))
+True
+&gt;&gt;&gt; all(right[i] &lt;= right[i + 1] for i in range(len(right) - 1))
+True</pre></figure>
+<p>Числа обозначают минуты после начала смены. В <code>left</code> события идут в 2, 8 и 15 минут. В <code>right</code> — в 3, 7, 12 и 20 минут. Следующее событие в общем списке может быть только первым из этих двух очередей: 2 или 3.</p>
+<div class="widget merge-intro"><div class="widget__head"><b>Два входа и один результат</b><span>порядок уже есть</span></div><div class="widget__body"><div class="merge-intro__rows"><div><b>left</b><span>2</span><span>8</span><span>15</span></div><div><b>right</b><span>3</span><span>7</span><span>12</span><span>20</span></div><div class="merge-intro__result"><b>merged</b><i>пока пусто</i></div></div></div><div class="widget__foot">Сравнивать 2 с 7 или 15 не нужно: внутри <code>left</code> число 2 уже наименьшее.</div></div>
+<p>Для слияния нужны два указателя. <code>i</code> показывает первый ещё не перенесённый элемент <code>left</code>. <code>j</code> показывает такой же элемент <code>right</code>. Сначала оба равны нулю.</p>
+
+<h2 id="s2"><span class="sec">§2</span>Указатели выбирают следующий элемент</h2>
+<p>На каждом шаге алгоритм сравнивает <code>left[i]</code> и <code>right[j]</code>. Меньшее значение добавляется в <code>merged</code>. После этого сдвигается только указатель очереди, из которой взяли элемент. Второй указатель остаётся на месте.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>ядро слияния</span></figcaption><pre>i = 0
+j = 0
+merged = []
+
+while i &lt; len(left) and j &lt; len(right):
+    if left[i] &lt;= right[j]:
+        merged.append(left[i])
+        i += 1
+    else:
+        merged.append(right[j])
+        j += 1</pre></figure>
+<p>Метод <code>append</code> добавляет выбранное число в конец результата. Условие <code>left[i] &lt;= right[j]</code> использует знак <code>&lt;=</code>. При равных значениях первым берётся элемент из <code>left</code>. Это сохраняет относительный порядок элементов левого потока.</p>
+<div class="widget merge-rule"><div class="widget__head"><b>Инвариант слияния</b><span>после каждого шага</span></div><div class="widget__body"><p>Список <code>merged</code> уже отсортирован и содержит все элементы, которые были перенесены. Все неперенесённые элементы находятся в <code>left[i:]</code> и <code>right[j:]</code>.</p></div><div class="widget__foot">Следующее минимальное значение лежит в одном из двух элементов под указателями.</div></div>
+
+<h2 id="s3"><span class="sec">§3</span>Шаги слияния</h2>
+<p>Первые четыре сравнения построят начало общего списка. В каждой строке выделены два кандидата. Жёлтая карточка переносится в результат. Серые числа уже перенесены и больше не участвуют в сравнении.</p>
+<div class="widget merge-trace" aria-label="Первые четыре шага слияния списков">
+<section><div class="merge-trace__head"><b>Шаг 1</b><span><code>2 &lt;= 3</code>: переносим 2, затем <code>i = 1</code></span></div><div class="merge-trace__rows"><div><b>left</b><span class="is-cut">2</span><span class="is-pointer">8</span><span>15</span></div><div><b>right</b><span class="is-pointer">3</span><span>7</span><span>12</span><span>20</span></div><div class="is-result"><b>merged</b><span>2</span></div></div></section>
+<section><div class="merge-trace__head"><b>Шаг 2</b><span><code>8 &gt; 3</code>: переносим 3, затем <code>j = 1</code></span></div><div class="merge-trace__rows"><div><b>left</b><span class="is-cut">2</span><span class="is-pointer">8</span><span>15</span></div><div><b>right</b><span class="is-cut">3</span><span class="is-pointer">7</span><span>12</span><span>20</span></div><div class="is-result"><b>merged</b><span>2</span><span>3</span></div></div></section>
+<section><div class="merge-trace__head"><b>Шаг 3</b><span><code>8 &gt; 7</code>: переносим 7, затем <code>j = 2</code></span></div><div class="merge-trace__rows"><div><b>left</b><span class="is-cut">2</span><span class="is-pointer">8</span><span>15</span></div><div><b>right</b><span class="is-cut">3</span><span class="is-cut">7</span><span class="is-pointer">12</span><span>20</span></div><div class="is-result"><b>merged</b><span>2</span><span>3</span><span>7</span></div></div></section>
+<section><div class="merge-trace__head"><b>Шаг 4</b><span><code>8 &lt;= 12</code>: переносим 8, затем <code>i = 2</code></span></div><div class="merge-trace__rows"><div><b>left</b><span class="is-cut">2</span><span class="is-cut">8</span><span class="is-pointer">15</span></div><div><b>right</b><span class="is-cut">3</span><span class="is-cut">7</span><span class="is-pointer">12</span><span>20</span></div><div class="is-result"><b>merged</b><span>2</span><span>3</span><span>7</span><span>8</span></div></div></section>
+</div>
+<p>После четвёртого шага указатели стоят на 15 и 12. Следующее сравнение перенесёт 12, затем 15. Левый поток закончится, а в правом останется 20.</p>
+<div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Какой указатель изменится после сравнения <code>8 &gt; 7</code>?</div><ul class="quiz__opts"><li><button type="button"><code>i</code></button><p class="quiz__why">Элемент 8 остаётся в <code>left</code> и будет сравниваться с 12.</p></li><li data-ok><button type="button"><code>j</code></button><p class="quiz__why">В результат перенесли 7 из <code>right</code>, поэтому <code>j</code> переходит к 12.</p></li><li><button type="button">Оба указателя</button><p class="quiz__why">За один шаг переносится один элемент, поэтому сдвигается один указатель.</p></li></ul></div>
+
+<h2 id="s4"><span class="sec">§4</span>Хвост добавляется без сравнений</h2>
+<p>После переноса 12 и 15 указатель <code>i</code> станет равен длине <code>left</code>. Первый поток закончится. Все оставшиеся элементы <code>right[j:]</code> уже больше последнего добавленного значения, поэтому их можно добавить в конец результата одной операцией.</p>
+<figure class="code"><figcaption><span>Python 3.12</span><span>полная функция слияния</span></figcaption><pre>def merge(left, right):
+    i = 0
+    j = 0
+    merged = []
+
+    while i &lt; len(left) and j &lt; len(right):
+        if left[i] &lt;= right[j]:
+            merged.append(left[i])
+            i += 1
+        else:
+            merged.append(right[j])
+            j += 1
+
+    merged.extend(left[i:])
+    merged.extend(right[j:])
+    return merged
+
+&gt;&gt;&gt; merge([2, 8, 15], [3, 7, 12, 20])
+[2, 3, 7, 8, 12, 15, 20]</pre></figure>
+<p>Срез <code>left[i:]</code> означает все элементы от указателя <code>i</code> до конца списка. Метод <code>extend</code> добавляет их по одному в конец <code>merged</code>. Для нашего примера после цикла левый срез пуст, а правый содержит <code>[20]</code>.</p>
+<div class="widget merge-tail"><div class="widget__head"><b>Последнее состояние</b><span>после переноса 15</span></div><div class="widget__body"><div class="merge-tail__grid"><section><h3>left[i:]</h3><p>пусто</p></section><section><h3>right[j:]</h3><span>20</span></section><section><h3>merged</h3><span>2 · 3 · 7 · 8 · 12 · 15</span></section></div></div><div class="widget__foot">Добавляем 20: <code>[2, 3, 7, 8, 12, 15, 20]</code>.</div></div>
+<p>Каждый элемент переносится в результат один раз. Поэтому слияние двух списков общей длины <code>n</code> выполняет работу порядка <code>n</code>. Эта операция лежит в основе merge sort, слияния журналов событий и объединения упорядоченных потоков данных.</p>
+<div class="sources"><b>Источники главы</b><ol><li>Документация Python: <a href="https://docs.python.org/3/library/stdtypes.html#list.extend" target="_blank" rel="noopener">list.extend</a>.</li><li>Код и вывод проверены запуском на Python 3.12.</li></ol></div>
+<div class="pager"><a href="04-monotonnyy-predikat-i-poisk-otveta.html">← 0.4 Монотонный предикат и поиск ответа</a><span>0.6 Heap и выбор следующего кандидата →</span></div><div class="colophon"><span>Модуль 0 · Упорядочивание изнутри · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div>
+</main></div></div><script src="../../massivy/book.js"></script><script src="../../massivy/algo.js"></script></body></html>
