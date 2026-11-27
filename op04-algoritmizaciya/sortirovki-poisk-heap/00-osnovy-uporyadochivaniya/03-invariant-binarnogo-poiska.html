@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>0.3 Инвариант бинарного поиска · ОП.04</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../sortirovki.css">
+</head>
+<body>
+  <div class="book"><div class="book__body">
+    <div class="spine"><span>Модуль 0 · Упорядочивание изнутри · ОП.04</span></div>
+    <main class="leaf">
+      <div class="running">
+        <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Сортировка, бинарный поиск и heap</a> · модуль 0 · теория</p>
+        <p class="running__folio">Глава 0.3</p>
+      </div>
+      <header class="chapter-head">
+        <span class="chapter-num">0.3</span>
+        <h1>Инвариант<br>бинарного<br>поиска</h1>
+        <p class="lead">Бинарный поиск не перебирает список по одному элементу. Он сохраняет отрезок, где искомое значение ещё может находиться, и на каждом шаге отбрасывает половину данных.</p>
+      </header>
+      <nav class="contents"><b>В этой главе</b><ol>
+        <li><a href="#s1">Почему нужен отсортированный список</a></li>
+        <li><a href="#s2">Что сохраняет инвариант</a></li>
+        <li><a href="#s3">Три шага до найденного значения</a></li>
+        <li><a href="#s4">Как поиск заканчивается без ответа</a></li>
+      </ol></nav>
+
+      <h2 id="s1"><span class="sec">§1</span>Почему нужен отсортированный список</h2>
+      <p>Нужно найти число 18 среди оценок в списке. Если значения стоят без порядка, после проверки 14 нельзя сказать, где искать 18 дальше. В отсортированном списке известно: все числа слева от 14 меньше 14, а все справа больше 14.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>данные и искомое значение</span></figcaption><pre>&gt;&gt;&gt; scores = [3, 7, 11, 14, 18, 24, 31]
+&gt;&gt;&gt; target = 18
+&gt;&gt;&gt; scores == sorted(scores)
+True</pre></figure>
+      <p>Индексы показывают место числа в списке. Первый элемент имеет индекс 0, последний — индекс 6. Бинарный поиск хранит две границы: <code>left</code> для левого индекса и <code>right</code> для правого. Между ними находится рабочий отрезок.</p>
+      <div class="widget binary-line"><div class="widget__head"><b>Отсортированный список с индексами</b><span>target = 18</span></div><div class="widget__body"><div class="binary-line__indices"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div><div class="binary-line__values"><span>3</span><span>7</span><span>11</span><span>14</span><span class="is-target">18</span><span>24</span><span>31</span></div></div><div class="widget__foot">В начале <code>left = 0</code> и <code>right = 6</code>: рабочий отрезок содержит весь список.</div></div>
+      <p>Середину рабочего отрезка вычисляют как <code>mid = (left + right) // 2</code>. Оператор <code>//</code> делит без дробной части. Для границ 0 и 6 середина равна <code>(0 + 6) // 2 = 3</code>. На индексе 3 стоит число 14.</p>
+
+      <h2 id="s2"><span class="sec">§2</span>Что сохраняет инвариант</h2>
+      <p><span class="term">Инвариант</span> — утверждение, которое остаётся истинным после каждого шага алгоритма. Для поиска точного значения используем такой инвариант: если <code>target</code> есть в списке, он находится на отрезке индексов от <code>left</code> до <code>right</code> включительно.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>каркас поиска точного значения</span></figcaption><pre>left = 0
+right = len(scores) - 1
+
+while left &lt;= right:
+    mid = (left + right) // 2
+    if scores[mid] == target:
+        return mid</pre></figure>
+      <p>Знак <code>&lt;=</code> важен: отрезок из одного элемента всё ещё нужно проверить. Когда <code>left</code> становится больше <code>right</code>, в рабочем отрезке не остаётся индексов. Тогда значение не найдено.</p>
+      <div class="widget invariant-card"><div class="widget__head"><b>Инвариант в каждом кадре</b><span>точный поиск</span></div><div class="widget__body"><div class="invariant-card__rule"><code>target</code> найден здесь <b>или</b> остаётся внутри границ <code>left..right</code>.</div><div class="invariant-card__legend"><span class="is-active">рабочий отрезок</span><span class="is-mid">проверяемая середина</span><span class="is-cut">исключённые индексы</span></div></div><div class="widget__foot">После сравнения граница сдвигается так, чтобы исключённая половина уже не могла содержать <code>target</code>.</div></div>
+      <p>Когда <code>scores[mid]</code> меньше цели, все элементы слева от середины и сама середина тоже меньше цели. Их можно исключить, присвоив <code>left = mid + 1</code>. Когда значение в середине больше цели, симметрично сдвигают правую границу: <code>right = mid - 1</code>.</p>
+
+      <h2 id="s3"><span class="sec">§3</span>Три шага до найденного значения</h2>
+      <p>Теперь выполним поиск 18. Каждый кадр показывает состояние до проверки середины. Жёлтая карточка — элемент <code>scores[mid]</code>. Синие карточки входят в рабочий отрезок. Серые карточки уже исключены и больше не будут проверяться.</p>
+      <div class="widget binary-trace" aria-label="Три шага бинарного поиска числа 18">
+        <section class="binary-trace__step"><div class="binary-trace__head"><b>Шаг 1</b><span><code>left = 0</code>, <code>right = 6</code>, <code>mid = 3</code></span></div><div class="binary-trace__indices"><span>0</span><span>1</span><span>2</span><span class="is-mid-label">3 · mid</span><span>4</span><span>5</span><span>6</span></div><div class="binary-trace__values"><span class="is-active">3</span><span class="is-active">7</span><span class="is-active">11</span><span class="is-mid">14</span><span class="is-active">18</span><span class="is-active">24</span><span class="is-active">31</span></div><p><code>scores[3] = 14</code>. Число 14 меньше цели 18. Индексы 0–3 содержат числа не больше 14, поэтому цель там отсутствует. Новая граница: <code>left = 3 + 1 = 4</code>.</p></section>
+        <section class="binary-trace__step"><div class="binary-trace__head"><b>Шаг 2</b><span><code>left = 4</code>, <code>right = 6</code>, <code>mid = 5</code></span></div><div class="binary-trace__indices"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span class="is-mid-label">5 · mid</span><span>6</span></div><div class="binary-trace__values"><span class="is-cut">3</span><span class="is-cut">7</span><span class="is-cut">11</span><span class="is-cut">14</span><span class="is-active">18</span><span class="is-mid">24</span><span class="is-active">31</span></div><p><code>scores[5] = 24</code>. Число 24 больше цели 18. Индексы 5–6 содержат числа не меньше 24, поэтому цель там отсутствует. Новая граница: <code>right = 5 - 1 = 4</code>.</p></section>
+        <section class="binary-trace__step binary-trace__step--result"><div class="binary-trace__head"><b>Шаг 3</b><span><code>left = 4</code>, <code>right = 4</code>, <code>mid = 4</code></span></div><div class="binary-trace__indices"><span>0</span><span>1</span><span>2</span><span>3</span><span class="is-mid-label">4 · mid</span><span>5</span><span>6</span></div><div class="binary-trace__values"><span class="is-cut">3</span><span class="is-cut">7</span><span class="is-cut">11</span><span class="is-cut">14</span><span class="is-mid">18</span><span class="is-cut">24</span><span class="is-cut">31</span></div><p><code>scores[4] == target</code>. Сравнение вернуло <code>True</code>, поэтому поиск возвращает индекс <code>4</code>. Инвариант завершён найденным значением.</p></section>
+      </div>
+      <p>За три проверки найдено число среди семи элементов. Линейный поиск мог бы проверить пять значений: 3, 7, 11, 14 и 18. На коротком списке разница небольшая. На большом отсортированном списке отбрасывание половины становится заметнее.</p>
+      <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>После первого шага для <code>target = 18</code> чему равно <code>left</code>?</div><ul class="quiz__opts">
+        <li><button type="button">0</button><p class="quiz__why">Граница сдвигается, потому что 14 меньше 18.</p></li>
+        <li data-ok><button type="button">4</button><p class="quiz__why"><code>mid = 3</code>. Индексы 0–3 исключены, поэтому <code>left = mid + 1 = 4</code>.</p></li>
+        <li><button type="button">6</button><p class="quiz__why">Правая граница сохраняется равной 6 после первого шага.</p></li>
+      </ul></div>
+
+      <h2 id="s4"><span class="sec">§4</span>Как поиск заканчивается без ответа</h2>
+      <p>Поиск должен уметь сообщать и об отсутствии значения. Возьмём цель 19. После двух первых сравнений рабочий отрезок снова состоит из одного индекса 4, где лежит 18. Значение 18 меньше 19, поэтому левая граница перейдёт за правую.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>полная функция поиска</span></figcaption><pre>def binary_search(values, target):
+    left = 0
+    right = len(values) - 1
+
+    while left &lt;= right:
+        mid = (left + right) // 2
+        if values[mid] == target:
+            return mid
+        if values[mid] &lt; target:
+            left = mid + 1
+        else:
+            right = mid - 1
+    return None
+
+&gt;&gt;&gt; binary_search(scores, 18)
+4
+&gt;&gt;&gt; binary_search(scores, 19)
+None</pre></figure>
+      <p>После проверки 18 для цели 19 получается <code>left = 5</code> и <code>right = 4</code>. Условие цикла <code>left &lt;= right</code> ложно. Рабочий отрезок пуст, а инвариант сообщает: если 19 был в списке, он должен был находиться внутри границ. Таких границ больше нет, значит значения в списке нет.</p>
+      <div class="widget empty-range"><div class="widget__head"><b>Состояние после неудачного поиска</b><span>target = 19</span></div><div class="widget__body"><div class="empty-range__bounds"><span><b>left</b> 5</span><i>рабочего индекса нет</i><span><b>right</b> 4</span></div><div class="empty-range__values"><span class="is-cut">3</span><span class="is-cut">7</span><span class="is-cut">11</span><span class="is-cut">14</span><span class="is-cut">18</span><span class="is-cut">24</span><span class="is-cut">31</span></div></div><div class="widget__foot"><code>left &gt; right</code> означает пустой рабочий отрезок. Функция возвращает <code>None</code>.</div></div>
+      <p>Инвариант помогает писать бинарный поиск без пропуска индекса. До цикла он верен для всего списка. После каждого сдвига границы он остаётся верен для меньшего отрезка. В конце он объясняет результат поиска.</p>
+      <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Когда функция <code>binary_search</code> возвращает <code>None</code>?</div><ul class="quiz__opts">
+        <li><button type="button">Когда середина меньше цели</button><p class="quiz__why">В этом случае поиск сдвигает <code>left</code> и продолжает работу.</p></li>
+        <li data-ok><button type="button">Когда <code>left</code> становится больше <code>right</code></button><p class="quiz__why">Рабочий отрезок пуст. Искомого индекса больше нет.</p></li>
+        <li><button type="button">После первой проверки середины</button><p class="quiz__why">Середина может совпасть с целью или оставить рабочий отрезок для следующих шагов.</p></li>
+      </ul></div>
+      <div class="sources"><b>Источники главы</b><ol>
+        <li>Документация Python: <a href="https://docs.python.org/3/library/bisect.html" target="_blank" rel="noopener">bisect — Array bisection algorithm</a>.</li>
+        <li>Код и вывод проверены запуском на Python 3.12.</li>
+      </ol></div>
+      <div class="pager"><a href="02-stabilnost-pamyat-i-cena.html">← 0.2 Стабильность, память и цена сортировки</a><span>0.4 Монотонный предикат и поиск ответа →</span></div>
+      <div class="colophon"><span>Модуль 0 · Упорядочивание изнутри · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div>
+    </main>
+  </div></div>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+</body>
+</html>
