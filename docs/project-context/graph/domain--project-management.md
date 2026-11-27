@@ -24,6 +24,7 @@ tags:
 - [[unit--project-management--05--05-crm-zapusk]]
 - [[unit--project-management--06--06-rabochee-prostranstvo]]
 - [[unit--project-management--07--07-avtomatizaciya-kontrol]]
+- [[unit--project-management--08--08-psihologiya-komandy]]
 
 ## Точки входа области
 
