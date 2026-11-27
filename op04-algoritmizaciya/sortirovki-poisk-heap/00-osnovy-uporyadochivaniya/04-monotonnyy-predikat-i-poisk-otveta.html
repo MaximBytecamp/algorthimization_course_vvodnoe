@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>0.4 Монотонный предикат и поиск ответа · ОП.04</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../sortirovki.css">
+</head>
+<body>
+  <div class="book"><div class="book__body">
+    <div class="spine"><span>Модуль 0 · Упорядочивание изнутри · ОП.04</span></div>
+    <main class="leaf">
+      <div class="running"><p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Сортировка, бинарный поиск и heap</a> · модуль 0 · теория</p><p class="running__folio">Глава 0.4</p></div>
+      <header class="chapter-head"><span class="chapter-num">0.4</span><h1>Монотонный<br>предикат и поиск<br>ответа</h1><p class="lead">Бинарный поиск находит не только значение в списке. Он умеет находить наименьший ответ, который проходит проверку. Для этого проверка должна менять результат только в одном направлении.</p></header>
+      <nav class="contents"><b>В этой главе</b><ol><li><a href="#s1">Ответ как число из диапазона</a></li><li><a href="#s2">Предикат «успеем ли за два рейса»</a></li><li><a href="#s3">Почему предикат монотонный</a></li><li><a href="#s4">Четыре шага до минимального ответа</a></li></ol></nav>
+
+      <h2 id="s1"><span class="sec">§1</span>Ответ как число из диапазона</h2>
+      <p>Нужно перевезти грузы массой 4, 8, 3 и 5 тонн за два рейса. Грузы идут в заданном порядке: сначала 4, затем 8, потом 3 и 5. Требуется найти наименьшую грузоподъёмность машины, при которой двух рейсов достаточно.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>данные задачи</span></figcaption><pre>&gt;&gt;&gt; weights = [4, 8, 3, 5]
+&gt;&gt;&gt; days = 2
+&gt;&gt;&gt; min_capacity = max(weights)
+&gt;&gt;&gt; max_capacity = sum(weights)
+&gt;&gt;&gt; min_capacity, max_capacity
+(8, 20)</pre></figure>
+      <p>Машина не может иметь грузоподъёмность меньше 8: груз массой 8 тогда не поместится ни в один рейс. Грузоподъёмность 20 точно подходит: все грузы можно увезти за один рейс. Значит ответ лежит в диапазоне от 8 до 20.</p>
+      <div class="widget answer-range"><div class="widget__head"><b>Диапазон возможных ответов</b><span>8 … 20 тонн</span></div><div class="widget__body"><div class="answer-range__scale"><span class="is-bound">8<br><small>минимум</small></span><i></i><span>9</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span><span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><i></i><span class="is-bound">20<br><small>точно подходит</small></span></div></div><div class="widget__foot">Ищем минимальное число из этого диапазона.</div></div>
+      <p>Для каждого кандидата на ответ зададим один вопрос: хватит ли такой грузоподъёмности, чтобы выполнить перевозку не больше чем за два рейса? Функция с ответом <code>True</code> или <code>False</code> называется <span class="term">предикатом</span>.</p>
+
+      <h2 id="s2"><span class="sec">§2</span>Предикат «успеем ли за два рейса»</h2>
+      <p>Предикат получает одну вместимость <code>capacity</code>. Он последовательно добавляет грузы в текущий рейс. Когда следующий груз не помещается, начинается новый рейс. Если рейсов стало больше двух, кандидат не подходит.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>проверка одной вместимости</span></figcaption><pre>def can_ship(capacity):
+    trips = 1
+    current_weight = 0
+
+    for weight in weights:
+        if current_weight + weight &gt; capacity:
+            trips += 1
+            current_weight = 0
+        current_weight += weight
+    return trips &lt;= days</pre></figure>
+      <p>Переменная <code>current_weight</code> хранит массу в текущем рейсе. Переменная <code>trips</code> считает начатые рейсы. Условие <code>current_weight + weight &gt; capacity</code> проверяет, поместится ли следующий груз. Когда груз не помещается, счётчик рейсов увеличивается. Масса нового рейса начинается с нуля. Затем груз добавляется в этот рейс.</p>
+      <div class="widget ship-check"><section><div class="ship-check__head"><b>Проверка capacity = 11</b><span>ожидаем False</span></div><div class="ship-check__trips"><div><b>рейс 1</b><span>4</span><small>масса 4</small></div><div><b>рейс 2</b><span>8 + 3</span><small>масса 11</small></div><div class="is-over"><b>рейс 3</b><span>5</span><small>третий рейс → не подходит</small></div></div><p>Для вместимости 11 понадобились три рейса. Предикат возвращает <code>False</code>.</p></section><section><div class="ship-check__head"><b>Проверка capacity = 12</b><span>ожидаем True</span></div><div class="ship-check__trips"><div class="is-ok"><b>рейс 1</b><span>4 + 8</span><small>масса 12</small></div><div class="is-ok"><b>рейс 2</b><span>3 + 5</span><small>масса 8</small></div></div><p>Для вместимости 12 достаточно двух рейсов. Предикат возвращает <code>True</code>.</p></section></div>
+      <p>Порядок грузов не меняется. При вместимости 12 груз 8 не объединяется с 3, потому что перед ним уже стоит 4: сумма 4 + 8 + 3 больше 12. Условие фиксирует порядок загрузки. При его изменении предикат описывал бы другую перевозку.</p>
+
+      <h2 id="s3"><span class="sec">§3</span>Почему предикат монотонный</h2>
+      <p>Для вместимости 8, 9, 10 и 11 предикат возвращает <code>False</code>. Для 12 и всех больших вместимостей он возвращает <code>True</code>. Увеличение грузоподъёмности не может потребовать больше рейсов. Такая последовательность результатов называется <span class="term">монотонной</span>.</p>
+      <div class="widget monotone-strip"><div class="widget__head"><b>Результат <code>can_ship(capacity)</code></b><span>вместимость от 8 до 20</span></div><div class="widget__body"><div class="monotone-strip__values"><span class="is-no">8<br><small>False</small></span><span class="is-no">9<br><small>False</small></span><span class="is-no">10<br><small>False</small></span><span class="is-no">11<br><small>False</small></span><span class="is-yes">12<br><small>True</small></span><span class="is-yes">13<br><small>True</small></span><span class="is-yes">14<br><small>True</small></span><span class="is-yes">15<br><small>True</small></span><span class="is-yes">16<br><small>True</small></span><span class="is-yes">17<br><small>True</small></span><span class="is-yes">18<br><small>True</small></span><span class="is-yes">19<br><small>True</small></span><span class="is-yes">20<br><small>True</small></span></div></div><div class="widget__foot">Ищем границу между последним <code>False</code> и первым <code>True</code>: это вместимость 12.</div></div>
+      <p>Бинарный поиск по ответу хранит диапазон, в котором ещё может быть первый подходящий кандидат. Если середина подходит, ответ может быть равен середине или находиться левее. Поэтому правую границу сдвигают на середину. Если середина не подходит, ответ находится правее, и левую границу сдвигают за середину.</p>
+      <figure class="code"><figcaption><span>Правило сдвига границ</span><span>ищем первый True</span></figcaption><pre>mid = (left + right) // 2
+if can_ship(mid):
+    right = mid
+else:
+    left = mid + 1</pre></figure>
+      <p>Здесь границы образуют полуинтервал <code>[left, right]</code> с кандидатом на ответ внутри. Цикл продолжается, пока границы различаются. Когда они совпадут, единственная оставшаяся вместимость будет первым значением с результатом <code>True</code>.</p>
+
+      <h2 id="s4"><span class="sec">§4</span>Четыре шага до минимального ответа</h2>
+      <p>Начинаем с <code>left = 8</code> и <code>right = 20</code>. На кадрах показан диапазон после каждого ответа предиката. Синий цвет — кандидаты, которые ещё могут стать ответом. Жёлтый — проверяемая середина. Серый — исключённые вместимости.</p>
+      <div class="widget answer-trace" aria-label="Четыре шага поиска минимальной вместимости 12">
+        <section><div class="answer-trace__head"><b>Шаг 1</b><span><code>mid = 14</code>, <code>can_ship(14) = True</code></span></div><div class="answer-trace__numbers"><span class="is-active">8</span><span class="is-active">9</span><span class="is-active">10</span><span class="is-active">11</span><span class="is-active">12</span><span class="is-active">13</span><span class="is-mid">14</span><span class="is-cut">15</span><span class="is-cut">16</span><span class="is-cut">17</span><span class="is-cut">18</span><span class="is-cut">19</span><span class="is-cut">20</span></div><p>14 подходит. Более маленький подходящий ответ может быть слева, поэтому <code>right = 14</code>.</p></section>
+        <section><div class="answer-trace__head"><b>Шаг 2</b><span><code>mid = 11</code>, <code>can_ship(11) = False</code></span></div><div class="answer-trace__numbers"><span class="is-cut">8</span><span class="is-cut">9</span><span class="is-cut">10</span><span class="is-mid">11</span><span class="is-active">12</span><span class="is-active">13</span><span class="is-active">14</span><span class="is-cut">15</span><span class="is-cut">16</span><span class="is-cut">17</span><span class="is-cut">18</span><span class="is-cut">19</span><span class="is-cut">20</span></div><p>11 не подходит. Все меньшие вместимости тоже не подходят, поэтому <code>left = 11 + 1 = 12</code>.</p></section>
+        <section><div class="answer-trace__head"><b>Шаг 3</b><span><code>mid = 13</code>, <code>can_ship(13) = True</code></span></div><div class="answer-trace__numbers"><span class="is-cut">8</span><span class="is-cut">9</span><span class="is-cut">10</span><span class="is-cut">11</span><span class="is-active">12</span><span class="is-mid">13</span><span class="is-cut">14</span><span class="is-cut">15</span><span class="is-cut">16</span><span class="is-cut">17</span><span class="is-cut">18</span><span class="is-cut">19</span><span class="is-cut">20</span></div><p>13 подходит. Ищем меньший ответ, поэтому <code>right = 13</code>.</p></section>
+        <section class="answer-trace__result"><div class="answer-trace__head"><b>Шаг 4</b><span><code>mid = 12</code>, <code>can_ship(12) = True</code></span></div><div class="answer-trace__numbers"><span class="is-cut">8</span><span class="is-cut">9</span><span class="is-cut">10</span><span class="is-cut">11</span><span class="is-mid">12</span><span class="is-cut">13</span><span class="is-cut">14</span><span class="is-cut">15</span><span class="is-cut">16</span><span class="is-cut">17</span><span class="is-cut">18</span><span class="is-cut">19</span><span class="is-cut">20</span></div><p>12 подходит. После присваивания <code>right = 12</code> границы совпали: <code>left == right == 12</code>. Это минимальный ответ.</p></section>
+      </div>
+      <p>Ни один массив вместимостей создавать не нужно. Бинарный поиск использует только границы и вызывает предикат для нескольких чисел. Предикат даёт ответ на локальный вопрос «подходит ли кандидат». Поиск находит границу между ответами <code>False</code> и <code>True</code>.</p>
+      <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Что нужно сделать с границами, если <code>can_ship(mid)</code> вернул <code>True</code> и требуется минимальная вместимость?</div><ul class="quiz__opts"><li data-ok><button type="button"><code>right = mid</code></button><p class="quiz__why">Середина подходит, но меньший подходящий ответ может находиться левее.</p></li><li><button type="button"><code>left = mid + 1</code></button><p class="quiz__why">Такой сдвиг отбросит подходящую середину и может пропустить минимальный ответ.</p></li><li><button type="button">Сразу вернуть <code>mid</code></button><p class="quiz__why">Середина подходит, но она может не быть минимальной.</p></li></ul></div>
+      <div class="sources"><b>Источники главы</b><ol><li>Документация Python: <a href="https://docs.python.org/3/library/bisect.html" target="_blank" rel="noopener">bisect — Array bisection algorithm</a>.</li><li>Код и вывод проверены запуском на Python 3.12.</li></ol></div>
+      <div class="pager"><a href="03-invariant-binarnogo-poiska.html">← 0.3 Инвариант бинарного поиска</a><span>0.5 Слияние упорядоченных потоков →</span></div>
+      <div class="colophon"><span>Модуль 0 · Упорядочивание изнутри · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div>
+    </main>
+  </div></div>
+  <script src="../../massivy/book.js"></script><script src="../../massivy/algo.js"></script>
+</body>
+</html>
