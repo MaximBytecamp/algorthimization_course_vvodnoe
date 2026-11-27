@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>0.2 Стабильность, память и цена сортировки · ОП.04</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../sortirovki.css">
+</head>
+<body>
+  <div class="book"><div class="book__body">
+    <div class="spine"><span>Модуль 0 · Упорядочивание изнутри · ОП.04</span></div>
+    <main class="leaf">
+      <div class="running">
+        <p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Сортировка, бинарный поиск и heap</a> · модуль 0 · теория</p>
+        <p class="running__folio">Глава 0.2</p>
+      </div>
+      <header class="chapter-head">
+        <span class="chapter-num">0.2</span>
+        <h1>Стабильность,<br>память и цена<br>сортировки</h1>
+        <p class="lead">Два равных ключа, новый список и число сравнений меняют выбор сортировки. На тех же заказах разберём, что сохраняется, что создаётся заново и почему размер данных важен.</p>
+      </header>
+      <nav class="contents"><b>В этой главе</b><ol>
+        <li><a href="#s1">Что происходит с равными ключами</a></li>
+        <li><a href="#s2">Что хранит новый список sorted</a></li>
+        <li><a href="#s3">Когда список меняет list.sort</a></li>
+        <li><a href="#s4">Из чего складывается цена сортировки</a></li>
+      </ol></nav>
+
+      <h2 id="s1"><span class="sec">§1</span>Что происходит с равными ключами</h2>
+      <p>В первой главе все суммы различались. В журнале могут оказаться два заказа с одинаковым временем. Если сортировка располагает заказы по времени, она должна решить, останется ли B перед D или их взаимное положение изменится.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>два одинаковых ключа</span></figcaption><pre>&gt;&gt;&gt; queue = [
+...     {"id": "B", "time": "12:40"},
+...     {"id": "D", "time": "12:40"},
+...     {"id": "A", "time": "13:10"},
+... ]
+&gt;&gt;&gt; [order["id"] for order in sorted(queue, key=lambda order: order["time"])]
+['B', 'D', 'A']</pre></figure>
+      <p>Ключи B и D одинаковы: оба равны <code>"12:40"</code>. После сортировки B всё ещё расположен перед D. Такое свойство называют <span class="term">стабильностью сортировки</span>: записи с равными ключами сохраняют исходный взаимный порядок.</p>
+      <div class="widget stable-story"><div class="widget__head"><b>Стабильная сортировка по времени</b><span>ключ B = ключ D</span></div><div class="widget__body">
+        <section class="stable-story__row"><h3>До сортировки</h3><div><span class="stable-story__card"><b>B</b><small>12:40 · пришёл 1-м</small></span><span class="stable-story__card"><b>D</b><small>12:40 · пришёл 2-м</small></span><span class="stable-story__card"><b>A</b><small>13:10 · пришёл 3-м</small></span></div></section>
+        <div class="stable-story__arrow">↓ сортируем по <code>time</code></div>
+        <section class="stable-story__row stable-story__row--result"><h3>После сортировки</h3><div><span class="stable-story__card stable-story__card--equal"><b>B</b><small>12:40 · остался перед D</small></span><span class="stable-story__card stable-story__card--equal"><b>D</b><small>12:40 · остался после B</small></span><span class="stable-story__card"><b>A</b><small>13:10</small></span></div></section>
+      </div><div class="widget__foot">Сортировка переместила A после пары с временем 12:40. Внутри пары порядок B, D сохранился.</div></div>
+      <p>Стабильность полезна, когда один порядок уже содержит смысл. Например, журнал поступления уже расставлен по очереди, затем его сортируют по времени. Заказы с одинаковым временем продолжают идти в порядке поступления. Если нужен другой порядок равных записей, ключ делают составным: например, <code>(order["time"], order["id"])</code>.</p>
+
+      <h2 id="s2"><span class="sec">§2</span>Что хранит новый список <code>sorted</code></h2>
+      <p>Функция <code>sorted</code> возвращает новый список. В нём другой порядок ссылок на те же словари. Сами словари B, A и C не копируются заново для каждой позиции.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>новый список и те же записи</span></figcaption><pre>&gt;&gt;&gt; orders = [
+...     {"id": "B", "total": 1900},
+...     {"id": "A", "total": 700},
+...     {"id": "C", "total": 1200},
+... ]
+&gt;&gt;&gt; by_total = sorted(orders, key=lambda order: order["total"])
+&gt;&gt;&gt; by_total is orders
+False
+&gt;&gt;&gt; by_total[0] is orders[1]
+True</pre></figure>
+      <p>Первое сравнение показывает, что <code>by_total</code> и <code>orders</code> — разные списки. Второе показывает, что в начале <code>by_total</code> лежит тот же словарь A, который был на втором месте в <code>orders</code>. Оператор <code>is</code> проверяет, один ли это объект в памяти.</p>
+      <div class="widget memory-map" aria-label="Два списка с ссылками на одни словари">
+        <section><h3><code>orders</code></h3><div class="memory-map__list"><span>0 → B</span><span>1 → A</span><span>2 → C</span></div></section>
+        <div class="memory-map__arrow" aria-hidden="true">sorted<br>↓</div>
+        <section><h3><code>by_total</code></h3><div class="memory-map__list memory-map__list--result"><span>0 → A</span><span>1 → C</span><span>2 → B</span></div></section>
+        <aside><b>Словари-объекты</b><span>A · 700 ₽</span><span>B · 1900 ₽</span><span>C · 1200 ₽</span></aside>
+      </div>
+      <p>Поэтому изменение самого словаря видно через оба списка. Если выполнить <code>by_total[0]["total"] = 800</code>, сумма A изменится и в <code>orders[1]</code>. Новый список хранит собственный порядок, но элементы внутри него остаются прежними объектами.</p>
+
+      <h2 id="s3"><span class="sec">§3</span>Когда список меняет <code>list.sort</code></h2>
+      <p>Метод <code>list.sort</code> перестраивает существующий список. Его выбирают, когда исходный порядок больше не нужен. Метод возвращает <code>None</code>, поэтому результат не присваивают той же переменной.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>сортировка на месте</span></figcaption><pre>&gt;&gt;&gt; queue = orders.copy()
+&gt;&gt;&gt; result = queue.sort(key=lambda order: order["total"])
+&gt;&gt;&gt; result is None
+True
+&gt;&gt;&gt; [order["id"] for order in queue]
+['A', 'C', 'B']</pre></figure>
+      <p>Метод <code>copy</code> создал отдельный список для опыта. Вызов <code>queue.sort(...)</code> изменил порядок внутри него. Переменная <code>result</code> получила <code>None</code>, потому что готовый список уже находится в <code>queue</code>.</p>
+      <div class="widget"><div class="widget__head"><b>Как выбрать способ сортировки</b><span>до запуска кода</span></div><div class="widget__body"><table class="choice-table"><thead><tr><th>Нужно сохранить исходный порядок</th><th>Исходный порядок больше не нужен</th></tr></thead><tbody><tr><td><code>by_total = sorted(orders, key=...)</code><br><small>получаются два списка</small></td><td><code>orders.sort(key=...)</code><br><small>меняется один список</small></td></tr></tbody></table></div><div class="widget__foot">Нельзя писать <code>orders = orders.sort(...)</code>: после этой строки в <code>orders</code> окажется <code>None</code>.</div></div>
+      <p>Новый список требует место для своего порядка. Сортировка на месте избегает второго списка, но её алгоритм всё равно может использовать служебную память. Размер такой памяти зависит от алгоритма и входных данных.</p>
+
+      <h2 id="s4"><span class="sec">§4</span>Из чего складывается цена сортировки</h2>
+      <p>Цена алгоритма складывается из работы с ключами и сравнений ключей. Пусть в списке <code>n</code> записей. Функцию ключа Python вызывает по одному разу для каждой записи, поэтому для трёх заказов получится три значения: 1900, 700 и 1200.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>считаем вызовы функции ключа</span></figcaption><pre>&gt;&gt;&gt; calls = 0
+&gt;&gt;&gt; def counted_key(order):
+...     global calls
+...     calls += 1
+...     return order["total"]
+...
+&gt;&gt;&gt; sorted(orders, key=counted_key)
+[{'id': 'A', 'total': 700}, {'id': 'C', 'total': 1200}, {'id': 'B', 'total': 1900}]
+&gt;&gt;&gt; calls
+3</pre></figure>
+      <p>Число сравнений зависит от алгоритма и от расположения данных. В модели сортировки вставками из главы 0.1 худший случай возникает, когда каждый следующий ключ меньше предыдущих. Для трёх элементов потребуется до трёх сравнений: <code>3 × 2 / 2 = 3</code>.</p>
+      <div class="widget cost-grid"><section><h3>Сортировка вставками</h3><p><code>n × (n − 1) / 2</code> сравнений в худшем случае.</p><dl><div><dt>3 записи</dt><dd>3 сравнения</dd></div><div><dt>10 записей</dt><dd>45 сравнений</dd></div><div><dt>1000 записей</dt><dd>499 500 сравнений</dd></div></dl></section><section><h3>Стандартная сортировка Python</h3><p>В худшем случае порядок работы растёт как <code>n log n</code>. Для 1000 записей это величина порядка 10 000 сравнений.</p><dl><div><dt>данные уже почти упорядочены</dt><dd>Python может работать быстрее</dd></div><div><dt>точное число сравнений</dt><dd>зависит от данных</dd></div></dl></section></div>
+      <p>Не нужно запоминать формулы наизусть. Достаточно видеть разницу роста: при удвоении списка перебор всех пар растёт примерно в четыре раза, а <code>n log n</code> — заметно медленнее. Поэтому на маленьком списке простая модель удобна для понимания, а на большом списке используют стандартную сортировку Python.</p>
+      <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Что сохранится после <code>by_total = sorted(orders, key=lambda order: order["total"])</code>?</div><ul class="quiz__opts">
+        <li data-ok><button type="button">В <code>orders</code> останется исходный порядок B, A, C</button><p class="quiz__why"><code>sorted</code> создаёт новый список. Исходный список не перестраивается.</p></li>
+        <li><button type="button">В <code>orders</code> появится порядок A, C, B</button><p class="quiz__why">Порядок A, C, B появляется после вызова <code>orders.sort(...)</code>. Вызов <code>sorted(orders, ...)</code> оставляет <code>orders</code> в исходном порядке.</p></li>
+        <li><button type="button">Словарь A будет скопирован в другой объект</button><p class="quiz__why">Новый список хранит ссылку на уже существующий словарь A.</p></li>
+      </ul></div>
+      <div class="sources"><b>Источники главы</b><ol>
+        <li>Документация Python: <a href="https://docs.python.org/3/howto/sorting.html" target="_blank" rel="noopener">Sorting HOW TO</a>.</li>
+        <li>Документация Python: <a href="https://docs.python.org/3/library/functions.html#sorted" target="_blank" rel="noopener">built-in function sorted</a> и <a href="https://docs.python.org/3/library/stdtypes.html#list.sort" target="_blank" rel="noopener">list.sort</a>.</li>
+        <li>Примеры и вывод проверены запуском на Python 3.12.</li>
+      </ol></div>
+      <div class="pager"><a href="01-poryadok-i-klyuch.html">← 0.1 Порядок, ключ и отсортированная последовательность</a><span>0.3 Инвариант бинарного поиска →</span></div>
+      <div class="colophon"><span>Модуль 0 · Упорядочивание изнутри · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div>
+    </main>
+  </div></div>
+  <script src="../../massivy/book.js"></script>
+  <script src="../../massivy/algo.js"></script>
+</body>
+</html>
