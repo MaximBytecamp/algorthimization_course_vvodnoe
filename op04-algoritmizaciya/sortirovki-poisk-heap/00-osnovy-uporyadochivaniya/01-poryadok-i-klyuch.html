@@ -51,7 +51,7 @@
       <p>Для порядка по возрастанию ключ слева не больше ключа справа. В итоговой очереди это будет <code>700 ≤ 1200 ≤ 1900</code>. Теперь можно показать, как из записей получить эти три числа.</p>
 
       <h2 id="s2"><span class="sec">§2</span>Функция ключа и <code>lambda</code></h2>
-      <p>Сортировке нужна функция, которая получает одну запись и возвращает её ключ. Сначала запишем такую функцию обычным способом. Имя <code>order</code> внутри скобок означает один словарь из списка.</p>
+      <p>Сортировке нужна функция, которая получает одну запись и возвращает её ключ. Сначала запишем такую функцию обычным способом. Параметр — имя для значения, которое функция получает при вызове. Здесь параметр называется <code>order</code> и в каждом вызове хранит один словарь из списка. Оператор <code>return</code> завершает вызов функции и возвращает найденное значение.</p>
       <figure class="code"><figcaption><span>Python 3.12</span><span>функция для одного заказа</span></figcaption><pre>&gt;&gt;&gt; def total_key(order):
 ...     return order["total"]
 ...
@@ -60,8 +60,10 @@
 &gt;&gt;&gt; total_key(orders[1])
 700</pre></figure>
       <p>При первом вызове в параметр <code>order</code> попадает словарь B, поэтому функция возвращает 1900. При втором вызове в него попадает словарь A, поэтому результат — 700. Сама функция не переставляет записи. Она сообщает сортировке число для сравнения.</p>
+      <p>Выражение <code>orders[0]</code> выбирает первую запись списка, B. Эта запись целиком становится значением параметра <code>order</code>. Затем выражение <code>order["total"]</code> читает из словаря поле <code>total</code>. Так же будут обработаны A и C: по одному вызову функции на каждую запись.</p>
       <div class="widget lambda-story"><div class="widget__head"><b>Как работает функция ключа</b><span>один вызов</span></div><div class="widget__body"><div class="lambda-story__flow"><div><b>В функцию передали</b><code>order = {"id": "A", "total": 700}</code></div><span aria-hidden="true">→</span><div><b>Строка <code>return</code> взяла</b><code>order["total"]</code></div><span aria-hidden="true">→</span><div><b>Функция вернула</b><code>700</code></div></div></div><div class="widget__foot">Для B, A и C такая функция вернёт 1900, 700 и 1200.</div></div>
       <p>Запись <code>lambda order: order["total"]</code> создаёт ту же функцию, только без имени. Её используют здесь один раз — прямо в аргументе <code>key=</code>. Часть слева от двоеточия принимает запись, часть справа возвращает её сумму.</p>
+      <p>Запись <code>key=total_key</code> передаёт в сортировку функцию. Скобки вызова здесь не ставят. Запись <code>key=total_key(orders[0])</code> сначала запустила бы функцию для B и получила число 1900. Параметр <code>key</code> должен содержать функцию: сортировка применяет её к каждой записи списка.</p>
       <figure class="code"><figcaption><span>Одна функция в двух записях</span><span>результат одинаков</span></figcaption><pre>def total_key(order):              lambda order: order["total"]
     return order["total"]          ↑ параметр      ↑ возвращаемое значение</pre></figure>
       <p>Слово <code>lambda</code> не сортирует список. Оно только передаёт в <code>sorted</code> короткую функцию ключа. Теперь видно, какие числа получат карточки; дальше разберём, как по этим числам записи переходят в новый список.</p>
@@ -87,15 +89,18 @@
         <div class="sort-transfer__foot">Карточка переносится целиком вместе с номером, временем и суммой. Ключ нужен только для выбора позиции.</div>
       </div>
       <p>Это понятная модель сортировки вставками. Она показывает перенос элементов по шагам. Вызов <code>sorted</code> возвращает тот же порядок, а точная последовательность внутренних сравнений не входит в договор языка Python.</p>
+      <p>На втором и третьем кадрах карточка показана в средней зоне до переноса. Правая зона показывает новый список после завершения шага. Это два последовательных момента. В программе запись существует в единственном экземпляре.</p>
 
       <h2 id="s4"><span class="sec">§4</span>Что возвращает <code>sorted</code></h2>
       <p>Функция <code>sorted</code> принимает исходный список и функцию ключа. Она возвращает новый список. Поэтому результат нужно сохранить в отдельную переменную.</p>
-      <figure class="code"><figcaption><span>Python 3.12</span><span>сортировка и проверка результата</span></figcaption><pre>&gt;&gt;&gt; by_total = sorted(orders, key=lambda order: order["total"])
+      <p>В вызове ниже <code>orders</code> — данные, <code>key=</code> — правило получения ключа, а переменная слева от знака <code>=</code> получает готовый список. Обе записи вызова дают один результат. В программе выбирают одну: именованную функцию используют, когда её нужно читать или вызывать ещё раз; <code>lambda</code> подходит для короткого одноразового правила.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>два равных вызова</span></figcaption><pre>&gt;&gt;&gt; by_total = sorted(orders, key=total_key)
+&gt;&gt;&gt; by_total = sorted(orders, key=lambda order: order["total"])
 &gt;&gt;&gt; [order["id"] for order in by_total]
 ['A', 'C', 'B']
 &gt;&gt;&gt; [order["id"] for order in orders]
 ['B', 'A', 'C']</pre></figure>
-      <p>Первая строка создаёт <code>by_total</code>. В первом выводе виден новый порядок A, C, B. Во втором выводе B, A, C: исходный <code>orders</code> не изменился.</p>
+      <p>Первая строка передаёт в <code>key</code> функцию <code>total_key</code>. Вторая передаёт равную ей функцию через <code>lambda</code> и перезаписывает <code>by_total</code> тем же результатом. Следующие две строки проверяют порядок: в новом списке A, C, B, а исходный <code>orders</code> сохранил B, A, C.</p>
       <div class="widget"><div class="widget__head"><b>Два списка после вызова</b><span>одни словари, разный порядок</span></div><div class="widget__body"><div class="order-demo">
         <div class="order-demo__row"><span class="order-demo__label"><code>orders</code></span><span class="order-demo__card"><b>B</b>1900 ₽</span><span class="order-demo__card"><b>A</b>700 ₽</span><span class="order-demo__card"><b>C</b>1200 ₽</span></div>
         <div class="order-demo__row"><span class="order-demo__label"><code>by_total</code></span><span class="order-demo__card is-key"><b>A</b>700 ₽</span><span class="order-demo__card is-key"><b>C</b>1200 ₽</span><span class="order-demo__card is-key"><b>B</b>1900 ₽</span></div>
