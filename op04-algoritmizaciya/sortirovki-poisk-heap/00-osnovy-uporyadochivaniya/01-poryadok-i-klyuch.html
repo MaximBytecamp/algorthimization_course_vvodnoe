@@ -27,9 +27,10 @@
       </header>
       <nav class="contents"><b>В этой главе</b><ol>
         <li><a href="#s1">Из какого порядка начинаем</a></li>
-        <li><a href="#s2">Ключ отвечает за место записи</a></li>
-        <li><a href="#s3">Что возвращает sorted</a></li>
-        <li><a href="#s4">Когда ключи равны</a></li>
+        <li><a href="#s2">Функция ключа и lambda</a></li>
+        <li><a href="#s3">Как записи переходят в новый порядок</a></li>
+        <li><a href="#s4">Что возвращает sorted</a></li>
+        <li><a href="#s5">Когда ключи равны</a></li>
       </ol></nav>
 
       <h2 id="s1"><span class="sec">§1</span>Из какого порядка начинаем</h2>
@@ -49,38 +50,45 @@
       </div></div><div class="widget__foot">Порядок меняется вместе с ключом. В этой главе ключ — <code>total</code>, поэтому первым нужен заказ A с суммой 700 ₽.</div></div>
       <p>Для порядка по возрастанию ключ слева не больше ключа справа. В итоговой очереди это будет <code>700 ≤ 1200 ≤ 1900</code>. Теперь можно показать, как из записей получить эти три числа.</p>
 
-      <h2 id="s2"><span class="sec">§2</span>Ключ отвечает за место записи</h2>
-      <p>Запись остаётся словарём со всеми полями. Ключ извлекает из неё только сумму. Функция ключа получает один словарь <code>order</code> и возвращает значение <code>order["total"]</code>.</p>
-      <figure class="code"><figcaption><span>Python 3.12</span><span>функция ключа</span></figcaption><pre>&gt;&gt;&gt; key = lambda order: order["total"]
-&gt;&gt;&gt; [key(order) for order in orders]
-[1900, 700, 1200]</pre></figure>
-      <p>Первое число относится к B, второе — к A, третье — к C. Словарь и список сохраняются без изменений. Ключ даёт сортировке числа, которые можно расположить по возрастанию.</p>
-      <p>Ниже показана подробная модель сортировки вставками. Она строит новую упорядоченную часть слева направо: берёт следующую запись, сравнивает её ключ с ключами уже стоящих карточек и вставляет на найденное место.</p>
-      <div class="widget sort-story" aria-label="Пять шагов сортировки вставками заказов по сумме">
-        <section class="sort-story__step"><div class="sort-story__head"><b>1</b><span>Читаем исходный <code>orders</code></span></div><div class="sort-story__cards">
-          <div class="sort-story__card"><b>B</b><span>key = 1900</span><small>первый в списке</small></div><div class="sort-story__card"><b>A</b><span>key = 700</span><small>второй в списке</small></div><div class="sort-story__card"><b>C</b><span>key = 1200</span><small>третий в списке</small></div>
-        </div></section>
-        <div class="sort-story__arrow"><span>↓</span><p>Первая карточка B уже образует упорядоченную часть из одного элемента.</p></div>
-        <section class="sort-story__step"><div class="sort-story__head"><b>2</b><span>Старт: в новой части только B</span></div><div class="sort-story__cards sort-story__cards--single">
-          <div class="sort-story__card sort-story__card--key"><b>B</b><span>1900 ₽</span><small>новый список: [B]</small></div>
-        </div></section>
-        <div class="sort-story__arrow"><span>↓</span><p>Берём следующую карточку A и сравниваем её ключ с B.</p></div>
-        <section class="sort-story__step"><div class="sort-story__head"><b>3</b><span>Вставляем A перед B</span></div><div class="sort-story__decision"><code>700 &lt; 1900</code><span>A должна стоять левее B.</span></div><div class="sort-story__cards sort-story__cards--two">
-          <div class="sort-story__card sort-story__card--result"><b>A</b><span>700 ₽</span><small>новый список: [A, B]</small></div><div class="sort-story__card sort-story__card--result"><b>B</b><span>1900 ₽</span><small>B сдвинулась вправо</small></div>
-        </div></section>
-        <div class="sort-story__arrow"><span>↓</span><p>Берём C. Её ключ сравнивается с карточками справа налево.</p></div>
-        <section class="sort-story__step"><div class="sort-story__head"><b>4</b><span>Находим место для C</span></div><div class="sort-story__decision"><code>1200 &lt; 1900</code><span>C проходит перед B.</span><code>1200 &gt; 700</code><span>C остаётся после A.</span></div><div class="sort-story__cards">
-          <div class="sort-story__card sort-story__card--result"><b>A</b><span>700 ₽</span></div><div class="sort-story__card sort-story__card--result"><b>C</b><span>1200 ₽</span></div><div class="sort-story__card sort-story__card--result"><b>B</b><span>1900 ₽</span></div>
-        </div></section>
-        <div class="sort-story__arrow"><span>↓</span><p>Все карточки вставлены. Ключи идут по возрастанию.</p></div>
-        <section class="sort-story__step sort-story__step--result"><div class="sort-story__head"><b>5</b><span>Результат: <code>by_total = [A, C, B]</code></span></div><div class="sort-story__cards">
-          <div class="sort-story__card sort-story__card--result"><b>A</b><span>700 ₽</span><small>было место 2</small></div><div class="sort-story__card sort-story__card--result"><b>C</b><span>1200 ₽</span><small>было место 3</small></div><div class="sort-story__card sort-story__card--result"><b>B</b><span>1900 ₽</span><small>было место 1</small></div>
-        </div></section>
-        <p class="sort-story__note">Это модель сортировки вставками. Вызов <code>sorted</code> возвращает тот же порядок. Последовательность сравнений внутри реализации не входит в договор языка Python.</p>
-      </div>
-      <p>Модель показывает действие сортировки: записи не превращаются в числа. Числа помогают выбрать место каждой записи. Дальше этот результат зададим одной строкой Python.</p>
+      <h2 id="s2"><span class="sec">§2</span>Функция ключа и <code>lambda</code></h2>
+      <p>Сортировке нужна функция, которая получает одну запись и возвращает её ключ. Сначала запишем такую функцию обычным способом. Имя <code>order</code> внутри скобок означает один словарь из списка.</p>
+      <figure class="code"><figcaption><span>Python 3.12</span><span>функция для одного заказа</span></figcaption><pre>&gt;&gt;&gt; def total_key(order):
+...     return order["total"]
+...
+&gt;&gt;&gt; total_key(orders[0])
+1900
+&gt;&gt;&gt; total_key(orders[1])
+700</pre></figure>
+      <p>При первом вызове в параметр <code>order</code> попадает словарь B, поэтому функция возвращает 1900. При втором вызове в него попадает словарь A, поэтому результат — 700. Сама функция не переставляет записи. Она сообщает сортировке число для сравнения.</p>
+      <div class="widget lambda-story"><div class="widget__head"><b>Как работает функция ключа</b><span>один вызов</span></div><div class="widget__body"><div class="lambda-story__flow"><div><b>В функцию передали</b><code>order = {"id": "A", "total": 700}</code></div><span aria-hidden="true">→</span><div><b>Строка <code>return</code> взяла</b><code>order["total"]</code></div><span aria-hidden="true">→</span><div><b>Функция вернула</b><code>700</code></div></div></div><div class="widget__foot">Для B, A и C такая функция вернёт 1900, 700 и 1200.</div></div>
+      <p>Запись <code>lambda order: order["total"]</code> создаёт ту же функцию, только без имени. Её используют здесь один раз — прямо в аргументе <code>key=</code>. Часть слева от двоеточия принимает запись, часть справа возвращает её сумму.</p>
+      <figure class="code"><figcaption><span>Одна функция в двух записях</span><span>результат одинаков</span></figcaption><pre>def total_key(order):              lambda order: order["total"]
+    return order["total"]          ↑ параметр      ↑ возвращаемое значение</pre></figure>
+      <p>Слово <code>lambda</code> не сортирует список. Оно только передаёт в <code>sorted</code> короткую функцию ключа. Теперь видно, какие числа получат карточки; дальше разберём, как по этим числам записи переходят в новый список.</p>
 
-      <h2 id="s3"><span class="sec">§3</span>Что возвращает <code>sorted</code></h2>
+      <h2 id="s3"><span class="sec">§3</span>Как записи переходят в новый порядок</h2>
+      <p>Ниже показана модель сортировки вставками. Она держит три области: непросмотренные записи, карточку в руках и уже упорядоченную часть нового списка. На каждом шаге одна карточка исчезает из первой области и занимает место в третьей.</p>
+      <div class="widget sort-transfer" aria-label="Пошаговый перенос заказов при сортировке вставками">
+        <div class="sort-transfer__step"><div class="sort-transfer__head"><b>Шаг 1</b><span>Берём B с ключом 1900</span></div><div class="sort-transfer__zones">
+          <section><h3>Очередь после взятия</h3><div class="sort-transfer__cards"><div class="sort-transfer__card is-waiting"><b>A</b><span>700</span></div><div class="sort-transfer__card is-waiting"><b>C</b><span>1200</span></div></div></section>
+          <section class="sort-transfer__current"><h3>Карточка в руках</h3><div class="sort-transfer__cards"><div class="sort-transfer__card is-current"><b>B</b><span>1900</span></div></div></section>
+          <section><h3>Новый список после шага</h3><div class="sort-transfer__cards"><div class="sort-transfer__card is-done"><b>B</b><span>1900</span></div></div></section>
+        </div><p>B — первая карточка, поэтому сравнивать её пока не с чем. Упорядоченная часть равна <code>[B]</code>.</p></div>
+        <div class="sort-transfer__step"><div class="sort-transfer__head"><b>Шаг 2</b><span>Берём A с ключом 700</span></div><div class="sort-transfer__zones">
+          <section><h3>Очередь после взятия</h3><div class="sort-transfer__cards"><div class="sort-transfer__card is-waiting"><b>C</b><span>1200</span></div></div></section>
+          <section class="sort-transfer__current"><h3>Карточка в руках</h3><div class="sort-transfer__cards"><div class="sort-transfer__card is-current"><b>A</b><span>700</span></div></div></section>
+          <section><h3>Новый список после шага</h3><div class="sort-transfer__cards"><div class="sort-transfer__card is-done"><b>A</b><span>700</span></div><div class="sort-transfer__card is-done"><b>B</b><span>1900</span></div></div></section>
+        </div><p>Сравнение <code>700 &lt; 1900</code> ставит A перед B. B сдвигается на одну позицию вправо: <code>[A, B]</code>.</p></div>
+        <div class="sort-transfer__step"><div class="sort-transfer__head"><b>Шаг 3</b><span>Берём C с ключом 1200</span></div><div class="sort-transfer__zones">
+          <section><h3>Очередь после взятия</h3><div class="sort-transfer__cards"><span class="sort-transfer__empty">пусто</span></div></section>
+          <section class="sort-transfer__current"><h3>Карточка в руках</h3><div class="sort-transfer__cards"><div class="sort-transfer__card is-current"><b>C</b><span>1200</span></div></div></section>
+          <section><h3>Новый список после шага</h3><div class="sort-transfer__cards"><div class="sort-transfer__card is-done"><b>A</b><span>700</span></div><div class="sort-transfer__card is-done"><b>C</b><span>1200</span></div><div class="sort-transfer__card is-done"><b>B</b><span>1900</span></div></div></section>
+        </div><p>Сначала <code>1200 &lt; 1900</code>, поэтому C проходит перед B. Затем <code>1200 &gt; 700</code>, поэтому C остаётся после A. Получается <code>[A, C, B]</code>.</p></div>
+        <div class="sort-transfer__foot">Карточка переносится целиком вместе с номером, временем и суммой. Ключ нужен только для выбора позиции.</div>
+      </div>
+      <p>Это понятная модель сортировки вставками. Она показывает перенос элементов по шагам. Вызов <code>sorted</code> возвращает тот же порядок, а точная последовательность внутренних сравнений не входит в договор языка Python.</p>
+
+      <h2 id="s4"><span class="sec">§4</span>Что возвращает <code>sorted</code></h2>
       <p>Функция <code>sorted</code> принимает исходный список и функцию ключа. Она возвращает новый список. Поэтому результат нужно сохранить в отдельную переменную.</p>
       <figure class="code"><figcaption><span>Python 3.12</span><span>сортировка и проверка результата</span></figcaption><pre>&gt;&gt;&gt; by_total = sorted(orders, key=lambda order: order["total"])
 &gt;&gt;&gt; [order["id"] for order in by_total]
@@ -99,7 +107,7 @@
         <li><button type="button">C</button><p class="quiz__why">У C время 14:05. Это наибольший ключ времени.</p></li>
       </ul></div>
 
-      <h2 id="s4"><span class="sec">§4</span>Когда ключи равны</h2>
+      <h2 id="s5"><span class="sec">§5</span>Когда ключи равны</h2>
       <p>Два заказа могут иметь одну и ту же сумму или одно и то же время. Равные ключи допустимы в порядке по возрастанию: для соседей используют знак <code>≤</code>. Строгий знак <code>&lt;</code> запретил бы равные значения.</p>
       <figure class="code"><figcaption><span>Python 3.12</span><span>два одинаковых ключа времени</span></figcaption><pre>&gt;&gt;&gt; queue = [
 ...     {"id": "B", "time": "12:40"},
