@@ -23,6 +23,7 @@ tags:
 - [[unit--project-management--04--04-plan-rabot]]
 - [[unit--project-management--05--05-crm-zapusk]]
 - [[unit--project-management--06--06-rabochee-prostranstvo]]
+- [[unit--project-management--07--07-avtomatizaciya-kontrol]]
 
 ## Точки входа области
 
