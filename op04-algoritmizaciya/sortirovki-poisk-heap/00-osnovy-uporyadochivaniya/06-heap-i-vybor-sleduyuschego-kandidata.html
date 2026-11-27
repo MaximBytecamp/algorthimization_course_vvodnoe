@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F1F2EC">
+  <title>0.6 Heap и выбор следующего кандидата · ОП.04</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,600;0,7..72,700;1,7..72,400&family=Pixelify+Sans:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../massivy/styles.css">
+  <link rel="stylesheet" href="../../massivy/algo.css">
+  <link rel="stylesheet" href="../sortirovki.css">
+</head>
+<body><div class="book"><div class="book__body"><div class="spine"><span>Модуль 0 · Упорядочивание изнутри · ОП.04</span></div><main class="leaf">
+  <div class="running"><p class="eyebrow"><a href="../index.html" style="text-decoration:none;color:inherit">Сортировка, бинарный поиск и heap</a> · модуль 0 · теория</p><p class="running__folio">Глава 0.6</p></div>
+  <header class="chapter-head"><span class="chapter-num">0.6</span><h1>Heap и выбор<br>следующего<br>кандидата</h1><p class="lead">Очередь с приоритетом хранит много кандидатов и быстро отдаёт наименьший. Для этого она поддерживает порядок не во всём списке, а только на путях от корня дерева.</p></header>
+  <nav class="contents"><b>В этой главе</b><ol><li><a href="#s1">Очередь, в которой важен приоритет</a></li><li><a href="#s2">Куча как дерево в списке</a></li><li><a href="#s3">Добавление нового кандидата</a></li><li><a href="#s4">Извлечение минимума через <code>heapq</code></a></li></ol></nav>
+
+  <h2 id="s1"><span class="sec">§1</span>Очередь, в которой важен приоритет</h2>
+  <p>В очереди в столовой первым обслуживают того, кто встал раньше. Но диспетчер задач работает иначе. Он должен сначала взять задачу с ближайшим сроком, даже если её добавили позже других. Такая структура называется <span class="term">очередью с приоритетом</span>.</p>
+  <figure class="code"><figcaption><span>Python 3.12</span><span>задачи и их сроки</span></figcaption><pre>&gt;&gt;&gt; tasks = [(5, "отчёт"), (2, "звонок"), (7, "архив")]
+&gt;&gt;&gt; min(tasks)
+(2, 'звонок')</pre></figure>
+  <p>Первое число в паре — приоритет. Чем оно меньше, тем раньше задачу нужно взять. Функция <code>min</code> нашла бы пару с числом 2, но каждый её вызов просматривает весь список. Если задач много, искать минимум заново после каждого изменения дорого.</p>
+  <div class="widget priority-story"><div class="widget__head"><b>Три ожидающие задачи</b><span>меньшее число — раньше</span></div><div class="widget__body"><div class="priority-story__tasks"><section><b>5</b><span>отчёт</span></section><section class="is-next"><b>2</b><span>звонок</span></section><section><b>7</b><span>архив</span></section></div></div><div class="widget__foot">Куча хранит число 2 в корне. Поэтому следующий кандидат доступен без обхода всех задач.</div></div>
+  <p>Для этого используют <span class="term">min-heap</span>, или минимальную кучу. В ней наименьший элемент находится в корне. Остальные элементы могут стоять не по возрастанию слева направо. Куча поддерживает неполный порядок. Поэтому основные операции выполняются быстро.</p>
+
+  <h2 id="s2"><span class="sec">§2</span>Куча как дерево в списке</h2>
+  <p>Кучу удобно представить как пирамиду карточек. Карточка родителя стоит выше карточек потомков. Значение в родителе не больше каждого его потомка. Дерево заполнено уровнями слева направо: в последнем уровне свободным может быть только правый край.</p>
+  <div class="widget heap-map"><div class="widget__head"><b>Одна куча в двух видах</b><span>минимум наверху</span></div><div class="widget__body"><div class="heap-map__grid"><section><h3>Дерево</h3><div class="heap-tree"><div><span class="is-root">2</span></div><div><span>5</span><span>7</span></div><div><span>11</span><span>9</span></div></div></section><section><h3>Список</h3><div class="heap-array"><span><small>0</small>2</span><span><small>1</small>5</span><span><small>2</small>7</span><span><small>3</small>11</span><span><small>4</small>9</span></div><p><code>heap = [2, 5, 7, 11, 9]</code></p></section></div></div><div class="widget__foot">Для индекса <code>i</code> потомки находятся по индексам <code>2*i + 1</code> и <code>2*i + 2</code>. У корня с индексом 0 это 1 и 2.</div></div>
+  <p>У числа 2 потомки 5 и 7. У числа 5 потомки 11 и 9. Все родители меньше или равны потомкам: <code>2 &lt;= 5</code>, <code>2 &lt;= 7</code>, <code>5 &lt;= 11</code>, <code>5 &lt;= 9</code>. Сравнивать 11 с 7 не требуется: они не находятся в отношении родитель — потомок.</p>
+  <details class="simple"><summary>По-простому: почему список заменяет дерево</summary><div><p>На этажах пирамиды карточки стоят без промежутков. Если записывать их сверху вниз и слева направо, получится обычный список: сначала 2, потом 5 и 7, затем 11 и 9.</p><div class="heap-simple"><span>корень: <b>2</b></span><i>→</i><span>его дети: <b>5, 7</b></span><i>→</i><span>следующий уровень: <b>11, 9</b></span></div><p><b>Что есть что:</b> этажи пирамиды — уровни дерева; место карточки в записи — индекс списка; верхняя карточка — <code>heap[0]</code>.</p></div></details>
+  <p>Значит, чтобы добавить или забрать кандидата, нужно исправлять порядок только вдоль одного пути дерева. Сначала добавим новый элемент и проследим этот путь к корню.</p>
+
+  <h2 id="s3"><span class="sec">§3</span>Добавление нового кандидата</h2>
+  <p>Новая задача с приоритетом 4 сначала занимает первое свободное место в последнем уровне. В списке это просто добавление в конец. Затем её сравнивают с родителем. Если новое значение меньше, карточки меняют местами. Это действие называется просеиванием вверх.</p>
+  <div class="widget heap-trace" aria-label="Два шага добавления числа 4 в минимальную кучу"><section><div class="heap-trace__head"><b>Шаг 1</b><span>добавили 4 в конец</span></div><div class="heap-trace__stage"><div class="heap-tree"><div><span class="is-root">2</span></div><div><span>5</span><span>7</span></div><div><span>11</span><span>9</span><span class="is-current">4</span></div></div><div class="heap-array"><span><small>0</small>2</span><span><small>1</small>5</span><span><small>2</small>7</span><span><small>3</small>11</span><span><small>4</small>9</span><span class="is-current"><small>5</small>4</span></div></div><p>Родитель элемента с индексом 5 имеет индекс <code>(5 - 1) // 2 = 2</code>. Сравниваем 4 и 7.</p></section><section><div class="heap-trace__head"><b>Шаг 2</b><span><code>4 &lt; 7</code>, меняем местами</span></div><div class="heap-trace__stage"><div class="heap-tree"><div><span class="is-root">2</span></div><div><span>5</span><span class="is-current">4</span></div><div><span>11</span><span>9</span><span class="is-cut">7</span></div></div><div class="heap-array"><span><small>0</small>2</span><span><small>1</small>5</span><span class="is-current"><small>2</small>4</span><span><small>3</small>11</span><span><small>4</small>9</span><span class="is-cut"><small>5</small>7</span></div></div><p>Теперь 4 сравнивают с родителем 2. Условие <code>4 &lt; 2</code> ложно, поэтому просеивание заканчивается.</p></section></div>
+  <p>После добавления куча имеет вид <code>[2, 5, 4, 11, 9, 7]</code>. Внутренний порядок списка изменился, но 2 остался минимальным элементом в корне. Дальше нужно уметь забирать корень и восстанавливать порядок.</p>
+
+  <h2 id="s4"><span class="sec">§4</span>Извлечение минимума через <code>heapq</code></h2>
+  <p>При извлечении минимума корень нужно убрать. На его место ставят последний элемент списка, чтобы дерево осталось заполненным. Затем этот элемент сравнивают с детьми и меняют местами с меньшим из них. Это просеивание вниз.</p>
+  <div class="widget heap-pop"><div class="widget__head"><b>Извлечение 2 из кучи</b><span>после добавления 4</span></div><div class="widget__body"><div class="heap-pop__steps"><section><b>1. Последний элемент идёт в корень</b><div class="heap-array"><span class="is-current"><small>0</small>7</span><span><small>1</small>5</span><span><small>2</small>4</span><span><small>3</small>11</span><span><small>4</small>9</span></div><p>Корень 2 извлечён. Число 7 временно стоит на его месте.</p></section><section><b>2. 7 меняется с меньшим ребёнком 4</b><div class="heap-array"><span class="is-root"><small>0</small>4</span><span><small>1</small>5</span><span class="is-current"><small>2</small>7</span><span><small>3</small>11</span><span><small>4</small>9</span></div><p>У 7 нет потомков. Куча снова готова: <code>[4, 5, 7, 11, 9]</code>.</p></section></div></div><div class="widget__foot">Метод извлечения возвращает минимум 2. Новый минимум 4 сразу лежит в <code>heap[0]</code>.</div></div>
+  <figure class="code"><figcaption><span>Python 3.12</span><span>операции модуля <code>heapq</code></span></figcaption><pre>import heapq
+
+heap = [2, 5, 7, 11, 9]
+heapq.heappush(heap, 4)
+print(heap)
+
+first = heapq.heappop(heap)
+print(first)
+print(heap)
+
+&gt;&gt;&gt; [2, 5, 4, 11, 9, 7]
+&gt;&gt;&gt; 2
+&gt;&gt;&gt; [4, 5, 7, 11, 9]</pre></figure>
+  <p><code>heappush</code> добавляет элемент и просеивает его вверх. <code>heappop</code> возвращает наименьший элемент и просеивает замену вниз. Просмотр корня занимает постоянное время, а добавление и извлечение проходят путь высотой дерева: для <code>n</code> элементов это порядок <code>log n</code>.</p>
+  <div class="quiz"><div class="quiz__q"><b>Проверьте себя</b>Какой элемент вернёт <code>heapq.heappop([4, 5, 7, 11, 9])</code>?</div><ul class="quiz__opts"><li data-ok><button type="button">4</button><p class="quiz__why">Минимум кучи всегда находится в корне, то есть в элементе с индексом 0.</p></li><li><button type="button">9</button><p class="quiz__why">Последний элемент используют для замены корня, но он не является результатом операции.</p></li><li><button type="button">5</button><p class="quiz__why">5 — ребёнок корня. Его сравнят при просеивании, но не вернут первым.</p></li></ul></div>
+  <div class="sources"><b>Источники главы</b><ol><li>Документация Python: <a href="https://docs.python.org/3/library/heapq.html" target="_blank" rel="noopener">heapq — Heap queue algorithm</a>.</li><li>Код и вывод проверены запуском на Python 3.12.</li></ol></div>
+  <div class="pager"><a href="05-sliyanie-uporyadochennyh-potokov.html">← 0.5 Слияние упорядоченных потоков</a><span>Модуль 0 завершён</span></div><div class="colophon"><span>Модуль 0 · Упорядочивание изнутри · ОП.04 · 3 курс</span><span class="author-line">Автор: Макаров Максим Николаевич</span></div>
+</main></div></div><script src="../../massivy/book.js"></script><script src="../../massivy/algo.js"></script></body></html>
